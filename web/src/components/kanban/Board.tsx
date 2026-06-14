@@ -11,6 +11,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useDroppable } from "@dnd-kit/core";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatoMoneda } from "@/components/ui";
 
 export type Tarjeta = {
@@ -19,6 +20,7 @@ export type Tarjeta = {
   valor: number;
   moneda: string;
   createdAt: string;
+  conversacionId: string | null;
   contacto: { nombre: string; telefono: string | null };
   responsable: { nombre: string } | null;
 };
@@ -73,7 +75,7 @@ function TarjetaVista({ t, onBorrar }: { t: Tarjeta; onBorrar?: (id: string) => 
   );
 }
 
-function TarjetaSortable({ t, onBorrar }: { t: Tarjeta; onBorrar: (id: string) => void }) {
+function TarjetaSortable({ t, onBorrar, onChat }: { t: Tarjeta; onBorrar: (id: string) => void; onChat: (t: Tarjeta) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: t.id });
   return (
     <div
@@ -81,6 +83,8 @@ function TarjetaSortable({ t, onBorrar }: { t: Tarjeta; onBorrar: (id: string) =
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
       {...attributes}
       {...listeners}
+      onDoubleClick={() => onChat(t)}
+      title="Doble clic para abrir el chat"
       className="cursor-grab active:cursor-grabbing"
     >
       <TarjetaVista t={t} onBorrar={onBorrar} />
@@ -88,7 +92,7 @@ function TarjetaSortable({ t, onBorrar }: { t: Tarjeta; onBorrar: (id: string) =
   );
 }
 
-function ColumnaVista({ col, onBorrar }: { col: Columna; onBorrar: (id: string) => void }) {
+function ColumnaVista({ col, onBorrar, onChat }: { col: Columna; onBorrar: (id: string) => void; onChat: (t: Tarjeta) => void }) {
   const { setNodeRef } = useDroppable({ id: `col-${col.id}` });
   const total = col.tarjetas.reduce((s, t) => s + t.valor, 0);
   return (
@@ -103,7 +107,7 @@ function ColumnaVista({ col, onBorrar }: { col: Columna; onBorrar: (id: string) 
       </div>
       <div ref={setNodeRef} className="scroll-thin flex-1 space-y-2 overflow-y-auto px-2 pb-3">
         <SortableContext items={col.tarjetas.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-          {col.tarjetas.map((t) => <TarjetaSortable key={t.id} t={t} onBorrar={onBorrar} />)}
+          {col.tarjetas.map((t) => <TarjetaSortable key={t.id} t={t} onBorrar={onBorrar} onChat={onChat} />)}
         </SortableContext>
       </div>
     </div>
@@ -121,7 +125,13 @@ export function Board({ columnasIniciales }: { columnasIniciales: Columna[] }) {
   const [cols, setCols] = useState<Columna[]>(columnasIniciales);
   const [activa, setActiva] = useState<Tarjeta | null>(null);
   const [rango, setRango] = useState<Rango>("todo");
+  const router = useRouter();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  function abrirChat(t: Tarjeta) {
+    if (t.conversacionId) router.push(`/chat?conv=${t.conversacionId}`);
+    else alert("Este lead todavía no tiene chat de WhatsApp.");
+  }
 
   // Vista filtrada por fecha de creación (no toca `cols`, que es la fuente para drag/persistencia).
   const colsVistas = useMemo(
@@ -223,7 +233,7 @@ export function Board({ columnasIniciales }: { columnasIniciales: Columna[] }) {
       </div>
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd}>
         <div className="flex flex-1 gap-3 overflow-x-auto p-4">
-          {colsVistas.map((c) => <ColumnaVista key={c.id} col={c} onBorrar={borrar} />)}
+          {colsVistas.map((c) => <ColumnaVista key={c.id} col={c} onBorrar={borrar} onChat={abrirChat} />)}
         </div>
         <DragOverlay>{activa ? <div className="w-72"><TarjetaVista t={activa} /></div> : null}</DragOverlay>
       </DndContext>

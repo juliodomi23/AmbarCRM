@@ -15,7 +15,10 @@ export async function getEmbudoConTarjetas(embudoId: bigint) {
         include: {
           oportunidades: {
             orderBy: { orden: "asc" },
-            include: { contacto: true, responsable: true }
+            include: {
+              contacto: { include: { conversaciones: { take: 1, orderBy: { ultimoMensajeAt: "desc" } } } },
+              responsable: true
+            }
           }
         }
       }

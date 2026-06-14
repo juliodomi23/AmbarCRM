@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { aplicarVariables } from "@/lib/plantillas";
 import { PanelConversacion } from "@/components/chat/PanelConversacion";
 import { IconoAdjuntar, IconoIA, IconoMicro, IconoNota, IconoInfo, IconoEnviar } from "@/components/icons";
@@ -179,6 +180,13 @@ export function ChatCliente({
   useEffect(() => {
     refrescarLista();
   }, [refrescarLista]);
+
+  // Abre directo una conversación si viene en la URL (?conv=ID), p. ej. desde el embudo.
+  const convParam = useSearchParams().get("conv");
+  useEffect(() => {
+    if (convParam) abrir(convParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convParam]);
 
   // SSE: mensajes en vivo
   useEffect(() => {
