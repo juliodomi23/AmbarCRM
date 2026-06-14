@@ -128,16 +128,19 @@ export function ChatCliente({
 
   const seleccionada = convs.find((c) => c.id === selId) ?? null;
   const q = busqueda.toLowerCase().trim();
-  const convsFiltradas = convs.filter((c) => {
-    if (q && !(
-      c.contacto.nombre.toLowerCase().includes(q) ||
-      (c.contacto.telefono ?? "").includes(q) ||
-      c.preview.toLowerCase().includes(q)
-    )) return false;
-    if (filtroEstado && c.estado !== filtroEstado) return false;
-    if (filtroEtiqueta && !c.etiquetas.includes(filtroEtiqueta)) return false;
-    return true;
-  });
+  const convsFiltradas = convs
+    .filter((c) => {
+      if (q && !(
+        c.contacto.nombre.toLowerCase().includes(q) ||
+        (c.contacto.telefono ?? "").includes(q) ||
+        c.preview.toLowerCase().includes(q)
+      )) return false;
+      if (filtroEstado && c.estado !== filtroEstado) return false;
+      if (filtroEtiqueta && !c.etiquetas.includes(filtroEtiqueta)) return false;
+      return true;
+    })
+    // Más reciente arriba (como WhatsApp); al responder o llegar mensaje, sube al tope.
+    .sort((a, b) => new Date(b.ultimoMensajeAt ?? 0).getTime() - new Date(a.ultimoMensajeAt ?? 0).getTime());
 
   const cargarMensajes = useCallback(async (id: string) => {
     const res = await fetch(`/api/conversaciones/${id}/mensajes`);
@@ -209,6 +212,8 @@ export function ChatCliente({
     const data = await res.json().catch(() => ({}));
     if (data?.mensaje) {
       setMensajes((prev) => (prev.some((m) => m.id === data.mensaje.id) ? prev : [...prev, data.mensaje]));
+      const preview = notaInterna ? `📝 ${texto}` : texto;
+      setConvs((prev) => prev.map((c) => (c.id === selId ? { ...c, ultimoMensajeAt: new Date().toISOString(), preview } : c)));
       setTexto("");
       setNotaInterna(false);
     }

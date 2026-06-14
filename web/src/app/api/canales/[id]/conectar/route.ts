@@ -28,6 +28,16 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   const instancia = canal.instancia?.trim() || instanciaPorDefecto;
   const res = await provider.conectar(instancia);
 
+  // Configura el webhook de Evolution → CRM para recibir mensajes (clave: sin esto no llegan entrantes).
+  if (res.ok && provider.configurarWebhook) {
+    const base = process.env.NEXTAUTH_URL ?? "";
+    const apiKey = process.env.WA_API_KEY ?? "";
+    if (base && apiKey) {
+      const url = `${base.replace(/\/$/, "")}/api/wa/webhook?canal=${canal.id}&apikey=${encodeURIComponent(apiKey)}`;
+      await provider.configurarWebhook(instancia, url, apiKey);
+    }
+  }
+
   const data: Record<string, unknown> = {};
   if (!canal.instancia?.trim()) data.instancia = instancia;
   if (res.estado === "conectado") data.estado = "conectado";

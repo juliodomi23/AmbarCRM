@@ -85,6 +85,9 @@ export interface ChannelProvider {
   /** Trae el directorio existente del número (contactos y chats) para importarlo al CRM. */
   obtenerDirectorio?(instancia: string): Promise<{ contactos: ImportContacto[]; chats: ImportChat[] }>;
 
+  /** Configura el webhook del proveedor para que mande los mensajes entrantes al CRM. */
+  configurarWebhook?(instancia: string, url: string, apiKey: string): Promise<ResultadoEnvio>;
+
   // --- Gestión de conexión (opcional) ---
   // Solo aplica a proveedores que vinculan por QR (Evolution). Cloud API usa token,
   // así que estos métodos quedan ausentes y la UI no muestra el flujo de QR.

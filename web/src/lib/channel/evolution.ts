@@ -238,6 +238,19 @@ export const evolutionProvider: ChannelProvider = {
     return { base64: data.base64, mime: data.mimetype ?? data.mediaType ?? "application/octet-stream" };
   },
 
+  async configurarWebhook(instancia, url, apiKey) {
+    return post(`/webhook/set/${instancia}`, {
+      webhook: {
+        enabled: true,
+        url,
+        headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
+        byEvents: false,
+        base64: false,
+        events: ["MESSAGES_UPSERT", "MESSAGES_UPDATE"]
+      }
+    });
+  },
+
   async obtenerDirectorio(instancia) {
     const contactos: ImportContacto[] = [];
     const chats: ImportChat[] = [];
