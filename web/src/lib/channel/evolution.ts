@@ -181,6 +181,9 @@ export const evolutionProvider: ChannelProvider = {
     const out: MensajeEntranteNormalizado[] = [];
     for (const m of items) {
       if (m?.key?.fromMe) continue; // ignorar lo que envió el propio número
+      // Solo chats individuales: ignora grupos (@g.us), estados y difusiones.
+      const telefono = jidIndividual(m?.key?.remoteJid ?? "");
+      if (!telefono) continue;
       const msg = m?.message ?? {};
 
       let tipo: TipoMensaje = "texto";
@@ -209,7 +212,7 @@ export const evolutionProvider: ChannelProvider = {
 
       out.push({
         waMessageId: m?.key?.id ?? `${Date.now()}-${Math.random()}`,
-        telefono: soloDigitos(m?.key?.remoteJid ?? ""),
+        telefono,
         nombre: m?.pushName,
         tipo,
         contenido,
