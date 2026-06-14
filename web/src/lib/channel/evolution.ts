@@ -4,6 +4,8 @@ import type {
   DatosConexion,
   EstadoConexion,
   EstadoMensaje,
+  ImportChat,
+  ImportContacto,
   MensajeEntranteNormalizado,
   ResultadoEnvio,
   TipoMensaje
@@ -234,5 +236,44 @@ export const evolutionProvider: ChannelProvider = {
     const { ok, data } = await req("POST", `/chat/getBase64FromMediaMessage/${instancia}`, { message: raw });
     if (!ok || !data?.base64) return null;
     return { base64: data.base64, mime: data.mimetype ?? data.mediaType ?? "application/octet-stream" };
+  },
+
+  async obtenerDirectorio(instancia) {
+    const contactos: ImportContacto[] = [];
+    const chats: ImportChat[] = [];
+
+    const rc = await req("POST", `/chat/findContacts/${instancia}`, {});
+    const arrC = Array.isArray(rc.data) ? rc.data : rc.data?.records ?? rc.data?.contacts ?? [];
+    for (const c of arrC) {
+      const tel = jidIndividual(c?.remoteJid ?? c?.id ?? c?.jid ?? "");
+      if (tel) contactos.push({ telefono: tel, nombre: c?.pushName ?? c?.name ?? undefined });
+    }
+
+    const rch = await req("POST", `/chat/findChats/${instancia}`, {});
+    const arrCh = Array.isArray(rch.data) ? rch.data : rch.data?.records ?? rch.data?.chats ?? [];
+    for (const ch of arrCh) {
+      const tel = jidIndividual(ch?.remoteJid ?? ch?.id ?? ch?.jid ?? "");
+      if (!tel) continue;
+      const lm = ch?.lastMessage ?? ch?.lastMsg;
+      const ultimoTexto =
+        lm?.message?.conversation ?? lm?.message?.extendedTextMessage?.text ?? ch?.lastMessageText ?? undefined;
+      const tsRaw = ch?.updatedAt ?? lm?.messageTimestamp ?? ch?.lastMessageTimestamp;
+      let timestamp: Date | undefined;
+      if (tsRaw != null) {
+        const n = Number(tsRaw);
+        timestamp = Number.isFinite(n) ? new Date(n > 1e12 ? n : n * 1000) : new Date(tsRaw);
+        if (isNaN(timestamp.getTime())) timestamp = undefined;
+      }
+      chats.push({ telefono: tel, nombre: ch?.pushName ?? ch?.name ?? undefined, ultimoTexto, timestamp });
+    }
+
+    return { contactos, chats };
   }
 };
+
+/** Devuelve los dígitos del número solo si el jid es de un chat individual (no grupos/estados). */
+function jidIndividual(jid: string): string | null {
+  if (!jid || !jid.includes("@s.whatsapp.net")) return null;
+  const num = jid.split("@")[0].replace(/\D/g, "");
+  return num || null;
+}

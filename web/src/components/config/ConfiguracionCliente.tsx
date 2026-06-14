@@ -506,6 +506,8 @@ function ConexionCanal({ canal }: { canal: any }) {
   const [pairing, setPairing] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [importando, setImportando] = useState(false);
+  const [impResultado, setImpResultado] = useState<string | null>(null);
   const polling = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function detenerPolling() {
@@ -572,6 +574,16 @@ function ConexionCanal({ canal }: { canal: any }) {
     if (!res.ok) setError(d.error ?? "Error al desconectar");
   }
 
+  async function importar() {
+    setImportando(true);
+    setImpResultado(null);
+    const res = await fetch(`/api/canales/${canal.id}/importar`, { method: "POST" });
+    const d = await res.json().catch(() => ({}));
+    setImportando(false);
+    if (res.ok) setImpResultado(`✓ ${d.contactosNuevos} contactos y ${d.chatsNuevos} chats nuevos importados (de ${d.contactos} contactos y ${d.chats} chats en WhatsApp).`);
+    else setImpResultado(d.error ?? "No se pudo importar");
+  }
+
   if (!canal) return <p className="text-slate-400">No hay canal configurado.</p>;
   if (canal.proveedor !== "evolution") {
     return (
@@ -595,6 +607,12 @@ function ConexionCanal({ canal }: { canal: any }) {
           <p className="text-sm text-slate-600">
             Número vinculado{telefono ? `: +${telefono}` : ""}. Ya puedes enviar y recibir mensajes.
           </p>
+          <div className="rounded-lg border border-slate-200 p-3">
+            <p className="mb-1 text-sm font-medium text-slate-700">Importar de WhatsApp</p>
+            <p className="mb-2 text-xs text-slate-500">Trae tus contactos y chats actuales al CRM. Puedes repetirlo; no duplica.</p>
+            <Boton onClick={importar} disabled={importando}>{importando ? "Importando…" : "Importar contactos y chats"}</Boton>
+            {impResultado && <p className="mt-2 text-xs text-slate-600">{impResultado}</p>}
+          </div>
           <Boton variante="ghost" onClick={desconectar} disabled={cargando}>
             {cargando ? "..." : "Desconectar"}
           </Boton>

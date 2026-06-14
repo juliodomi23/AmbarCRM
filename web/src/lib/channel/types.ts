@@ -18,6 +18,18 @@ export interface MensajeEntranteNormalizado {
   timestamp: Date;
 }
 
+/** Para importar el directorio existente del número (contactos y chats). */
+export interface ImportContacto {
+  telefono: string;
+  nombre?: string;
+}
+export interface ImportChat {
+  telefono: string;
+  nombre?: string;
+  ultimoTexto?: string;
+  timestamp?: Date;
+}
+
 /** Estado de un mensaje saliente reportado por el proveedor (acuses). */
 export type EstadoMensaje = "enviado" | "entregado" | "leido" | "fallido";
 
@@ -69,6 +81,9 @@ export interface ChannelProvider {
 
   /** Descarga el contenido real de un media entrante (cifrado en WhatsApp) como base64. */
   descargarMedia?(raw: unknown, instancia: string): Promise<{ base64: string; mime: string } | null>;
+
+  /** Trae el directorio existente del número (contactos y chats) para importarlo al CRM. */
+  obtenerDirectorio?(instancia: string): Promise<{ contactos: ImportContacto[]; chats: ImportChat[] }>;
 
   // --- Gestión de conexión (opcional) ---
   // Solo aplica a proveedores que vinculan por QR (Evolution). Cloud API usa token,
