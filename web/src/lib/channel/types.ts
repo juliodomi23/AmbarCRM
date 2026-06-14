@@ -30,6 +30,20 @@ export interface ImportChat {
   timestamp?: Date;
 }
 
+/** Mensaje entrante de un grupo, ya normalizado. */
+export interface MensajeGrupoNormalizado {
+  grupoJid: string;
+  remitenteTel: string;
+  remitenteNombre?: string;
+  tipo: TipoMensaje;
+  contenido?: string;
+  mediaUrl?: string;
+  mediaMime?: string;
+  raw?: unknown;
+  waMessageId: string;
+  timestamp: Date;
+}
+
 /** Estado de un mensaje saliente reportado por el proveedor (acuses). */
 export type EstadoMensaje = "enviado" | "entregado" | "leido" | "fallido";
 
@@ -88,6 +102,12 @@ export interface ChannelProvider {
 
   /** Configura el webhook del proveedor para que mande los mensajes entrantes al CRM. */
   configurarWebhook?(instancia: string, url: string, apiKey: string): Promise<ResultadoEnvio>;
+
+  /** Extrae los mensajes entrantes de GRUPOS (chats @g.us). [] si no aplica. */
+  normalizarEntranteGrupo?(payload: unknown): MensajeGrupoNormalizado[];
+
+  /** Nombre/asunto de un grupo. */
+  infoGrupo?(instancia: string, jid: string): Promise<{ nombre?: string } | null>;
 
   // --- Gestión de conexión (opcional) ---
   // Solo aplica a proveedores que vinculan por QR (Evolution). Cloud API usa token,

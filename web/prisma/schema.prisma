@@ -243,8 +243,47 @@ model CanalWhatsapp {
 
   conversaciones Conversacion[]
   bots           Bot[]
+  grupos         Grupo[]
 
   @@map("canales_whatsapp")
+}
+
+// Grupos de WhatsApp: bandeja aparte, NO son leads (no entran al embudo/CSAT/contactos).
+model Grupo {
+  id              BigInt    @id @default(autoincrement())
+  canalId         BigInt?   @map("canal_id")
+  jid             String    @unique
+  nombre          String
+  noLeidos        Int       @default(0) @map("no_leidos")
+  ultimoMensajeAt DateTime? @map("ultimo_mensaje_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  canal    CanalWhatsapp? @relation(fields: [canalId], references: [id], onDelete: SetNull)
+  mensajes MensajeGrupo[]
+
+  @@map("grupos")
+}
+
+model MensajeGrupo {
+  id           BigInt       @id @default(autoincrement())
+  grupoId      BigInt       @map("grupo_id")
+  direccion    DireccionMsg
+  tipo         TipoMsg      @default(texto)
+  contenido    String?
+  mediaUrl     String?      @map("media_url")
+  mediaMime    String?      @map("media_mime")
+  remitente    String?      // nombre de quien escribió en el grupo
+  remitenteTel String?      @map("remitente_tel")
+  status       StatusMsg    @default(enviado)
+  waMessageId  String?      @unique @map("wa_message_id")
+  enviadoPor   BigInt?      @map("enviado_por")
+  timestamp    DateTime     @default(now())
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  grupo Grupo @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+
+  @@index([grupoId, timestamp])
+  @@map("mensajes_grupo")
 }
 
 // Bot estilo "Agent Bot" de Chatwoot: webhook saliente (CRM->n8n) + token para responder (n8n->CRM).

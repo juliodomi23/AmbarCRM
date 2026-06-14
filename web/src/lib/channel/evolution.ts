@@ -7,6 +7,7 @@ import type {
   ImportChat,
   ImportContacto,
   MensajeEntranteNormalizado,
+  MensajeGrupoNormalizado,
   ResultadoEnvio,
   TipoMensaje
 } from "./types";
@@ -184,31 +185,7 @@ export const evolutionProvider: ChannelProvider = {
       // Solo chats individuales: ignora grupos (@g.us), estados y difusiones.
       const telefono = jidIndividual(m?.key?.remoteJid ?? "");
       if (!telefono) continue;
-      const msg = m?.message ?? {};
-
-      let tipo: TipoMensaje = "texto";
-      let contenido: string | undefined;
-      let mediaUrl: string | undefined;
-      let mediaMime: string | undefined;
-
-      if (msg.conversation || msg.extendedTextMessage) {
-        tipo = "texto";
-        contenido = msg.conversation ?? msg.extendedTextMessage?.text;
-      } else if (msg.imageMessage) {
-        tipo = "imagen"; contenido = msg.imageMessage.caption;
-        mediaUrl = msg.imageMessage.url; mediaMime = msg.imageMessage.mimetype;
-      } else if (msg.videoMessage) {
-        tipo = "video"; contenido = msg.videoMessage.caption;
-        mediaUrl = msg.videoMessage.url; mediaMime = msg.videoMessage.mimetype;
-      } else if (msg.audioMessage) {
-        tipo = "audio"; mediaUrl = msg.audioMessage.url; mediaMime = msg.audioMessage.mimetype;
-      } else if (msg.documentMessage) {
-        tipo = "documento"; contenido = msg.documentMessage.fileName;
-        mediaUrl = msg.documentMessage.url; mediaMime = msg.documentMessage.mimetype;
-      } else if (msg.locationMessage) {
-        tipo = "ubicacion";
-        contenido = `${msg.locationMessage.degreesLatitude},${msg.locationMessage.degreesLongitude}`;
-      }
+      const { tipo, contenido, mediaUrl, mediaMime } = extraerContenido(m?.message ?? {});
 
       out.push({
         waMessageId: m?.key?.id ?? `${Date.now()}-${Math.random()}`,
@@ -289,6 +266,43 @@ export const evolutionProvider: ChannelProvider = {
     }
 
     return { contactos, chats };
+  },
+
+  normalizarEntranteGrupo(payload): MensajeGrupoNormalizado[] {
+    const raw = payload as any;
+    if (raw?.event && raw.event !== "messages.upsert") return [];
+    const data = raw?.data;
+    if (!data) return [];
+    const items = Array.isArray(data) ? data : [data];
+
+    const out: MensajeGrupoNormalizado[] = [];
+    for (const m of items) {
+      if (m?.key?.fromMe) continue;
+      const jid = m?.key?.remoteJid ?? "";
+      if (!jid.includes("@g.us")) continue; // solo grupos
+      const remitenteTel = (m?.key?.participant ?? "").split("@")[0].replace(/\D/g, "");
+      const { tipo, contenido, mediaUrl, mediaMime } = extraerContenido(m?.message ?? {});
+      out.push({
+        grupoJid: jid,
+        remitenteTel,
+        remitenteNombre: m?.pushName,
+        tipo,
+        contenido,
+        mediaUrl,
+        mediaMime,
+        raw: m,
+        waMessageId: m?.key?.id ?? `${Date.now()}-${Math.random()}`,
+        timestamp: m?.messageTimestamp ? new Date(Number(m.messageTimestamp) * 1000) : new Date()
+      });
+    }
+    return out;
+  },
+
+  async infoGrupo(instancia, jid) {
+    const { ok, data } = await req("GET", `/group/findGroupInfos/${instancia}?groupJid=${encodeURIComponent(jid)}`);
+    if (!ok) return null;
+    const g = Array.isArray(data) ? data[0] : data;
+    return { nombre: g?.subject ?? undefined };
   }
 };
 
@@ -297,4 +311,17 @@ function jidIndividual(jid: string): string | null {
   if (!jid || !jid.includes("@s.whatsapp.net")) return null;
   const num = jid.split("@")[0].replace(/\D/g, "");
   return num || null;
+}
+
+/** Extrae tipo/contenido/media de un message de Baileys (sirve para individuales y grupos). */
+function extraerContenido(msg: any): { tipo: TipoMensaje; contenido?: string; mediaUrl?: string; mediaMime?: string } {
+  if (msg.conversation || msg.extendedTextMessage) {
+    return { tipo: "texto", contenido: msg.conversation ?? msg.extendedTextMessage?.text };
+  }
+  if (msg.imageMessage) return { tipo: "imagen", contenido: msg.imageMessage.caption, mediaUrl: msg.imageMessage.url, mediaMime: msg.imageMessage.mimetype };
+  if (msg.videoMessage) return { tipo: "video", contenido: msg.videoMessage.caption, mediaUrl: msg.videoMessage.url, mediaMime: msg.videoMessage.mimetype };
+  if (msg.audioMessage) return { tipo: "audio", mediaUrl: msg.audioMessage.url, mediaMime: msg.audioMessage.mimetype };
+  if (msg.documentMessage) return { tipo: "documento", contenido: msg.documentMessage.fileName, mediaUrl: msg.documentMessage.url, mediaMime: msg.documentMessage.mimetype };
+  if (msg.locationMessage) return { tipo: "ubicacion", contenido: `${msg.locationMessage.degreesLatitude},${msg.locationMessage.degreesLongitude}` };
+  return { tipo: "texto" };
 }

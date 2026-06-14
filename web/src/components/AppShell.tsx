@@ -11,6 +11,7 @@ const NAV: NavItem[] = [
   { href: "/", label: "Inicio", icon: "M3 12l9-9 9 9M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10" },
   { href: "/embudos", label: "Embudos", icon: "M4 5h16M4 12h16M4 19h10" },
   { href: "/chat", label: "Chat", icon: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" },
+  { href: "/grupos", label: "Grupos", icon: "M17 20h5v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 3-3.87m6-1.13a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 11a4 4 0 0 0-3-3.87M1 11a4 4 0 0 1 3-3.87" },
   { href: "/contactos", label: "Contactos", icon: "M17 20h5v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 3-3.87m6-1.13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
   { href: "/tareas", label: "Tareas", icon: "M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" },
   { href: "/difusion", label: "Difusión", icon: "M4 4l16 8-16 8 4-8-4-8z", soloAdmin: true },

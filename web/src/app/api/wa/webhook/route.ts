@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getProvider } from "@/lib/channel";
 import { ingestarEntrante } from "@/lib/services/ingest";
+import { ingestarGrupoEntrante } from "@/lib/services/grupos";
 import { requireApiKey } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
@@ -44,5 +45,14 @@ export async function POST(req: NextRequest) {
     resultados.push(await ingestarEntrante(m, canal?.id ?? null));
   }
 
-  return NextResponse.json({ ok: true, procesados: resultados.length });
+  // Mensajes de grupos (bandeja aparte).
+  let grupos = 0;
+  if (provider.normalizarEntranteGrupo) {
+    for (const g of provider.normalizarEntranteGrupo(payload)) {
+      await ingestarGrupoEntrante(g, canal?.id ?? null);
+      grupos++;
+    }
+  }
+
+  return NextResponse.json({ ok: true, procesados: resultados.length, grupos });
 }

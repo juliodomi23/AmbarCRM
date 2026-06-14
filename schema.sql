@@ -128,6 +128,35 @@ CREATE TABLE IF NOT EXISTS bots (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ---------- grupos (bandeja aparte, no son leads) ----------
+CREATE TABLE IF NOT EXISTS grupos (
+  id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  canal_id         BIGINT      REFERENCES canales_whatsapp(id) ON DELETE SET NULL,
+  jid              TEXT        NOT NULL UNIQUE,
+  nombre           TEXT        NOT NULL,
+  no_leidos        INT         NOT NULL DEFAULT 0,
+  ultimo_mensaje_at TIMESTAMPTZ,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS mensajes_grupo (
+  id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  grupo_id      BIGINT        NOT NULL REFERENCES grupos(id) ON DELETE CASCADE,
+  direccion     direccion_msg NOT NULL,
+  tipo          tipo_msg      NOT NULL DEFAULT 'texto',
+  contenido     TEXT,
+  media_url     TEXT,
+  media_mime    TEXT,
+  remitente     TEXT,
+  remitente_tel TEXT,
+  status        status_msg    NOT NULL DEFAULT 'enviado',
+  wa_message_id TEXT          UNIQUE,
+  enviado_por   BIGINT        REFERENCES usuarios(id) ON DELETE SET NULL,
+  "timestamp"   TIMESTAMPTZ   NOT NULL DEFAULT now(),
+  created_at    TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_msg_grupo ON mensajes_grupo(grupo_id, "timestamp");
+
 -- ---------- conversaciones ----------
 CREATE TABLE IF NOT EXISTS conversaciones (
   id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
