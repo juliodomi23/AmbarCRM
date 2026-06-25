@@ -62,7 +62,11 @@ export async function POST(req: NextRequest) {
   const provider = getProvider(canal?.proveedor ?? "evolution");
 
   const contactos = await db.contacto.findMany({
-    where: { telefono: { not: null }, etiquetas: { some: { etiquetaId: BigInt(etiquetaId) } } },
+    where: {
+      telefono: { not: null },
+      optOutDifusion: false,
+      etiquetas: { some: { etiquetaId: BigInt(etiquetaId) } }
+    },
     take: restantes
   });
 

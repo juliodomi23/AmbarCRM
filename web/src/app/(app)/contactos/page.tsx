@@ -22,6 +22,7 @@ export default async function ContactosPage() {
         fuente: c.fuente,
         responsableId: c.responsableId,
         responsable: c.responsable?.nombre ?? null,
+        optOutDifusion: c.optOutDifusion,
         oportunidades: c._count.oportunidades,
         etiquetas: c.etiquetas.map((e: any) => ({ id: e.etiqueta.id, nombre: e.etiqueta.nombre, color: e.etiqueta.color }))
       }))}

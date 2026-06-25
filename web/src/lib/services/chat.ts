@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 export function listarConversaciones() {
   return db.conversacion.findMany({
     orderBy: { ultimoMensajeAt: "desc" },
+    // ponytail: tope de las 200 más recientes; paginar por cursor si la bandeja necesita ver más viejas.
+    take: 200,
     include: {
       contacto: true,
       responsable: true,

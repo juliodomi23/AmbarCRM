@@ -70,17 +70,36 @@ export async function dispatchABot(bot: { webhookUrl: string }, d: DatosDispatch
     }
   };
 
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 10000);
-    await fetch(bot.webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: ctrl.signal
-    });
-    clearTimeout(t);
-  } catch (e) {
-    console.error("dispatch a bot falló:", e instanceof Error ? e.message : e);
+  // 2 intentos: si n8n tiene un hipo, reintenta una vez antes de rendirse.
+  for (let intento = 1; intento <= 2; intento++) {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 10000);
+      const res = await fetch(bot.webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: ctrl.signal
+      });
+      clearTimeout(t);
+      if (res.ok) return;
+      throw new Error(`HTTP ${res.status}`);
+    } catch (e) {
+      console.error(`dispatch a bot falló (intento ${intento}, conv ${d.conversacionId}):`, e instanceof Error ? e.message : e);
+      if (intento < 2) await new Promise((r) => setTimeout(r, 1500));
+    }
   }
+
+  // Tras los reintentos: deja una nota interna VISIBLE en el chat para que el agente
+  // responda a mano (en vez de perder el lead en silencio).
+  await db.mensaje.create({
+    data: {
+      conversacionId: d.conversacionId,
+      direccion: "saliente",
+      tipo: "texto",
+      interna: true,
+      status: "enviado",
+      contenido: "Aviso del sistema: el bot no recibió este mensaje (n8n no respondió). Responde manualmente."
+    }
+  }).catch(() => {});
 }

@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS contactos (
   fuente         fuente_contacto NOT NULL DEFAULT 'manual',
   notas          TEXT,
   responsable_id BIGINT          REFERENCES usuarios(id) ON DELETE SET NULL,
+  opt_out_difusion BOOLEAN       NOT NULL DEFAULT false,  -- excluido de difusiones masivas
   created_at     TIMESTAMPTZ     NOT NULL DEFAULT now(),
   updated_at     TIMESTAMPTZ     NOT NULL DEFAULT now()
 );

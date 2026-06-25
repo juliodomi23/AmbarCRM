@@ -33,7 +33,8 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
     const base = process.env.NEXTAUTH_URL ?? "";
     const apiKey = process.env.WA_API_KEY ?? "";
     if (base && apiKey) {
-      const url = `${base.replace(/\/$/, "")}/api/wa/webhook?canal=${canal.id}&apikey=${encodeURIComponent(apiKey)}`;
+      // La key va en el header x-api-key (configurarWebhook), no en la URL (se loguea en proxies).
+      const url = `${base.replace(/\/$/, "")}/api/wa/webhook?canal=${canal.id}`;
       await provider.configurarWebhook(instancia, url, apiKey);
     }
   }

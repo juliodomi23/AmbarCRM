@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { getAjustes } from "@/lib/services/config";
+import { permitido } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,11 @@ const PROMPT_DEFAULT =
 export async function POST(req: NextRequest) {
   const s = await requireSesion();
   if ("error" in s) return s.error;
+
+  // Tope de uso de IA: máx 20 sugerencias por usuario cada minuto (protege la cuota de Anthropic = dinero).
+  if (!permitido(`ia:${s.userId}`, 20, 60_000)) {
+    return NextResponse.json({ error: "Demasiadas sugerencias seguidas, espera un momento." }, { status: 429 });
+  }
 
   if (!API_KEY) {
     return NextResponse.json({ error: "Falta ANTHROPIC_API_KEY en el .env del CRM" }, { status: 400 });

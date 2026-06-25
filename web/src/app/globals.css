@@ -15,6 +15,11 @@ body {
   @apply bg-slate-50 text-slate-800 antialiased;
 }
 
+/* Foco visible para navegación por teclado (accesibilidad). */
+:focus-visible {
+  @apply outline-none ring-2 ring-navy/40 ring-offset-1;
+}
+
 /* Scrollbar discreto para columnas del kanban y la bandeja */
 .scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
 .scroll-thin::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }

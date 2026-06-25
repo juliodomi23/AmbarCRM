@@ -13,6 +13,7 @@ import { useDroppable } from "@dnd-kit/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatoMoneda } from "@/components/ui";
+import { IconoCerrar, IconoFlecha } from "@/components/icons";
 
 export type Tarjeta = {
   id: string;
@@ -49,9 +50,10 @@ function TarjetaVista({ t, onBorrar }: { t: Tarjeta; onBorrar?: (id: string) => 
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => onBorrar(t.id)}
           title="Quitar del embudo"
-          className="absolute right-1.5 top-1.5 hidden h-5 w-5 place-items-center rounded text-slate-300 hover:bg-red-50 hover:text-red-600 group-hover:grid"
+          aria-label="Quitar del embudo"
+          className="absolute right-1.5 top-1.5 hidden h-5 w-5 place-items-center rounded text-slate-400 hover:bg-red-50 hover:text-red-600 group-hover:grid"
         >
-          ✕
+          <IconoCerrar className="h-3.5 w-3.5" />
         </button>
       )}
       <p className="pr-5 text-sm font-medium text-slate-800">{t.titulo}</p>
@@ -67,9 +69,9 @@ function TarjetaVista({ t, onBorrar }: { t: Tarjeta; onBorrar?: (id: string) => 
       <Link
         href={`/oportunidades/${t.id}`}
         onPointerDown={(e) => e.stopPropagation()}
-        className="mt-2 block text-right text-[11px] font-medium text-navy hover:underline"
+        className="mt-2 flex items-center justify-end gap-1 text-[11px] font-medium text-navy hover:underline"
       >
-        Abrir →
+        Abrir <IconoFlecha className="h-3 w-3 rotate-180" />
       </Link>
     </div>
   );

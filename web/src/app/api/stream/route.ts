@@ -19,6 +19,12 @@ export async function GET(_req: NextRequest) {
       const push = (data: string) => {
         try { controller.enqueue(encoder.encode(data)); } catch { /* cerrado */ }
       };
+      // Si la conexión PG cae, cerramos el stream para que EventSource reconecte
+      // (si no, queda un stream zombi que ya no entrega mensajes).
+      client.on("error", () => {
+        clearInterval(keepAlive);
+        try { controller.close(); } catch { /* ya cerrado */ }
+      });
       await client.connect();
       await client.query("LISTEN nuevo_mensaje");
       client.on("notification", (n) => push(`data: ${n.payload}\n\n`));

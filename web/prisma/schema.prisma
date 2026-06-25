@@ -170,6 +170,7 @@ model Contacto {
   updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at")
 
   esPersonal     Boolean        @default(false) @map("es_personal")
+  optOutDifusion Boolean        @default(false) @map("opt_out_difusion") // excluido de difusiones masivas
 
   responsable    Usuario?           @relation(fields: [responsableId], references: [id], onDelete: SetNull)
   etiquetas      ContactoEtiqueta[]

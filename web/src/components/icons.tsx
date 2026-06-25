@@ -39,3 +39,18 @@ export const IconoDescargar = (p: SVGProps<SVGSVGElement>) => (
 export const IconoAlerta = (p: SVGProps<SVGSVGElement>) => (
   <Svg {...p}><path d="M10.29 3.86l-8.48 14.7A2 2 0 0 0 3.53 21h16.94a2 2 0 0 0 1.72-3.44l-8.48-14.7a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></Svg>
 );
+export const IconoEditar = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></Svg>
+);
+export const IconoCerrar = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}><path d="M18 6L6 18M6 6l12 12" /></Svg>
+);
+export const IconoCheck = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}><path d="M20 6L9 17l-5-5" /></Svg>
+);
+export const IconoFlecha = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}><path d="M19 12H5M12 19l-7-7 7-7" /></Svg>
+);
+export const IconoDeshacer = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}><path d="M3 7v6h6M3 13a9 9 0 1 0 3-7.7L3 8" /></Svg>
+);

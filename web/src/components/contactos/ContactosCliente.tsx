@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton, Campo, Modal } from "@/components/ui";
+import { toast } from "@/components/Toaster";
 
 type Etiqueta = { id: string; nombre: string; color: string };
 type Contacto = {
@@ -14,11 +15,12 @@ type Contacto = {
   fuente: string;
   responsableId: string | null;
   responsable: string | null;
+  optOutDifusion: boolean;
   oportunidades: number;
   etiquetas: Etiqueta[];
 };
 
-const FORM_VACIO = { nombre: "", telefono: "", email: "", empresa: "", fuente: "manual", responsableId: "" };
+const FORM_VACIO = { nombre: "", telefono: "", email: "", empresa: "", fuente: "manual", responsableId: "", optOutDifusion: false };
 
 export function ContactosCliente({
   contactos,
@@ -69,10 +71,10 @@ export function ContactosCliente({
     setImportando(false);
     const d = await res.json().catch(() => ({}));
     if (res.ok) {
-      alert(`Importación lista:\n${d.creados} nuevos · ${d.actualizados} actualizados · ${d.omitidos} omitidos`);
+      toast(`Importación lista: ${d.creados} nuevos · ${d.actualizados} actualizados · ${d.omitidos} omitidos`);
       router.refresh();
     } else {
-      alert(d.error ?? "No se pudo importar");
+      toast(d.error ?? "No se pudo importar", "error");
     }
   }
 
@@ -89,11 +91,12 @@ export function ContactosCliente({
       email: c.email ?? "",
       empresa: c.empresa ?? "",
       fuente: c.fuente,
-      responsableId: c.responsableId ?? ""
+      responsableId: c.responsableId ?? "",
+      optOutDifusion: c.optOutDifusion
     });
     setModal(true);
   }
-  function set(k: string, v: string) { setForm((f) => ({ ...f, [k]: v })); }
+  function set(k: string, v: string | boolean) { setForm((f) => ({ ...f, [k]: v })); }
 
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
@@ -160,7 +163,8 @@ export function ContactosCliente({
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+      {/* Tabla (desktop) */}
+      <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white md:block">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
             <tr>
@@ -176,7 +180,10 @@ export function ContactosCliente({
           <tbody>
             {filtrados.map((c) => (
               <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium text-slate-800">{c.nombre}</td>
+                <td className="px-4 py-3 font-medium text-slate-800">
+                  {c.nombre}
+                  {c.optOutDifusion && <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">Sin difusión</span>}
+                </td>
                 <td className="px-4 py-3 text-slate-600">{c.telefono ?? "—"}</td>
                 <td className="px-4 py-3 text-slate-600">{c.empresa ?? "—"}</td>
                 <td className="px-4 py-3">
@@ -191,7 +198,7 @@ export function ContactosCliente({
                           style={
                             activa
                               ? { background: et.color, color: "white" }
-                              : { background: "#F1F5F9", color: "#94A3B8" }
+                              : { background: "#F1F5F9", color: "#64748B" }
                           }
                         >
                           {et.nombre}
@@ -209,16 +216,45 @@ export function ContactosCliente({
               </tr>
             ))}
             {filtrados.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Sin contactos.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500">Sin contactos.</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
+      {/* Tarjetas (móvil) */}
+      <div className="space-y-2 md:hidden">
+        {filtrados.map((c) => (
+          <div key={c.id} className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-slate-800">
+                  {c.nombre}
+                  {c.optOutDifusion && <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">Sin difusión</span>}
+                </p>
+                <p className="text-sm text-slate-600">{c.telefono ?? "Sin teléfono"}</p>
+                {c.empresa && <p className="text-xs text-slate-500">{c.empresa}</p>}
+              </div>
+              <div className="shrink-0 text-right text-xs text-slate-500">
+                <p>{c.responsable ?? "Sin asignar"}</p>
+                <p>{c.oportunidades} oport.</p>
+              </div>
+            </div>
+            <div className="mt-3 flex justify-end gap-4 border-t border-slate-100 pt-2 text-sm">
+              <button onClick={() => abrirEditar(c)} className="font-medium text-navy">Editar</button>
+              <button onClick={() => borrar(c)} className="font-medium text-red-600">Borrar</button>
+            </div>
+          </div>
+        ))}
+        {filtrados.length === 0 && (
+          <p className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">Sin contactos.</p>
+        )}
+      </div>
+
       <Modal abierto={modal} onClose={() => setModal(false)} titulo={editando ? "Editar contacto" : "Nuevo contacto"}>
         <form onSubmit={guardar} className="space-y-3">
           <Campo label="Nombre" value={form.nombre} onChange={(e) => set("nombre", e.target.value)} required />
-          <Campo label="Teléfono (WhatsApp)" value={form.telefono} onChange={(e) => set("telefono", e.target.value)} placeholder="5219611234567" />
+          <Campo label="Teléfono (WhatsApp)" type="tel" inputMode="numeric" value={form.telefono} onChange={(e) => set("telefono", e.target.value)} placeholder="5219611234567" />
           <Campo label="Email" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
           <Campo label="Empresa" value={form.empresa} onChange={(e) => set("empresa", e.target.value)} />
           <label className="block space-y-1">
@@ -228,6 +264,15 @@ export function ContactosCliente({
               <option value="">Sin asignar</option>
               {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
             </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={form.optOutDifusion}
+              onChange={(e) => set("optOutDifusion", e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-navy focus:ring-navy/30"
+            />
+            No incluir en difusiones masivas
           </label>
           <div className="flex justify-end gap-2 pt-2">
             <Boton type="button" variante="ghost" onClick={() => setModal(false)}>Cancelar</Boton>

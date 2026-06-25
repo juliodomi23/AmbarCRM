@@ -11,9 +11,9 @@ function moneda(v: number) {
 function Kpi({ titulo, valor, sub, href, acento = "text-navy" }: { titulo: string; valor: string; sub?: string; href?: string; acento?: string }) {
   const card = (
     <div className="rounded-xl border border-slate-200 bg-white p-4 transition hover:shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{titulo}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{titulo}</p>
       <p className={`mt-1 text-2xl font-bold ${acento}`}>{valor}</p>
-      {sub && <p className="mt-0.5 text-xs text-slate-400">{sub}</p>}
+      {sub && <p className="mt-0.5 text-xs text-slate-500">{sub}</p>}
     </div>
   );
   return href ? <Link href={href}>{card}</Link> : card;

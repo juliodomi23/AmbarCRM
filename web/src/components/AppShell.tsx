@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { Toaster } from "@/components/Toaster";
 
 type NavItem = { href: string; label: string; icon: string; soloAdmin?: boolean };
 
@@ -53,7 +54,7 @@ export function AppShell({
               href={n.href}
               onClick={() => setAbierto(false)}
               className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                activo ? "bg-white/15 text-white" : "text-white/70 hover:bg-white/10 hover:text-white"
+                activo ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"
               }`}
             >
               <Icono d={n.icon} />
@@ -70,7 +71,7 @@ export function AppShell({
       <div className="border-t border-white/10 p-4">
         <div className="mb-2 text-sm">
           <p className="font-medium">{usuario.nombre}</p>
-          <p className="text-xs text-white/50 capitalize">{usuario.rol}</p>
+          <p className="text-xs text-white/70 capitalize">{usuario.rol}</p>
         </div>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
@@ -104,6 +105,7 @@ export function AppShell({
         </header>
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
+      <Toaster />
     </div>
   );
 }

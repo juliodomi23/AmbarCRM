@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { aplicarVariables } from "@/lib/plantillas";
 import { PanelConversacion } from "@/components/chat/PanelConversacion";
-import { IconoAdjuntar, IconoIA, IconoMicro, IconoNota, IconoInfo, IconoEnviar } from "@/components/icons";
+import { IconoAdjuntar, IconoIA, IconoMicro, IconoNota, IconoInfo, IconoEnviar, IconoCerrar, IconoCheck, IconoFlecha, IconoDeshacer } from "@/components/icons";
+import { toast } from "@/components/Toaster";
 
 type Embudo = { id: string; nombre: string; etapas: { id: string; nombre: string }[] };
 type Usuario = { id: string; nombre: string };
@@ -113,9 +114,11 @@ export function ChatCliente({
   const [convs, setConvs] = useState<ConversacionItem[]>(conversaciones);
   const [selId, setSelId] = useState<string | null>(null);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
+  const [cargandoMsgs, setCargandoMsgs] = useState(false);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [panelMovil, setPanelMovil] = useState(false);
+  const [enVivo, setEnVivo] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroEtiqueta, setFiltroEtiqueta] = useState("");
@@ -156,9 +159,10 @@ export function ChatCliente({
 
   const cargarMensajes = useCallback(async (id: string) => {
     const res = await fetch(`/api/conversaciones/${id}/mensajes`);
-    if (!res.ok) return;
+    if (!res.ok) { setCargandoMsgs(false); return; }
     const data = await res.json();
     setMensajes(data.mensajes);
+    setCargandoMsgs(false);
   }, []);
 
   // Refresca la bandeja desde el server (preview = último mensaje, orden y no-leídos exactos).
@@ -175,6 +179,8 @@ export function ChatCliente({
 
   function abrir(id: string) {
     setSelId(id);
+    setMensajes([]);
+    setCargandoMsgs(true);
     setConvs((prev) => prev.map((c) => (c.id === id ? { ...c, noLeidos: 0 } : c)));
     cargarMensajes(id);
   }
@@ -222,6 +228,8 @@ export function ChatCliente({
   // SSE: mensajes en vivo
   useEffect(() => {
     const es = new EventSource("/api/stream");
+    es.onopen = () => setEnVivo(true);
+    es.onerror = () => setEnVivo(false); // EventSource reintenta solo; al reconectar dispara onopen
     es.onmessage = (e) => {
       let payload: { conversacion_id?: number; direccion?: string };
       try { payload = JSON.parse(e.data); } catch { return; }
@@ -264,6 +272,25 @@ export function ChatCliente({
       setConvs((prev) => prev.map((c) => (c.id === selId ? { ...c, ultimoMensajeAt: new Date().toISOString(), preview } : c)));
       setTexto("");
       setNotaInterna(false);
+    } else {
+      toast(data?.error ? `No se pudo enviar: ${data.error}` : "No se pudo enviar el mensaje", "error");
+    }
+  }
+
+  // Reenvía un mensaje saliente que quedó "fallido" (crea uno nuevo con el mismo texto).
+  async function reintentar(contenido: string) {
+    if (!selId) return;
+    const res = await fetch("/api/mensajes/enviar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversacionId: selId, texto: contenido })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (data?.mensaje) {
+      setMensajes((prev) => (prev.some((m) => m.id === data.mensaje.id) ? prev : [...prev, data.mensaje]));
+      toast("Mensaje reenviado");
+    } else {
+      toast(data?.error ? `No se pudo reenviar: ${data.error}` : "No se pudo reenviar", "error");
     }
   }
 
@@ -274,7 +301,7 @@ export function ChatCliente({
       return;
     }
     if (!selId || !navigator.mediaDevices?.getUserMedia) {
-      alert("Tu navegador no permite grabar audio.");
+      toast("Tu navegador no permite grabar audio.", "error");
       return;
     }
     try {
@@ -304,13 +331,13 @@ export function ChatCliente({
         setEnviando(false);
         const data = await resp.json().catch(() => ({}));
         if (data?.mensaje) setMensajes((prev) => (prev.some((m) => m.id === data.mensaje.id) ? prev : [...prev, data.mensaje]));
-        else if (data?.error) alert(`No se pudo enviar el audio: ${data.error}`);
+        else if (data?.error) toast(`No se pudo enviar el audio: ${data.error}`, "error");
       };
       recorderRef.current = rec;
       rec.start();
       setGrabando(true);
     } catch {
-      alert("No se pudo acceder al micrófono.");
+      toast("No se pudo acceder al micrófono.", "error");
     }
   }
 
@@ -325,7 +352,7 @@ export function ChatCliente({
     setSugiriendo(false);
     const d = await res.json().catch(() => ({}));
     if (d.sugerencia) setTexto(d.sugerencia);
-    else alert(d.error ?? "No se pudo sugerir");
+    else toast(d.error ?? "No se pudo sugerir", "error");
   }
 
   async function enviarArchivo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -333,7 +360,7 @@ export function ChatCliente({
     e.target.value = ""; // permite re-elegir el mismo archivo
     if (!file || !selId) return;
     if (file.size > MAX_MEDIA_MB * 1024 * 1024) {
-      alert(`El archivo supera ${MAX_MEDIA_MB} MB (límite de WhatsApp).`);
+      toast(`El archivo supera ${MAX_MEDIA_MB} MB (límite de WhatsApp).`, "error");
       return;
     }
     setEnviando(true);
@@ -349,7 +376,7 @@ export function ChatCliente({
       setMensajes((prev) => (prev.some((m) => m.id === data.mensaje.id) ? prev : [...prev, data.mensaje]));
       setTexto("");
     } else if (data?.error) {
-      alert(`No se pudo enviar: ${data.error}`);
+      toast(`No se pudo enviar: ${data.error}`, "error");
     }
   }
 
@@ -380,8 +407,9 @@ export function ChatCliente({
             {busqueda && (
               <button
                 onClick={() => { setBusqueda(""); refrescarLista(); }}
-                className="shrink-0 rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-400 hover:bg-slate-50"
-              >✕</button>
+                aria-label="Limpiar búsqueda"
+                className="grid shrink-0 place-items-center rounded-lg border border-slate-200 px-2 text-slate-500 hover:bg-slate-50"
+              ><IconoCerrar className="h-4 w-4" /></button>
             )}
           </div>
           {/* Filtros de responsable */}
@@ -401,7 +429,7 @@ export function ChatCliente({
           </div>
           {/* Filtros estado / etiqueta */}
           <div className="flex gap-2">
-            <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}
+            <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} aria-label="Filtrar por estado"
               className="flex-1 rounded-lg border border-slate-300 px-2 py-1 text-xs">
               <option value="">Todos</option>
               <option value="abierta">Abiertas</option>
@@ -409,7 +437,7 @@ export function ChatCliente({
               <option value="cerrada">Cerradas</option>
             </select>
             {etiquetas.length > 0 && (
-              <select value={filtroEtiqueta} onChange={(e) => setFiltroEtiqueta(e.target.value)}
+              <select value={filtroEtiqueta} onChange={(e) => setFiltroEtiqueta(e.target.value)} aria-label="Filtrar por etiqueta"
                 className="flex-1 rounded-lg border border-slate-300 px-2 py-1 text-xs">
                 <option value="">Toda etiqueta</option>
                 {etiquetas.map((et) => <option key={et.id} value={et.nombre}>{et.nombre}</option>)}
@@ -418,7 +446,13 @@ export function ChatCliente({
           </div>
         </div>
         <div className="scroll-thin h-[calc(100%-128px)] overflow-y-auto">
-          {convsFiltradas.length === 0 && <p className="p-4 text-sm text-slate-400">Sin conversaciones.</p>}
+          {convsFiltradas.length === 0 && (
+            <p className="p-6 text-center text-sm text-slate-500">
+              {busqueda || filtroEstado || filtroEtiqueta || filtroResponsable
+                ? "Ninguna conversación coincide con los filtros."
+                : "Aún no hay conversaciones. Llegarán aquí cuando entre un mensaje de WhatsApp."}
+            </p>
+          )}
           {convsFiltradas.map((c) => (
             <div
               key={c.id}
@@ -450,9 +484,10 @@ export function ChatCliente({
                 <button
                   onClick={(e) => cambiarEstadoConv(c.id, c.estado === "cerrada" ? "abierta" : "cerrada", e)}
                   title={c.estado === "cerrada" ? "Reabrir conversación" : "Cerrar conversación"}
-                  className="hidden h-5 w-5 place-items-center rounded text-slate-300 hover:bg-slate-200 hover:text-slate-600 group-hover:grid"
+                  aria-label={c.estado === "cerrada" ? "Reabrir conversación" : "Cerrar conversación"}
+                  className="hidden h-5 w-5 place-items-center rounded text-slate-400 hover:bg-slate-200 hover:text-slate-600 group-hover:grid"
                 >
-                  {c.estado === "cerrada" ? "↩" : "✓"}
+                  {c.estado === "cerrada" ? <IconoDeshacer className="h-3.5 w-3.5" /> : <IconoCheck className="h-3.5 w-3.5" />}
                 </button>
               </div>
             </div>
@@ -463,23 +498,44 @@ export function ChatCliente({
       {/* Hilo */}
       <div className={`flex flex-1 flex-col bg-slate-50 ${selId ? "" : "hidden md:flex"}`}>
         {!seleccionada ? (
-          <div className="grid h-full place-items-center text-slate-400">Selecciona una conversación</div>
+          <div className="grid h-full place-items-center px-6 text-center text-sm text-slate-500">
+            Selecciona una conversación para ver el chat.
+          </div>
         ) : (
           <>
             <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
-              <button className="md:hidden text-slate-500" onClick={() => setSelId(null)}>←</button>
+              <button
+                className="-ml-2 grid h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 md:hidden"
+                aria-label="Volver a la lista"
+                onClick={() => setSelId(null)}
+              >
+                <IconoFlecha className="h-5 w-5" />
+              </button>
               <span className="font-medium text-slate-800">{seleccionada.contacto.nombre}</span>
               <span className="text-xs text-slate-400">{seleccionada.contacto.telefono}</span>
+              <span
+                className="ml-auto flex items-center gap-1.5 text-[11px] text-slate-500"
+                title={enVivo ? "Recibiendo mensajes en tiempo real" : "Sin conexión en vivo, reintentando…"}
+              >
+                <span className={`h-2 w-2 rounded-full ${enVivo ? "bg-green-500" : "animate-pulse bg-amber-500"}`} />
+                {enVivo ? "En vivo" : "Reconectando…"}
+              </span>
               <button
                 onClick={() => setPanelMovil(true)}
                 title="Detalles y oportunidades"
-                className="ml-auto grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
+                className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
               >
                 <IconoInfo className="h-5 w-5" />
               </button>
             </div>
 
             <div className="scroll-thin flex-1 space-y-2 overflow-y-auto p-4">
+              {cargandoMsgs && mensajes.length === 0 &&
+                [0, 1, 2, 3].map((i) => (
+                  <div key={i} className={`flex ${i % 2 ? "justify-end" : "justify-start"}`}>
+                    <div className="h-10 w-40 animate-pulse rounded-2xl bg-slate-200" />
+                  </div>
+                ))}
               {mensajes.map((m) => (
                 <div key={m.id} className={`flex ${m.direccion === "saliente" || m.interna ? "justify-end" : "justify-start"}`}>
                   <div
@@ -517,6 +573,14 @@ export function ChatCliente({
                         <span className={`ml-1 ${ticks(m.status).clase}`}>{ticks(m.status).txt}</span>
                       )}
                     </p>
+                    {m.direccion === "saliente" && !m.interna && m.status === "fallido" && m.tipo === "texto" && m.contenido && (
+                      <button
+                        onClick={() => reintentar(m.contenido!)}
+                        className="mt-0.5 flex items-center gap-1 text-right text-[10px] font-medium text-red-600 hover:underline"
+                      >
+                        <IconoDeshacer className="h-3 w-3" /> Reintentar
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -641,7 +705,7 @@ export function ChatCliente({
         <div className="absolute inset-0 bg-black/40" onClick={() => setPanelMovil(false)} />
         <div className="absolute right-0 top-0 h-full w-80 max-w-[85%] overflow-y-auto bg-white shadow-xl">
           <div className="flex justify-end p-2">
-            <button onClick={() => setPanelMovil(false)} className="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100">✕</button>
+            <button onClick={() => setPanelMovil(false)} aria-label="Cerrar panel" className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 hover:bg-slate-100"><IconoCerrar className="h-5 w-5" /></button>
           </div>
           <PanelConversacion
             conversacionId={seleccionada.id}

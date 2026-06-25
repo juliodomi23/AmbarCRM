@@ -10,3 +10,11 @@ export async function requireBot(req: NextRequest) {
   if (!token) return null;
   return db.bot.findUnique({ where: { apiToken: token } });
 }
+
+/**
+ * Un bot global (canalId null) opera en cualquier canal; uno atado a un canal
+ * solo puede tocar conversaciones de ESE canal. Evita que un token acceda a chats ajenos.
+ */
+export function botAutorizado(bot: { canalId: bigint | null }, conv: { canalId: bigint | null }) {
+  return bot.canalId === null || bot.canalId === conv.canalId;
+}

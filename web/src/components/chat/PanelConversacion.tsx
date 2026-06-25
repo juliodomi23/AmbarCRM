@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Boton, Campo, Modal } from "@/components/ui";
-import { IconoBot } from "@/components/icons";
+import { IconoBot, IconoEditar, IconoCheck } from "@/components/icons";
 
 type Embudo = { id: string; nombre: string; etapas: { id: string; nombre: string }[] };
 type Usuario = { id: string; nombre: string };
@@ -148,7 +148,7 @@ export function PanelConversacion({
             className="group flex items-center gap-1 text-left text-base font-semibold text-slate-800"
           >
             {d.contacto.nombre}
-            <span className="text-xs text-slate-300 group-hover:text-slate-500">✏️</span>
+            <IconoEditar className="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-slate-600" />
           </button>
         )}
         <p className="text-xs text-slate-400">{d.contacto.telefono ? `+${d.contacto.telefono}` : "sin teléfono"}</p>
@@ -290,7 +290,7 @@ export function PanelConversacion({
           <button onClick={() => crearRecordatorio(2)} className="flex-1 rounded-lg border border-slate-200 py-1.5 text-xs text-slate-600 hover:bg-slate-50">2 días</button>
           <button onClick={() => crearRecordatorio(7)} className="flex-1 rounded-lg border border-slate-200 py-1.5 text-xs text-slate-600 hover:bg-slate-50">1 semana</button>
         </div>
-        {recordatorioOk && <p className="mt-1 text-xs text-green-600">✓ Recordatorio creado en Tareas</p>}
+        {recordatorioOk && <p className="mt-1 flex items-center gap-1 text-xs text-green-600"><IconoCheck className="h-3.5 w-3.5" /> Recordatorio creado en Tareas</p>}
       </div>
 
       <NuevaOportModal
