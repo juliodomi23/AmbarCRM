@@ -2,22 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --navy: #1e3a5f;
-  --ambar: #b45309;
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 html, body {
   height: 100%;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   @apply bg-slate-50 text-slate-800 antialiased;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Elimina delay de 300ms en mobile */
+button, a, [role="button"] {
+  touch-action: manipulation;
 }
 
 /* Foco visible para navegación por teclado (accesibilidad). */
 :focus-visible {
   @apply outline-none ring-2 ring-navy/40 ring-offset-1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Scrollbar discreto para columnas del kanban y la bandeja */

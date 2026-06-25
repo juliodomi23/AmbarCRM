@@ -14,7 +14,7 @@ export function Boton({
     danger: "bg-red-600 text-white hover:bg-red-700"
   }[variante];
   return (
-    <button className={`rounded-lg px-3.5 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/40 focus-visible:ring-offset-1 disabled:opacity-60 ${estilos} ${className}`} {...props}>
+    <button className={`cursor-pointer rounded-lg px-3.5 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/40 focus-visible:ring-offset-1 disabled:opacity-60 disabled:cursor-not-allowed ${estilos} ${className}`} {...props}>
       {children}
     </button>
   );

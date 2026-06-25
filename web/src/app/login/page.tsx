@@ -33,8 +33,9 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-sm font-medium text-slate-600">Email</label>
+          <label htmlFor="email" className="text-sm font-medium text-slate-600">Email</label>
           <input
+            id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -44,8 +45,9 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-sm font-medium text-slate-600">Contraseña</label>
+          <label htmlFor="password" className="text-sm font-medium text-slate-600">Contraseña</label>
           <input
+            id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

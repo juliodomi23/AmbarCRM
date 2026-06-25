@@ -39,7 +39,7 @@ export default async function DashboardPage() {
         <Kpi titulo="Tareas urgentes" valor={String(m.tareasUrgentes)} sub="vencen hoy o antes" acento={m.tareasUrgentes > 0 ? "text-red-600" : "text-navy"} href="/tareas" />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <Kpi titulo={`Leads en ${mes}`} valor={String(m.leadsMes)} href="/contactos" />
         <Kpi titulo="Chats abiertos" valor={String(m.convAbiertas)} href="/chat" />
         <Kpi

@@ -53,7 +53,7 @@ export function AppShell({
               key={n.href}
               href={n.href}
               onClick={() => setAbierto(false)}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+              className={`flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                 activo ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"
               }`}
             >
@@ -75,7 +75,7 @@ export function AppShell({
         </div>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="w-full rounded-lg bg-white/10 py-2 text-sm hover:bg-white/20"
+          className="w-full cursor-pointer rounded-lg bg-white/10 py-2.5 text-sm hover:bg-white/20 min-h-[44px]"
         >
           Cerrar sesión
         </button>
