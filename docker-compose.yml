@@ -6,10 +6,14 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      CRM_APP_PASSWORD: ${CRM_APP_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # Crea el esquema la PRIMERA vez que arranca (solo si el volumen está vacío).
+      # Init la PRIMERA vez que arranca (solo si el volumen está vacío), en orden:
+      # 01 crea el esquema base, 02 aplica multi-tenant (org_id + RLS) y crea el rol crm_app.
       - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./deploy/02-multitenant.sh:/docker-entrypoint-initdb.d/02-multitenant.sh:ro
+      - ./web/prisma/sql/multi-tenant.sql:/sql/multi-tenant.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -23,7 +27,8 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      # La app corre como crm_app (sometido a RLS), NUNCA como el dueño, o el aislamiento se ignora.
+      DATABASE_URL: postgresql://crm_app:${CRM_APP_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
       NEXTAUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       WA_API_KEY: ${WA_API_KEY}

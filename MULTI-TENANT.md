@@ -44,21 +44,29 @@ Las ~50 rutas/servicios autenticados restantes **no se tocaron**: heredan el ten
 
 ## Despliegue
 
-**Deploy nuevo (BD vacía):**
-1. `npx prisma db push` (crea tablas con `org_id` y sus defaults).
-2. Corre `prisma/sql/multi-tenant.sql` **PARTE B y C** (RLS, funciones, rol `crm_app`).
-3. Inserta tu org plataforma e inicial (id=1) y su admin (vía SQL o el endpoint).
+**Deploy limpio (BD vacía) — automático:** al primer arranque del contenedor `db`, Postgres
+corre su init (volumen vacío) en orden:
+1. `schema.sql` → crea las tablas base.
+2. `deploy/02-multitenant.sh` → aplica `prisma/sql/multi-tenant.sql` (PARTE A→B→C: `org_id`,
+   RLS, funciones, rol `crm_app`) y le pone la contraseña de `CRM_APP_PASSWORD`.
 
-**BD existente (cliente actual con datos):**
-1. Corre `prisma/sql/multi-tenant.sql` **PARTE A → B → C** (backfill a org 1 + RLS + rol).
-2. `npx prisma generate` (cliente al día con el nuevo schema).
+No hay pasos manuales en la BD. Solo define en el entorno:
+- `POSTGRES_USER/PASSWORD/DB` → rol **dueño** (solo init/migra, la app no lo usa).
+- `CRM_APP_PASSWORD` → contraseña del rol **`crm_app`** con el que corre la app (solo
+  letras/números: va dentro de `DATABASE_URL`). El compose ya arma `DATABASE_URL=crm_app`.
 
-**En ambos:**
-- `DATABASE_URL` → usuario **`crm_app`** (no el dueño). El dueño se usa solo para migrar.
-- ⚠️ **El contenedor ya NO corre `prisma db push` al arrancar** (la app es `crm_app`, sin DDL).
-  Orden de deploy: **1)** aplica el SQL/migración en la BD con el rol dueño, **2)** pon
-  `DATABASE_URL=crm_app`, **3)** recién entonces redeploya el código. Si pusheas el código
-  contra una BD sin migrar, la app arranca pero las queries fallan (faltan columnas `org_id`).
+Tras el primer boot, crea el admin real (corre bajo `crm_app`, ya es RLS-aware, org 1):
+```bash
+docker compose exec app node scripts/seed-admin.mjs "Admin" admin@tudominio.com "ClaveFuerte"
+```
+
+**BD existente (con datos) — manual una vez:** corre `prisma/sql/multi-tenant.sql`
+(PARTE A→B→C) con el rol dueño, pon `CRM_APP_PASSWORD`/`DATABASE_URL=crm_app` y redeploya.
+El init de arriba NO se dispara si el volumen ya tiene datos.
+
+**En todos los casos:**
+- `DATABASE_URL` → usuario **`crm_app`** (no el dueño), o RLS se ignora y no hay aislamiento.
+- ⚠️ El contenedor de la app ya NO corre `prisma db push` al arrancar (es `crm_app`, sin DDL).
 - Define en el entorno: `DEFAULT_ORG_SLUG=inicial` (dev/dominio único). En prod multi-cliente,
   resuelve por subdominio (`cliente.tucrm.com`); si tu dominio base tiene una etiqueta fija,
   ponla en `BASE_DOMAIN_FIRST_LABEL`.
