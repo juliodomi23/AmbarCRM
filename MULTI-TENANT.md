@@ -55,6 +55,10 @@ Las ~50 rutas/servicios autenticados restantes **no se tocaron**: heredan el ten
 
 **En ambos:**
 - `DATABASE_URL` → usuario **`crm_app`** (no el dueño). El dueño se usa solo para migrar.
+- ⚠️ **El contenedor ya NO corre `prisma db push` al arrancar** (la app es `crm_app`, sin DDL).
+  Orden de deploy: **1)** aplica el SQL/migración en la BD con el rol dueño, **2)** pon
+  `DATABASE_URL=crm_app`, **3)** recién entonces redeploya el código. Si pusheas el código
+  contra una BD sin migrar, la app arranca pero las queries fallan (faltan columnas `org_id`).
 - Define en el entorno: `DEFAULT_ORG_SLUG=inicial` (dev/dominio único). En prod multi-cliente,
   resuelve por subdominio (`cliente.tucrm.com`); si tu dominio base tiene una etiqueta fija,
   ponla en `BASE_DOMAIN_FIRST_LABEL`.

@@ -12,5 +12,7 @@ COPY . .
 RUN npx prisma generate && npm run build
 
 EXPOSE 3000
-# Sincroniza el esquema de la BD en cada arranque (crea tablas/columnas nuevas) y luego inicia.
-CMD npx prisma db push --skip-generate && npm start
+# Multi-tenant + RLS: la app corre como `crm_app` (sin permisos DDL), así que NO se hace
+# `prisma db push` en el arranque. Las migraciones de esquema se aplican manualmente con el
+# rol dueño (ver MULTI-TENANT.md / web/prisma/sql/multi-tenant.sql) antes de desplegar.
+CMD npm start
