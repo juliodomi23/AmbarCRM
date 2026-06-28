@@ -46,11 +46,11 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
 
   const ajustes = await getAjustes();
   const canal = canalId ? await db.canalWhatsapp.findUnique({ where: { id: canalId } }) : null;
-  const provider = getProvider(canal?.proveedor ?? "evolution");
+  const provider = getProvider(canal?.proveedor ?? "evolution", canal?.config);
   const instancia = canal?.instancia?.trim() || instanciaPorDefecto;
 
   // --- Contacto ---
-  let contacto = await db.contacto.findUnique({ where: { telefono: m.telefono } });
+  let contacto = await db.contacto.findFirst({ where: { telefono: m.telefono } });
   if (!contacto) {
     const responsableId = ajustes.autoAsignar ? await elegirResponsable() : null;
     contacto = await db.contacto.create({

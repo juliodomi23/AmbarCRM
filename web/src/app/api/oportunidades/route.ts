@@ -24,11 +24,11 @@ export async function POST(req: NextRequest) {
   if (contactoId) {
     cId = BigInt(contactoId);
   } else if (contacto?.telefono) {
-    const c = await db.contacto.upsert({
-      where: { telefono: contacto.telefono },
-      update: {},
-      create: { nombre: contacto.nombre ?? contacto.telefono, telefono: contacto.telefono, fuente: "manual" }
-    });
+    const c =
+      (await db.contacto.findFirst({ where: { telefono: contacto.telefono } })) ??
+      (await db.contacto.create({
+        data: { nombre: contacto.nombre ?? contacto.telefono, telefono: contacto.telefono, fuente: "manual" }
+      }));
     cId = c.id;
   } else if (contacto?.nombre) {
     const c = await db.contacto.create({ data: { nombre: contacto.nombre, fuente: "manual" } });

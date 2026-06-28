@@ -15,7 +15,7 @@ export async function ingestarGrupoEntrante(m: MensajeGrupoNormalizado, canalId:
   const instancia = canal?.instancia?.trim() || instanciaPorDefecto;
 
   // Grupo (lo crea con su nombre real la primera vez).
-  let grupo = await db.grupo.findUnique({ where: { jid: m.grupoJid } });
+  let grupo = await db.grupo.findFirst({ where: { jid: m.grupoJid } });
   if (!grupo) {
     let nombre = m.grupoJid.split("@")[0];
     if (provider.infoGrupo) {

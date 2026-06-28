@@ -17,5 +17,6 @@ export async function requireSesion(soloAdmin = false) {
     return { error: NextResponse.json({ error: "requiere admin" }, { status: 403 }) };
   }
   const userId = session.user.id ? BigInt(session.user.id) : null;
-  return { userId, rol: session.user.rol };
+  const orgId = session.user.orgId ? BigInt(session.user.orgId) : null;
+  return { userId, rol: session.user.rol, orgId };
 }

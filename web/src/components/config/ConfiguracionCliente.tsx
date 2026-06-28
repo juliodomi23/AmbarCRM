@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton, Campo } from "@/components/ui";
+import { EmbeddedSignup } from "@/components/config/EmbeddedSignup";
 
 const TABS = ["Embudos", "Usuarios", "Canal WhatsApp", "Plantillas", "Automatizaciones", "Bots", "IA"] as const;
 type Tab = (typeof TABS)[number];
@@ -516,15 +517,24 @@ function TabCanal({ canal }: { canal: any }) {
     instancia: canal?.instancia ?? "",
     estado: canal?.estado ?? "desconectado"
   });
-  if (!canal) return <p className="text-slate-400">No hay canal configurado.</p>;
-
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
     if (await api(`/api/canales/${canal.id}`, "PATCH", f)) router.refresh();
   }
 
+  // El Embedded Signup (WhatsApp Oficial) crea su propio canal; se muestra siempre.
+  if (!canal) {
+    return (
+      <div className="max-w-lg space-y-4">
+        <EmbeddedSignup />
+        <p className="text-slate-400">No hay otro canal configurado.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-lg space-y-4">
+      <EmbeddedSignup />
       <ConexionCanal canal={canal} />
 
       <form onSubmit={guardar} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">

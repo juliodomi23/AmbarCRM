@@ -76,13 +76,20 @@ export async function POST(req: NextRequest) {
     if (!nombre && !telefono) { omitidos++; continue; }
 
     if (telefono) {
-      const existe = await db.contacto.findUnique({ where: { telefono } });
-      await db.contacto.upsert({
-        where: { telefono },
-        update: { nombre: nombre || undefined, email, empresa },
-        create: { nombre: nombre || telefono, telefono, email, empresa, fuente: "manual" }
-      });
-      existe ? actualizados++ : creados++;
+      // Sin unique global por teléfono: el org lo acota RLS, así que buscamos y decidimos.
+      const existe = await db.contacto.findFirst({ where: { telefono } });
+      if (existe) {
+        await db.contacto.update({
+          where: { id: existe.id },
+          data: { nombre: nombre || undefined, email, empresa }
+        });
+        actualizados++;
+      } else {
+        await db.contacto.create({
+          data: { nombre: nombre || telefono, telefono, email, empresa, fuente: "manual" }
+        });
+        creados++;
+      }
     } else {
       await db.contacto.create({ data: { nombre, email, empresa, fuente: "manual" } });
       creados++;

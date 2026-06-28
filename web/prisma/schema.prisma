@@ -7,6 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MULTI-TENANT (ver MULTI-TENANT.md)
+// Cada tabla de negocio lleva `orgId`. Su DEFAULT lo pone Postgres leyendo el
+// tenant del contexto de la transacción (`app.current_org`), por eso es opcional
+// en el código: los `.create()` existentes NO cambian. RLS filtra las lecturas.
+// El literal del default se repite por modelo:
+//   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint"))
+// ─────────────────────────────────────────────────────────────────────────────
+
 enum RolUsuario {
   admin
   agente
@@ -104,10 +113,22 @@ enum TipoEvento {
   @@map("tipo_evento")
 }
 
+/// Tenant. NO lleva orgId ni RLS: es la tabla raíz del multi-tenant.
+model Org {
+  id        BigInt   @id @default(autoincrement())
+  nombre    String
+  slug      String   @unique // subdominio: cliente.tucrm.com
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("orgs")
+}
+
 model Usuario {
   id           BigInt      @id @default(autoincrement())
+  orgId        BigInt      @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre       String
-  email        String      @unique
+  email        String
   passwordHash String      @map("password_hash")
   rol          RolUsuario  @default(agente)
   avatarUrl    String?     @map("avatar_url")
@@ -122,11 +143,14 @@ model Usuario {
   tareas         Tarea[]
   eventos        Evento[]
 
+  @@unique([orgId, email])
+  @@index([orgId])
   @@map("usuarios")
 }
 
 model Embudo {
   id          BigInt   @id @default(autoincrement())
+  orgId       BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre      String
   descripcion String?
   color       String   @default("#1E3A5F")
@@ -137,11 +161,13 @@ model Embudo {
   etapas        Etapa[]
   oportunidades Oportunidad[]
 
+  @@index([orgId])
   @@map("embudos")
 }
 
 model Etapa {
   id        BigInt    @id @default(autoincrement())
+  orgId     BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   embudoId  BigInt    @map("embudo_id")
   nombre    String
   color     String    @default("#94A3B8")
@@ -153,13 +179,15 @@ model Etapa {
   oportunidades Oportunidad[]
 
   @@index([embudoId, orden])
+  @@index([orgId])
   @@map("etapas")
 }
 
 model Contacto {
   id            BigInt         @id @default(autoincrement())
+  orgId         BigInt         @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre        String
-  telefono      String?        @unique
+  telefono      String?
   email         String?
   empresa       String?
   avatarUrl     String?        @map("avatar_url")
@@ -177,21 +205,27 @@ model Contacto {
   oportunidades  Oportunidad[]
   conversaciones Conversacion[]
 
+  @@unique([orgId, telefono])
   @@index([responsableId])
+  @@index([orgId])
   @@map("contactos")
 }
 
 model Etiqueta {
   id     BigInt @id @default(autoincrement())
-  nombre String @unique
+  orgId  BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre String
   color  String @default("#B45309")
 
   contactos ContactoEtiqueta[]
 
+  @@unique([orgId, nombre])
+  @@index([orgId])
   @@map("etiquetas")
 }
 
 model ContactoEtiqueta {
+  orgId      BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   contactoId BigInt @map("contacto_id")
   etiquetaId BigInt @map("etiqueta_id")
 
@@ -199,11 +233,13 @@ model ContactoEtiqueta {
   etiqueta Etiqueta @relation(fields: [etiquetaId], references: [id], onDelete: Cascade)
 
   @@id([contactoId, etiquetaId])
+  @@index([orgId])
   @@map("contacto_etiquetas")
 }
 
 model Oportunidad {
   id                  BigInt       @id @default(autoincrement())
+  orgId               BigInt       @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   contactoId          BigInt       @map("contacto_id")
   embudoId            BigInt       @map("embudo_id")
   etapaId             BigInt       @map("etapa_id")
@@ -230,11 +266,13 @@ model Oportunidad {
   @@index([etapaId, orden])
   @@index([embudoId])
   @@index([contactoId])
+  @@index([orgId])
   @@map("oportunidades")
 }
 
 model CanalWhatsapp {
   id        BigInt         @id @default(autoincrement())
+  orgId     BigInt         @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre    String
   proveedor ProveedorCanal @default(evolution)
   telefono  String?
@@ -248,14 +286,16 @@ model CanalWhatsapp {
   bots           Bot[]
   grupos         Grupo[]
 
+  @@index([orgId])
   @@map("canales_whatsapp")
 }
 
 // Grupos de WhatsApp: bandeja aparte, NO son leads (no entran al embudo/CSAT/contactos).
 model Grupo {
   id              BigInt    @id @default(autoincrement())
+  orgId           BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   canalId         BigInt?   @map("canal_id")
-  jid             String    @unique
+  jid             String
   nombre          String
   noLeidos        Int       @default(0) @map("no_leidos")
   ultimoMensajeAt DateTime? @map("ultimo_mensaje_at")
@@ -264,11 +304,14 @@ model Grupo {
   canal    CanalWhatsapp? @relation(fields: [canalId], references: [id], onDelete: SetNull)
   mensajes MensajeGrupo[]
 
+  @@unique([orgId, jid])
+  @@index([orgId])
   @@map("grupos")
 }
 
 model MensajeGrupo {
   id           BigInt       @id @default(autoincrement())
+  orgId        BigInt       @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   grupoId      BigInt       @map("grupo_id")
   direccion    DireccionMsg
   tipo         TipoMsg      @default(texto)
@@ -286,12 +329,14 @@ model MensajeGrupo {
   grupo Grupo @relation(fields: [grupoId], references: [id], onDelete: Cascade)
 
   @@index([grupoId, timestamp])
+  @@index([orgId])
   @@map("mensajes_grupo")
 }
 
 // Bot estilo "Agent Bot" de Chatwoot: webhook saliente (CRM->n8n) + token para responder (n8n->CRM).
 model Bot {
   id         BigInt   @id @default(autoincrement())
+  orgId      BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre     String
   webhookUrl String   @map("webhook_url")     // n8n: el CRM le manda los mensajes entrantes
   apiToken   String   @unique @map("api_token") // n8n: autentica de vuelta con header api_access_token
@@ -301,11 +346,13 @@ model Bot {
 
   canal CanalWhatsapp? @relation(fields: [canalId], references: [id], onDelete: SetNull)
 
+  @@index([orgId])
   @@map("bots")
 }
 
 model Conversacion {
   id              BigInt      @id @default(autoincrement())
+  orgId           BigInt      @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   contactoId      BigInt      @map("contacto_id")
   canalId         BigInt?     @map("canal_id")
   estado          EstadoConv  @default(abierta)
@@ -326,11 +373,13 @@ model Conversacion {
 
   @@unique([contactoId, canalId])
   @@index([ultimoMensajeAt])
+  @@index([orgId])
   @@map("conversaciones")
 }
 
 model Mensaje {
   id             BigInt        @id @default(autoincrement())
+  orgId          BigInt        @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   conversacionId BigInt        @map("conversacion_id")
   direccion      DireccionMsg
   tipo           TipoMsg       @default(texto)
@@ -349,21 +398,25 @@ model Mensaje {
   usuario      Usuario?     @relation(fields: [enviadoPor], references: [id], onDelete: SetNull)
 
   @@index([conversacionId, timestamp])
+  @@index([orgId])
   @@map("mensajes")
 }
 
 model PlantillaMensaje {
   id        BigInt   @id @default(autoincrement())
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre    String
   contenido String
   categoria String?
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@index([orgId])
   @@map("plantillas_mensaje")
 }
 
 model Nota {
   id            BigInt   @id @default(autoincrement())
+  orgId         BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   oportunidadId BigInt   @map("oportunidad_id")
   usuarioId     BigInt?  @map("usuario_id")
   contenido     String
@@ -372,11 +425,13 @@ model Nota {
   oportunidad Oportunidad @relation(fields: [oportunidadId], references: [id], onDelete: Cascade)
   usuario     Usuario?    @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
 
+  @@index([orgId])
   @@map("notas")
 }
 
 model Tarea {
   id            BigInt    @id @default(autoincrement())
+  orgId         BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   oportunidadId BigInt?   @map("oportunidad_id")
   responsableId BigInt?   @map("responsable_id")
   titulo        String
@@ -390,11 +445,14 @@ model Tarea {
   responsable Usuario?     @relation(fields: [responsableId], references: [id], onDelete: SetNull)
 
   @@index([responsableId, venceAt])
+  @@index([orgId])
   @@map("tareas")
 }
 
+// Una fila de ajustes POR org (ya no es única global).
 model Ajustes {
   id               BigInt   @id @default(autoincrement())
+  orgId            BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   autoAsignar      Boolean  @default(false) @map("auto_asignar")
   bienvenidaActiva Boolean  @default(false) @map("bienvenida_activa")
   bienvenidaTexto  String?  @map("bienvenida_texto")
@@ -416,11 +474,13 @@ model Ajustes {
   iaPromptSistema  String?  @map("ia_prompt_sistema")
   updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
 
+  @@unique([orgId])
   @@map("ajustes")
 }
 
 model Evento {
   id            BigInt     @id @default(autoincrement())
+  orgId         BigInt     @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   oportunidadId BigInt     @map("oportunidad_id")
   tipo          TipoEvento
   descripcion   String?
@@ -432,5 +492,6 @@ model Evento {
   usuario     Usuario?    @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
 
   @@index([oportunidadId, createdAt])
+  @@index([orgId])
   @@map("eventos")
 }

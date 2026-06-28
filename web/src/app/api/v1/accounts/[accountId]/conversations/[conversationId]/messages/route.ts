@@ -44,7 +44,7 @@ export async function POST(
 
   if (!conv.contacto.telefono) return NextResponse.json({ error: "el contacto no tiene teléfono" }, { status: 422 });
 
-  const provider = getProvider(conv.canal?.proveedor ?? "evolution");
+  const provider = getProvider(conv.canal?.proveedor ?? "evolution", conv.canal?.config);
   const envio = await provider.enviarTexto(conv.contacto.telefono, content);
 
   const mensaje = await db.mensaje.create({

@@ -32,7 +32,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   // 1) Contactos (alta/actualización por teléfono).
   for (const c of contactos) {
     if (!c.telefono) continue;
-    const existe = await db.contacto.findUnique({ where: { telefono: c.telefono } });
+    const existe = await db.contacto.findFirst({ where: { telefono: c.telefono } });
     if (existe) {
       // Solo completa el nombre si seguía siendo el teléfono.
       if (c.nombre && existe.nombre === existe.telefono) {
@@ -49,11 +49,11 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   // 2) Chats -> conversación por contacto+canal.
   for (const ch of chats) {
     if (!ch.telefono) continue;
-    const contacto = await db.contacto.upsert({
-      where: { telefono: ch.telefono },
-      update: {},
-      create: { nombre: ch.nombre || ch.telefono, telefono: ch.telefono, fuente: "whatsapp" }
-    });
+    const contacto =
+      (await db.contacto.findFirst({ where: { telefono: ch.telefono } })) ??
+      (await db.contacto.create({
+        data: { nombre: ch.nombre || ch.telefono, telefono: ch.telefono, fuente: "whatsapp" }
+      }));
 
     const yaHabia = await db.conversacion.findUnique({
       where: { contactoId_canalId: { contactoId: contacto.id, canalId: canal.id } }

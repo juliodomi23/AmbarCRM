@@ -24,12 +24,10 @@ export async function POST(_req: NextRequest) {
   let gruposNuevos = 0;
   for (const g of grupos) {
     if (!g.jid) continue;
-    const existe = await db.grupo.findUnique({ where: { jid: g.jid } });
-    const grupo = await db.grupo.upsert({
-      where: { jid: g.jid },
-      update: { nombre: g.nombre },
-      create: { jid: g.jid, nombre: g.nombre, canalId: canal?.id ?? undefined }
-    });
+    const existe = await db.grupo.findFirst({ where: { jid: g.jid } });
+    const grupo = existe
+      ? await db.grupo.update({ where: { id: existe.id }, data: { nombre: g.nombre } })
+      : await db.grupo.create({ data: { jid: g.jid, nombre: g.nombre, canalId: canal?.id ?? undefined } });
     if (existe) continue;
     gruposNuevos++;
 

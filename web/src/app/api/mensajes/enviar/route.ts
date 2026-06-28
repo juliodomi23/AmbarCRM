@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "el contacto no tiene teléfono" }, { status: 400 });
   }
 
-  const provider = getProvider(conv.canal?.proveedor ?? "evolution");
+  const provider = getProvider(conv.canal?.proveedor ?? "evolution", conv.canal?.config);
 
   let envio;
   let datosMensaje: { tipo: TipoMensaje; contenido: string | null; mediaUrl: string | null; mediaMime: string | null };

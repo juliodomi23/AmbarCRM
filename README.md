@@ -12,7 +12,7 @@ pegada a la oportunidad: ves el chat y mueves la tarjeta por el embudo desde la 
 
 | Tema | Decisión | Por qué |
 |------|----------|---------|
-| **Modelo de negocio** | Producto para vender, **instancia por cliente** (single-tenant) | Mismo patrón que GestorLegal y n8n/VPS por cliente. Sin `org_id`, sin RLS multi-tenant. Cada cliente = su Postgres + deploy. Más simple y ya dominado. |
+| **Modelo de negocio** | **Multi-tenant** (BD compartida + `org_id` + RLS). Antes era single-tenant. | Habilita ser **Tech Provider de Meta**: onboardear el WhatsApp de cada cliente desde un panel central, sin un deploy por cliente. Ver `MULTI-TENANT.md`. |
 | **Stack** | **Next.js 14 full-stack** (App Router + API Routes) + Tailwind + shadcn/ui + **PostgreSQL self-hosted (Docker)** + Prisma + Auth.js (NextAuth) | Reusar todo lo de GestorLegal. Sin stack nuevo a media obra. |
 | **WhatsApp** | **Evolution API ahora → Cloud API oficial (coexistencia Meta) después** | Validar rápido con QR sin trámites; arquitectura con capa de abstracción de canal para migrar sin reescribir. |
 | **Chat en tiempo real** | **SSE** (Server-Sent Events) alimentado por Postgres `LISTEN/NOTIFY`; fallback a polling | Sin Supabase realtime. n8n recibe el webhook de Evolution → escribe en Postgres → `NOTIFY` → el navegador recibe el mensaje al instante. |
@@ -58,6 +58,7 @@ coexistencia oficial Meta, facturación/planes, horario de atención, reportes e
 | `docker-compose.yml` + `web/Dockerfile` | Despliegue | ✅ |
 | `DESPLIEGUE.md` | Guía local + EasyPanel | ✅ |
 | `INTEGRACION-N8N.md` | Conexión WhatsApp vía n8n/Evolution | ✅ |
+| `MULTI-TENANT.md` | Migración a multi-tenant (org_id + RLS) para Tech Provider | ✅ código, validar en local |
 
 ## Estado MVP (todos los módulos construidos)
 
