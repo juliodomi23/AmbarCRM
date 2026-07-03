@@ -53,10 +53,34 @@ export const authOptions: NextAuthOptions = {
         token.id = (user as any).id;
         token.rol = (user as any).rol;
         token.orgId = (user as any).orgId;
+        (token as any).checkedAt = Date.now();
+      }
+      // Revalida contra la BD cada 5 min: desactivar un usuario (o su org) mata su
+      // sesión aunque el JWT siga vigente; un cambio de rol también se refleja.
+      const checkedAt = (token as any).checkedAt as number | undefined;
+      if (!user && token.id && token.orgId && (!checkedAt || Date.now() - checkedAt > 5 * 60_000)) {
+        (token as any).checkedAt = Date.now();
+        try {
+          const u = await runWithOrg(BigInt(token.orgId), () =>
+            db.usuario.findUnique({ where: { id: BigInt(token.id!) } })
+          );
+          if (!u || !u.activo) (token as any).revocado = true;
+          else {
+            (token as any).revocado = false;
+            token.rol = u.rol as "admin" | "agente";
+          }
+        } catch {
+          /* BD caída: no cerramos sesiones por un error transitorio */
+        }
       }
       return token;
     },
     async session({ session, token }) {
+      if ((token as any).revocado) {
+        // Sin user, todos los guards (middleware, requireSesion) responden 401/redirect.
+        (session as any).user = undefined;
+        return session;
+      }
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).rol = token.rol;

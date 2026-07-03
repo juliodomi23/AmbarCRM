@@ -29,6 +29,9 @@ export async function POST(req: NextRequest) {
   if (!nombre || !slug || !adminEmail || !adminPassword) {
     return NextResponse.json({ error: "faltan campos (nombre, slug, adminEmail, adminPassword)" }, { status: 400 });
   }
+  if (adminPassword.length < 8) {
+    return NextResponse.json({ error: "la contraseña debe tener al menos 8 caracteres" }, { status: 400 });
+  }
   if (!/^[a-z0-9-]{2,40}$/.test(slug)) {
     return NextResponse.json({ error: "slug inválido (a-z, 0-9, guiones)" }, { status: 400 });
   }

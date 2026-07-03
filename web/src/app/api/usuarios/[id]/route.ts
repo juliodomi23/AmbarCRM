@@ -15,7 +15,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if ("nombre" in body) data.nombre = body.nombre;
   if ("rol" in body) data.rol = body.rol === "admin" ? "admin" : "agente";
   if ("activo" in body) data.activo = !!body.activo;
-  if (body.password) data.passwordHash = await bcrypt.hash(body.password, 10);
+  if (body.password) {
+    if (String(body.password).length < 8) {
+      return NextResponse.json({ error: "la contraseña debe tener al menos 8 caracteres" }, { status: 400 });
+    }
+    data.passwordHash = await bcrypt.hash(body.password, 10);
+  }
 
   await db.usuario.update({ where: { id: BigInt(params.id) }, data });
   return NextResponse.json({ ok: true });

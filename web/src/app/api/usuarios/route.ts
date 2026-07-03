@@ -12,6 +12,9 @@ export async function POST(req: NextRequest) {
 
   const { nombre, email, password, rol } = await req.json().catch(() => ({}));
   if (!nombre || !email || !password) return NextResponse.json({ error: "faltan campos" }, { status: 400 });
+  if (String(password).length < 8) {
+    return NextResponse.json({ error: "la contraseña debe tener al menos 8 caracteres" }, { status: 400 });
+  }
 
   const existe = await db.usuario.findFirst({ where: { email } });
   if (existe) return NextResponse.json({ error: "el email ya existe" }, { status: 409 });
