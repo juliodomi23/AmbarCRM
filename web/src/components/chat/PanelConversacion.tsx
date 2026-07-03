@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Boton, Campo, Modal } from "@/components/ui";
 import { IconoBot, IconoEditar, IconoCheck, IconoCerrar, IconoReloj } from "@/components/icons";
+import { EtiquetaNueva } from "@/components/EtiquetaNueva";
 
 type Embudo = { id: string; nombre: string; etapas: { id: string; nombre: string }[] };
 type Usuario = { id: string; nombre: string };
@@ -183,26 +184,28 @@ export function PanelConversacion({
         </select>
       </label>
 
-      {etiquetas.length > 0 && (
-        <div>
-          <span className="mb-1 block text-xs font-medium uppercase text-slate-400">Etiquetas</span>
-          <div className="flex flex-wrap gap-1">
-            {etiquetas.map((et) => {
-              const activa = d.etiquetas.includes(et.nombre);
-              return (
-                <button
-                  key={et.id}
-                  onClick={() => patch({ etiquetas: activa ? d.etiquetas.filter((x) => x !== et.nombre) : [...d.etiquetas, et.nombre] })}
-                  className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                  style={activa ? { background: et.color, color: "white" } : { background: "#F1F5F9", color: "#94A3B8" }}
-                >
-                  {et.nombre}
-                </button>
-              );
-            })}
-          </div>
+      <div>
+        <span className="mb-1 block text-xs font-medium uppercase text-slate-400">Etiquetas</span>
+        <div className="flex flex-wrap items-center gap-1">
+          {etiquetas.map((et) => {
+            const activa = d.etiquetas.includes(et.nombre);
+            return (
+              <button
+                key={et.id}
+                onClick={() => patch({ etiquetas: activa ? d.etiquetas.filter((x) => x !== et.nombre) : [...d.etiquetas, et.nombre] })}
+                className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                style={activa ? { background: et.color, color: "white" } : { background: "#F1F5F9", color: "#94A3B8" }}
+              >
+                {et.nombre}
+              </button>
+            );
+          })}
+          <EtiquetaNueva />
         </div>
-      )}
+        {etiquetas.length === 0 && (
+          <p className="mt-1 text-[11px] text-slate-400">Crea etiquetas (ej. "Interesado", "VIP") para clasificar tus chats y filtrarlos en la bandeja.</p>
+        )}
+      </div>
 
       <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
         <span className="flex items-center gap-1.5 text-sm text-slate-700"><IconoBot className="h-4 w-4" /> Bot {d.botActivo ? "activo" : "en pausa"}</span>

@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton, Campo, Modal } from "@/components/ui";
 import { toast } from "@/components/Toaster";
+import { EtiquetaNueva } from "@/components/EtiquetaNueva";
 
 type Etiqueta = { id: string; nombre: string; color: string };
 type Contacto = {
@@ -166,6 +167,7 @@ export function ContactosCliente({
           >
             Exportar CSV
           </a>
+          <EtiquetaNueva />
           <Boton onClick={abrirNuevo}>+ Nuevo</Boton>
         </div>
       </div>
