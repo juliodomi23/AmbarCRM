@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Boton } from "@/components/ui";
 
 type Etiqueta = { id: string; nombre: string; color: string; total: number };
@@ -15,6 +15,9 @@ export function DifusionCliente({ etiquetas, plantillas }: { etiquetas: Etiqueta
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<{ ok: boolean; texto: string } | null>(null);
   const [yaEnviados, setYaEnviados] = useState<number | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
   const etiqueta = etiquetas.find((e) => e.id === etiquetaId);
   const restantes = yaEnviados !== null ? Math.max(0, LIMITE_DIARIO - yaEnviados) : null;
@@ -52,13 +55,26 @@ export function DifusionCliente({ etiquetas, plantillas }: { etiquetas: Etiqueta
       body: JSON.stringify({ etiquetaId, texto })
     });
     const d = await res.json().catch(() => ({}));
-    setEnviando(false);
-    if (res.ok) {
-      setYaEnviados(d.yaEnviadosHoy ?? null);
-      setResultado({ ok: true, texto: `✓ Enviados: ${d.enviados} · Fallidos: ${d.fallidos} · Usados hoy: ${d.yaEnviadosHoy}/${LIMITE_DIARIO}` });
-    } else {
+    if (!res.ok) {
+      setEnviando(false);
       setResultado({ ok: false, texto: d.error ?? "Error al enviar" });
+      return;
     }
+
+    // El envío corre en el servidor en segundo plano; aquí solo seguimos el avance.
+    const base = d.yaEnviadosHoy ?? yaEnviados ?? 0;
+    const objetivo = base + (d.encolados ?? 0);
+    setResultado({ ok: true, texto: `Enviando ${d.encolados} mensaje(s) en segundo plano (con pausa entre cada uno). Puedes salir de esta pantalla.` });
+    pollRef.current = setInterval(async () => {
+      const r = await fetch("/api/difusion").then((x) => x.json()).catch(() => null);
+      if (r == null || typeof r.yaEnviados !== "number") return;
+      setYaEnviados(r.yaEnviados);
+      if (r.yaEnviados >= objetivo || r.restantes === 0) {
+        if (pollRef.current) clearInterval(pollRef.current);
+        setEnviando(false);
+        setResultado({ ok: true, texto: `✓ Difusión terminada · Usados hoy: ${r.yaEnviados}/${LIMITE_DIARIO}` });
+      }
+    }, 5000);
   }
 
   return (

@@ -119,3 +119,20 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO crm_app;
 
 -- NOTA: `crm_app` NO es dueño de las tablas y NO tiene BYPASSRLS → respeta RLS. Correcto.
 -- Mantén un rol aparte (el dueño/superusuario) para correr migraciones y Prisma.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PARTE D — Realtime multi-tenant: el NOTIFY incluye org_id para que el SSE
+-- solo reenvíe eventos del tenant de la sesión. (Idempotente; en BD existentes
+-- correr solo este bloque basta.)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION fn_notify_mensaje() RETURNS trigger AS $$
+BEGIN
+  PERFORM pg_notify('nuevo_mensaje', json_build_object(
+    'conversacion_id', NEW.conversacion_id,
+    'mensaje_id',      NEW.id,
+    'direccion',       NEW.direccion,
+    'org_id',          NEW.org_id
+  )::text);
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;

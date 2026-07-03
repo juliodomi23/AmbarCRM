@@ -76,6 +76,21 @@ docker exec -i "$DB" psql -U ambarcrm -d ambarcrm \
 ```
 Luego pon `CRM_APP_PASSWORD` en las variables y redeploya (la app pasa a `crm_app`).
 
+**Si tu BD se migró ANTES de 2026-07-03** (trigger de realtime sin `org_id`), corre además este bloque una vez (está al final de `multi-tenant.sql`, PARTE D):
+```sql
+CREATE OR REPLACE FUNCTION fn_notify_mensaje() RETURNS trigger AS $$
+BEGIN
+  PERFORM pg_notify('nuevo_mensaje', json_build_object(
+    'conversacion_id', NEW.conversacion_id,
+    'mensaje_id',      NEW.id,
+    'direccion',       NEW.direccion,
+    'org_id',          NEW.org_id
+  )::text);
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+```
+Sin esto el chat sigue funcionando (el SSE reenvía los eventos viejos tal cual), pero el filtro por organización solo aplica con el trigger nuevo.
+
 ---
 
 ## C) Onboarding de un cliente nuevo (multi-tenant)

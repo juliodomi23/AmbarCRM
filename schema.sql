@@ -279,12 +279,15 @@ ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS auto_resolver_horas INT NOT NULL DE
 -- ============================================================
 -- Realtime: NOTIFY al insertar mensaje (lo consume el SSE de Next.js)
 -- ============================================================
+-- org_id va en el payload para que el SSE solo reenvíe eventos del tenant de la sesión.
+-- (La columna org_id la agrega el paso 02-multitenant; plpgsql la resuelve en runtime.)
 CREATE OR REPLACE FUNCTION fn_notify_mensaje() RETURNS trigger AS $$
 BEGIN
   PERFORM pg_notify('nuevo_mensaje', json_build_object(
     'conversacion_id', NEW.conversacion_id,
     'mensaje_id',      NEW.id,
-    'direccion',       NEW.direccion
+    'direccion',       NEW.direccion,
+    'org_id',          NEW.org_id
   )::text);
   RETURN NEW;
 END; $$ LANGUAGE plpgsql;

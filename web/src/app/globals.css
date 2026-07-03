@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 html, body {
   height: 100%;
 }
@@ -12,9 +10,9 @@ html {
   scroll-behavior: smooth;
 }
 
+/* La fuente (Inter) la aplica next/font en el layout raíz. */
 body {
   @apply bg-slate-50 text-slate-800 antialiased;
-  font-family: 'Inter', system-ui, sans-serif;
 }
 
 /* Elimina delay de 300ms en mobile */
