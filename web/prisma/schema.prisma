@@ -370,11 +370,44 @@ model Conversacion {
   canal       CanalWhatsapp? @relation(fields: [canalId], references: [id], onDelete: SetNull)
   responsable Usuario?       @relation(fields: [responsableId], references: [id], onDelete: SetNull)
   mensajes    Mensaje[]
+  programados MensajeProgramado[]
 
   @@unique([contactoId, canalId])
   @@index([ultimoMensajeAt])
   @@index([orgId])
   @@map("conversaciones")
+}
+
+/// Mensajes de WhatsApp programados para enviarse después (los dispara el cron).
+model MensajeProgramado {
+  id             BigInt   @id @default(autoincrement())
+  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  conversacionId BigInt   @map("conversacion_id")
+  contenido      String
+  enviarAt       DateTime @map("enviar_at")
+  estado         String   @default("pendiente") // pendiente | enviado | fallido | cancelado
+  creadoPor      BigInt?  @map("creado_por")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversacion Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+
+  @@index([estado, enviarAt])
+  @@index([orgId])
+  @@map("mensajes_programados")
+}
+
+/// Suscripciones Web Push (una por navegador/dispositivo de cada usuario).
+model PushSuscripcion {
+  id        BigInt   @id @default(autoincrement())
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  usuarioId BigInt?  @map("usuario_id")
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([orgId])
+  @@map("push_suscripciones")
 }
 
 model Mensaje {

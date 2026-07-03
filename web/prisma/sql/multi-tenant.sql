@@ -136,3 +136,51 @@ BEGIN
   )::text);
   RETURN NEW;
 END; $$ LANGUAGE plpgsql;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PARTE E — Tablas nuevas (2026-07): mensajes programados y suscripciones push.
+-- Nacen multi-tenant (org_id + RLS). Idempotente: correr en BD nuevas y existentes.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS mensajes_programados (
+  id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id          BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  conversacion_id BIGINT NOT NULL REFERENCES conversaciones(id) ON DELETE CASCADE,
+  contenido       TEXT   NOT NULL,
+  enviar_at       TIMESTAMPTZ NOT NULL,
+  estado          TEXT   NOT NULL DEFAULT 'pendiente',  -- pendiente | enviado | fallido | cancelado
+  creado_por      BIGINT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS mensajes_programados_estado_enviar_at_idx ON mensajes_programados(estado, enviar_at);
+CREATE INDEX IF NOT EXISTS mensajes_programados_org_idx ON mensajes_programados(org_id);
+
+CREATE TABLE IF NOT EXISTS push_suscripciones (
+  id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id     BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  usuario_id BIGINT,
+  endpoint   TEXT   NOT NULL UNIQUE,
+  p256dh     TEXT   NOT NULL,
+  auth       TEXT   NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS push_suscripciones_org_idx ON push_suscripciones(org_id);
+
+DO $$
+DECLARE t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['mensajes_programados','push_suscripciones'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format($p$
+      CREATE POLICY org_isolation ON %I
+      USING      (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+      WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+    $p$, t);
+  END LOOP;
+END $$;
+
+-- crm_app hereda permisos por los DEFAULT PRIVILEGES de la PARTE C; por si esta parte
+-- se corre en una BD donde aún no existían, se los damos explícitos:
+GRANT SELECT, INSERT, UPDATE, DELETE ON mensajes_programados, push_suscripciones TO crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;

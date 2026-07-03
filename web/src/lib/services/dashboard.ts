@@ -40,6 +40,32 @@ export async function getMetricasDashboard() {
       db.conversacion.aggregate({ _avg: { csatScore: true }, _count: { csatScore: true }, where: { csatScore: { not: null }, csatEnviadoAt: { gte: inicioMes } } })
     ]);
 
+  // Tiempo de primera respuesta HUMANA (mediana, en minutos) de las conversaciones del mes:
+  // del primer mensaje entrante al primer saliente no-interno enviado por una persona.
+  // ponytail: cálculo en JS sobre los primeros 30 mensajes de c/conversación; SQL con percentile si crece.
+  const convsMes = await db.conversacion.findMany({
+    where: { createdAt: { gte: inicioMes } },
+    take: 500,
+    select: {
+      mensajes: {
+        orderBy: { timestamp: "asc" },
+        take: 30,
+        select: { direccion: true, interna: true, enviadoPor: true, timestamp: true }
+      }
+    }
+  });
+  const tiempos: number[] = [];
+  for (const c of convsMes) {
+    const entrante = c.mensajes.find((m) => m.direccion === "entrante");
+    if (!entrante) continue;
+    const respuesta = c.mensajes.find(
+      (m) => m.direccion === "saliente" && !m.interna && m.enviadoPor != null && m.timestamp >= entrante.timestamp
+    );
+    if (respuesta) tiempos.push((respuesta.timestamp.getTime() - entrante.timestamp.getTime()) / 60000);
+  }
+  tiempos.sort((a, b) => a - b);
+  const primeraRespuestaMin = tiempos.length ? Math.round(tiempos[Math.floor(tiempos.length / 2)]) : null;
+
   // Pipeline por etapa del embudo principal.
   const porEtapaMap = new Map(porEtapaRaw.map((r) => [r.etapaId.toString(), { valor: num(r._sum.valor), count: r._count }]));
   const porEtapa = (embudo?.etapas ?? []).map((e) => ({
@@ -75,6 +101,8 @@ export async function getMetricasDashboard() {
     porEtapa,
     ranking,
     csatPromedio: csat._avg.csatScore ? Math.round(Number(csat._avg.csatScore) * 10) / 10 : null,
-    csatRespuestas: csat._count.csatScore
+    csatRespuestas: csat._count.csatScore,
+    primeraRespuestaMin,
+    primeraRespuestaMuestras: tiempos.length
   };
 }

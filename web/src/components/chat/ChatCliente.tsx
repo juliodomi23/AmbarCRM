@@ -4,8 +4,9 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { aplicarVariables } from "@/lib/plantillas";
 import { PanelConversacion } from "@/components/chat/PanelConversacion";
-import { IconoAdjuntar, IconoIA, IconoMicro, IconoNota, IconoInfo, IconoEnviar, IconoCerrar, IconoCheck, IconoFlecha, IconoDeshacer } from "@/components/icons";
+import { IconoAdjuntar, IconoIA, IconoMicro, IconoNota, IconoInfo, IconoEnviar, IconoCerrar, IconoCheck, IconoFlecha, IconoDeshacer, IconoReloj } from "@/components/icons";
 import { toast } from "@/components/Toaster";
+import { Boton, Modal } from "@/components/ui";
 
 type Embudo = { id: string; nombre: string; etapas: { id: string; nombre: string }[] };
 type Usuario = { id: string; nombre: string };
@@ -126,6 +127,8 @@ export function ChatCliente({
   const [buscandoMensajes, setBuscandoMensajes] = useState(false);
   const [notaInterna, setNotaInterna] = useState(false);
   const [sugiriendo, setSugiriendo] = useState(false);
+  const [programando, setProgramando] = useState(false);
+  const [fechaProgramada, setFechaProgramada] = useState("");
   const [grabando, setGrabando] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -338,6 +341,33 @@ export function ChatCliente({
       setGrabando(true);
     } catch {
       toast("No se pudo acceder al micrófono.", "error");
+    }
+  }
+
+  // Abre el modal de programación con "mañana 9:00" como sugerencia.
+  function abrirProgramar() {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(9, 0, 0, 0);
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    setFechaProgramada(local);
+    setProgramando(true);
+  }
+
+  async function programar() {
+    if (!selId || !texto.trim() || !fechaProgramada) return;
+    const res = await fetch("/api/mensajes/programados", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversacionId: selId, texto, enviarAt: new Date(fechaProgramada).toISOString() })
+    });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setProgramando(false);
+      setTexto("");
+      toast(`Mensaje programado para ${new Date(fechaProgramada).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}`);
+    } else {
+      toast(d.error ?? "No se pudo programar", "error");
     }
   }
 
@@ -665,6 +695,15 @@ export function ChatCliente({
               >
                 <IconoNota />
               </button>
+              <button
+                type="button"
+                title="Programar envío (escribe el mensaje primero)"
+                disabled={enviando || notaInterna || !texto.trim()}
+                onClick={abrirProgramar}
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+              >
+                <IconoReloj />
+              </button>
               <input
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
@@ -698,6 +737,27 @@ export function ChatCliente({
         </div>
       )}
     </div>
+
+    {/* Programar envío */}
+    <Modal abierto={programando} onClose={() => setProgramando(false)} titulo="Programar mensaje">
+      <div className="space-y-3">
+        <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600 whitespace-pre-wrap">{texto}</p>
+        <label className="block space-y-1">
+          <span className="text-sm font-medium text-slate-600">Enviar el</span>
+          <input
+            type="datetime-local"
+            value={fechaProgramada}
+            onChange={(e) => setFechaProgramada(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-navy/30"
+          />
+        </label>
+        <p className="text-xs text-slate-400">Se envía automáticamente. Puedes cancelarlo desde el panel de detalles del chat.</p>
+        <div className="flex justify-end gap-2 pt-1">
+          <Boton variante="ghost" onClick={() => setProgramando(false)}>Cancelar</Boton>
+          <Boton onClick={programar} disabled={!fechaProgramada}>Programar</Boton>
+        </div>
+      </div>
+    </Modal>
 
     {/* Panel de detalles (móvil): overlay deslizable */}
     {seleccionada && panelMovil && (

@@ -8,7 +8,13 @@ const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"] }
 
 export const metadata: Metadata = {
   title: "AmbarCRM",
-  description: "CRM conversacional con WhatsApp — Ámbar Rojo"
+  description: "CRM conversacional con WhatsApp — Ámbar Rojo",
+  manifest: "/manifest.json",
+  icons: { icon: "/icon.svg" }
+};
+
+export const viewport = {
+  themeColor: "#1E3A5F"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -8,6 +8,7 @@ import { capturarCsat } from "@/lib/services/csat";
 import { estaFueraDeHorario } from "@/lib/horario";
 import { aplicarVariables } from "@/lib/plantillas";
 import { guardarMediaBase64 } from "@/lib/storage";
+import { enviarPushAOrg } from "@/lib/push";
 
 /** Elige el agente activo con menos conversaciones asignadas (round-robin por carga). */
 async function elegirResponsable(): Promise<bigint | null> {
@@ -118,6 +119,10 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
   if (esPersonal) {
     return { duplicado: false as const, mensajeId: mensaje.id, conversacionId: conversacion.id };
   }
+
+  // Push a los dispositivos del equipo (fire-and-forget: no frena el webhook).
+  const preview = m.contenido?.slice(0, 120) || (m.tipo !== "texto" ? `[${m.tipo}]` : "Mensaje nuevo");
+  void enviarPushAOrg(contacto.nombre, preview, `/chat?conv=${conversacion.id}`).catch(() => {});
 
   // --- CSAT: si la conversación esperaba calificación y llegó un 1-5, lo guardamos y no seguimos ---
   if (await capturarCsat(conversacion, m.contenido)) {

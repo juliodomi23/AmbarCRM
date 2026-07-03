@@ -21,6 +21,7 @@ En el servicio, pon estas (genera secretos con `openssl rand -base64 32`):
 | `WA_API_KEY` | Clave larga para que n8n llame al webhook. |
 | `EVOLUTION_API_URL` / `EVOLUTION_API_KEY` / `EVOLUTION_INSTANCE` | Evolution API (envío de WhatsApp). |
 | `ANTHROPIC_API_KEY` | Opcional (sugerencias de IA en el chat). |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Opcional (notificaciones push al celular). Genera el par con `npx web-push generate-vapid-keys`. Sin ellas la app funciona igual, solo sin push. |
 
 > El `DATABASE_URL` NO se pone a mano: el `docker-compose.yml` lo arma con `crm_app` + `CRM_APP_PASSWORD`.
 
@@ -91,6 +92,13 @@ END; $$ LANGUAGE plpgsql;
 ```
 Sin esto el chat sigue funcionando (el SSE reenvía los eventos viejos tal cual), pero el filtro por organización solo aplica con el trigger nuevo.
 
+**Si tu BD se migró ANTES de 2026-07 (features nuevas):** corre también la **PARTE E** de `multi-tenant.sql` (crea `mensajes_programados` y `push_suscripciones` con RLS). Es idempotente:
+```bash
+docker exec "$APP" cat /app/prisma/sql/multi-tenant.sql \
+  | docker exec -i "$DB" psql -U ambarcrm -d ambarcrm -v ON_ERROR_STOP=1
+```
+(Correr el archivo completo es seguro: todo es `IF NOT EXISTS` / `OR REPLACE`.)
+
 ---
 
 ## C) Onboarding de un cliente nuevo (multi-tenant)
@@ -112,6 +120,10 @@ Ver `INTEGRACION-N8N.md`. Resumen:
   con header `x-api-key: <WA_API_KEY>`.
 - **Enviar**: lo hace el CRM (variables `EVOLUTION_*`).
 - En **Configuración → Canal WhatsApp** ajusta nombre/teléfono/instancia y estado.
+
+**Crons en n8n** (Schedule Trigger → HTTP Request con header `x-api-key: <WA_API_KEY>`):
+- Cada **1 min**: `POST /api/cron/enviar-programados` (mensajes programados desde el chat).
+- Cada **hora**: `POST /api/cron/auto-resolver` (cierra chats inactivos, si está activado en Ajustes).
 
 ---
 

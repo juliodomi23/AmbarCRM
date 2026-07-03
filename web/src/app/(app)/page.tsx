@@ -45,9 +45,15 @@ export default async function DashboardPage() {
         <Kpi titulo="Tareas urgentes" valor={String(m.tareasUrgentes)} sub="vencen hoy o antes" acento={m.tareasUrgentes > 0 ? "text-red-600" : "text-navy"} href="/tareas" />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi titulo={`Leads en ${mes}`} valor={String(m.leadsMes)} href="/contactos" />
         <Kpi titulo="Chats abiertos" valor={String(m.convAbiertas)} href="/chat" />
+        <Kpi
+          titulo="Primera respuesta"
+          valor={m.primeraRespuestaMin != null ? (m.primeraRespuestaMin >= 90 ? `${Math.round(m.primeraRespuestaMin / 6) / 10} h` : `${m.primeraRespuestaMin} min`) : "—"}
+          sub={m.primeraRespuestaMuestras ? `mediana · ${m.primeraRespuestaMuestras} chats en ${mes}` : "sin datos este mes"}
+          acento={m.primeraRespuestaMin != null && m.primeraRespuestaMin <= 15 ? "text-green-600" : "text-navy"}
+        />
         <Kpi
           titulo="Satisfacción (CSAT)"
           valor={m.csatPromedio != null ? `${m.csatPromedio} / 5` : "—"}

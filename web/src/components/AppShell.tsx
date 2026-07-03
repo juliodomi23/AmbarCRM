@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { Toaster } from "@/components/Toaster";
+import { PushSetup } from "@/components/PushSetup";
 
 type NavItem = { href: string; label: string; icon: string | string[]; soloAdmin?: boolean };
 type NavGrupo = { titulo?: string; items: NavItem[] };
@@ -193,6 +194,7 @@ export function AppShell({
         </nav>
       </div>
       <Toaster />
+      <PushSetup />
     </div>
   );
 }

@@ -276,6 +276,9 @@ ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS fuera_horario_texto TEXT;
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS auto_resolver_activo BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS auto_resolver_horas INT NOT NULL DEFAULT 24;
 
+-- NOTA: mensajes_programados y push_suscripciones NO están aquí: nacen multi-tenant
+-- y las crea web/prisma/sql/multi-tenant.sql (PARTE E), que corre después de este archivo.
+
 -- ============================================================
 -- Realtime: NOTIFY al insertar mensaje (lo consume el SSE de Next.js)
 -- ============================================================

@@ -36,6 +36,9 @@ services:
       EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
       EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Notificaciones push (opcional): npx web-push generate-vapid-keys
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       UPLOAD_DIR: /app/uploads
     volumes:
       # Media saliente del chat (imágenes/archivos que mandan los agentes).

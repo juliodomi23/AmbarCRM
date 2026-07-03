@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Boton, Campo, Modal } from "@/components/ui";
-import { IconoBot, IconoEditar, IconoCheck } from "@/components/icons";
+import { IconoBot, IconoEditar, IconoCheck, IconoCerrar, IconoReloj } from "@/components/icons";
 
 type Embudo = { id: string; nombre: string; etapas: { id: string; nombre: string }[] };
 type Usuario = { id: string; nombre: string };
@@ -43,9 +43,19 @@ export function PanelConversacion({
   const [cForm, setCForm] = useState({ telefono: "", email: "", empresa: "", notas: "" });
   const [guardandoC, setGuardandoC] = useState(false);
 
+  type Programado = { id: string; contenido: string; enviarAt: string };
+  const [programados, setProgramados] = useState<Programado[]>([]);
+
   async function cargar() {
     const res = await fetch(`/api/conversaciones/${conversacionId}`);
     if (res.ok) setD(await res.json());
+    const rp = await fetch(`/api/mensajes/programados?conversacionId=${conversacionId}`);
+    if (rp.ok) setProgramados((await rp.json()).programados ?? []);
+  }
+
+  async function cancelarProgramado(id: string) {
+    await fetch(`/api/mensajes/programados/${id}`, { method: "DELETE" });
+    setProgramados((prev) => prev.filter((p) => p.id !== id));
   }
 
   useEffect(() => {
@@ -282,6 +292,33 @@ export function PanelConversacion({
           })}
         </div>
       </div>
+
+      {programados.length > 0 && (
+        <div>
+          <span className="mb-1 block text-xs font-medium uppercase text-slate-400">Mensajes programados</span>
+          <div className="space-y-1.5">
+            {programados.map((p) => (
+              <div key={p.id} className="flex items-start gap-2 rounded-lg border border-slate-200 px-2.5 py-2">
+                <IconoReloj className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs text-slate-600">{p.contenido}</p>
+                  <p className="text-[10px] text-slate-400">
+                    {new Date(p.enviarAt).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+                <button
+                  onClick={() => cancelarProgramado(p.id)}
+                  title="Cancelar envío"
+                  aria-label="Cancelar envío programado"
+                  className="grid h-5 w-5 shrink-0 place-items-center rounded text-slate-400 hover:bg-red-50 hover:text-red-600"
+                >
+                  <IconoCerrar className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div>
         <span className="mb-1 block text-xs font-medium uppercase text-slate-400">Recordatorio de seguimiento</span>
