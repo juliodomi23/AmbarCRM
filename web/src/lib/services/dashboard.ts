@@ -2,6 +2,22 @@ import { db } from "@/lib/db";
 
 const num = (v: unknown) => (v == null ? 0 : Number(v));
 
+/** Estado de los primeros pasos del tenant (para el checklist de onboarding en Inicio). */
+export async function getPrimerosPasos() {
+  const [canalConectado, embudos, usuarios, contactos] = await Promise.all([
+    db.canalWhatsapp.count({ where: { estado: "conectado", activo: true } }),
+    db.embudo.count({ where: { activo: true } }),
+    db.usuario.count({ where: { activo: true } }),
+    db.contacto.count()
+  ]);
+  return {
+    whatsapp: canalConectado > 0,
+    embudo: embudos > 0,
+    equipo: usuarios > 1,
+    contacto: contactos > 0
+  };
+}
+
 /** Métricas para la home: pipeline, cierres del mes, conversión, pipeline por etapa y ranking. */
 export async function getMetricasDashboard() {
   const ahora = new Date();

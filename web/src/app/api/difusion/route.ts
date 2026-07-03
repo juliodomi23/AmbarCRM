@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   }
 
   const canal = await db.canalWhatsapp.findFirst({ where: { activo: true } });
-  const provider = getProvider(canal?.proveedor ?? "evolution", canal?.config);
+  const provider = getProvider(canal?.proveedor ?? "evolution", canal?.config, canal?.instancia);
 
   const contactos = await db.contacto.findMany({
     where: {

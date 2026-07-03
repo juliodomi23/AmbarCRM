@@ -81,7 +81,9 @@ export function AppShell({
 
   const Sidebar = (
     <aside className="flex h-full w-64 flex-col bg-navy text-white">
-      <div className="px-5 py-5 text-xl font-bold">AmbarCRM</div>
+      <div className="px-5 py-5 text-xl font-bold">
+        Ambar<span className="text-amber-400">CRM</span>
+      </div>
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 pb-4">
         {GRUPOS.map((grupo, gi) => {
           const items = grupo.items.filter(visible);
@@ -100,8 +102,10 @@ export function AppShell({
                     href={n.href}
                     onClick={() => setAbierto(false)}
                     aria-current={activo ? "page" : undefined}
-                    className={`flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                      activo ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"
+                    className={`relative flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                      activo
+                        ? "bg-white/15 text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-1 before:-translate-y-1/2 before:rounded-r before:bg-amber-400"
+                        : "text-white/80 hover:bg-white/10 hover:text-white"
                     }`}
                   >
                     <Icono d={n.icon} />
@@ -148,7 +152,7 @@ export function AppShell({
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-14 items-center gap-3 border-b border-slate-200 bg-white px-4 md:hidden">
-          <span className="font-bold text-navy">AmbarCRM</span>
+          <span className="font-bold text-navy">Ambar<span className="text-ambar">CRM</span></span>
         </header>
 
         {/* pb para que la barra inferior no tape el contenido en móvil (+ safe-area iOS) */}

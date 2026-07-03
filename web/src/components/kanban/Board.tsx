@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatoMoneda } from "@/components/ui";
 import { IconoCerrar, IconoFlecha } from "@/components/icons";
+import { toast } from "@/components/Toaster";
 
 export type Tarjeta = {
   id: string;
@@ -111,6 +112,11 @@ function ColumnaVista({ col, onBorrar, onChat }: { col: Columna; onBorrar: (id: 
         <SortableContext items={col.tarjetas.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {col.tarjetas.map((t) => <TarjetaSortable key={t.id} t={t} onBorrar={onBorrar} onChat={onChat} />)}
         </SortableContext>
+        {col.tarjetas.length === 0 && (
+          <div className="grid h-20 place-items-center rounded-lg border-2 border-dashed border-slate-200 text-xs text-slate-400">
+            Arrastra tarjetas aquí
+          </div>
+        )}
       </div>
     </div>
   );
@@ -132,7 +138,7 @@ export function Board({ columnasIniciales }: { columnasIniciales: Columna[] }) {
 
   function abrirChat(t: Tarjeta) {
     if (t.conversacionId) router.push(`/chat?conv=${t.conversacionId}`);
-    else alert("Este lead todavía no tiene chat de WhatsApp.");
+    else toast("Este lead todavía no tiene chat de WhatsApp.", "error");
   }
 
   // Vista filtrada por fecha de creación (no toca `cols`, que es la fuente para drag/persistencia).

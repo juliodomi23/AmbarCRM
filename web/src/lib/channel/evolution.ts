@@ -94,18 +94,23 @@ async function post(path: string, body: unknown): Promise<ResultadoEnvio> {
   return { ok: true, waMessageId: data?.key?.id ?? data?.id };
 }
 
-export const evolutionProvider: ChannelProvider = {
+/**
+ * Construye el provider ATADO a una instancia de Evolution. Cada canal (tenant) tiene la
+ * suya; los envíos deben salir por la instancia del canal, no por la global del env.
+ */
+function buildProvider(inst: string): ChannelProvider {
+  return {
   nombre: "evolution",
 
   async enviarTexto(telefono, texto) {
-    return post(`/message/sendText/${INSTANCE}`, { number: telefono, text: texto });
+    return post(`/message/sendText/${inst}`, { number: telefono, text: texto });
   },
 
   async enviarMedia(telefono, mediaUrl, tipo, caption, mimetype) {
     // Evolution quiere URL o base64 PURO (sin el prefijo data:...;base64,).
     const media = mediaUrl.startsWith("data:") ? mediaUrl.split(",")[1] : mediaUrl;
     const ext = (mimetype?.split("/")[1] || "bin").split(";")[0];
-    return post(`/message/sendMedia/${INSTANCE}`, {
+    return post(`/message/sendMedia/${inst}`, {
       number: telefono,
       mediatype: mapTipoMedia(tipo),
       mimetype: mimetype || undefined,
@@ -117,7 +122,7 @@ export const evolutionProvider: ChannelProvider = {
 
   async enviarAudio(telefono, audioBase64) {
     // Evolution convierte el audio a ogg/opus y lo manda como nota de voz (PTT).
-    return post(`/message/sendWhatsAppAudio/${INSTANCE}`, { number: telefono, audio: audioBase64 });
+    return post(`/message/sendWhatsAppAudio/${inst}`, { number: telefono, audio: audioBase64 });
   },
 
   async conectar(instancia): Promise<DatosConexion> {
@@ -336,7 +341,17 @@ export const evolutionProvider: ChannelProvider = {
       .map((g) => ({ jid: g?.id ?? g?.jid ?? "", nombre: g?.subject ?? String(g?.id ?? "").split("@")[0] }))
       .filter((g) => g.jid.includes("@g.us"));
   }
-};
+  };
+}
+
+/** Provider con la instancia global del env (compatibilidad / canal sin instancia propia). */
+export const evolutionProvider: ChannelProvider = buildProvider(INSTANCE);
+
+/** Provider atado a la instancia del canal; sin instancia cae a la global. */
+export function makeEvolutionProvider(instancia?: string | null): ChannelProvider {
+  const inst = instancia?.trim();
+  return inst && inst !== INSTANCE ? buildProvider(inst) : evolutionProvider;
+}
 
 /** Devuelve los dígitos del número solo si el jid es de un chat individual (no grupos/estados). */
 function jidIndividual(jid: string): string | null {

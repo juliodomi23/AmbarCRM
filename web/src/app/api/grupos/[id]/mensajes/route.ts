@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!grupo) return NextResponse.json({ error: "grupo inexistente" }, { status: 404 });
 
   const { texto, mediaBase64, mediaMime, caption } = await req.json().catch(() => ({}));
-  const provider = getProvider(grupo.canal?.proveedor ?? "evolution", grupo.canal?.config);
+  const provider = getProvider(grupo.canal?.proveedor ?? "evolution", grupo.canal?.config, grupo.canal?.instancia);
 
   let envio;
   let datos: { tipo: TipoMensaje; contenido: string | null; mediaUrl: string | null; mediaMime: string | null };

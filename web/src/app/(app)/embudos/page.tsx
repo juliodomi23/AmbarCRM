@@ -13,7 +13,25 @@ export default async function EmbudosPage({
 }) {
   const embudos = serializar(await listarEmbudos());
   if (embudos.length === 0) {
-    return <div className="p-8 text-slate-500">No hay embudos. Crea uno en Configuración.</div>;
+    return (
+      <div className="grid h-full place-items-center p-8">
+        <div className="max-w-sm text-center">
+          <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-navy/10">
+            <svg className="h-6 w-6 text-navy" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 5h18l-7 8v5l-4 2v-7z" /></svg>
+          </div>
+          <h2 className="text-base font-semibold text-navy">Aún no tienes un embudo</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            El embudo es tu tablero de ventas: cada cliente avanza por etapas hasta cerrar. Créalo en un minuto.
+          </p>
+          <Link
+            href="/configuracion"
+            className="mt-4 inline-block rounded-lg bg-navy px-4 py-2 text-sm font-medium text-white transition hover:bg-navy/90"
+          >
+            Crear mi embudo
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   const activoId = searchParams.embudo ?? embudos[0].id;

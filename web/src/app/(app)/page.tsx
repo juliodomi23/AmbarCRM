@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { getMetricasDashboard } from "@/lib/services/dashboard";
+import { getMetricasDashboard, getPrimerosPasos } from "@/lib/services/dashboard";
+import { getSesion } from "@/lib/session";
 import { IconoDescargar } from "@/components/icons";
+import { PrimerosPasos } from "@/components/PrimerosPasos";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +22,9 @@ function Kpi({ titulo, valor, sub, href, acento = "text-navy" }: { titulo: strin
 }
 
 export default async function DashboardPage() {
-  const m = await getMetricasDashboard();
+  const session = await getSesion();
+  const esAdmin = session?.user?.rol === "admin";
+  const [m, pasos] = await Promise.all([getMetricasDashboard(), esAdmin ? getPrimerosPasos() : null]);
   const hoy = new Date();
   const mes = hoy.toLocaleDateString("es-MX", { month: "long" });
   const iniMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10);
@@ -30,6 +34,8 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6 p-4 md:p-6">
       <h1 className="text-xl font-bold text-navy">Inicio</h1>
+
+      {pasos && <PrimerosPasos pasos={pasos} />}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

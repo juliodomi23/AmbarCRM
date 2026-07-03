@@ -28,8 +28,10 @@ export default function LoginPage() {
         className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-8 space-y-5"
       >
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-navy">AmbarCRM</h1>
-          <p className="text-sm text-slate-500">Inicia sesión para continuar</p>
+          <h1 className="text-2xl font-bold text-navy">
+            Ambar<span className="text-ambar">CRM</span>
+          </h1>
+          <p className="text-sm text-slate-500">Tus ventas y tu WhatsApp, en un solo lugar</p>
         </div>
 
         <div className="space-y-1">
@@ -56,7 +58,11 @@ export default function LoginPage() {
           />
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}. Revisa tu correo y contraseña.
+          </p>
+        )}
 
         <button
           type="submit"

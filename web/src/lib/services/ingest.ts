@@ -46,7 +46,7 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
 
   const ajustes = await getAjustes();
   const canal = canalId ? await db.canalWhatsapp.findUnique({ where: { id: canalId } }) : null;
-  const provider = getProvider(canal?.proveedor ?? "evolution", canal?.config);
+  const provider = getProvider(canal?.proveedor ?? "evolution", canal?.config, canal?.instancia);
   const instancia = canal?.instancia?.trim() || instanciaPorDefecto;
 
   // --- Contacto ---

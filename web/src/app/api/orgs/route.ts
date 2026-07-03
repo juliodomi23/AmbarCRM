@@ -38,7 +38,8 @@ export async function POST(req: NextRequest) {
 
   const org = await db.org.create({ data: { nombre, slug } });
 
-  // Semilla del tenant: admin inicial + fila de ajustes. org_id lo pone el DEFAULT por contexto.
+  // Semilla del tenant: admin, ajustes, embudo de ventas con etapas y canal de WhatsApp
+  // (misma semilla que schema.sql para la org 1). org_id lo pone el DEFAULT por contexto.
   await runWithOrg(org.id, async () => {
     await db.usuario.create({
       data: {
@@ -49,6 +50,26 @@ export async function POST(req: NextRequest) {
       }
     });
     await db.ajustes.create({ data: {} });
+    await db.embudo.create({
+      data: {
+        nombre: "Ventas",
+        descripcion: "Embudo principal de ventas",
+        etapas: {
+          create: [
+            { nombre: "Nuevo lead", color: "#94A3B8", orden: 0, tipo: "normal" },
+            { nombre: "Contactado", color: "#3B82F6", orden: 1, tipo: "normal" },
+            { nombre: "En negociación", color: "#B45309", orden: 2, tipo: "normal" },
+            { nombre: "Propuesta", color: "#8B5CF6", orden: 3, tipo: "normal" },
+            { nombre: "Ganado", color: "#16A34A", orden: 4, tipo: "ganado" },
+            { nombre: "Perdido", color: "#DC2626", orden: 5, tipo: "perdido" }
+          ]
+        }
+      }
+    });
+    // Instancia de Evolution propia del tenant (el slug): sus envíos no se mezclan con otras orgs.
+    await db.canalWhatsapp.create({
+      data: { nombre: "WhatsApp principal", proveedor: "evolution", estado: "desconectado", instancia: slug }
+    });
   });
 
   return NextResponse.json({ ok: true, org: { id: Number(org.id), nombre: org.nombre, slug: org.slug } });
