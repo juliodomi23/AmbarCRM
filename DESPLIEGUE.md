@@ -7,6 +7,22 @@
 
 ---
 
+## ✅ Checklist de la actualización 2026-07 (para una BD que ya está en producción)
+
+Después del redeploy, activa lo nuevo (una sola vez):
+
+1. **SQL**: corre `multi-tenant.sql` completo en la BD (trigger con org_id + tablas de
+   mensajes programados y push; es idempotente) — comando exacto en la sección B.
+2. **Cron en n8n**: Schedule Trigger cada **1 min** → `POST /api/cron/enviar-programados`
+   con header `x-api-key: <WA_API_KEY>` (mensajes programados desde el chat).
+3. **Push (opcional)**: `npx web-push generate-vapid-keys` → pon `VAPID_PUBLIC_KEY` y
+   `VAPID_PRIVATE_KEY` en las variables del servicio `app` y redeploya.
+4. **Backups**: si aún no, actívalos (sección E) — BD **y** volumen `uploads`.
+
+Sin el paso 1 la app arranca igual, pero programar mensajes fallará (no existe la tabla).
+
+---
+
 ## A) Desplegar en EasyPanel (producción) — paso a paso
 
 ### 1. Variables de entorno
