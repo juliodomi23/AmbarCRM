@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -8,14 +8,26 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [org, setOrg] = useState("");
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
+
+  // La liga que se comparte al cliente trae su org: /login?org=clinica-x
+  useEffect(() => {
+    const o = new URLSearchParams(window.location.search).get("org");
+    if (o) setOrg(o);
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setCargando(true);
-    const res = await signIn("credentials", { email, password, redirect: false });
+    const res = await signIn("credentials", {
+      email,
+      password,
+      ...(org.trim() ? { orgSlug: org.trim().toLowerCase() } : {}),
+      redirect: false
+    });
     setCargando(false);
     if (res?.error) setError("Credenciales incorrectas");
     else router.push("/embudos");
@@ -54,6 +66,20 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-navy/40"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="org" className="text-sm font-medium text-slate-600">
+            Organización <span className="font-normal text-slate-400">(opcional)</span>
+          </label>
+          <input
+            id="org"
+            type="text"
+            value={org}
+            onChange={(e) => setOrg(e.target.value)}
+            placeholder="Solo si te dieron una"
             className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-navy/40"
           />
         </div>

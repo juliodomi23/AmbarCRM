@@ -6,7 +6,7 @@ import { Boton, Campo } from "@/components/ui";
 import { EmbeddedSignup } from "@/components/config/EmbeddedSignup";
 
 const TABS = ["Embudos", "Usuarios", "Canal WhatsApp", "Plantillas", "Automatizaciones", "Bots", "IA"] as const;
-type Tab = (typeof TABS)[number];
+type Tab = (typeof TABS)[number] | "Clientes";
 
 async function api(url: string, metodo: string, body?: unknown) {
   const res = await fetch(url, {
@@ -28,7 +28,8 @@ export function ConfiguracionCliente({
   canales,
   plantillas,
   ajustes,
-  bots
+  bots,
+  orgs = null
 }: {
   embudos: any[];
   usuarios: any[];
@@ -36,14 +37,17 @@ export function ConfiguracionCliente({
   plantillas: any[];
   ajustes: any;
   bots: any[];
+  orgs?: any[] | null;
 }) {
   const [tab, setTab] = useState<Tab>("Embudos");
+  // "Clientes" solo aparece para la org plataforma (orgs viene null para las demás).
+  const tabs: Tab[] = orgs ? [...TABS, "Clientes"] : [...TABS];
 
   return (
     <div className="p-4 md:p-6">
       <h1 className="mb-4 text-xl font-bold text-navy">Configuración</h1>
       <div className="mb-5 flex flex-wrap gap-1 border-b border-slate-200">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -63,6 +67,135 @@ export function ConfiguracionCliente({
       {tab === "Automatizaciones" && <TabAutomatizaciones ajustes={ajustes} />}
       {tab === "Bots" && <TabBots bots={bots} canales={canales} />}
       {tab === "IA" && <TabIA ajustes={ajustes} />}
+      {tab === "Clientes" && orgs && <TabClientes orgs={orgs} />}
+    </div>
+  );
+}
+
+function slugificar(s: string) {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
+
+function TabClientes({ orgs }: { orgs: any[] }) {
+  const router = useRouter();
+  const vacio = { nombre: "", slug: "", adminNombre: "", adminEmail: "", adminPassword: "" };
+  const [f, setF] = useState(vacio);
+  const [slugTocado, setSlugTocado] = useState(false);
+  const [creando, setCreando] = useState(false);
+
+  function setNombre(nombre: string) {
+    setF((prev) => ({ ...prev, nombre, slug: slugTocado ? prev.slug : slugificar(nombre) }));
+  }
+
+  async function crear(e: React.FormEvent) {
+    e.preventDefault();
+    setCreando(true);
+    const ok = await api("/api/orgs", "POST", f);
+    setCreando(false);
+    if (ok) {
+      alert(
+        `Cliente creado. Comparte esta liga para entrar:\n${location.origin}/login?org=${f.slug}\n` +
+        `Usuario: ${f.adminEmail}`
+      );
+      setF(vacio);
+      setSlugTocado(false);
+      router.refresh();
+    }
+  }
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      <div className="rounded-xl border border-slate-200 bg-amber-50/60 p-3 text-xs text-slate-600">
+        Cada cliente es una <b>organización aislada</b>: sus chats, contactos y usuarios no se
+        mezclan con los de nadie más. Al crearla se genera su admin, su embudo de ventas y su
+        canal de WhatsApp (instancia de Evolution = el slug).
+      </div>
+
+      <form onSubmit={crear} className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
+        <p className="font-medium text-slate-700">Nuevo cliente</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Campo
+            label="Nombre del negocio"
+            value={f.nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            placeholder="Clínica X"
+            required
+          />
+          <Campo
+            label="Slug (identificador para entrar)"
+            value={f.slug}
+            onChange={(e) => { setSlugTocado(true); setF({ ...f, slug: slugificar(e.target.value) }); }}
+            placeholder="clinica-x"
+            required
+          />
+          <Campo
+            label="Nombre del admin"
+            value={f.adminNombre}
+            onChange={(e) => setF({ ...f, adminNombre: e.target.value })}
+            placeholder="Dueño"
+          />
+          <Campo
+            label="Email del admin"
+            type="email"
+            value={f.adminEmail}
+            onChange={(e) => setF({ ...f, adminEmail: e.target.value })}
+            required
+          />
+          <Campo
+            label="Contraseña del admin (mín. 8)"
+            type="text"
+            value={f.adminPassword}
+            onChange={(e) => setF({ ...f, adminPassword: e.target.value })}
+            minLength={8}
+            required
+          />
+        </div>
+        <Boton type="submit" disabled={creando}>{creando ? "Creando…" : "Crear cliente"}</Boton>
+      </form>
+
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+              <th className="px-4 py-2">Cliente</th>
+              <th className="px-4 py-2">Slug</th>
+              <th className="px-4 py-2">Estado</th>
+              <th className="px-4 py-2">Liga de acceso</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orgs.map((o) => (
+              <tr key={o.id} className="border-b border-slate-100 last:border-0">
+                <td className="px-4 py-2 font-medium text-slate-800">
+                  {o.nombre}
+                  {String(o.id) === "1" && <span className="ml-2 text-[10px] text-slate-400">(plataforma)</span>}
+                </td>
+                <td className="px-4 py-2 text-slate-500">{o.slug}</td>
+                <td className="px-4 py-2">
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${o.activo ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>
+                    {o.activo ? "Activa" : "Inactiva"}
+                  </span>
+                </td>
+                <td className="px-4 py-2">
+                  <button
+                    type="button"
+                    className="text-xs text-navy underline"
+                    onClick={() => navigator.clipboard.writeText(`${location.origin}/login?org=${o.slug}`)}
+                  >
+                    Copiar liga
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
