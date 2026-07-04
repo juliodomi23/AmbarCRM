@@ -32,7 +32,16 @@ button, a, [role="button"] {
   }
 }
 
-/* Scrollbar discreto para columnas del kanban y la bandeja */
-.scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
-.scroll-thin::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
-.scroll-thin::-webkit-scrollbar-track { background: transparent; }
+/* Scrollbar discreto en TODA la app (la default del navegador se ve tosca).
+   El thumb solo aparece al pasar el mouse por el contenedor. */
+* {
+  scrollbar-width: thin;              /* Firefox */
+  scrollbar-color: transparent transparent;
+}
+*:hover {
+  scrollbar-color: theme("colors.slate.300") transparent;
+}
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-thumb { background: transparent; border-radius: 9999px; }
+*:hover::-webkit-scrollbar-thumb { @apply bg-slate-300; }
+*::-webkit-scrollbar-track { background: transparent; }
