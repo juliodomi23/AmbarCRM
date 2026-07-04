@@ -78,7 +78,7 @@ export function ConfiguracionCliente({
 
       {tab === "Embudos" && <TabEmbudos embudos={embudos} />}
       {tab === "Usuarios" && <TabUsuarios usuarios={usuarios} />}
-      {tab === "Canal WhatsApp" && <TabCanal canal={canales[0]} />}
+      {tab === "Canal WhatsApp" && <TabCanal canales={canales} />}
       {tab === "Plantillas" && <TabPlantillas plantillas={plantillas} />}
       {tab === "Automatizaciones" && <TabAutomatizaciones ajustes={ajustes} />}
       {tab === "Bots" && <TabBots bots={bots} canales={canales} />}
@@ -657,11 +657,14 @@ function TabUsuarios({ usuarios }: { usuarios: any[] }) {
   );
 }
 
-function TabCanal({ canal }: { canal: any }) {
+function TabCanal({ canales }: { canales: any[] }) {
   const router = useRouter();
+  // Para el modo Evolution se usa el canal de Evolution aunque no sea el primero de la lista;
+  // si no hay ninguno, el que exista (el formulario permite regresarle el proveedor).
+  const canal = canales.find((c) => c.proveedor === "evolution") ?? canales[0] ?? null;
   // Dos formas de conectar: QR con Evolution (la usual hoy) u Oficial de Meta (Embedded Signup).
   const [modo, setModo] = useState<"evolution" | "oficial">(
-    canal?.proveedor === "cloud_api" ? "oficial" : "evolution"
+    canal && canal.proveedor === "cloud_api" ? "oficial" : "evolution"
   );
   const [f, setF] = useState({
     nombre: canal?.nombre ?? "",
@@ -716,6 +719,12 @@ function TabCanal({ canal }: { canal: any }) {
   return (
     <div className="max-w-lg space-y-4">
       {selector}
+      {canal.proveedor !== "evolution" && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          Este canal quedó guardado con proveedor <b>Cloud API (Meta)</b>, por eso no aparece el QR.
+          Cambia el proveedor a <b>Evolution API</b> abajo y guarda para poder escanear.
+        </div>
+      )}
       <ConexionCanal canal={canal} />
 
       <form onSubmit={guardar} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
