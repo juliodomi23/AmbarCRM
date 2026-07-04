@@ -8,7 +8,7 @@ const PASOS: { clave: keyof Pasos; titulo: string; detalle: string; href: string
     clave: "whatsapp",
     titulo: "Conecta tu WhatsApp",
     detalle: "Escanea el QR para que tus mensajes lleguen al CRM.",
-    href: "/configuracion",
+    href: "/configuracion?tab=canal",
     cta: "Conectar"
   },
   {
@@ -22,7 +22,7 @@ const PASOS: { clave: keyof Pasos; titulo: string; detalle: string; href: string
     clave: "equipo",
     titulo: "Invita a tu equipo",
     detalle: "Agrega a las personas que atenderán los chats.",
-    href: "/configuracion",
+    href: "/configuracion?tab=usuarios",
     cta: "Invitar"
   },
   {

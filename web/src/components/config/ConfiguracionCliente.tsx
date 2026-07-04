@@ -43,6 +43,22 @@ export function ConfiguracionCliente({
   // "Clientes" solo aparece para la org plataforma (orgs viene null para las demás).
   const tabs: Tab[] = orgs ? [...TABS, "Clientes"] : [...TABS];
 
+  // Abrir directo en una pestaña: /configuracion?tab=canal (lo usa "Primeros pasos").
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    const mapa: Record<string, Tab> = {
+      embudos: "Embudos",
+      usuarios: "Usuarios",
+      canal: "Canal WhatsApp",
+      plantillas: "Plantillas",
+      automatizaciones: "Automatizaciones",
+      bots: "Bots",
+      ia: "IA",
+      clientes: "Clientes"
+    };
+    if (t && mapa[t]) setTab(mapa[t]);
+  }, []);
+
   return (
     <div className="p-4 md:p-6">
       <h1 className="mb-4 text-xl font-bold text-navy">Configuración</h1>
@@ -643,6 +659,10 @@ function TabUsuarios({ usuarios }: { usuarios: any[] }) {
 
 function TabCanal({ canal }: { canal: any }) {
   const router = useRouter();
+  // Dos formas de conectar: QR con Evolution (la usual hoy) u Oficial de Meta (Embedded Signup).
+  const [modo, setModo] = useState<"evolution" | "oficial">(
+    canal?.proveedor === "cloud_api" ? "oficial" : "evolution"
+  );
   const [f, setF] = useState({
     nombre: canal?.nombre ?? "",
     proveedor: canal?.proveedor ?? "evolution",
@@ -655,19 +675,47 @@ function TabCanal({ canal }: { canal: any }) {
     if (await api(`/api/canales/${canal.id}`, "PATCH", f)) router.refresh();
   }
 
-  // El Embedded Signup (WhatsApp Oficial) crea su propio canal; se muestra siempre.
+  const selector = (
+    <div className="flex gap-1 rounded-xl border border-slate-200 bg-white p-1">
+      {([
+        ["evolution", "Escanear QR (Evolution)"],
+        ["oficial", "WhatsApp Oficial (Meta)"]
+      ] as const).map(([valor, texto]) => (
+        <button
+          key={valor}
+          type="button"
+          onClick={() => setModo(valor)}
+          className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+            modo === valor ? "bg-navy text-white" : "text-slate-600 hover:bg-slate-100"
+          }`}
+        >
+          {texto}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (modo === "oficial") {
+    return (
+      <div className="max-w-lg space-y-4">
+        {selector}
+        <EmbeddedSignup />
+      </div>
+    );
+  }
+
   if (!canal) {
     return (
       <div className="max-w-lg space-y-4">
-        <EmbeddedSignup />
-        <p className="text-slate-400">No hay otro canal configurado.</p>
+        {selector}
+        <p className="text-slate-400">No hay canal configurado.</p>
       </div>
     );
   }
 
   return (
     <div className="max-w-lg space-y-4">
-      <EmbeddedSignup />
+      {selector}
       <ConexionCanal canal={canal} />
 
       <form onSubmit={guardar} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
