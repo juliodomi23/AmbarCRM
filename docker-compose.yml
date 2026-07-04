@@ -40,6 +40,14 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       UPLOAD_DIR: /app/uploads
+      # Admin inicial (se crea/actualiza solo en cada arranque; el seed es idempotente).
+      # Si ADMIN_PASSWORD está vacío NO se crea nada (evita un admin con clave débil por accidente).
+      ADMIN_NOMBRE: ${ADMIN_NOMBRE:-Admin}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@ambarcrm.mx}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    # Siembra el admin y luego arranca la app. Si el seed falla (p. ej. BD a medio migrar),
+    # la app arranca igual y se reintenta en el próximo arranque.
+    command: sh -c 'if [ -n "$$ADMIN_PASSWORD" ]; then node scripts/seed-admin.mjs "$$ADMIN_NOMBRE" "$$ADMIN_EMAIL" "$$ADMIN_PASSWORD" || echo "[seed-admin] falló, la app arranca igual"; fi; exec npm start'
     volumes:
       # Media saliente del chat (imágenes/archivos que mandan los agentes).
       - uploads:/app/uploads

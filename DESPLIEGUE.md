@@ -51,13 +51,14 @@ En el servicio, pon estas (genera secretos con `openssl rand -base64 32`):
    da "Service is not reachable" aunque el contenedor esté sano — revisa esto primero.)*
 
 ### 3. Crear el admin real
-El `schema.sql` siembra un admin de ejemplo que **no** sirve para entrar. Crea uno real
-**dentro del contenedor `app`** (no el `db`, que no tiene Node):
+**Automático:** pon `ADMIN_NOMBRE`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` en las variables y el
+admin se crea/actualiza solo en cada arranque (si `ADMIN_PASSWORD` va vacío, no se crea nada).
+Entra en `/login` con ese correo y contraseña.
+
+**Manual (alternativa):** dentro del contenedor `app` (no el `db`, que no tiene Node):
 ```bash
 docker compose exec app node scripts/seed-admin.mjs "Admin" admin@tudominio.com "ClaveFuerte"
 ```
-Por SSH: `docker ps` → ubica el contenedor de `app` → `docker exec -it <id> sh` → adentro
-corre `node scripts/seed-admin.mjs ...`. Entra en `/login` con ese correo y contraseña.
 
 ---
 
