@@ -97,6 +97,9 @@ export default function LoginPage() {
         >
           {cargando ? "Entrando…" : "Entrar"}
         </button>
+
+        {/* Marca de versión: si en producción no coincide con el último push, el deploy no corrió. */}
+        <p className="text-center text-[10px] text-slate-300">v2026-07-04</p>
       </form>
     </div>
   );
