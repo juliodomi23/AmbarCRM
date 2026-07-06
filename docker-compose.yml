@@ -40,11 +40,15 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       UPLOAD_DIR: /app/uploads
-      # Admin inicial (se crea/actualiza solo en cada arranque; el seed es idempotente).
-      # Si ADMIN_PASSWORD está vacío NO se crea nada (evita un admin con clave débil por accidente).
-      ADMIN_NOMBRE: ${ADMIN_NOMBRE:-Admin}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@ambarcrm.mx}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # Admin inicial (se crea/actualiza solo en CADA arranque; el seed es idempotente).
+      # La contraseña efectiva SIEMPRE es esta: para cambiarla, cambia la variable y redeploya.
+      ADMIN_NOMBRE: ${ADMIN_NOMBRE:-Julio}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-juliodomi0301@gmail.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-AmbarRojo2026}
+      # En el dominio compartido, el subdominio (julio-crmlite) NO es una org: con esto el
+      # login sin campo "Organización" cae a la org por defecto (inicial).
+      BASE_DOMAIN_FIRST_LABEL: ${BASE_DOMAIN_FIRST_LABEL:-julio-crmlite}
+      DEFAULT_ORG_SLUG: ${DEFAULT_ORG_SLUG:-inicial}
     # Siembra el admin y luego arranca la app. Si el seed falla (p. ej. BD a medio migrar),
     # la app arranca igual y se reintenta en el próximo arranque.
     command: sh -c 'if [ -n "$$ADMIN_PASSWORD" ]; then node scripts/seed-admin.mjs "$$ADMIN_NOMBRE" "$$ADMIN_EMAIL" "$$ADMIN_PASSWORD" || echo "[seed-admin] falló, la app arranca igual"; fi; exec npm start'
