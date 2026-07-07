@@ -19,7 +19,8 @@ export async function GET(req: NextRequest, { params }: { params: { archivo: str
   return new NextResponse(new Uint8Array(buf), {
     headers: {
       "Content-Type": mimeDeArchivo(params.archivo),
-      "Cache-Control": "private, max-age=86400"
+      // Los archivos son inmutables (el nombre no se reutiliza): cache largo en el navegador.
+      "Cache-Control": "private, max-age=2592000, immutable"
     }
   });
 }

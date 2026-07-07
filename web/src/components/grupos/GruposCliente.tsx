@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IconoAdjuntar, IconoEnviar } from "@/components/icons";
 import { toast } from "@/components/Toaster";
+import { Lightbox } from "@/components/ui";
 
 type GrupoItem = { id: string; nombre: string; noLeidos: number; ultimoMensajeAt: string | null; preview: string };
 type Mensaje = {
@@ -34,6 +35,7 @@ export function GruposCliente({ gruposIniciales }: { gruposIniciales: GrupoItem[
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [imagenAbierta, setImagenAbierta] = useState<string | null>(null);
   const [importando, setImportando] = useState(false);
   const finRef = useRef<HTMLDivElement>(null);
   const archivoRef = useRef<HTMLInputElement>(null);
@@ -170,7 +172,10 @@ export function GruposCliente({ gruposIniciales }: { gruposIniciales: GrupoItem[
                     )}
                     {m.tipo === "imagen" && m.mediaUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <a href={m.mediaUrl} target="_blank"><img src={m.mediaUrl} alt="imagen" className="mb-1 max-h-60 rounded-lg" /></a>
+                      <button type="button" onClick={() => setImagenAbierta(m.mediaUrl)} className="block cursor-zoom-in">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={m.mediaUrl} alt="imagen" loading="lazy" className="mb-1 max-h-60 rounded-lg" />
+                      </button>
                     ) : m.tipo === "audio" && m.mediaUrl ? (
                       <audio controls src={m.mediaUrl} className="mb-1 h-10 w-56 max-w-full" />
                     ) : (
@@ -204,6 +209,7 @@ export function GruposCliente({ gruposIniciales }: { gruposIniciales: GrupoItem[
           </>
         )}
       </div>
+      <Lightbox url={imagenAbierta} onClose={() => setImagenAbierta(null)} />
     </div>
   );
 }

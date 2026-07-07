@@ -6,7 +6,7 @@ import { aplicarVariables } from "@/lib/plantillas";
 import { PanelConversacion } from "@/components/chat/PanelConversacion";
 import { IconoAdjuntar, IconoIA, IconoMicro, IconoNota, IconoInfo, IconoEnviar, IconoCerrar, IconoCheck, IconoFlecha, IconoDeshacer, IconoReloj } from "@/components/icons";
 import { toast } from "@/components/Toaster";
-import { Boton, Modal } from "@/components/ui";
+import { Boton, Lightbox, Modal } from "@/components/ui";
 
 type Embudo = { id: string; nombre: string; etapas: { id: string; nombre: string }[] };
 type Usuario = { id: string; nombre: string };
@@ -131,6 +131,7 @@ export function ChatCliente({
   const [programando, setProgramando] = useState(false);
   const [fechaProgramada, setFechaProgramada] = useState("");
   const [grabando, setGrabando] = useState(false);
+  const [imagenAbierta, setImagenAbierta] = useState<string | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const finRef = useRef<HTMLDivElement>(null);
@@ -599,10 +600,10 @@ export function ChatCliente({
                       </p>
                     )}
                     {m.tipo === "imagen" && m.mediaUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <a href={m.mediaUrl} target="_blank">
-                        <img src={m.mediaUrl} alt="imagen" className="mb-1 max-h-60 rounded-lg" />
-                      </a>
+                      <button type="button" onClick={() => setImagenAbierta(m.mediaUrl)} className="block cursor-zoom-in">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={m.mediaUrl} alt="imagen" loading="lazy" className="mb-1 max-h-60 rounded-lg" />
+                      </button>
                     ) : m.tipo === "audio" && m.mediaUrl ? (
                       <audio controls src={m.mediaUrl} className="mb-1 h-10 w-56 max-w-full" />
                     ) : (
@@ -756,6 +757,9 @@ export function ChatCliente({
         </div>
       )}
     </div>
+
+    {/* Imagen ampliada sin salir del chat */}
+    <Lightbox url={imagenAbierta} onClose={() => setImagenAbierta(null)} />
 
     {/* Programar envío */}
     <Modal abierto={programando} onClose={() => setProgramando(false)} titulo="Programar mensaje">

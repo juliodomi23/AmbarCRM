@@ -66,6 +66,38 @@ export function Modal({
   );
 }
 
+/** Visor de imagen en overlay (clic o Escape para cerrar), sin salir de la página. */
+export function Lightbox({ url, onClose }: { url: string | null; onClose: () => void }) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    if (url) window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [url, onClose]);
+
+  if (!url) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[70] grid place-items-center bg-black/85 p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Imagen ampliada"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={url} alt="imagen" className="max-h-[92vh] max-w-[92vw] rounded-lg object-contain" />
+      <button
+        onClick={onClose}
+        aria-label="Cerrar"
+        className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/10 text-xl text-white hover:bg-white/20"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
 export function formatoMoneda(valor: number, moneda = "MXN") {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: moneda, maximumFractionDigits: 0 }).format(valor);
 }
