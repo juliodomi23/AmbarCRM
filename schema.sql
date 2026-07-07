@@ -275,6 +275,10 @@ ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS horario_dias TEXT;
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS fuera_horario_texto TEXT;
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS auto_resolver_activo BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS auto_resolver_horas INT NOT NULL DEFAULT 24;
+ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS nombre_negocio TEXT;
+ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS ia_prompt_sistema TEXT;
+ALTER TABLE contactos ADD COLUMN IF NOT EXISTS es_personal BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE mensajes ADD COLUMN IF NOT EXISTS es_difusion BOOLEAN NOT NULL DEFAULT false;
 
 -- NOTA: mensajes_programados y push_suscripciones NO están aquí: nacen multi-tenant
 -- y las crea web/prisma/sql/multi-tenant.sql (PARTE E), que corre después de este archivo.
