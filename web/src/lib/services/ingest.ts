@@ -105,7 +105,9 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
   await db.conversacion.update({
     where: { id: conversacion.id },
     data: esSaliente
-      ? { ultimoMensajeAt: m.timestamp }
+      // Respondió desde su celular: ya leyó el chat → se limpia el contador en el CRM.
+      // (Evolution no manda el "leído sin responder": su chats.update viene sin contador.)
+      ? { ultimoMensajeAt: m.timestamp, noLeidos: 0 }
       : { noLeidos: { increment: 1 }, ultimoMensajeAt: m.timestamp, estado: "abierta" }
   });
 
