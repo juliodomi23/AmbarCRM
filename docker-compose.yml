@@ -13,6 +13,7 @@ services:
       # 01 crea el esquema base, 02 aplica multi-tenant (org_id + RLS) y crea el rol crm_app.
       - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./deploy/02-multitenant.sh:/docker-entrypoint-initdb.d/02-multitenant.sh:ro
+      - ./deploy/03-evolution-db.sh:/docker-entrypoint-initdb.d/03-evolution-db.sh:ro
       - ./web/prisma/sql/multi-tenant.sql:/sql/multi-tenant.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
@@ -32,9 +33,10 @@ services:
       NEXTAUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       WA_API_KEY: ${WA_API_KEY}
-      EVOLUTION_API_URL: ${EVOLUTION_API_URL}
+      # Evolution corre en este mismo compose: el CRM le habla por la red interna.
+      EVOLUTION_API_URL: ${EVOLUTION_API_URL:-http://evolution:8080}
       EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
-      EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE}
+      EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE:-ambarcrm}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       # Notificaciones push (opcional): npx web-push generate-vapid-keys
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
@@ -61,6 +63,34 @@ services:
     expose:
       - "3000"
 
+  # WhatsApp no oficial (QR). El CRM crea instancias y webhooks aquí solo.
+  # Sin dominio público: solo el CRM le habla, por la red interna del compose.
+  evolution:
+    image: atendai/evolution-api:v2.2.3
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/evolution?schema=public
+      DATABASE_CONNECTION_CLIENT_NAME: evolution
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "false"
+      DATABASE_SAVE_MESSAGE_UPDATE: "false"
+      DATABASE_SAVE_DATA_CONTACTS: "true"
+      DATABASE_SAVE_DATA_CHATS: "true"
+      CACHE_REDIS_ENABLED: "false"
+      CACHE_LOCAL_ENABLED: "true"
+      LOG_LEVEL: ERROR
+    volumes:
+      - evolution_instances:/evolution/instances
+    expose:
+      - "8080"
+
 volumes:
   pgdata:
   uploads:
+  evolution_instances:
