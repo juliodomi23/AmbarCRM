@@ -364,6 +364,8 @@ model Conversacion {
   csatEnviadoAt   DateTime?   @map("csat_enviado_at")
   avisoFueraAt    DateTime?   @map("aviso_fuera_at")
   ultimoMensajeAt DateTime?   @map("ultimo_mensaje_at")
+  /// Chat fijado (va primero en la bandeja). Null = no fijado.
+  fijadoAt        DateTime?   @map("fijado_at")
   createdAt       DateTime    @default(now()) @map("created_at")
 
   contacto    Contacto       @relation(fields: [contactoId], references: [id], onDelete: Cascade)

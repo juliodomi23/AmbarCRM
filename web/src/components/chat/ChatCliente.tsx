@@ -16,6 +16,7 @@ export type ConversacionItem = {
   id: string;
   contacto: { nombre: string; telefono: string | null };
   esPersonal: boolean;
+  fijado: boolean;
   responsableId: string | null;
   noLeidos: number;
   ultimoMensajeAt: string | null;
@@ -163,8 +164,11 @@ export function ChatCliente({
       if (filtroResponsable === "sinasignar" && c.responsableId !== null) return false;
       return true;
     })
-    // Más reciente arriba (como WhatsApp); al responder o llegar mensaje, sube al tope.
-    .sort((a, b) => new Date(b.ultimoMensajeAt ?? 0).getTime() - new Date(a.ultimoMensajeAt ?? 0).getTime());
+    // Fijados (📌) al tope; luego más reciente arriba (como WhatsApp).
+    .sort((a, b) =>
+      (Number(b.fijado) - Number(a.fijado)) ||
+      (new Date(b.ultimoMensajeAt ?? 0).getTime() - new Date(a.ultimoMensajeAt ?? 0).getTime())
+    );
 
   const cargarMensajes = useCallback(async (id: string) => {
     const res = await fetch(`/api/conversaciones/${id}/mensajes`);
@@ -213,6 +217,21 @@ export function ChatCliente({
       body: JSON.stringify({ estado: nuevoEstado })
     });
     setConvs((prev) => prev.map((c) => c.id === convId ? { ...c, estado: nuevoEstado } : c));
+  }
+
+  async function toggleFijado(conv: ConversacionItem, e: React.MouseEvent) {
+    e.stopPropagation();
+    // Optimista: el 📌 responde al instante.
+    setConvs((prev) => prev.map((c) => (c.id === conv.id ? { ...c, fijado: !conv.fijado } : c)));
+    const res = await fetch(`/api/conversaciones/${conv.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fijado: !conv.fijado })
+    });
+    if (!res.ok) {
+      setConvs((prev) => prev.map((c) => (c.id === conv.id ? { ...c, fijado: conv.fijado } : c)));
+      toast("No se pudo fijar el chat", "error");
+    }
   }
 
   // Pide permiso de notificaciones una vez.
@@ -509,7 +528,10 @@ export function ChatCliente({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center justify-between">
-                    <span className="truncate text-sm font-medium text-slate-800">{c.contacto.nombre}</span>
+                    <span className="flex min-w-0 items-center gap-1">
+                      {c.fijado && <span className="shrink-0 text-[10px]" title="Chat fijado">📌</span>}
+                      <span className="truncate text-sm font-medium text-slate-800">{c.contacto.nombre}</span>
+                    </span>
                     <span className="ml-2 shrink-0 text-[10px] text-slate-400">{hora(c.ultimoMensajeAt)}</span>
                   </span>
                   <span className="truncate block text-xs text-slate-500">{c.preview}</span>
@@ -521,6 +543,14 @@ export function ChatCliente({
                     {c.noLeidos}
                   </span>
                 )}
+                <button
+                  onClick={(e) => toggleFijado(c, e)}
+                  title={c.fijado ? "Quitar de fijados" : "Fijar chat arriba"}
+                  aria-label={c.fijado ? "Quitar de fijados" : "Fijar chat arriba"}
+                  className={`h-5 w-5 place-items-center rounded text-slate-400 hover:bg-slate-200 hover:text-slate-600 ${c.fijado ? "grid" : "hidden group-hover:grid"}`}
+                >
+                  <span className={`text-[11px] ${c.fijado ? "" : "opacity-60"}`}>📌</span>
+                </button>
                 <button
                   onClick={(e) => cambiarEstadoConv(c.id, c.estado === "cerrada" ? "abierta" : "cerrada", e)}
                   title={c.estado === "cerrada" ? "Reabrir conversación" : "Cerrar conversación"}

@@ -23,6 +23,7 @@ export default async function ChatPage() {
     id: c.id,
     contacto: { nombre: c.contacto.nombre, telefono: c.contacto.telefono },
     esPersonal: c.contacto.esPersonal ?? false,
+    fijado: !!c.fijadoAt,
     responsableId: c.responsable?.id ?? null,
     noLeidos: c.noLeidos,
     ultimoMensajeAt: c.ultimoMensajeAt,

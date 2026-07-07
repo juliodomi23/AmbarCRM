@@ -3,7 +3,8 @@ import { db } from "@/lib/db";
 /** Conversaciones para la bandeja: contacto + último mensaje (preview) + no leídos. */
 export function listarConversaciones() {
   return db.conversacion.findMany({
-    orderBy: { ultimoMensajeAt: "desc" },
+    // Fijados (📌) primero, luego lo más reciente.
+    orderBy: [{ fijadoAt: { sort: "desc", nulls: "last" } }, { ultimoMensajeAt: "desc" }],
     // ponytail: tope de las 200 más recientes; paginar por cursor si la bandeja necesita ver más viejas.
     take: 200,
     include: {

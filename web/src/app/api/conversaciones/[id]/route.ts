@@ -39,7 +39,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       telefono: conv.contacto.telefono,
       email: conv.contacto.email,
       empresa: conv.contacto.empresa,
-      notas: conv.contacto.notas
+      notas: conv.contacto.notas,
+      esPersonal: conv.contacto.esPersonal
     },
     oportunidades: serializar(conv.contacto.oportunidades).map((o: any) => ({
       id: o.id,
@@ -66,6 +67,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     data.estado = body.estado;
   }
   if (typeof body.botActivo === "boolean") data.botActivo = body.botActivo;
+  if (typeof body.fijado === "boolean") data.fijadoAt = body.fijado ? new Date() : null;
   if (Array.isArray(body.etiquetas)) data.etiquetas = body.etiquetas.map(String);
   if (Object.keys(data).length === 0) return NextResponse.json({ error: "nada que actualizar" }, { status: 400 });
 
