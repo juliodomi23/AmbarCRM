@@ -52,6 +52,11 @@ export async function POST(req: NextRequest) {
     console.log(
       `[wa/webhook] event=${payload?.event ?? "?"} jid=${d?.key?.remoteJid ?? "?"} fromMe=${d?.key?.fromMe ?? "?"} tipo=${Object.keys(d?.message ?? {})[0] ?? "?"}`
     );
+    // chats.*: el formato varía entre versiones de Evolution — volcamos el payload
+    // recortado para calibrar el manejador de "leído en el celular".
+    if (String(payload?.event ?? "").startsWith("chats.")) {
+      console.log(`[wa/webhook] chats payload: ${JSON.stringify(payload?.data).slice(0, 400)}`);
+    }
   }
 
   const orgId = await resolverOrgId(req, payload);
