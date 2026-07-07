@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton, Campo } from "@/components/ui";
+import { toast } from "@/components/Toaster";
 import { EmbeddedSignup } from "@/components/config/EmbeddedSignup";
 
 const TABS = ["Embudos", "Usuarios", "Canal WhatsApp", "Plantillas", "Automatizaciones", "Bots", "IA"] as const;
@@ -16,7 +17,7 @@ async function api(url: string, metodo: string, body?: unknown) {
   });
   if (!res.ok) {
     const d = await res.json().catch(() => ({}));
-    alert(d.error ?? "Error");
+    toast(d.error ?? "Ocurrió un error", "error");
     return false;
   }
   return true;
@@ -104,6 +105,7 @@ function TabClientes({ orgs }: { orgs: any[] }) {
   const [f, setF] = useState(vacio);
   const [slugTocado, setSlugTocado] = useState(false);
   const [creando, setCreando] = useState(false);
+  const [creado, setCreado] = useState<{ slug: string; email: string } | null>(null);
 
   function setNombre(nombre: string) {
     setF((prev) => ({ ...prev, nombre, slug: slugTocado ? prev.slug : slugificar(nombre) }));
@@ -115,10 +117,8 @@ function TabClientes({ orgs }: { orgs: any[] }) {
     const ok = await api("/api/orgs", "POST", f);
     setCreando(false);
     if (ok) {
-      alert(
-        `Cliente creado. Comparte esta liga para entrar:\n${location.origin}/login?org=${f.slug}\n` +
-        `Usuario: ${f.adminEmail}`
-      );
+      setCreado({ slug: f.slug, email: f.adminEmail });
+      toast(`Cliente "${f.nombre}" creado`);
       setF(vacio);
       setSlugTocado(false);
       router.refresh();
@@ -175,6 +175,26 @@ function TabClientes({ orgs }: { orgs: any[] }) {
         <Boton type="submit" disabled={creando}>{creando ? "Creando…" : "Crear cliente"}</Boton>
       </form>
 
+      {creado && (
+        <div className="space-y-2 rounded-xl border border-green-200 bg-green-50 p-4">
+          <p className="flex items-center gap-2 font-medium text-green-800">✓ Cliente creado</p>
+          <p className="text-sm text-green-900">
+            Comparte esta liga de acceso junto con el usuario <b>{creado.email}</b> y su contraseña:
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded-lg border border-green-200 bg-white px-3 py-2 text-xs text-slate-700">
+              {typeof window !== "undefined" ? location.origin : ""}/login?org={creado.slug}
+            </code>
+            <Boton
+              type="button"
+              onClick={() => { navigator.clipboard.writeText(`${location.origin}/login?org=${creado.slug}`); toast("Liga copiada"); }}
+            >
+              Copiar
+            </Boton>
+          </div>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead>
@@ -202,7 +222,7 @@ function TabClientes({ orgs }: { orgs: any[] }) {
                   <button
                     type="button"
                     className="text-xs text-navy underline"
-                    onClick={() => navigator.clipboard.writeText(`${location.origin}/login?org=${o.slug}`)}
+                    onClick={() => { navigator.clipboard.writeText(`${location.origin}/login?org=${o.slug}`); toast("Liga copiada"); }}
                   >
                     Copiar liga
                   </button>
@@ -838,8 +858,14 @@ function ConexionCanal({ canal }: { canal: any }) {
     const res = await fetch(`/api/canales/${canal.id}/importar`, { method: "POST" });
     const d = await res.json().catch(() => ({}));
     setImportando(false);
-    if (res.ok) setImpResultado(`✓ ${d.contactosNuevos} contactos y ${d.chatsNuevos} chats nuevos importados (de ${d.contactos} contactos y ${d.chats} chats en WhatsApp).`);
-    else setImpResultado(d.error ?? "No se pudo importar");
+    if (res.ok) {
+      // Recién vinculado, WhatsApp tarda unos segundos en sincronizar: 0 de 0 = reintenta.
+      if (d.contactos === 0 && d.chats === 0) {
+        setImpResultado("WhatsApp aún está sincronizando tus datos. Espera unos segundos y vuelve a intentar.");
+      } else {
+        setImpResultado(`✓ ${d.contactosNuevos} contactos y ${d.chatsNuevos} chats nuevos importados (de ${d.contactos} contactos y ${d.chats} chats en WhatsApp).`);
+      }
+    } else setImpResultado(d.error ?? "No se pudo importar");
   }
 
   if (!canal) return <p className="text-slate-400">No hay canal configurado.</p>;

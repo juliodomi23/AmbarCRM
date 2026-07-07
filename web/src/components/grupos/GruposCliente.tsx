@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IconoAdjuntar, IconoEnviar } from "@/components/icons";
+import { toast } from "@/components/Toaster";
 
 type GrupoItem = { id: string; nombre: string; noLeidos: number; ultimoMensajeAt: string | null; preview: string };
 type Mensaje = {
@@ -75,8 +76,11 @@ export function GruposCliente({ gruposIniciales }: { gruposIniciales: GrupoItem[
     const res = await fetch("/api/grupos/importar", { method: "POST" });
     const d = await res.json().catch(() => ({}));
     setImportando(false);
-    if (res.ok) { await refrescarLista(); alert(`Importados ${d.gruposNuevos} grupos nuevos (de ${d.grupos}).`); }
-    else alert(d.error ?? "No se pudo importar");
+    if (res.ok) {
+      await refrescarLista();
+      if (d.grupos === 0) toast("WhatsApp aún está sincronizando; espera unos segundos y reintenta.", "error");
+      else toast(`Importados ${d.gruposNuevos} grupos nuevos (de ${d.grupos}).`);
+    } else toast(d.error ?? "No se pudo importar", "error");
   }
 
   async function enviar(e: React.FormEvent) {
@@ -93,14 +97,14 @@ export function GruposCliente({ gruposIniciales }: { gruposIniciales: GrupoItem[
     if (d?.mensaje) {
       setMensajes((prev) => [...prev, d.mensaje]);
       setTexto("");
-    } else if (d?.error) alert(d.error);
+    } else if (d?.error) toast(d.error, "error");
   }
 
   async function enviarArchivo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !selId) return;
-    if (file.size > MAX_MB * 1024 * 1024) return alert(`Máximo ${MAX_MB} MB.`);
+    if (file.size > MAX_MB * 1024 * 1024) return toast(`El archivo supera ${MAX_MB} MB (límite de WhatsApp).`, "error");
     setEnviando(true);
     const mediaBase64 = await leerArchivo(file);
     const res = await fetch(`/api/grupos/${selId}/mensajes`, {
@@ -111,20 +115,20 @@ export function GruposCliente({ gruposIniciales }: { gruposIniciales: GrupoItem[
     setEnviando(false);
     const d = await res.json().catch(() => ({}));
     if (d?.mensaje) { setMensajes((prev) => [...prev, d.mensaje]); setTexto(""); }
-    else if (d?.error) alert(d.error);
+    else if (d?.error) toast(d.error, "error");
   }
 
   return (
     <div className="flex h-full">
-      <div className={`w-full border-r border-slate-200 bg-white md:w-80 ${selId ? "hidden md:block" : ""}`}>
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+      <div className={`h-full w-full flex-col border-r border-slate-200 bg-white md:w-80 ${selId ? "hidden md:flex" : "flex"}`}>
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3">
           <span className="font-semibold text-navy">Grupos</span>
           <button onClick={importar} disabled={importando}
             className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-navy hover:bg-slate-50 disabled:opacity-50">
             {importando ? "Importando…" : "Importar grupos"}
           </button>
         </div>
-        <div className="scroll-thin h-[calc(100%-49px)] overflow-y-auto">
+        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
           {grupos.length === 0 && <p className="p-4 text-sm text-slate-400">Aún no hay grupos. Llegarán cuando reciban mensajes.</p>}
           {grupos.map((g) => (
             <button key={g.id} onClick={() => abrir(g.id)}

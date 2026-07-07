@@ -101,14 +101,14 @@ export function PersonalCliente({ itemsIniciales }: { itemsIniciales: PersonalIt
   return (
     <div className="flex h-full">
       {/* Lista */}
-      <div className={`w-full border-r border-slate-200 bg-white md:w-80 ${selId ? "hidden md:block" : ""}`}>
-        <div className="border-b border-slate-200 px-4 py-3">
+      <div className={`h-full w-full flex-col border-r border-slate-200 bg-white md:w-80 ${selId ? "hidden md:flex" : "flex"}`}>
+        <div className="shrink-0 border-b border-slate-200 px-4 py-3">
           <p className="font-semibold text-navy">Personal</p>
           <p className="mt-0.5 text-xs text-slate-400">
             Familia y amigos. El bot no responde aqui y los archivos no se guardan.
           </p>
         </div>
-        <div className="scroll-thin h-[calc(100%-72px)] overflow-y-auto">
+        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
           {items.length === 0 && (
             <p className="p-4 text-sm text-slate-400">
               Ninguno aun. Marca un contacto como Personal desde el panel de chat.
@@ -148,9 +148,9 @@ export function PersonalCliente({ itemsIniciales }: { itemsIniciales: PersonalIt
           <>
             <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
               <button className="text-slate-500 md:hidden" onClick={() => setSelId(null)}>←</button>
-              <div className="flex-1">
-                <p className="font-medium text-slate-800">{seleccionado.nombre}</p>
-                {seleccionado.telefono && <p className="text-xs text-slate-400">{seleccionado.telefono}</p>}
+              <div className="min-w-0 flex-1 leading-tight">
+                <p className="truncate font-medium text-slate-800">{seleccionado.nombre}</p>
+                {seleccionado.telefono && <p className="truncate text-xs text-slate-400">+{seleccionado.telefono}</p>}
               </div>
               <button
                 onClick={quitarPersonal}

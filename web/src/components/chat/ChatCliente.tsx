@@ -414,8 +414,8 @@ export function ChatCliente({
     <>
     <div className="flex h-full">
       {/* Lista de conversaciones */}
-      <div className={`w-full border-r border-slate-200 bg-white md:w-80 ${selId ? "hidden md:block" : ""}`}>
-        <div className="border-b border-slate-200 px-4 py-3 space-y-2">
+      <div className={`h-full w-full flex-col border-r border-slate-200 bg-white md:w-80 ${selId ? "hidden md:flex" : "flex"}`}>
+        <div className="shrink-0 border-b border-slate-200 px-4 py-3 space-y-2">
           <p className="font-semibold text-navy">Conversaciones</p>
           {/* Búsqueda */}
           <div className="flex gap-1">
@@ -475,7 +475,7 @@ export function ChatCliente({
             )}
           </div>
         </div>
-        <div className="scroll-thin h-[calc(100%-128px)] overflow-y-auto">
+        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
           {convsFiltradas.length === 0 && (
             <p className="p-6 text-center text-sm text-slate-500">
               {busqueda || filtroEstado || filtroEtiqueta || filtroResponsable
@@ -533,7 +533,7 @@ export function ChatCliente({
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
+            <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5">
               <button
                 className="-ml-2 grid h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 md:hidden"
                 aria-label="Volver a la lista"
@@ -541,14 +541,21 @@ export function ChatCliente({
               >
                 <IconoFlecha className="h-5 w-5" />
               </button>
-              <span className="font-medium text-slate-800">{seleccionada.contacto.nombre}</span>
-              <span className="text-xs text-slate-400">{seleccionada.contacto.telefono}</span>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-navy/10 text-xs font-bold text-navy">
+                {seleccionada.contacto.nombre.slice(0, 2).toUpperCase()}
+              </span>
+              <div className="min-w-0 flex-1 leading-tight">
+                <p className="truncate text-sm font-semibold text-slate-800">{seleccionada.contacto.nombre}</p>
+                {seleccionada.contacto.telefono && (
+                  <p className="truncate text-xs text-slate-400">+{seleccionada.contacto.telefono}</p>
+                )}
+              </div>
               <span
-                className="ml-auto flex items-center gap-1.5 text-[11px] text-slate-500"
+                className="flex shrink-0 items-center gap-1.5 text-[11px] text-slate-500"
                 title={enVivo ? "Recibiendo mensajes en tiempo real" : "Sin conexión en vivo, reintentando…"}
               >
                 <span className={`h-2 w-2 rounded-full ${enVivo ? "bg-green-500" : "animate-pulse bg-amber-500"}`} />
-                {enVivo ? "En vivo" : "Reconectando…"}
+                <span className="hidden sm:inline">{enVivo ? "En vivo" : "Reconectando…"}</span>
               </span>
               <button
                 onClick={() => setPanelMovil(true)}
