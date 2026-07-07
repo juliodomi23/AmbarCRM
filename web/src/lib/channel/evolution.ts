@@ -13,7 +13,9 @@ import type {
   TipoMensaje
 } from "./types";
 
-const BASE = process.env.EVOLUTION_API_URL ?? "";
+// Sin slash final: las rutas se concatenan como `${BASE}/instance/...` y un
+// slash extra produce `//instance/...`, que Evolution responde con 404.
+const BASE = (process.env.EVOLUTION_API_URL ?? "").replace(/\/+$/, "");
 const APIKEY = process.env.EVOLUTION_API_KEY ?? "";
 const INSTANCE = process.env.EVOLUTION_INSTANCE ?? "ambarcrm";
 
