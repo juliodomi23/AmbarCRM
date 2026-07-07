@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Boton, Campo, Modal } from "@/components/ui";
 import { IconoBot, IconoEditar, IconoCheck, IconoCerrar, IconoReloj } from "@/components/icons";
 import { EtiquetaNueva } from "@/components/EtiquetaNueva";
+import { toast } from "@/components/Toaster";
 
 type Embudo = { id: string; nombre: string; etapas: { id: string; nombre: string }[] };
 type Usuario = { id: string; nombre: string };
@@ -28,7 +29,8 @@ export function PanelConversacion({
   embudos,
   etiquetas = [],
   onCambio,
-  onRenombrar
+  onRenombrar,
+  onPersonal
 }: {
   conversacionId: string;
   usuarios: Usuario[];
@@ -36,6 +38,8 @@ export function PanelConversacion({
   etiquetas?: EtiquetaDef[];
   onCambio?: () => void;
   onRenombrar?: (nombre: string) => void;
+  /** Se marcó el contacto como Personal: el padre saca la conversación de la bandeja. */
+  onPersonal?: () => void;
 }) {
   const [d, setD] = useState<Detalle | null>(null);
   const [modal, setModal] = useState(false);
@@ -222,14 +226,26 @@ export function PanelConversacion({
         <span className="text-sm text-slate-700">Contacto personal</span>
         <button
           onClick={async () => {
-            await fetch(`/api/contactos/${d.contacto.id}`, {
+            const nuevo = !d.contacto.esPersonal;
+            // Optimista: el switch responde al instante.
+            setD({ ...d, contacto: { ...d.contacto, esPersonal: nuevo } });
+            const res = await fetch(`/api/contactos/${d.contacto.id}`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ esPersonal: !d.contacto.esPersonal })
+              body: JSON.stringify({ esPersonal: nuevo })
             });
+            if (!res.ok) {
+              setD({ ...d, contacto: { ...d.contacto, esPersonal: !nuevo } });
+              toast("No se pudo cambiar. Intenta de nuevo.", "error");
+              return;
+            }
+            toast(nuevo
+              ? `${d.contacto.nombre} se movió a la bandeja Personal`
+              : `${d.contacto.nombre} volvió a la bandeja principal`);
             await cargar();
+            if (nuevo) onPersonal?.();
           }}
-          className={`relative h-5 w-9 rounded-full transition ${d.contacto.esPersonal ? "bg-slate-400" : "bg-slate-300"}`}
+          className={`relative h-5 w-9 rounded-full transition ${d.contacto.esPersonal ? "bg-green-500" : "bg-slate-300"}`}
           title={d.contacto.esPersonal ? "Quitar de Personal (vuelve a la bandeja principal)" : "Marcar como Personal (familia/amigos — el bot no responde)"}
         >
           <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${d.contacto.esPersonal ? "left-[18px]" : "left-0.5"}`} />

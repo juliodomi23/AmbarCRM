@@ -740,6 +740,10 @@ export function ChatCliente({
             onRenombrar={(nombre) =>
               setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, contacto: { ...c.contacto, nombre } } : c)))
             }
+            onPersonal={() => {
+              setConvs((prev) => prev.filter((c) => c.id !== seleccionada.id));
+              setSelId(null);
+            }}
           />
         </div>
       )}
@@ -782,6 +786,11 @@ export function ChatCliente({
             onRenombrar={(nombre) =>
               setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, contacto: { ...c.contacto, nombre } } : c)))
             }
+            onPersonal={() => {
+              setConvs((prev) => prev.filter((c) => c.id !== seleccionada.id));
+              setSelId(null);
+              setPanelMovil(false);
+            }}
           />
         </div>
       </div>
