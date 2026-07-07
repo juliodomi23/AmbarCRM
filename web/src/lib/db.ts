@@ -22,7 +22,11 @@ const orgStore = new AsyncLocalStorage<bigint>();
 
 /** Ejecuta `fn` con el tenant fijado. Úsalo en webhook/cron tras resolver la org. */
 export function runWithOrg<T>(orgId: bigint, fn: () => Promise<T>): Promise<T> {
-  return orgStore.run(orgId, fn);
+  // El await debe ocurrir DENTRO del contexto: las PrismaPromise son perezosas
+  // (ejecutan hasta el await). Si el callback devuelve la promesa sin await
+  // (p. ej. `() => db.usuario.findFirst(...)`) y se espera afuera, la extensión
+  // ya no ve el tenant y RLS devuelve 0 filas. El wrapper async lo garantiza.
+  return orgStore.run(orgId, async () => await fn());
 }
 
 /**
