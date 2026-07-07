@@ -364,8 +364,20 @@ function jidIndividual(jid: string): string | null {
 
 /** Extrae tipo/contenido/media de un message de Baileys (sirve para individuales y grupos). */
 function extraerContenido(msg: any): { tipo: TipoMensaje; contenido?: string; mediaUrl?: string; mediaMime?: string } {
+  // WhatsApp envuelve algunos mensajes en un "sobre" (efímeros, ver una vez,
+  // documento con caption): hay que abrirlo o el contenido se pierde como texto vacío.
+  msg =
+    msg?.ephemeralMessage?.message ??
+    msg?.viewOnceMessage?.message ??
+    msg?.viewOnceMessageV2?.message ??
+    msg?.documentWithCaptionMessage?.message ??
+    msg ?? {};
   if (msg.conversation || msg.extendedTextMessage) {
     return { tipo: "texto", contenido: msg.conversation ?? msg.extendedTextMessage?.text };
+  }
+  if (msg.stickerMessage) {
+    // Los stickers son webp: se muestran como imagen.
+    return { tipo: "imagen", mediaUrl: msg.stickerMessage.url, mediaMime: msg.stickerMessage.mimetype ?? "image/webp" };
   }
   if (msg.imageMessage) return { tipo: "imagen", contenido: msg.imageMessage.caption, mediaUrl: msg.imageMessage.url, mediaMime: msg.imageMessage.mimetype };
   if (msg.videoMessage) return { tipo: "video", contenido: msg.videoMessage.caption, mediaUrl: msg.videoMessage.url, mediaMime: msg.videoMessage.mimetype };

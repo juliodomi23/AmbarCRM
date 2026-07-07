@@ -9,10 +9,11 @@ function mapearConv(c: any) {
   return {
     id: c.id,
     contacto: { nombre: c.contacto.nombre, telefono: c.contacto.telefono },
+    esPersonal: c.contacto.esPersonal ?? false,
     responsableId: c.responsable?.id ?? null,
     noLeidos: c.noLeidos,
     ultimoMensajeAt: c.ultimoMensajeAt,
-    preview: c.mensajes[0]?.contenido ?? (c.mensajes[0] ? "[archivo]" : ""),
+    preview: c.mensajes[0]?.contenido ?? (c.mensajes[0] ? `[${c.mensajes[0].tipo}]` : ""),
     estado: c.estado,
     etiquetas: c.etiquetas ?? []
   };

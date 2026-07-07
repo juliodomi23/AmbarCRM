@@ -15,6 +15,7 @@ type EtiquetaDef = { id: string; nombre: string; color: string };
 export type ConversacionItem = {
   id: string;
   contacto: { nombre: string; telefono: string | null };
+  esPersonal: boolean;
   responsableId: string | null;
   noLeidos: number;
   ultimoMensajeAt: string | null;
@@ -123,7 +124,7 @@ export function ChatCliente({
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroEtiqueta, setFiltroEtiqueta] = useState("");
-  const [filtroResponsable, setFiltroResponsable] = useState<"" | "mias" | "sinasignar">("");
+  const [filtroResponsable, setFiltroResponsable] = useState<"" | "mias" | "sinasignar" | "personal">("");
   const [buscandoMensajes, setBuscandoMensajes] = useState(false);
   const [notaInterna, setNotaInterna] = useState(false);
   const [sugiriendo, setSugiriendo] = useState(false);
@@ -140,12 +141,16 @@ export function ChatCliente({
   convsRef.current = convs;
 
   const seleccionada = convs.find((c) => c.id === selId) ?? null;
-  const sinAsignarCount = convs.filter((c) => !c.responsableId && c.estado !== "cerrada").length;
-  const misCount = usuarioId ? convs.filter((c) => c.responsableId === usuarioId).length : 0;
+  const sinAsignarCount = convs.filter((c) => !c.esPersonal && !c.responsableId && c.estado !== "cerrada").length;
+  const misCount = usuarioId ? convs.filter((c) => !c.esPersonal && c.responsableId === usuarioId).length : 0;
+  const personalCount = convs.filter((c) => c.esPersonal).length;
 
   const q = busqueda.toLowerCase().trim();
   const convsFiltradas = convs
     .filter((c) => {
+      // "Personal" (familia/amigos) vive en su propia pestaña; no se mezcla con el trabajo.
+      if (filtroResponsable === "personal") { if (!c.esPersonal) return false; }
+      else if (c.esPersonal) return false;
       if (q && !(
         c.contacto.nombre.toLowerCase().includes(q) ||
         (c.contacto.telefono ?? "").includes(q) ||
@@ -444,8 +449,12 @@ export function ChatCliente({
           </div>
           {/* Filtros de responsable */}
           <div className="flex gap-1">
-            {(["", "mias", "sinasignar"] as const).map((v) => {
-              const label = v === "" ? "Todas" : v === "mias" ? `Mis (${misCount})` : `Sin asignar${sinAsignarCount > 0 ? ` (${sinAsignarCount})` : ""}`;
+            {(["", "mias", "sinasignar", "personal"] as const).map((v) => {
+              const label =
+                v === "" ? "Todas"
+                : v === "mias" ? `Mis (${misCount})`
+                : v === "sinasignar" ? `Sin asignar${sinAsignarCount > 0 ? ` (${sinAsignarCount})` : ""}`
+                : `Personal${personalCount > 0 ? ` (${personalCount})` : ""}`;
               return (
                 <button
                   key={v}
@@ -740,10 +749,9 @@ export function ChatCliente({
             onRenombrar={(nombre) =>
               setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, contacto: { ...c.contacto, nombre } } : c)))
             }
-            onPersonal={() => {
-              setConvs((prev) => prev.filter((c) => c.id !== seleccionada.id));
-              setSelId(null);
-            }}
+            onPersonal={(v) =>
+              setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, esPersonal: v } : c)))
+            }
           />
         </div>
       )}
@@ -786,9 +794,8 @@ export function ChatCliente({
             onRenombrar={(nombre) =>
               setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, contacto: { ...c.contacto, nombre } } : c)))
             }
-            onPersonal={() => {
-              setConvs((prev) => prev.filter((c) => c.id !== seleccionada.id));
-              setSelId(null);
+            onPersonal={(v) => {
+              setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, esPersonal: v } : c)));
               setPanelMovil(false);
             }}
           />

@@ -46,6 +46,14 @@ export async function POST(req: NextRequest) {
   const payload = await req.json().catch(() => null);
   if (!payload) return NextResponse.json({ error: "body inválido" }, { status: 400 });
 
+  // Resumen por evento (diagnóstico): tipo, remitente y si es fromMe.
+  {
+    const d = Array.isArray(payload?.data) ? payload.data[0] : payload?.data;
+    console.log(
+      `[wa/webhook] event=${payload?.event ?? "?"} jid=${d?.key?.remoteJid ?? "?"} fromMe=${d?.key?.fromMe ?? "?"} tipo=${Object.keys(d?.message ?? {})[0] ?? "?"}`
+    );
+  }
+
   const orgId = await resolverOrgId(req, payload);
   if (orgId == null) return NextResponse.json({ error: "no se pudo resolver el tenant" }, { status: 400 });
 

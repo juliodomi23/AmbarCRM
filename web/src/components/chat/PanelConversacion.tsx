@@ -38,8 +38,8 @@ export function PanelConversacion({
   etiquetas?: EtiquetaDef[];
   onCambio?: () => void;
   onRenombrar?: (nombre: string) => void;
-  /** Se marcó el contacto como Personal: el padre saca la conversación de la bandeja. */
-  onPersonal?: () => void;
+  /** Cambió el flag Personal del contacto: el padre mueve la conversación de pestaña. */
+  onPersonal?: (esPersonal: boolean) => void;
 }) {
   const [d, setD] = useState<Detalle | null>(null);
   const [modal, setModal] = useState(false);
@@ -240,10 +240,10 @@ export function PanelConversacion({
               return;
             }
             toast(nuevo
-              ? `${d.contacto.nombre} se movió a la bandeja Personal`
+              ? `${d.contacto.nombre} se movió a la pestaña Personal`
               : `${d.contacto.nombre} volvió a la bandeja principal`);
             await cargar();
-            if (nuevo) onPersonal?.();
+            onPersonal?.(nuevo);
           }}
           className={`relative h-5 w-9 rounded-full transition ${d.contacto.esPersonal ? "bg-green-500" : "bg-slate-300"}`}
           title={d.contacto.esPersonal ? "Quitar de Personal (vuelve a la bandeja principal)" : "Marcar como Personal (familia/amigos — el bot no responde)"}
