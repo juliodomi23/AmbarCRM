@@ -69,6 +69,26 @@ async function procesar(req: NextRequest, payload: any) {
   const proveedor = canal?.proveedor ?? "evolution";
   const provider = getProvider(proveedor);
 
+  // Leído en el celular: chats.update/upsert trae el contador en 0 → se limpia en el CRM
+  // para que la bandeja no marque como "sin abrir" lo que ya atendiste desde el teléfono.
+  if (payload?.event === "chats.update" || payload?.event === "chats.upsert") {
+    const items = Array.isArray(payload.data) ? payload.data : [payload.data];
+    let leidas = 0;
+    for (const ch of items) {
+      const unread = ch?.unreadMessages ?? ch?.unreadCount;
+      const jid: string = ch?.remoteJid ?? ch?.id ?? "";
+      if (unread === 0 && jid.includes("@s.whatsapp.net")) {
+        const tel = jid.split("@")[0].replace(/\D/g, "");
+        const contacto = await db.contacto.findFirst({ where: { telefono: tel } });
+        if (contacto) {
+          await db.conversacion.updateMany({ where: { contactoId: contacto.id }, data: { noLeidos: 0 } });
+          leidas++;
+        }
+      }
+    }
+    return NextResponse.json({ ok: true, leidas });
+  }
+
   // Acuses de estado (entregado/leído): actualizan el mensaje saliente y salen.
   if (provider.normalizarEstado) {
     const estados = provider.normalizarEstado(payload);

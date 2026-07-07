@@ -240,7 +240,8 @@ function buildProvider(inst: string): ChannelProvider {
         headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
         byEvents: false,
         base64: false,
-        events: ["MESSAGES_UPSERT", "MESSAGES_UPDATE"]
+        // CHATS_*: al leer un chat en el celular llega unreadMessages=0 → el CRM limpia su contador.
+        events: ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CHATS_UPSERT", "CHATS_UPDATE"]
       }
     });
   },
