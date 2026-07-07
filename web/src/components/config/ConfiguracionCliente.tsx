@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Boton, Campo } from "@/components/ui";
+import { Boton, Campo, Modal } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import { EmbeddedSignup } from "@/components/config/EmbeddedSignup";
 
@@ -786,6 +786,8 @@ function ConexionCanal({ canal }: { canal: any }) {
   const [error, setError] = useState<string | null>(null);
   const [importando, setImportando] = useState(false);
   const [impResultado, setImpResultado] = useState<string | null>(null);
+  const [modalDesconectar, setModalDesconectar] = useState(false);
+  const [borrarDatos, setBorrarDatos] = useState(false);
   const polling = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function detenerPolling() {
@@ -839,17 +841,25 @@ function ConexionCanal({ canal }: { canal: any }) {
   }
 
   async function desconectar() {
-    if (!confirm("¿Cerrar la sesión de WhatsApp de este número?")) return;
+    setModalDesconectar(false);
     setCargando(true);
     setError(null);
-    const res = await fetch(`/api/canales/${canal.id}/desconectar`, { method: "POST" });
+    const res = await fetch(`/api/canales/${canal.id}/desconectar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ borrarDatos })
+    });
     const d = await res.json().catch(() => ({}));
     setCargando(false);
     detenerPolling();
     setQr(null);
     setPairing(null);
     setEstado("desconectado");
+    setBorrarDatos(false);
     if (!res.ok) setError(d.error ?? "Error al desconectar");
+    else toast(d.borrados
+      ? `Número desconectado. Se borraron ${d.borrados.contactos} contactos y ${d.borrados.grupos} grupos con sus chats.`
+      : "Número desconectado.");
   }
 
   async function importar() {
@@ -897,9 +907,36 @@ function ConexionCanal({ canal }: { canal: any }) {
             <Boton onClick={importar} disabled={importando}>{importando ? "Importando…" : "Importar contactos y chats"}</Boton>
             {impResultado && <p className="mt-2 text-xs text-slate-600">{impResultado}</p>}
           </div>
-          <Boton variante="ghost" onClick={desconectar} disabled={cargando}>
+          <Boton variante="ghost" onClick={() => setModalDesconectar(true)} disabled={cargando}>
             {cargando ? "..." : "Desconectar"}
           </Boton>
+
+          <Modal abierto={modalDesconectar} onClose={() => setModalDesconectar(false)} titulo="Desconectar WhatsApp">
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600">
+                Se cierra la sesión del número{telefono ? <b> +{telefono}</b> : ""}. Dejarás de recibir y
+                enviar mensajes desde el CRM hasta que vuelvas a escanear el QR.
+              </p>
+              <label className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                <input
+                  type="checkbox"
+                  checked={borrarDatos}
+                  onChange={(e) => setBorrarDatos(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-red-600"
+                />
+                <span>
+                  <b>Borrar también contactos y chats</b> (incluye grupos, oportunidades y mensajes).
+                  Esto no se puede deshacer.
+                </span>
+              </label>
+              <div className="flex justify-end gap-2">
+                <Boton variante="ghost" onClick={() => setModalDesconectar(false)}>Cancelar</Boton>
+                <Boton variante={borrarDatos ? "danger" : "primary"} onClick={desconectar}>
+                  {borrarDatos ? "Desconectar y borrar todo" : "Desconectar"}
+                </Boton>
+              </div>
+            </div>
+          </Modal>
         </div>
       ) : (
         <div className="space-y-3">

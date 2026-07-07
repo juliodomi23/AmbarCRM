@@ -6,8 +6,12 @@ import { instanciaPorDefecto } from "@/lib/channel/evolution";
 
 export const dynamic = "force-dynamic";
 
-/** Cierra la sesión del número vinculado y marca el canal como desconectado. */
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+/**
+ * Cierra la sesión del número vinculado y marca el canal como desconectado.
+ * Body opcional: { borrarDatos: true } borra contactos, chats y grupos de la org
+ * (cascada: conversaciones, mensajes, oportunidades, etiquetas de contacto).
+ */
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
 
@@ -21,8 +25,17 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
 
   const instancia = canal.instancia?.trim() || instanciaPorDefecto;
   const res = await provider.desconectar(instancia);
-  await db.canalWhatsapp.update({ where: { id: canal.id }, data: { estado: "desconectado" } });
+  await db.canalWhatsapp.update({ where: { id: canal.id }, data: { estado: "desconectado", telefono: null } });
 
-  if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 502 });
-  return NextResponse.json({ ok: true });
+  const body = await req.json().catch(() => ({}));
+  let borrados: { contactos: number; grupos: number } | undefined;
+  if (body?.borrarDatos === true) {
+    // RLS acota a la org de la sesión: solo se borra lo del tenant que desconecta.
+    const grupos = await db.grupo.deleteMany({});
+    const contactos = await db.contacto.deleteMany({});
+    borrados = { contactos: contactos.count, grupos: grupos.count };
+  }
+
+  if (!res.ok) return NextResponse.json({ ok: false, error: res.error, borrados }, { status: 502 });
+  return NextResponse.json({ ok: true, borrados });
 }
