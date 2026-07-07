@@ -177,8 +177,7 @@ export function ContactosCliente({
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
             <tr>
-              <th className="px-4 py-3">Nombre</th>
-              <th className="px-4 py-3">Teléfono</th>
+              <th className="px-4 py-3">Contacto</th>
               <th className="px-4 py-3">Empresa</th>
               <th className="px-4 py-3">Etiquetas</th>
               <th className="px-4 py-3">Responsable</th>
@@ -189,11 +188,20 @@ export function ContactosCliente({
           <tbody>
             {filtrados.map((c) => (
               <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium text-slate-800">
-                  {c.nombre}
-                  {c.optOutDifusion && <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">Sin difusión</span>}
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-navy/10 text-xs font-bold text-navy">
+                      {c.nombre.slice(0, 2).toUpperCase()}
+                    </span>
+                    <div className="min-w-0 leading-tight">
+                      <p className="truncate font-medium text-slate-800">
+                        {c.nombre}
+                        {c.optOutDifusion && <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">Sin difusión</span>}
+                      </p>
+                      <p className="truncate text-xs text-slate-400">{c.telefono ? `+${c.telefono}` : "Sin teléfono"}</p>
+                    </div>
+                  </div>
                 </td>
-                <td className="px-4 py-3 text-slate-600">{c.telefono ?? "—"}</td>
                 <td className="px-4 py-3 text-slate-600">{c.empresa ?? "—"}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-1">
@@ -225,7 +233,7 @@ export function ContactosCliente({
               </tr>
             ))}
             {filtrados.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500">Sin contactos.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">Sin contactos.</td></tr>
             )}
           </tbody>
         </table>
@@ -236,13 +244,18 @@ export function ContactosCliente({
         {filtrados.map((c) => (
           <div key={c.id} className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate font-medium text-slate-800">
-                  {c.nombre}
-                  {c.optOutDifusion && <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">Sin difusión</span>}
-                </p>
-                <p className="text-sm text-slate-600">{c.telefono ?? "Sin teléfono"}</p>
-                {c.empresa && <p className="text-xs text-slate-500">{c.empresa}</p>}
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-navy/10 text-sm font-bold text-navy">
+                  {c.nombre.slice(0, 2).toUpperCase()}
+                </span>
+                <div className="min-w-0 leading-tight">
+                  <p className="truncate font-medium text-slate-800">
+                    {c.nombre}
+                    {c.optOutDifusion && <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">Sin difusión</span>}
+                  </p>
+                  <p className="truncate text-xs text-slate-400">{c.telefono ? `+${c.telefono}` : "Sin teléfono"}</p>
+                  {c.empresa && <p className="truncate text-xs text-slate-500">{c.empresa}</p>}
+                </div>
               </div>
               <div className="shrink-0 text-right text-xs text-slate-500">
                 <p>{c.responsable ?? "Sin asignar"}</p>
