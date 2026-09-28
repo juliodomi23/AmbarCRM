@@ -6,11 +6,13 @@ import { Boton } from "@/components/ui";
 type Etiqueta = { id: string; nombre: string; color: string; total: number };
 type Plantilla = { id: string; nombre: string; contenido: string };
 type PlantillaOficial = { name: string; language: string; status?: string; category?: string; components?: any[] };
+type Canal = { id: string; nombre: string; activo: boolean };
 
 const LIMITE_DIARIO = 50;
 
-export function DifusionCliente({ etiquetas, plantillas }: { etiquetas: Etiqueta[]; plantillas: Plantilla[] }) {
+export function DifusionCliente({ etiquetas, plantillas, canales }: { etiquetas: Etiqueta[]; plantillas: Plantilla[]; canales: Canal[] }) {
   const [etiquetaId, setEtiquetaId] = useState("");
+  const [canalId, setCanalId] = useState(canales.find((c) => c.activo)?.id ?? "");
   const [plantillaId, setPlantillaId] = useState("");
   const [texto, setTexto] = useState("");
   const [oficiales, setOficiales] = useState<PlantillaOficial[]>([]);
@@ -34,11 +36,11 @@ export function DifusionCliente({ etiquetas, plantillas }: { etiquetas: Etiqueta
   }, []);
 
   useEffect(() => {
-    fetch("/api/difusion?plantillas=oficiales")
+    fetch(`/api/difusion?plantillas=oficiales${canalId ? `&canalId=${canalId}` : ""}`)
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d.plantillas)) setOficiales(d.plantillas); })
       .catch(() => {});
-  }, []);
+  }, [canalId]);
 
   function elegirPlantilla(id: string) {
     setPlantillaId(id);
@@ -74,6 +76,7 @@ export function DifusionCliente({ etiquetas, plantillas }: { etiquetas: Etiqueta
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         etiquetaId,
+        canalId,
         texto,
         ycloudTemplate: oficial ? { name: oficial.name, language: oficial.language } : undefined,
         ycloudVariables: oficial ? variablesOficiales.split(",").map((x) => x.trim()).filter(Boolean) : undefined
@@ -132,6 +135,14 @@ export function DifusionCliente({ etiquetas, plantillas }: { etiquetas: Etiqueta
       )}
 
       <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+        <label className="block space-y-1">
+          <span className="text-sm font-medium text-slate-600">WhatsApp de envío</span>
+          <select value={canalId} onChange={(e) => { setCanalId(e.target.value); setOficiales([]); setOficialId(""); }}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            {canales.filter((c) => c.activo).map((canal) => <option key={canal.id} value={canal.id}>{canal.nombre}</option>)}
+          </select>
+        </label>
+
         <label className="block space-y-1">
           <span className="text-sm font-medium text-slate-600">Etiqueta destino</span>
           <select value={etiquetaId} onChange={(e) => setEtiquetaId(e.target.value)}

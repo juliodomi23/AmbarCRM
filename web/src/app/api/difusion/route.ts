@@ -22,7 +22,10 @@ export async function GET(_req: NextRequest) {
   if ("error" in s) return s.error;
 
   if (_req.nextUrl.searchParams.get("plantillas") === "oficiales") {
-    const canal = await db.canalWhatsapp.findFirst({ where: { activo: true } });
+    const canalId = _req.nextUrl.searchParams.get("canalId");
+    const canal = canalId
+      ? await db.canalWhatsapp.findFirst({ where: { id: BigInt(canalId), activo: true } })
+      : await db.canalWhatsapp.findFirst({ where: { activo: true }, orderBy: { id: "asc" } });
     const provider = getProvider(canal?.proveedor ?? "evolution", canal?.config, canal?.instancia);
     if (!provider.listarPlantillas) return NextResponse.json({ plantillas: [], disponible: false });
     return NextResponse.json({ plantillas: await provider.listarPlantillas(), disponible: true });
@@ -41,7 +44,7 @@ export async function POST(req: NextRequest) {
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
 
-  const { etiquetaId, plantillaId, texto, ycloudTemplate, ycloudVariables } = await req.json().catch(() => ({}));
+  const { etiquetaId, plantillaId, texto, ycloudTemplate, ycloudVariables, canalId } = await req.json().catch(() => ({}));
   if (!etiquetaId) return NextResponse.json({ error: "falta etiquetaId" }, { status: 400 });
 
   const esPlantillaOficial = !!ycloudTemplate?.name;
@@ -67,7 +70,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const canal = await db.canalWhatsapp.findFirst({ where: { activo: true } });
+  const canal = canalId
+    ? await db.canalWhatsapp.findFirst({ where: { id: BigInt(canalId), activo: true } })
+    : await db.canalWhatsapp.findFirst({ where: { activo: true }, orderBy: { id: "asc" } });
   const provider = getProvider(canal?.proveedor ?? "evolution", canal?.config, canal?.instancia);
   if (esPlantillaOficial && (!provider.enviarPlantilla || provider.nombre !== "ycloud")) {
     return NextResponse.json({ error: "Las plantillas oficiales requieren un canal YCloud conectado" }, { status: 400 });
