@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton, Campo, Modal } from "@/components/ui";
 import { toast } from "@/components/Toaster";
-import { EmbeddedSignup } from "@/components/config/EmbeddedSignup";
 
 const TABS = ["Embudos", "Usuarios", "Canal WhatsApp", "Plantillas", "Automatizaciones", "Bots", "IA"] as const;
 type Tab = (typeof TABS)[number] | "Clientes";
@@ -320,15 +319,6 @@ function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
 
   return (
     <div className="max-w-2xl space-y-5">
-      <div className="rounded-xl border border-slate-200 bg-amber-50/60 p-4 text-xs text-slate-600">
-        <p className="mb-1 font-semibold text-slate-700">Cómo conectar un bot de n8n (estilo Chatwoot)</p>
-        <ol className="list-decimal space-y-1 pl-4">
-          <li>En tu workflow de n8n, agrega un nodo <b>Webhook</b> y copia su <b>Production URL</b>.</li>
-          <li>Crea aquí el bot pegando esa URL en <b>Webhook URL</b>. El CRM le mandará cada mensaje entrante (payload <code>message_created</code>).</li>
-          <li>Para responder, el bot llama a la API del CRM (formato Chatwoot) con el <b>token</b> de abajo en el header <code>api_access_token</code>.</li>
-        </ol>
-      </div>
-
       <form onSubmit={crear} className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
         <Campo label="Nombre del bot" value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} required />
         <label className="block space-y-1">
@@ -679,16 +669,12 @@ function TabUsuarios({ usuarios }: { usuarios: any[] }) {
 
 function TabCanal({ canales }: { canales: any[] }) {
   const router = useRouter();
-  // Para el modo Evolution se usa el canal de Evolution aunque no sea el primero de la lista;
-  // si no hay ninguno, el que exista (el formulario permite regresarle el proveedor).
-  const canal = canales.find((c) => c.proveedor === "evolution") ?? canales[0] ?? null;
-  // Dos formas de conectar: QR con Evolution (la usual hoy) u Oficial de Meta (Embedded Signup).
-  const [modo, setModo] = useState<"evolution" | "oficial" | "ycloud">(
-    canal?.proveedor === "ycloud" ? "ycloud" : canal?.proveedor === "cloud_api" ? "oficial" : "evolution"
-  );
+  // YCloud es el único proveedor que se muestra en la configuración comercial.
+  // Evolution permanece soportado internamente para instalaciones heredadas.
+  const canal = canales.find((c) => c.proveedor === "ycloud") ?? canales[0] ?? null;
   const [f, setF] = useState({
     nombre: canal?.nombre ?? "",
-    proveedor: canal?.proveedor ?? "evolution",
+    proveedor: "ycloud",
     telefono: canal?.telefono ?? "",
     instancia: canal?.instancia ?? "",
     estado: canal?.estado ?? "desconectado"
@@ -717,40 +703,10 @@ function TabCanal({ canales }: { canales: any[] }) {
     router.refresh();
   }
 
-  const selector = (
-    <div className="flex gap-1 rounded-xl border border-slate-200 bg-white p-1">
-      {([
-        ["evolution", "Escanear QR (Evolution)"],
-        ["oficial", "WhatsApp Oficial (Meta)"],
-        ["ycloud", "WhatsApp Oficial (YCloud)"]
-      ] as const).map(([valor, texto]) => (
-        <button
-          key={valor}
-          type="button"
-          onClick={() => setModo(valor)}
-          className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
-            modo === valor ? "bg-navy text-white" : "text-slate-600 hover:bg-slate-100"
-          }`}
-        >
-          {texto}
-        </button>
-      ))}
-    </div>
-  );
-
-  if (modo === "oficial") {
-    return (
-      <div className="max-w-lg space-y-4">
-        {selector}
-        <EmbeddedSignup />
-      </div>
-    );
-  }
-
   if (!canal) {
     return (
       <div className="max-w-lg space-y-4">
-        {selector}
+        <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700">WhatsApp Oficial (YCloud)</p>
         <p className="text-slate-400">No hay canal configurado.</p>
       </div>
     );
@@ -758,28 +714,16 @@ function TabCanal({ canales }: { canales: any[] }) {
 
   return (
     <div className="max-w-lg space-y-4">
-      {selector}
-      {canal.proveedor !== "evolution" && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-          Este canal usa un proveedor oficial y no se vincula por QR. Configura sus credenciales en variables de entorno.
-        </div>
-      )}
-      <ConexionCanal canal={canal} />
+      <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm font-medium text-slate-700">
+        WhatsApp Oficial (YCloud)
+      </div>
+      {canal.proveedor === "ycloud" && <ConexionCanal canal={canal} />}
 
       <form onSubmit={guardar} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
         <Campo label="Nombre del canal" value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} />
-        <label className="block space-y-1">
-          <span className="text-sm font-medium text-slate-600">Proveedor</span>
-          <select value={f.proveedor} onChange={(e) => setF({ ...f, proveedor: e.target.value })}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-            <option value="evolution">Evolution API</option>
-            <option value="cloud_api">WhatsApp Cloud API (Meta)</option>
-            <option value="ycloud">WhatsApp Oficial (YCloud)</option>
-          </select>
-        </label>
         <Campo label="Teléfono" value={f.telefono} onChange={(e) => setF({ ...f, telefono: e.target.value })} />
         <Campo
-          label={f.proveedor === "cloud_api" ? "Phone Number ID (Meta)" : f.proveedor === "ycloud" ? "Número de negocio YCloud (E.164)" : "Instancia (Evolution)"}
+          label="Número de negocio YCloud (E.164)"
           value={f.instancia}
           onChange={(e) => setF({ ...f, instancia: e.target.value })}
         />
