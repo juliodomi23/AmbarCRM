@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
  * Crea la instancia (si hace falta) y devuelve el QR/código para vincular el número.
  * No recibe body. Persiste el nombre de la instancia si el canal no tenía uno.
  */
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
 

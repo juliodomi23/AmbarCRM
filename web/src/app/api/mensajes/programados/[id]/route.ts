@@ -5,7 +5,8 @@ import { requireSesion } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 /** Cancela un mensaje programado (solo si sigue pendiente). */
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const s = await requireSesion();
   if ("error" in s) return s.error;
 

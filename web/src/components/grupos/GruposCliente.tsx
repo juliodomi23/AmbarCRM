@@ -171,7 +171,6 @@ export function GruposCliente({ gruposIniciales }: { gruposIniciales: GrupoItem[
                       <p className="mb-0.5 text-[11px] font-semibold text-navy">{m.remitente}</p>
                     )}
                     {m.tipo === "imagen" && m.mediaUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <button type="button" onClick={() => setImagenAbierta(m.mediaUrl)} className="block cursor-zoom-in">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={m.mediaUrl} alt="imagen" loading="lazy" className="mb-1 max-h-60 rounded-lg" />

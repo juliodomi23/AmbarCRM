@@ -5,7 +5,8 @@ import { OportunidadCliente } from "@/components/oportunidad/OportunidadCliente"
 
 export const dynamic = "force-dynamic";
 
-export default async function OportunidadPage({ params }: { params: { id: string } }) {
+export default async function OportunidadPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const op = await getOportunidad(BigInt(params.id));
   if (!op) notFound();
 

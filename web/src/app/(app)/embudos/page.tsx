@@ -6,11 +6,12 @@ import { NuevaOportunidad } from "@/components/kanban/NuevaOportunidad";
 
 export const dynamic = "force-dynamic";
 
-export default async function EmbudosPage({
-  searchParams
-}: {
-  searchParams: { embudo?: string };
-}) {
+export default async function EmbudosPage(
+  props: {
+    searchParams: Promise<{ embudo?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const embudos = serializar(await listarEmbudos());
   if (embudos.length === 0) {
     return (

@@ -5,6 +5,7 @@ import { Boton } from "@/components/ui";
 
 type Etiqueta = { id: string; nombre: string; color: string; total: number };
 type Plantilla = { id: string; nombre: string; contenido: string };
+type PlantillaOficial = { name: string; language: string; status?: string; category?: string; components?: any[] };
 
 const LIMITE_DIARIO = 50;
 
@@ -12,6 +13,9 @@ export function DifusionCliente({ etiquetas, plantillas }: { etiquetas: Etiqueta
   const [etiquetaId, setEtiquetaId] = useState("");
   const [plantillaId, setPlantillaId] = useState("");
   const [texto, setTexto] = useState("");
+  const [oficiales, setOficiales] = useState<PlantillaOficial[]>([]);
+  const [oficialId, setOficialId] = useState("");
+  const [variablesOficiales, setVariablesOficiales] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<{ ok: boolean; texto: string } | null>(null);
   const [yaEnviados, setYaEnviados] = useState<number | null>(null);
@@ -29,11 +33,27 @@ export function DifusionCliente({ etiquetas, plantillas }: { etiquetas: Etiqueta
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    fetch("/api/difusion?plantillas=oficiales")
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d.plantillas)) setOficiales(d.plantillas); })
+      .catch(() => {});
+  }, []);
+
   function elegirPlantilla(id: string) {
     setPlantillaId(id);
     const p = plantillas.find((x) => x.id === id);
     if (p) setTexto(p.contenido);
   }
+
+  function elegirOficial(name: string) {
+    setOficialId(name);
+    const p = oficiales.find((x) => `${x.name}:${x.language}` === name);
+    const body = p?.components?.find((x) => x.type === "BODY")?.text;
+    setTexto(body ?? "");
+  }
+
+  const oficial = oficiales.find((x) => `${x.name}:${x.language}` === oficialId);
 
   const destinatariosEfectivos = Math.min(etiqueta?.total ?? 0, restantes ?? LIMITE_DIARIO);
 
@@ -52,7 +72,12 @@ export function DifusionCliente({ etiquetas, plantillas }: { etiquetas: Etiqueta
     const res = await fetch("/api/difusion", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ etiquetaId, texto })
+      body: JSON.stringify({
+        etiquetaId,
+        texto,
+        ycloudTemplate: oficial ? { name: oficial.name, language: oficial.language } : undefined,
+        ycloudVariables: oficial ? variablesOficiales.split(",").map((x) => x.trim()).filter(Boolean) : undefined
+      })
     });
     const d = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -115,6 +140,31 @@ export function DifusionCliente({ etiquetas, plantillas }: { etiquetas: Etiqueta
             {etiquetas.map((e) => <option key={e.id} value={e.id}>{e.nombre} ({e.total})</option>)}
           </select>
         </label>
+
+        {oficiales.length > 0 && (
+          <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
+            <label className="block space-y-1">
+              <span className="text-sm font-medium text-blue-900">Plantilla oficial YCloud</span>
+              <select value={oficialId} onChange={(e) => elegirOficial(e.target.value)}
+                className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm">
+                <option value="">Usar mensaje libre / plantilla interna</option>
+                {oficiales.filter((p) => p.status === "APPROVED").map((p) => (
+                  <option key={`${p.name}:${p.language}`} value={`${p.name}:${p.language}`}>
+                    {p.name} · {p.language} · {p.category ?? "template"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {oficial && (
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-blue-900">Variables oficiales</span>
+                <input value={variablesOficiales} onChange={(e) => setVariablesOficiales(e.target.value)}
+                  placeholder="Ejemplo: {{nombre}}, promoción de septiembre" className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm" />
+                <span className="text-xs text-blue-700">Sepáralas por coma y usa {"{{nombre}}"} o {"{{telefono}}"} para personalizarlas.</span>
+              </label>
+            )}
+          </div>
+        )}
 
         <label className="block space-y-1">
           <span className="text-sm font-medium text-slate-600">Plantilla (opcional)</span>

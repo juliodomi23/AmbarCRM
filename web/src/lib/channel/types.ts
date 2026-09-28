@@ -73,6 +73,14 @@ export interface ResultadoEnvio {
   error?: string;
 }
 
+export interface PlantillaOficial {
+  name: string;
+  language: string;
+  status?: string;
+  category?: string;
+  components?: unknown[];
+}
+
 export type EstadoConexion = "conectado" | "conectando" | "desconectado";
 
 /** Resultado de pedir vincular el número (QR / código de emparejamiento). */
@@ -87,9 +95,15 @@ export interface DatosConexion {
 
 /** Contrato común de todos los proveedores. */
 export interface ChannelProvider {
-  readonly nombre: "evolution" | "cloud_api";
+  readonly nombre: "evolution" | "cloud_api" | "ycloud";
 
   enviarTexto(telefono: string, texto: string): Promise<ResultadoEnvio>;
+
+  /** Envía una plantilla oficial previamente aprobada por WhatsApp. */
+  enviarPlantilla?(telefono: string, plantilla: PlantillaOficial, variables?: string[]): Promise<ResultadoEnvio>;
+
+  /** Lista las plantillas oficiales disponibles en el proveedor. */
+  listarPlantillas?(): Promise<PlantillaOficial[]>;
 
   enviarMedia(
     telefono: string,

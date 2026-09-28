@@ -11,7 +11,8 @@ export const maxDuration = 300;
  * Importa contactos y chats existentes del número (desde Evolution) al CRM.
  * No recibe body. Es idempotente: reusa contacto/conversación por teléfono.
  */
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
 

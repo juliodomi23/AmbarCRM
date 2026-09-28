@@ -6,7 +6,8 @@ import { leerMedia, mimeDeArchivo } from "@/lib/storage";
 export const dynamic = "force-dynamic";
 
 /** Sirve un archivo de media del chat. Acceso por sesión (el <img> manda la cookie) o por token de bot. */
-export async function GET(req: NextRequest, { params }: { params: { archivo: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ archivo: string }> }) {
+  const params = await props.params;
   const bot = await requireBot(req);
   if (!bot) {
     const s = await requireSesion();

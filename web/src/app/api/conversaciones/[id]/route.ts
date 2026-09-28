@@ -7,7 +7,8 @@ import { enviarCsat } from "@/lib/services/csat";
 export const dynamic = "force-dynamic";
 
 /** Detalle de la conversación: contacto, responsable y oportunidades del contacto. */
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const s = await requireSesion();
   if ("error" in s) return s.error;
 
@@ -56,7 +57,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 /** Actualiza la conversación. Body: { responsableId?, estado? } */
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const s = await requireSesion();
   if ("error" in s) return s.error;
 

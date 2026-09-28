@@ -16,6 +16,8 @@
 -- (En deploy nuevo esto lo hace `prisma db push`; sáltate la PARTE A.)
 -- ─────────────────────────────────────────────────────────────────────────────
 
+ALTER TYPE proveedor_canal ADD VALUE IF NOT EXISTS 'ycloud';
+
 CREATE TABLE IF NOT EXISTS orgs (
   id         BIGSERIAL PRIMARY KEY,
   nombre     TEXT NOT NULL,

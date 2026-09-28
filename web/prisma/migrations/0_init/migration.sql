@@ -23,7 +23,7 @@ CREATE TYPE "tipo_msg" AS ENUM ('texto', 'imagen', 'audio', 'video', 'documento'
 CREATE TYPE "status_msg" AS ENUM ('pendiente', 'enviado', 'entregado', 'leido', 'fallido');
 
 -- CreateEnum
-CREATE TYPE "proveedor_canal" AS ENUM ('evolution', 'cloud_api');
+CREATE TYPE "proveedor_canal" AS ENUM ('evolution', 'cloud_api', 'ycloud');
 
 -- CreateEnum
 CREATE TYPE "estado_canal" AS ENUM ('conectado', 'desconectado');
@@ -420,4 +420,3 @@ ALTER TABLE "eventos" ADD CONSTRAINT "eventos_oportunidad_id_fkey" FOREIGN KEY (
 
 -- AddForeignKey
 ALTER TABLE "eventos" ADD CONSTRAINT "eventos_usuario_id_fkey" FOREIGN KEY ("usuario_id") REFERENCES "usuarios"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-

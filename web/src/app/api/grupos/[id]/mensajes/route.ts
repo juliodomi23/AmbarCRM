@@ -16,7 +16,8 @@ function tipoDesdeMime(mime: string): TipoMensaje {
 }
 
 /** Mensajes del grupo + lo marca como leído. */
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const s = await requireSesion();
   if ("error" in s) return s.error;
 
@@ -27,7 +28,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 /** Enviar al grupo. Body: { texto } o { mediaBase64, mediaMime, caption } */
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const s = await requireSesion();
   if ("error" in s) return s.error;
 

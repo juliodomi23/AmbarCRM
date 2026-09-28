@@ -207,7 +207,7 @@ export function PanelConversacion({
           <EtiquetaNueva />
         </div>
         {etiquetas.length === 0 && (
-          <p className="mt-1 text-[11px] text-slate-400">Crea etiquetas (ej. "Interesado", "VIP") para clasificar tus chats y filtrarlos en la bandeja.</p>
+          <p className="mt-1 text-[11px] text-slate-400">Crea etiquetas (ej. &quot;Interesado&quot;, &quot;VIP&quot;) para clasificar tus chats y filtrarlos en la bandeja.</p>
         )}
       </div>
 

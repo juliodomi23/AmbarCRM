@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "seed:admin": "node scripts/seed-admin.mjs"
@@ -17,11 +17,11 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@prisma/client": "^5.18.0",
     "bcryptjs": "^2.4.3",
-    "next": "14.2.5",
-    "next-auth": "^4.24.7",
+    "next": "^16.3.6",
+    "next-auth": "^4.24.15",
     "pg": "^8.12.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
@@ -32,6 +32,8 @@
     "@types/react-dom": "^18.3.0",
     "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.19",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^16.3.6",
     "postcss": "^8.4.39",
     "prisma": "^5.18.0",
     "tailwindcss": "^3.4.7",

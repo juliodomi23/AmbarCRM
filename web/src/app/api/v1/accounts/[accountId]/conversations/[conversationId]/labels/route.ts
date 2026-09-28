@@ -14,10 +14,8 @@ const ETIQUETAS_HANDOFF = ["escalado_humano", "bot_off"];
  * POST /api/v1/accounts/:accountId/conversations/:conversationId/labels
  * Body: { labels: string[] }
  */
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { conversationId: string } }
-) {
+export async function POST(req: NextRequest, props: { params: Promise<{ accountId: string; conversationId: string }> }) {
+  const params = await props.params;
   const bot = await requireBot(req);
   if (!bot) return NextResponse.json({ error: "token inválido" }, { status: 401 });
 

@@ -13,7 +13,7 @@ DO $$ BEGIN
   CREATE TYPE direccion_msg    AS ENUM ('entrante', 'saliente');
   CREATE TYPE tipo_msg         AS ENUM ('texto','imagen','audio','video','documento','ubicacion','plantilla');
   CREATE TYPE status_msg       AS ENUM ('pendiente','enviado','entregado','leido','fallido');
-  CREATE TYPE proveedor_canal  AS ENUM ('evolution', 'cloud_api');
+  CREATE TYPE proveedor_canal  AS ENUM ('evolution', 'cloud_api', 'ycloud');
   CREATE TYPE estado_canal     AS ENUM ('conectado', 'desconectado');
   CREATE TYPE tipo_evento      AS ENUM ('creada','etapa_cambio','ganada','perdida','nota','tarea','mensaje','asignacion');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;

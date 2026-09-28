@@ -11,10 +11,8 @@ export const dynamic = "force-dynamic";
  * POST /api/v1/accounts/:accountId/conversations/:conversationId/funnel
  * Header: api_access_token. Body: { etapa: "Contactado" }
  */
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { conversationId: string } }
-) {
+export async function POST(req: NextRequest, props: { params: Promise<{ accountId: string; conversationId: string }> }) {
+  const params = await props.params;
   const bot = await requireBot(req);
   if (!bot) return NextResponse.json({ error: "token inválido" }, { status: 401 });
 

@@ -5,7 +5,8 @@ import { requireSesion } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 /** Agrega una nota a la oportunidad. Body: { contenido } */
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const s = await requireSesion();
   if ("error" in s) return s.error;
 

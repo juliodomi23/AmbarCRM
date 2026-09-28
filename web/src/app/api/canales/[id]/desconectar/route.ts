@@ -8,10 +8,11 @@ export const dynamic = "force-dynamic";
 
 /**
  * Cierra la sesión del número vinculado y marca el canal como desconectado.
- * Body opcional: { borrarDatos: true } borra contactos, chats y grupos de la org
- * (cascada: conversaciones, mensajes, oportunidades, etiquetas de contacto).
+ * Body opcional: { borrarDatos: true } borra los chats y grupos de ESTE canal.
+ * Los contactos y oportunidades se conservan para no destruir datos de otros canales.
  */
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
 
@@ -28,12 +29,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   await db.canalWhatsapp.update({ where: { id: canal.id }, data: { estado: "desconectado", telefono: null } });
 
   const body = await req.json().catch(() => ({}));
-  let borrados: { contactos: number; grupos: number } | undefined;
+  let borrados: { conversaciones: number; grupos: number } | undefined;
   if (body?.borrarDatos === true) {
-    // RLS acota a la org de la sesión: solo se borra lo del tenant que desconecta.
-    const grupos = await db.grupo.deleteMany({});
-    const contactos = await db.contacto.deleteMany({});
-    borrados = { contactos: contactos.count, grupos: grupos.count };
+    // RLS acota a la org y el canal acota el borrado: nunca se elimina todo el CRM.
+    const conversaciones = await db.conversacion.deleteMany({ where: { canalId: canal.id } });
+    const grupos = await db.grupo.deleteMany({ where: { canalId: canal.id } });
+    borrados = { conversaciones: conversaciones.count, grupos: grupos.count };
   }
 
   if (!res.ok) return NextResponse.json({ ok: false, error: res.error, borrados }, { status: 502 });

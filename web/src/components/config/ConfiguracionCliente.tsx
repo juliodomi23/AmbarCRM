@@ -266,7 +266,7 @@ function TabIA({ ajustes }: { ajustes: any }) {
             placeholder="Ej: Clínica Serénica, Pie Feliz Podología…"
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-navy/30"
           />
-          <span className="text-xs text-slate-400">Se incluye en el contexto de la IA ("Trabajas para X").</span>
+          <span className="text-xs text-slate-400">Se incluye en el contexto de la IA (&quot;Trabajas para X&quot;).</span>
         </label>
 
         <label className="block space-y-1">
@@ -683,8 +683,8 @@ function TabCanal({ canales }: { canales: any[] }) {
   // si no hay ninguno, el que exista (el formulario permite regresarle el proveedor).
   const canal = canales.find((c) => c.proveedor === "evolution") ?? canales[0] ?? null;
   // Dos formas de conectar: QR con Evolution (la usual hoy) u Oficial de Meta (Embedded Signup).
-  const [modo, setModo] = useState<"evolution" | "oficial">(
-    canal && canal.proveedor === "cloud_api" ? "oficial" : "evolution"
+  const [modo, setModo] = useState<"evolution" | "oficial" | "ycloud">(
+    canal?.proveedor === "ycloud" ? "ycloud" : canal?.proveedor === "cloud_api" ? "oficial" : "evolution"
   );
   const [f, setF] = useState({
     nombre: canal?.nombre ?? "",
@@ -693,16 +693,36 @@ function TabCanal({ canales }: { canales: any[] }) {
     instancia: canal?.instancia ?? "",
     estado: canal?.estado ?? "desconectado"
   });
+  const [ycloudApiKey, setYcloudApiKey] = useState("");
+  const [conectandoYcloud, setConectandoYcloud] = useState(false);
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
     if (await api(`/api/canales/${canal.id}`, "PATCH", f)) router.refresh();
+  }
+  async function conectarYcloud() {
+    if (!canal) return;
+    setConectandoYcloud(true);
+    const res = await fetch(`/api/canales/${canal.id}/ycloud`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: ycloudApiKey, phoneNumber: f.instancia })
+    });
+    const data = await res.json().catch(() => ({}));
+    setConectandoYcloud(false);
+    if (!res.ok) {
+      toast(data.error ?? "No se pudo conectar YCloud", "error");
+      return;
+    }
+    toast("YCloud conectado y webhook registrado", "ok");
+    router.refresh();
   }
 
   const selector = (
     <div className="flex gap-1 rounded-xl border border-slate-200 bg-white p-1">
       {([
         ["evolution", "Escanear QR (Evolution)"],
-        ["oficial", "WhatsApp Oficial (Meta)"]
+        ["oficial", "WhatsApp Oficial (Meta)"],
+        ["ycloud", "WhatsApp Oficial (YCloud)"]
       ] as const).map(([valor, texto]) => (
         <button
           key={valor}
@@ -740,9 +760,8 @@ function TabCanal({ canales }: { canales: any[] }) {
     <div className="max-w-lg space-y-4">
       {selector}
       {canal.proveedor !== "evolution" && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-          Este canal quedó guardado con proveedor <b>Cloud API (Meta)</b>, por eso no aparece el QR.
-          Cambia el proveedor a <b>Evolution API</b> abajo y guarda para poder escanear.
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          Este canal usa un proveedor oficial y no se vincula por QR. Configura sus credenciales en variables de entorno.
         </div>
       )}
       <ConexionCanal canal={canal} />
@@ -755,14 +774,24 @@ function TabCanal({ canales }: { canales: any[] }) {
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
             <option value="evolution">Evolution API</option>
             <option value="cloud_api">WhatsApp Cloud API (Meta)</option>
+            <option value="ycloud">WhatsApp Oficial (YCloud)</option>
           </select>
         </label>
         <Campo label="Teléfono" value={f.telefono} onChange={(e) => setF({ ...f, telefono: e.target.value })} />
         <Campo
-          label={f.proveedor === "cloud_api" ? "Phone Number ID (Meta)" : "Instancia (Evolution)"}
+          label={f.proveedor === "cloud_api" ? "Phone Number ID (Meta)" : f.proveedor === "ycloud" ? "Número de negocio YCloud (E.164)" : "Instancia (Evolution)"}
           value={f.instancia}
           onChange={(e) => setF({ ...f, instancia: e.target.value })}
         />
+        {f.proveedor === "ycloud" && (
+          <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
+            <p className="text-xs text-blue-800">YCloud registrará automáticamente el webhook del CRM y sus eventos de mensajes.</p>
+            <Campo label="API key de YCloud" type="password" value={ycloudApiKey} onChange={(e) => setYcloudApiKey(e.target.value)} placeholder="Pega tu API key; se guarda en el canal" />
+            <Boton type="button" onClick={conectarYcloud} disabled={conectandoYcloud}>
+              {conectandoYcloud ? "Conectando…" : "Conectar YCloud y registrar webhook"}
+            </Boton>
+          </div>
+        )}
         <p className="text-xs text-slate-400">Las claves/tokens viven en variables de entorno, no aquí. Ver INTEGRACION-N8N.md.</p>
         <Boton type="submit">Guardar</Boton>
       </form>
@@ -858,7 +887,7 @@ function ConexionCanal({ canal }: { canal: any }) {
     setBorrarDatos(false);
     if (!res.ok) setError(d.error ?? "Error al desconectar");
     else toast(d.borrados
-      ? `Número desconectado. Se borraron ${d.borrados.contactos} contactos y ${d.borrados.grupos} grupos con sus chats.`
+      ? `Número desconectado. Se borraron ${d.borrados.conversaciones} chats y ${d.borrados.grupos} grupos de este canal. Los contactos se conservaron.`
       : "Número desconectado.");
   }
 
@@ -882,7 +911,9 @@ function ConexionCanal({ canal }: { canal: any }) {
   if (canal.proveedor !== "evolution") {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-500">
-        WhatsApp Cloud API (Meta) se vincula con token en variables de entorno, no por QR.
+        {canal.proveedor === "ycloud"
+          ? <>YCloud se configura desde su panel con este webhook: <code>/api/wa/ycloud?canal={String(canal.id)}</code>. El CRM usa el número y las variables de entorno configuradas.</>
+          : "WhatsApp Cloud API (Meta) se vincula con token en variables de entorno, no por QR."}
       </div>
     );
   }
@@ -925,14 +956,14 @@ function ConexionCanal({ canal }: { canal: any }) {
                   className="mt-0.5 h-4 w-4 accent-red-600"
                 />
                 <span>
-                  <b>Borrar también contactos y chats</b> (incluye grupos, oportunidades y mensajes).
-                  Esto no se puede deshacer.
+                  <b>Borrar también chats y grupos de este canal</b> (los contactos y oportunidades se conservan).
+                  Esta acción no se puede deshacer.
                 </span>
               </label>
               <div className="flex justify-end gap-2">
                 <Boton variante="ghost" onClick={() => setModalDesconectar(false)}>Cancelar</Boton>
                 <Boton variante={borrarDatos ? "danger" : "primary"} onClick={desconectar}>
-                  {borrarDatos ? "Desconectar y borrar todo" : "Desconectar"}
+                  {borrarDatos ? "Desconectar y borrar chats" : "Desconectar"}
                 </Boton>
               </div>
             </div>

@@ -5,7 +5,8 @@ import { requireSesion } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 /** Edita un canal de WhatsApp. Body: { nombre?, proveedor?, telefono?, instancia?, estado?, config? } */
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
 

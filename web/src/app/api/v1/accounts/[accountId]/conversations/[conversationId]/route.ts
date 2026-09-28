@@ -9,10 +9,8 @@ export const dynamic = "force-dynamic";
  * encendido/apagado (label bot_off) antes de responder.
  * GET /api/v1/accounts/:accountId/conversations/:conversationId  · Header: api_access_token
  */
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { conversationId: string } }
-) {
+export async function GET(req: NextRequest, props: { params: Promise<{ accountId: string; conversationId: string }> }) {
+  const params = await props.params;
   const bot = await requireBot(req);
   if (!bot) return NextResponse.json({ error: "token inválido" }, { status: 401 });
 

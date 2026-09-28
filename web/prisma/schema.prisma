@@ -89,6 +89,7 @@ enum StatusMsg {
 enum ProveedorCanal {
   evolution
   cloud_api
+  ycloud
 
   @@map("proveedor_canal")
 }

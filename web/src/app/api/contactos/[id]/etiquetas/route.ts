@@ -5,7 +5,8 @@ import { requireSesion } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 /** Asigna una etiqueta al contacto. Body: { etiquetaId } */
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const s = await requireSesion();
   if ("error" in s) return s.error;
 
@@ -21,7 +22,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 }
 
 /** Quita una etiqueta. Body: { etiquetaId } */
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const s = await requireSesion();
   if ("error" in s) return s.error;
 

@@ -95,8 +95,9 @@ coexistencia oficial Meta, facturación/planes, horario de atención, reportes e
 | Difusión por etiqueta + reportes CSV (oportunidades/CSAT) | ✅ |
 | Deploy Docker/EasyPanel | ✅ |
 
-> ⚠️ El código está escrito para compilar pero **no se ha verificado con `npm run build`**
-> (sin entorno Node aquí). Validar al levantar `web/` en local antes de producción.
+> ✅ Verificado el 2026-09-28: `npm run lint`, `npx prisma validate`, `npm run build` y
+> `npm audit --omit=dev` pasan correctamente. Aún se requiere prueba E2E con PostgreSQL,
+> WhatsApp/Evolution y n8n antes de una entrega productiva.
 
 ---
 

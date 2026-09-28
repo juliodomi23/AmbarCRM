@@ -1,6 +1,7 @@
 import type { ChannelProvider } from "./types";
 import { makeEvolutionProvider } from "./evolution";
 import { makeCloudApiProvider, type CloudConfig } from "./cloudapi";
+import { makeYCloudProvider, type YCloudConfig } from "./ycloud";
 
 export * from "./types";
 
@@ -10,11 +11,11 @@ export * from "./types";
  * - `evolution`: recibe la `instancia` del canal (multi-tenant); sin ella cae a EVOLUTION_INSTANCE.
  */
 export function getProvider(
-  proveedor: "evolution" | "cloud_api",
+  proveedor: "evolution" | "cloud_api" | "ycloud",
   config?: unknown,
   instancia?: string | null
 ): ChannelProvider {
-  return proveedor === "cloud_api"
-    ? makeCloudApiProvider(config as CloudConfig | undefined)
-    : makeEvolutionProvider(instancia);
+  if (proveedor === "cloud_api") return makeCloudApiProvider(config as CloudConfig | undefined);
+  if (proveedor === "ycloud") return makeYCloudProvider(config as YCloudConfig | undefined, instancia ?? undefined);
+  return makeEvolutionProvider(instancia);
 }

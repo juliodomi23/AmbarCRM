@@ -47,7 +47,7 @@ export async function guardarMediaBase64(base64: string, mime: string): Promise<
 /** Lee un archivo del directorio de uploads. `path.basename` evita path traversal. */
 export async function leerMedia(nombre: string): Promise<Buffer | null> {
   try {
-    return await fs.readFile(path.join(DIR, path.basename(nombre)));
+    return await fs.readFile(path.join(/*turbopackIgnore: true*/ DIR, path.basename(nombre)));
   } catch {
     return null;
   }

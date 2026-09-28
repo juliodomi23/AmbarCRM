@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
  * Consulta el estado real de la conexión contra el proveedor y lo sincroniza en la BD.
  * La UI lo llama en bucle mientras se muestra el QR.
  */
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const s = await requireSesion();
   if ("error" in s) return s.error;
 
