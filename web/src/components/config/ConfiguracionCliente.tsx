@@ -676,7 +676,7 @@ function TabCanal({ canales }: { canales: any[] }) {
     nombre: canal?.nombre ?? "",
     proveedor: "ycloud",
     telefono: canal?.telefono ?? "",
-    instancia: canal?.instancia ?? "",
+    instancia: canal?.proveedor === "ycloud" ? canal.instancia ?? "" : "",
     estado: canal?.estado ?? "desconectado"
   });
   const [ycloudApiKey, setYcloudApiKey] = useState("");
