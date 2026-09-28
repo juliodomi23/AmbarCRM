@@ -671,7 +671,12 @@ function TabCanal({ canales }: { canales: any[] }) {
   const router = useRouter();
   // YCloud es el único proveedor que se muestra en la configuración comercial.
   // Evolution permanece soportado internamente para instalaciones heredadas.
-  const canal = canales.find((c) => c.proveedor === "ycloud") ?? canales[0] ?? null;
+  const canalInicial = canales.find((c) => c.proveedor === "ycloud") ?? canales[0] ?? null;
+  const [canalIdSeleccionado, setCanalIdSeleccionado] = useState(String(canalInicial?.id ?? ""));
+  const canal = canales.find((c) => String(c.id) === canalIdSeleccionado) ?? canalInicial;
+  const [nuevoCanal, setNuevoCanal] = useState(false);
+  const [nuevoNombre, setNuevoNombre] = useState("");
+  const [nuevoTelefono, setNuevoTelefono] = useState("");
   const [f, setF] = useState({
     nombre: canal?.nombre ?? "",
     proveedor: "ycloud",
@@ -681,6 +686,19 @@ function TabCanal({ canales }: { canales: any[] }) {
   });
   const [ycloudApiKey, setYcloudApiKey] = useState("");
   const [conectandoYcloud, setConectandoYcloud] = useState(false);
+  useEffect(() => {
+    if (!canalIdSeleccionado && canalInicial) setCanalIdSeleccionado(String(canalInicial.id));
+  }, [canalIdSeleccionado, canalInicial]);
+  useEffect(() => {
+    setF({
+      nombre: canal?.nombre ?? "",
+      proveedor: "ycloud",
+      telefono: canal?.telefono ?? "",
+      instancia: canal?.proveedor === "ycloud" ? canal.instancia ?? "" : "",
+      estado: canal?.estado ?? "desconectado"
+    });
+    setYcloudApiKey("");
+  }, [canal?.id, canal?.nombre, canal?.telefono, canal?.instancia, canal?.proveedor, canal?.estado]);
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
     if (await api(`/api/canales/${canal.id}`, "PATCH", f)) router.refresh();
@@ -702,6 +720,32 @@ function TabCanal({ canales }: { canales: any[] }) {
     toast("YCloud conectado y webhook registrado", "ok");
     router.refresh();
   }
+  async function crearCanal(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nuevoNombre.trim()) return;
+    const res = await fetch("/api/canales", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre: nuevoNombre, telefono: nuevoTelefono })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return toast(data.error ?? "No se pudo crear el canal", "error");
+    toast("Canal creado. Ahora configura su número y API key de YCloud.", "ok");
+    setNuevoCanal(false);
+    setNuevoNombre("");
+    setNuevoTelefono("");
+    router.refresh();
+  }
+  async function eliminarCanal() {
+    if (!canal) return;
+    if (!confirm(`¿Eliminar el canal "${canal.nombre}"? Se conservarán sus conversaciones y contactos, pero el canal dejará de recibir mensajes.`)) return;
+    const res = await fetch(`/api/canales/${canal.id}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ borrarDatos: false }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return toast(data.error ?? "No se pudo eliminar el canal", "error");
+    toast("Canal eliminado; el histórico se conservó.", "ok");
+    setCanalIdSeleccionado("");
+    router.refresh();
+  }
 
   if (!canal) {
     return (
@@ -714,8 +758,27 @@ function TabCanal({ canales }: { canales: any[] }) {
 
   return (
     <div className="max-w-lg space-y-4">
-      <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm font-medium text-slate-700">
-        WhatsApp Oficial (YCloud)
+      <div className="rounded-xl border border-slate-200 bg-white p-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-slate-700">WhatsApp Oficial (YCloud)</span>
+          <Boton type="button" variante="ghost" onClick={() => setNuevoCanal((v) => !v)} className="ml-auto text-xs">+ Agregar WhatsApp</Boton>
+        </div>
+        {canales.length > 0 && (
+          <div className="mt-3 flex items-center gap-2">
+            <select value={canalIdSeleccionado} onChange={(e) => setCanalIdSeleccionado(e.target.value)} aria-label="Seleccionar canal de WhatsApp"
+              className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+              {canales.map((c) => <option key={c.id} value={c.id}>{c.nombre}{c.activo === false ? " (inactivo)" : ""}</option>)}
+            </select>
+            <button type="button" onClick={eliminarCanal} className="text-xs text-red-600 hover:underline">Eliminar canal</button>
+          </div>
+        )}
+        {nuevoCanal && (
+          <form onSubmit={crearCanal} className="mt-3 space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
+            <Campo label="Nombre del WhatsApp" value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} placeholder="Ventas, Soporte…" required />
+            <Campo label="Teléfono (opcional)" value={nuevoTelefono} onChange={(e) => setNuevoTelefono(e.target.value)} placeholder="+521…" />
+            <Boton type="submit">Crear canal</Boton>
+          </form>
+        )}
       </div>
       {canal.proveedor === "ycloud" && <ConexionCanal canal={canal} />}
 

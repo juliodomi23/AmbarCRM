@@ -10,6 +10,7 @@ export function listarConversaciones() {
     include: {
       contacto: true,
       responsable: true,
+      canal: true,
       mensajes: { orderBy: { timestamp: "desc" }, take: 1 }
     }
   });
@@ -31,6 +32,7 @@ export function buscarEnMensajes(q: string) {
     include: {
       contacto: true,
       responsable: true,
+      canal: true,
       mensajes: { orderBy: { timestamp: "desc" }, take: 1 }
     }
   });

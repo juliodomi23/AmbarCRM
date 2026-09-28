@@ -11,6 +11,7 @@ import { Boton, Lightbox, Modal } from "@/components/ui";
 type Embudo = { id: string; nombre: string; etapas: { id: string; nombre: string }[] };
 type Usuario = { id: string; nombre: string };
 type EtiquetaDef = { id: string; nombre: string; color: string };
+type Canal = { id: string; nombre: string; proveedor: string; activo: boolean };
 
 export type ConversacionItem = {
   id: string;
@@ -23,6 +24,9 @@ export type ConversacionItem = {
   preview: string;
   estado: string;
   etiquetas: string[];
+  canalId: string | null;
+  canalNombre: string;
+  canalActivo: boolean;
 };
 
 type Mensaje = {
@@ -105,6 +109,7 @@ export function ChatCliente({
   usuarios = [],
   embudos = [],
   etiquetas = [],
+  canales = [],
   usuarioId
 }: {
   conversaciones: ConversacionItem[];
@@ -112,6 +117,7 @@ export function ChatCliente({
   usuarios?: Usuario[];
   embudos?: Embudo[];
   etiquetas?: EtiquetaDef[];
+  canales?: Canal[];
   usuarioId?: string;
 }) {
   const [convs, setConvs] = useState<ConversacionItem[]>(conversaciones);
@@ -125,6 +131,7 @@ export function ChatCliente({
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroEtiqueta, setFiltroEtiqueta] = useState("");
+  const [filtroCanal, setFiltroCanal] = useState("");
   const [filtroResponsable, setFiltroResponsable] = useState<"" | "mias" | "sinasignar" | "personal">("");
   const [buscandoMensajes, setBuscandoMensajes] = useState(false);
   const [notaInterna, setNotaInterna] = useState(false);
@@ -160,6 +167,7 @@ export function ChatCliente({
       )) return false;
       if (filtroEstado && c.estado !== filtroEstado) return false;
       if (filtroEtiqueta && !c.etiquetas.includes(filtroEtiqueta)) return false;
+      if (filtroCanal && c.canalId !== filtroCanal) return false;
       if (filtroResponsable === "mias" && c.responsableId !== usuarioId) return false;
       if (filtroResponsable === "sinasignar" && c.responsableId !== null) return false;
       return true;
@@ -503,11 +511,20 @@ export function ChatCliente({
               </select>
             )}
           </div>
+          {canales.length > 0 && (
+            <select value={filtroCanal} onChange={(e) => setFiltroCanal(e.target.value)} aria-label="Filtrar por canal"
+              className="w-full rounded-lg border border-slate-300 px-2 py-1 text-xs">
+              <option value="">Todos los WhatsApp</option>
+              {canales.map((canal) => (
+                <option key={canal.id} value={canal.id}>{canal.nombre}{canal.activo ? "" : " (inactivo)"}</option>
+              ))}
+            </select>
+          )}
         </div>
         <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
           {convsFiltradas.length === 0 && (
             <p className="p-6 text-center text-sm text-slate-500">
-              {busqueda || filtroEstado || filtroEtiqueta || filtroResponsable
+              {busqueda || filtroEstado || filtroEtiqueta || filtroCanal || filtroResponsable
                 ? "Ninguna conversación coincide con los filtros."
                 : "Aún no hay conversaciones. Llegarán aquí cuando entre un mensaje de WhatsApp."}
             </p>
@@ -535,6 +552,7 @@ export function ChatCliente({
                     <span className="ml-2 shrink-0 text-[10px] text-slate-400">{hora(c.ultimoMensajeAt)}</span>
                   </span>
                   <span className="truncate block text-xs text-slate-500">{c.preview}</span>
+                  <span className="truncate block text-[10px] text-slate-400">{c.canalNombre}</span>
                 </span>
               </button>
               <div className="flex shrink-0 flex-col items-center gap-1">
