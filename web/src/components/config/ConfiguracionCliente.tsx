@@ -750,8 +750,18 @@ function TabCanal({ canales }: { canales: any[] }) {
   if (!canal) {
     return (
       <div className="max-w-lg space-y-4">
-        <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700">WhatsApp Oficial (YCloud)</p>
-        <p className="text-slate-400">No hay canal configurado.</p>
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-slate-700">WhatsApp Oficial (YCloud)</p>
+            <span className="text-xs text-amber-700">Sin canal configurado</span>
+          </div>
+          <form onSubmit={crearCanal} className="mt-4 space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
+            <p className="text-xs text-blue-800">Crea un canal para volver a conectar tu WhatsApp oficial.</p>
+            <Campo label="Nombre del WhatsApp" value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} placeholder="Ventas, Soporte…" required />
+            <Campo label="Teléfono (opcional)" value={nuevoTelefono} onChange={(e) => setNuevoTelefono(e.target.value)} placeholder="+521…" />
+            <Boton type="submit">+ Crear canal YCloud</Boton>
+          </form>
+        </div>
       </div>
     );
   }
