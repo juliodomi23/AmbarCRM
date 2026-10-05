@@ -6,13 +6,15 @@ import { Boton, Campo, Modal } from "@/components/ui";
 
 export function NuevaOportunidad({
   embudoId,
-  etapas
+  etapas,
+  abrirInicial = false
 }: {
   embudoId: string;
   etapas: { id: string; nombre: string }[];
+  abrirInicial?: boolean;
 }) {
   const router = useRouter();
-  const [abierto, setAbierto] = useState(false);
+  const [abierto, setAbierto] = useState(abrirInicial);
   const [guardando, setGuardando] = useState(false);
   const [form, setForm] = useState({
     titulo: "",

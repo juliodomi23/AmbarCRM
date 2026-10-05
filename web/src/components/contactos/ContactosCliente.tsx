@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Boton, Campo, Modal } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import { EtiquetaNueva } from "@/components/EtiquetaNueva";
@@ -33,10 +33,11 @@ export function ContactosCliente({
   usuarios: { id: string; nombre: string }[];
 }) {
   const router = useRouter();
-  const [busqueda, setBusqueda] = useState("");
+  const params = useSearchParams();
+  const [busqueda, setBusqueda] = useState(params.get("q") ?? "");
   const [filtroEtiqueta, setFiltroEtiqueta] = useState("");
   const [filtroResponsable, setFiltroResponsable] = useState("");
-  const [modal, setModal] = useState(false);
+  const [modal, setModal] = useState(params.get("nuevo") === "1");
   const [editando, setEditando] = useState<Contacto | null>(null);
   const [form, setForm] = useState(FORM_VACIO);
   const [guardando, setGuardando] = useState(false);

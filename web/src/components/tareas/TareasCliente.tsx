@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Boton, Campo, Modal } from "@/components/ui";
 import { IconoReloj } from "@/components/icons";
 
@@ -40,7 +40,8 @@ export function TareasCliente({
   usuarios: { id: string; nombre: string }[];
 }) {
   const router = useRouter();
-  const [modal, setModal] = useState(false);
+  const params = useSearchParams();
+  const [modal, setModal] = useState(params.get("nueva") === "1");
   const [form, setForm] = useState({ titulo: "", descripcion: "", venceAt: "", responsableId: "" });
   const [guardando, setGuardando] = useState(false);
 

@@ -2,8 +2,8 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { AppShell } from "@/components/AppShell";
-import { contarTareasUrgentes } from "@/lib/services/tareas";
 import { getAjustes } from "@/lib/services/config";
+import { obtenerContadoresShell } from "@/lib/services/shell";
 import { normalizarMarca } from "@/lib/brand";
 import { BrandRuntime } from "@/components/BrandRuntime";
 
@@ -12,7 +12,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!session?.user) redirect("/login");
 
   const userId = session.user.id ? BigInt(session.user.id) : null;
-  const [tareasPendientes, ajustes] = await Promise.all([contarTareasUrgentes(userId), getAjustes()]);
+  const [contadoresIniciales, ajustes] = await Promise.all([obtenerContadoresShell(userId), getAjustes()]);
   const marca = normalizarMarca(ajustes);
 
   return (
@@ -23,7 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         nombre: session.user.name ?? "Usuario",
         rol: (session.user.rol as "admin" | "agente") ?? "agente"
       }}
-      tareasPendientes={tareasPendientes}
+      contadoresIniciales={contadoresIniciales}
       marca={marca}
     >
       {children}

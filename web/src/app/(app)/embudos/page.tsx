@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function EmbudosPage(
   props: {
-    searchParams: Promise<{ embudo?: string }>;
+    searchParams: Promise<{ embudo?: string; nueva?: string }>;
   }
 ) {
   const searchParams = await props.searchParams;
@@ -74,6 +74,7 @@ export default async function EmbudosPage(
         </div>
         <NuevaOportunidad
           embudoId={embudo.id}
+          abrirInicial={searchParams.nueva === "1"}
           etapas={embudo.etapas.map((e: any) => ({ id: e.id, nombre: e.nombre }))}
         />
       </div>
