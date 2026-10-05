@@ -58,11 +58,11 @@ export function NuevaOportunidad({
           <Campo label="Nombre del contacto" value={form.nombre} onChange={(e) => set("nombre", e.target.value)} required />
           <Campo label="Teléfono (WhatsApp)" value={form.telefono} onChange={(e) => set("telefono", e.target.value)} placeholder="5219611234567" />
           <label className="block space-y-1">
-            <span className="text-sm font-medium text-slate-600">Etapa</span>
+            <span className="text-sm font-medium text-muted-foreground">Etapa</span>
             <select
               value={form.etapaId}
               onChange={(e) => set("etapaId", e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-navy/30"
+              className="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
             >
               {etapas.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
             </select>

@@ -8,7 +8,7 @@ export default function DataDeletionPage() {
     <LegalPage title="Eliminación de datos" updated="5 de octubre de 2026">
       <p>Una persona o negocio puede solicitar la eliminación de la información asociada con su uso de AmbarCRM.</p>
       <ol className="list-decimal space-y-2 pl-6">
-        <li>Escribe a <a className="text-navy underline" href={`mailto:${email}`}>{email}</a> desde el correo asociado con tu cuenta.</li>
+        <li>Escribe a <a className="text-primary underline" href={`mailto:${email}`}>{email}</a> desde el correo asociado con tu cuenta.</li>
         <li>Incluye el nombre de la organización y el número de WhatsApp relacionado.</li>
         <li>Indica si deseas eliminar una cuenta, una conversación específica o toda la información de la organización.</li>
         <li>Confirmaremos la identidad y responderemos con un folio de seguimiento.</li>

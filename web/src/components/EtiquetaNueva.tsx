@@ -38,7 +38,7 @@ export function EtiquetaNueva({ className = "" }: { className?: string }) {
     return (
       <button
         onClick={() => setAbierto(true)}
-        className={`rounded-full border border-dashed border-slate-300 px-2 py-0.5 text-[10px] font-medium text-slate-500 hover:border-navy hover:text-navy ${className}`}
+        className={`rounded-full border border-dashed border-input px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:border-primary hover:text-primary ${className}`}
       >
         + Nueva etiqueta
       </button>
@@ -56,25 +56,25 @@ export function EtiquetaNueva({ className = "" }: { className?: string }) {
           if (e.key === "Escape") setAbierto(false);
         }}
         placeholder="Nombre (ej. Cliente VIP)"
-        className="w-36 rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-navy/30"
+        className="w-36 rounded-lg border border-input px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-primary/30"
       />
       {COLORES.map((c) => (
         <button
           key={c}
           onClick={() => setColor(c)}
           aria-label={`Color ${c}`}
-          className={`h-5 w-5 rounded-full ${color === c ? "ring-2 ring-navy ring-offset-1" : ""}`}
+          className={`h-5 w-5 rounded-full ${color === c ? "ring-2 ring-primary ring-offset-1" : ""}`}
           style={{ background: c }}
         />
       ))}
       <button
         onClick={crear}
         disabled={guardando || !nombre.trim()}
-        className="rounded-lg bg-navy px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50"
+        className="rounded-lg bg-primary px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50"
       >
         {guardando ? "…" : "Crear"}
       </button>
-      <button onClick={() => setAbierto(false)} className="text-xs text-slate-400 hover:text-slate-600">
+      <button onClick={() => setAbierto(false)} className="text-xs text-muted-foreground hover:text-foreground">
         Cancelar
       </button>
     </div>

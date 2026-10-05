@@ -164,15 +164,15 @@ export function EmbeddedSignup() {
   }
 
   return (
-    <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4">
-      <p className="font-semibold text-slate-700">WhatsApp Oficial · Meta Coexistence</p>
-      <p className="text-xs text-slate-500">
+    <div className="space-y-2 rounded-xl border border-border bg-card p-4">
+      <p className="font-semibold text-foreground">WhatsApp Oficial · Meta Coexistence</p>
+      <p className="text-xs text-muted-foreground">
         Conecta directamente con Meta y conserva la app WhatsApp Business en el teléfono.
       </p>
       <button
         onClick={conectar}
         disabled={cargando}
-        className="rounded-lg bg-[#1877F2] px-4 py-2 text-sm font-medium text-white hover:bg-[#1568d8] disabled:opacity-60"
+        className="rounded-lg bg-[rgb(24,119,242)] px-4 py-2 text-sm font-medium text-white hover:bg-[rgb(21,104,216)] disabled:opacity-60"
       >
         {cargando ? "Conectando…" : "Conectar con Meta"}
       </button>

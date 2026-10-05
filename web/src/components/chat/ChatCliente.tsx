@@ -51,8 +51,8 @@ function hora(iso: string | null) {
 function ticks(status: string): { txt: string; clase: string } {
   switch (status) {
     case "leido": return { txt: "✓✓", clase: "text-sky-500" };
-    case "entregado": return { txt: "✓✓", clase: "text-slate-400" };
-    case "enviado": return { txt: "✓", clase: "text-slate-400" };
+    case "entregado": return { txt: "✓✓", clase: "text-muted-foreground" };
+    case "enviado": return { txt: "✓", clase: "text-muted-foreground" };
     case "fallido": return { txt: "!", clase: "font-bold text-red-500" };
     default: return { txt: "", clase: "" };
   }
@@ -447,9 +447,9 @@ export function ChatCliente({
     <>
     <div className="flex h-full">
       {/* Lista de conversaciones */}
-      <div className={`h-full w-full flex-col border-r border-slate-200 bg-white md:w-80 ${selId ? "hidden md:flex" : "flex"}`}>
-        <div className="shrink-0 border-b border-slate-200 px-4 py-3 space-y-2">
-          <p className="font-semibold text-navy">Conversaciones</p>
+      <div className={`h-full w-full flex-col border-r border-border bg-card md:w-80 ${selId ? "hidden md:flex" : "flex"}`}>
+        <div className="shrink-0 border-b border-border px-4 py-3 space-y-2">
+          <p className="font-semibold text-primary">Conversaciones</p>
           {/* Búsqueda */}
           <div className="flex gap-1">
             <input
@@ -457,13 +457,13 @@ export function ChatCliente({
               onChange={(e) => { setBusqueda(e.target.value); }}
               onKeyDown={(e) => { if (e.key === "Enter") buscarEnHistorial(); }}
               placeholder="Buscar…"
-              className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-navy/30"
+              className="flex-1 rounded-lg border border-input px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
             />
             <button
               onClick={buscarEnHistorial}
               disabled={buscandoMensajes || busqueda.trim().length < 2}
               title="Buscar también en el historial de mensajes (Enter)"
-              className="shrink-0 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs text-slate-500 hover:bg-slate-50 disabled:opacity-40"
+              className="shrink-0 rounded-lg border border-input px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted/60 disabled:opacity-40"
             >
               {buscandoMensajes ? "…" : "Historial"}
             </button>
@@ -471,7 +471,7 @@ export function ChatCliente({
               <button
                 onClick={() => { setBusqueda(""); refrescarLista(); }}
                 aria-label="Limpiar búsqueda"
-                className="grid shrink-0 place-items-center rounded-lg border border-slate-200 px-2 text-slate-500 hover:bg-slate-50"
+                className="grid shrink-0 place-items-center rounded-lg border border-border px-2 text-muted-foreground hover:bg-muted/60"
               ><IconoCerrar className="h-4 w-4" /></button>
             )}
           </div>
@@ -487,7 +487,7 @@ export function ChatCliente({
                 <button
                   key={v}
                   onClick={() => setFiltroResponsable(v)}
-                  className={`flex-1 rounded-lg py-1 text-[11px] font-medium ${filtroResponsable === v ? "bg-navy text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                  className={`flex-1 rounded-lg py-1 text-[11px] font-medium ${filtroResponsable === v ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-muted"}`}
                 >
                   {label}
                 </button>
@@ -497,7 +497,7 @@ export function ChatCliente({
           {/* Filtros estado / etiqueta */}
           <div className="flex gap-2">
             <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} aria-label="Filtrar por estado"
-              className="flex-1 rounded-lg border border-slate-300 px-2 py-1 text-xs">
+              className="flex-1 rounded-lg border border-input px-2 py-1 text-xs">
               <option value="">Todos</option>
               <option value="abierta">Abiertas</option>
               <option value="pendiente">Pendientes</option>
@@ -505,7 +505,7 @@ export function ChatCliente({
             </select>
             {etiquetas.length > 0 && (
               <select value={filtroEtiqueta} onChange={(e) => setFiltroEtiqueta(e.target.value)} aria-label="Filtrar por etiqueta"
-                className="flex-1 rounded-lg border border-slate-300 px-2 py-1 text-xs">
+                className="flex-1 rounded-lg border border-input px-2 py-1 text-xs">
                 <option value="">Toda etiqueta</option>
                 {etiquetas.map((et) => <option key={et.id} value={et.nombre}>{et.nombre}</option>)}
               </select>
@@ -513,7 +513,7 @@ export function ChatCliente({
           </div>
           {canales.length > 0 && (
             <select value={filtroCanal} onChange={(e) => setFiltroCanal(e.target.value)} aria-label="Filtrar por canal"
-              className="w-full rounded-lg border border-slate-300 px-2 py-1 text-xs">
+              className="w-full rounded-lg border border-input px-2 py-1 text-xs">
               <option value="">Todos los WhatsApp</option>
               {canales.map((canal) => (
                 <option key={canal.id} value={canal.id}>{canal.nombre}{canal.activo ? "" : " (inactivo)"}</option>
@@ -523,7 +523,7 @@ export function ChatCliente({
         </div>
         <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
           {convsFiltradas.length === 0 && (
-            <p className="p-6 text-center text-sm text-slate-500">
+            <p className="p-6 text-center text-sm text-muted-foreground">
               {busqueda || filtroEstado || filtroEtiqueta || filtroCanal || filtroResponsable
                 ? "Ninguna conversación coincide con los filtros."
                 : "Aún no hay conversaciones. Llegarán aquí cuando entre un mensaje de WhatsApp."}
@@ -532,27 +532,27 @@ export function ChatCliente({
           {convsFiltradas.map((c) => (
             <div
               key={c.id}
-              className={`group relative flex items-center gap-3 border-b border-slate-100 px-4 py-3 hover:bg-slate-50 ${
-                selId === c.id ? "bg-slate-100" : ""
+              className={`group relative flex items-center gap-3 border-b border-border/60 px-4 py-3 hover:bg-muted/60 ${
+                selId === c.id ? "bg-muted" : ""
               }`}
             >
               <button
                 onClick={() => abrir(c.id)}
                 className="flex min-w-0 flex-1 items-center gap-3 text-left"
               >
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-navy/10 text-sm font-bold text-navy">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">
                   {c.contacto.nombre.slice(0, 2).toUpperCase()}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center justify-between">
                     <span className="flex min-w-0 items-center gap-1">
                       {c.fijado && <span className="shrink-0 text-[10px]" title="Chat fijado">📌</span>}
-                      <span className="truncate text-sm font-medium text-slate-800">{c.contacto.nombre}</span>
+                      <span className="truncate text-sm font-medium text-foreground">{c.contacto.nombre}</span>
                     </span>
-                    <span className="ml-2 shrink-0 text-[10px] text-slate-400">{hora(c.ultimoMensajeAt)}</span>
+                    <span className="ml-2 shrink-0 text-[10px] text-muted-foreground">{hora(c.ultimoMensajeAt)}</span>
                   </span>
-                  <span className="truncate block text-xs text-slate-500">{c.preview}</span>
-                  <span className="truncate block text-[10px] text-slate-400">{c.canalNombre}</span>
+                  <span className="truncate block text-xs text-muted-foreground">{c.preview}</span>
+                  <span className="truncate block text-[10px] text-muted-foreground">{c.canalNombre}</span>
                 </span>
               </button>
               <div className="flex shrink-0 flex-col items-center gap-1">
@@ -565,7 +565,7 @@ export function ChatCliente({
                   onClick={(e) => toggleFijado(c, e)}
                   title={c.fijado ? "Quitar de fijados" : "Fijar chat arriba"}
                   aria-label={c.fijado ? "Quitar de fijados" : "Fijar chat arriba"}
-                  className={`h-5 w-5 place-items-center rounded text-slate-400 hover:bg-slate-200 hover:text-slate-600 ${c.fijado ? "grid" : "hidden group-hover:grid"}`}
+                  className={`h-5 w-5 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground ${c.fijado ? "grid" : "hidden group-hover:grid"}`}
                 >
                   <span className={`text-[11px] ${c.fijado ? "" : "opacity-60"}`}>📌</span>
                 </button>
@@ -573,7 +573,7 @@ export function ChatCliente({
                   onClick={(e) => cambiarEstadoConv(c.id, c.estado === "cerrada" ? "abierta" : "cerrada", e)}
                   title={c.estado === "cerrada" ? "Reabrir conversación" : "Cerrar conversación"}
                   aria-label={c.estado === "cerrada" ? "Reabrir conversación" : "Cerrar conversación"}
-                  className="hidden h-5 w-5 place-items-center rounded text-slate-400 hover:bg-slate-200 hover:text-slate-600 group-hover:grid"
+                  className="hidden h-5 w-5 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground group-hover:grid"
                 >
                   {c.estado === "cerrada" ? <IconoDeshacer className="h-3.5 w-3.5" /> : <IconoCheck className="h-3.5 w-3.5" />}
                 </button>
@@ -584,32 +584,32 @@ export function ChatCliente({
       </div>
 
       {/* Hilo */}
-      <div className={`flex flex-1 flex-col bg-slate-50 ${selId ? "" : "hidden md:flex"}`}>
+      <div className={`flex flex-1 flex-col bg-background ${selId ? "" : "hidden md:flex"}`}>
         {!seleccionada ? (
-          <div className="grid h-full place-items-center px-6 text-center text-sm text-slate-500">
+          <div className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground">
             Selecciona una conversación para ver el chat.
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5">
+            <div className="flex items-center gap-3 border-b border-border bg-card px-4 py-2.5">
               <button
-                className="-ml-2 grid h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 md:hidden"
+                className="-ml-2 grid h-10 w-10 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted md:hidden"
                 aria-label="Volver a la lista"
                 onClick={() => setSelId(null)}
               >
                 <IconoFlecha className="h-5 w-5" />
               </button>
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-navy/10 text-xs font-bold text-navy">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                 {seleccionada.contacto.nombre.slice(0, 2).toUpperCase()}
               </span>
               <div className="min-w-0 flex-1 leading-tight">
-                <p className="truncate text-sm font-semibold text-slate-800">{seleccionada.contacto.nombre}</p>
+                <p className="truncate text-sm font-semibold text-foreground">{seleccionada.contacto.nombre}</p>
                 {seleccionada.contacto.telefono && (
-                  <p className="truncate text-xs text-slate-400">+{seleccionada.contacto.telefono}</p>
+                  <p className="truncate text-xs text-muted-foreground">+{seleccionada.contacto.telefono}</p>
                 )}
               </div>
               <span
-                className="flex shrink-0 items-center gap-1.5 text-[11px] text-slate-500"
+                className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground"
                 title={enVivo ? "Recibiendo mensajes en tiempo real" : "Sin conexión en vivo, reintentando…"}
               >
                 <span className={`h-2 w-2 rounded-full ${enVivo ? "bg-green-500" : "animate-pulse bg-amber-500"}`} />
@@ -618,7 +618,7 @@ export function ChatCliente({
               <button
                 onClick={() => setPanelMovil(true)}
                 title="Detalles y oportunidades"
-                className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
+                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted lg:hidden"
               >
                 <IconoInfo className="h-5 w-5" />
               </button>
@@ -628,7 +628,7 @@ export function ChatCliente({
               {cargandoMsgs && mensajes.length === 0 &&
                 [0, 1, 2, 3].map((i) => (
                   <div key={i} className={`flex ${i % 2 ? "justify-end" : "justify-start"}`}>
-                    <div className="h-10 w-40 animate-pulse rounded-2xl bg-slate-200" />
+                    <div className="h-10 w-40 animate-pulse rounded-2xl bg-muted" />
                   </div>
                 ))}
               {mensajes.map((m) => (
@@ -636,10 +636,10 @@ export function ChatCliente({
                   <div
                     className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
                       m.interna
-                        ? "border border-amber-200 bg-amber-50 text-slate-700"
+                        ? "border border-amber-200 bg-amber-50 text-foreground"
                         : m.direccion === "saliente"
-                        ? "bg-green-100 text-slate-800"
-                        : "bg-white text-slate-800"
+                        ? "bg-green-100 text-foreground"
+                        : "bg-card text-foreground"
                     }`}
                   >
                     {m.interna && (
@@ -656,13 +656,13 @@ export function ChatCliente({
                       <audio controls src={m.mediaUrl} className="mb-1 h-10 w-56 max-w-full" />
                     ) : (
                       m.tipo !== "texto" && m.mediaUrl && (
-                        <a href={m.mediaUrl} target="_blank" className="mb-1 flex items-center gap-1 text-xs text-navy underline">
+                        <a href={m.mediaUrl} target="_blank" className="mb-1 flex items-center gap-1 text-xs text-primary underline">
                           <IconoAdjuntar className="h-3.5 w-3.5" /> {m.tipo}
                         </a>
                       )
                     )}
                     {m.contenido && <p className="whitespace-pre-wrap">{m.contenido}</p>}
-                    <p className="mt-0.5 text-right text-[10px] text-slate-400">
+                    <p className="mt-0.5 text-right text-[10px] text-muted-foreground">
                       {hora(m.timestamp)}
                       {m.direccion === "saliente" && !m.interna && ticks(m.status).txt && (
                         <span className={`ml-1 ${ticks(m.status).clase}`}>{ticks(m.status).txt}</span>
@@ -688,15 +688,15 @@ export function ChatCliente({
               const matches = plantillas.filter((p) => p.nombre.toLowerCase().includes(q));
               if (matches.length === 0) return null;
               return (
-                <div className="max-h-48 overflow-y-auto border-t border-slate-200 bg-white">
+                <div className="max-h-48 overflow-y-auto border-t border-border bg-card">
                   {matches.map((p) => (
                     <button
                       key={p.id}
                       onClick={() => setTexto(aplicarVariables(p.contenido, seleccionada.contacto))}
-                      className="block w-full border-b border-slate-100 px-3 py-2 text-left hover:bg-slate-50"
+                      className="block w-full border-b border-border/60 px-3 py-2 text-left hover:bg-muted/60"
                     >
-                      <span className="text-sm font-medium text-slate-700">/{p.nombre}</span>
-                      <span className="block truncate text-xs text-slate-400">{p.contenido}</span>
+                      <span className="text-sm font-medium text-foreground">/{p.nombre}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{p.contenido}</span>
                     </button>
                   ))}
                 </div>
@@ -704,12 +704,12 @@ export function ChatCliente({
             })()}
 
             {plantillas.length > 0 && !texto.startsWith("/") && (
-              <div className="scroll-thin flex gap-2 overflow-x-auto border-t border-slate-200 bg-white px-3 py-2">
+              <div className="scroll-thin flex gap-2 overflow-x-auto border-t border-border bg-card px-3 py-2">
                 {plantillas.map((p) => (
                   <button
                     key={p.id}
                     onClick={() => setTexto(aplicarVariables(p.contenido, seleccionada.contacto))}
-                    className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600 hover:bg-slate-200"
+                    className="shrink-0 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground hover:bg-muted"
                   >
                     {p.nombre}
                   </button>
@@ -717,7 +717,7 @@ export function ChatCliente({
               </div>
             )}
 
-            <form onSubmit={enviar} className="flex items-center gap-2 border-t border-slate-200 bg-white p-3">
+            <form onSubmit={enviar} className="flex items-center gap-2 border-t border-border bg-card p-3">
               <input
                 ref={archivoRef}
                 type="file"
@@ -730,7 +730,7 @@ export function ChatCliente({
                 title="Adjuntar archivo"
                 disabled={enviando || notaInterna}
                 onClick={() => archivoRef.current?.click()}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-50"
               >
                 <IconoAdjuntar />
               </button>
@@ -739,7 +739,7 @@ export function ChatCliente({
                 title="Sugerir respuesta con IA"
                 disabled={sugiriendo || enviando}
                 onClick={sugerir}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-50"
               >
                 {sugiriendo ? <span className="text-xs">…</span> : <IconoIA />}
               </button>
@@ -748,7 +748,7 @@ export function ChatCliente({
                 title={grabando ? "Detener y enviar nota de voz" : "Grabar nota de voz"}
                 disabled={enviando || notaInterna}
                 onClick={grabarVoz}
-                className={`grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-slate-100 disabled:opacity-50 ${grabando ? "animate-pulse bg-red-100 text-red-600" : "text-slate-500"}`}
+                className={`grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-muted disabled:opacity-50 ${grabando ? "animate-pulse bg-red-100 text-red-600" : "text-muted-foreground"}`}
               >
                 {grabando ? <span className="h-3 w-3 rounded-full bg-red-600" /> : <IconoMicro />}
               </button>
@@ -756,7 +756,7 @@ export function ChatCliente({
                 type="button"
                 title="Nota interna (no se envía a WhatsApp)"
                 onClick={() => setNotaInterna((v) => !v)}
-                className={`grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-slate-100 ${notaInterna ? "bg-amber-100 text-amber-600" : "text-slate-500"}`}
+                className={`grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-muted ${notaInterna ? "bg-amber-100 text-amber-600" : "text-muted-foreground"}`}
               >
                 <IconoNota />
               </button>
@@ -765,7 +765,7 @@ export function ChatCliente({
                 title="Programar envío (escribe el mensaje primero)"
                 disabled={enviando || notaInterna || !texto.trim()}
                 onClick={abrirProgramar}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-50"
               >
                 <IconoReloj />
               </button>
@@ -773,12 +773,12 @@ export function ChatCliente({
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
                 placeholder={notaInterna ? "Nota interna (solo para el equipo)…" : "Escribe un mensaje…"}
-                className={`flex-1 rounded-full border px-4 py-2 text-sm outline-none focus:ring-2 ${notaInterna ? "border-amber-300 bg-amber-50 focus:ring-amber-300/40" : "border-slate-300 focus:ring-navy/30"}`}
+                className={`flex-1 rounded-full border px-4 py-2 text-sm outline-none focus:ring-2 ${notaInterna ? "border-amber-300 bg-amber-50 focus:ring-amber-300/40" : "border-input focus:ring-primary/30"}`}
               />
               <button
                 type="submit"
                 disabled={enviando || !texto.trim()}
-                className="grid h-10 w-10 place-items-center rounded-full bg-navy text-white disabled:opacity-50"
+                className="grid h-10 w-10 place-items-center rounded-full bg-primary text-white disabled:opacity-50"
               >
                 <IconoEnviar className="h-5 w-5" />
               </button>
@@ -789,7 +789,7 @@ export function ChatCliente({
 
       {/* Panel de detalles (desktop): contacto, responsable, estado y oportunidades */}
       {seleccionada && (
-        <div className="hidden w-72 shrink-0 overflow-y-auto border-l border-slate-200 bg-white lg:block">
+        <div className="hidden w-72 shrink-0 overflow-y-auto border-l border-border bg-card lg:block">
           <PanelConversacion
             conversacionId={seleccionada.id}
             usuarios={usuarios}
@@ -812,17 +812,17 @@ export function ChatCliente({
     {/* Programar envío */}
     <Modal abierto={programando} onClose={() => setProgramando(false)} titulo="Programar mensaje">
       <div className="space-y-3">
-        <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600 whitespace-pre-wrap">{texto}</p>
+        <p className="rounded-lg bg-background px-3 py-2 text-sm text-muted-foreground whitespace-pre-wrap">{texto}</p>
         <label className="block space-y-1">
-          <span className="text-sm font-medium text-slate-600">Enviar el</span>
+          <span className="text-sm font-medium text-muted-foreground">Enviar el</span>
           <input
             type="datetime-local"
             value={fechaProgramada}
             onChange={(e) => setFechaProgramada(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-navy/30"
+            className="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
           />
         </label>
-        <p className="text-xs text-slate-400">Se envía automáticamente. Puedes cancelarlo desde el panel de detalles del chat.</p>
+        <p className="text-xs text-muted-foreground">Se envía automáticamente. Puedes cancelarlo desde el panel de detalles del chat.</p>
         <div className="flex justify-end gap-2 pt-1">
           <Boton variante="ghost" onClick={() => setProgramando(false)}>Cancelar</Boton>
           <Boton onClick={programar} disabled={!fechaProgramada}>Programar</Boton>
@@ -833,10 +833,10 @@ export function ChatCliente({
     {/* Panel de detalles (móvil): overlay deslizable */}
     {seleccionada && panelMovil && (
       <div className="fixed inset-0 z-40 lg:hidden">
-        <div className="absolute inset-0 bg-black/40" onClick={() => setPanelMovil(false)} />
-        <div className="absolute right-0 top-0 h-full w-80 max-w-[85%] overflow-y-auto bg-white shadow-xl">
+        <div className="absolute inset-0 bg-foreground/40" onClick={() => setPanelMovil(false)} />
+        <div className="absolute right-0 top-0 h-full w-80 max-w-[85%] overflow-y-auto bg-card shadow-xl">
           <div className="flex justify-end p-2">
-            <button onClick={() => setPanelMovil(false)} aria-label="Cerrar panel" className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 hover:bg-slate-100"><IconoCerrar className="h-5 w-5" /></button>
+            <button onClick={() => setPanelMovil(false)} aria-label="Cerrar panel" className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-muted"><IconoCerrar className="h-5 w-5" /></button>
           </div>
           <PanelConversacion
             conversacionId={seleccionada.id}

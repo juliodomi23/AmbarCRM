@@ -29,7 +29,7 @@ export function Toaster() {
         <div
           key={t.id}
           role="status"
-          className={`max-w-xs rounded-lg px-4 py-2.5 text-sm text-white shadow-lg ${t.tipo === "error" ? "bg-red-600" : "bg-navy"}`}
+          className={`max-w-xs rounded-lg px-4 py-2.5 text-sm text-white shadow-lg ${t.tipo === "error" ? "bg-red-600" : "bg-primary"}`}
         >
           {t.msg}
         </div>

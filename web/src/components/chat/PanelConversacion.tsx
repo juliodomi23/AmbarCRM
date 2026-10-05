@@ -21,7 +21,7 @@ type Detalle = {
 };
 type EtiquetaDef = { id: string; nombre: string; color: string };
 
-const SELECT = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-navy/30";
+const SELECT = "w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30";
 
 export function PanelConversacion({
   conversacionId,
@@ -139,7 +139,7 @@ export function PanelConversacion({
     onRenombrar?.(nombre);
   }
 
-  if (!d) return <div className="p-4 text-sm text-slate-400">Cargando…</div>;
+  if (!d) return <div className="p-4 text-sm text-muted-foreground">Cargando…</div>;
 
   return (
     <div className="space-y-5 p-4">
@@ -154,23 +154,23 @@ export function PanelConversacion({
               if (e.key === "Enter") guardarNombre();
               if (e.key === "Escape") setEditandoNombre(false);
             }}
-            className="w-full rounded-lg border border-navy/40 px-2 py-1 text-base font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-navy/30"
+            className="w-full rounded-lg border border-primary/40 px-2 py-1 text-base font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/30"
           />
         ) : (
           <button
             onClick={() => { setNombreTmp(d.contacto.nombre); setEditandoNombre(true); }}
             title="Editar nombre"
-            className="group flex items-center gap-1 text-left text-base font-semibold text-slate-800"
+            className="group flex items-center gap-1 text-left text-base font-semibold text-foreground"
           >
             {d.contacto.nombre}
-            <IconoEditar className="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-slate-600" />
+            <IconoEditar className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />
           </button>
         )}
-        <p className="text-xs text-slate-400">{d.contacto.telefono ? `+${d.contacto.telefono}` : "sin teléfono"}</p>
+        <p className="text-xs text-muted-foreground">{d.contacto.telefono ? `+${d.contacto.telefono}` : "sin teléfono"}</p>
       </div>
 
-      <details className="rounded-lg border border-slate-200">
-        <summary className="cursor-pointer px-3 py-2 text-xs font-medium uppercase text-slate-400">Datos del contacto</summary>
+      <details className="rounded-lg border border-border">
+        <summary className="cursor-pointer px-3 py-2 text-xs font-medium uppercase text-muted-foreground">Datos del contacto</summary>
         <div className="space-y-2 px-3 pb-3">
           <input value={cForm.telefono} onChange={(e) => setCForm({ ...cForm, telefono: e.target.value })} placeholder="Teléfono" className={SELECT} />
           <input value={cForm.email} onChange={(e) => setCForm({ ...cForm, email: e.target.value })} placeholder="Email" className={SELECT} />
@@ -181,7 +181,7 @@ export function PanelConversacion({
       </details>
 
       <label className="block space-y-1">
-        <span className="text-xs font-medium uppercase text-slate-400">Responsable</span>
+        <span className="text-xs font-medium uppercase text-muted-foreground">Responsable</span>
         <select value={d.responsableId ?? ""} onChange={(e) => patch({ responsableId: e.target.value || null })} className={SELECT}>
           <option value="">Sin asignar</option>
           {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
@@ -189,7 +189,7 @@ export function PanelConversacion({
       </label>
 
       <div>
-        <span className="mb-1 block text-xs font-medium uppercase text-slate-400">Etiquetas</span>
+        <span className="mb-1 block text-xs font-medium uppercase text-muted-foreground">Etiquetas</span>
         <div className="flex flex-wrap items-center gap-1">
           {etiquetas.map((et) => {
             const activa = d.etiquetas.includes(et.nombre);
@@ -198,7 +198,7 @@ export function PanelConversacion({
                 key={et.id}
                 onClick={() => patch({ etiquetas: activa ? d.etiquetas.filter((x) => x !== et.nombre) : [...d.etiquetas, et.nombre] })}
                 className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                style={activa ? { background: et.color, color: "white" } : { background: "#F1F5F9", color: "#94A3B8" }}
+                style={activa ? { background: et.color, color: "white" } : { background: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }}
               >
                 {et.nombre}
               </button>
@@ -207,23 +207,23 @@ export function PanelConversacion({
           <EtiquetaNueva />
         </div>
         {etiquetas.length === 0 && (
-          <p className="mt-1 text-[11px] text-slate-400">Crea etiquetas (ej. &quot;Interesado&quot;, &quot;VIP&quot;) para clasificar tus chats y filtrarlos en la bandeja.</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Crea etiquetas (ej. &quot;Interesado&quot;, &quot;VIP&quot;) para clasificar tus chats y filtrarlos en la bandeja.</p>
         )}
       </div>
 
-      <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
-        <span className="flex items-center gap-1.5 text-sm text-slate-700"><IconoBot className="h-4 w-4" /> Bot {d.botActivo ? "activo" : "en pausa"}</span>
+      <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+        <span className="flex items-center gap-1.5 text-sm text-foreground"><IconoBot className="h-4 w-4" /> Bot {d.botActivo ? "activo" : "en pausa"}</span>
         <button
           onClick={() => patch({ botActivo: !d.botActivo })}
-          className={`relative h-5 w-9 rounded-full transition ${d.botActivo ? "bg-green-500" : "bg-slate-300"}`}
+          className={`relative h-5 w-9 rounded-full transition ${d.botActivo ? "bg-green-500" : "bg-muted-foreground/40"}`}
           title={d.botActivo ? "Pausar bot (lo atiendes tu)" : "Reactivar bot"}
         >
-          <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${d.botActivo ? "left-[18px]" : "left-0.5"}`} />
+          <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-card transition-all ${d.botActivo ? "left-[18px]" : "left-0.5"}`} />
         </button>
       </div>
 
-      <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
-        <span className="text-sm text-slate-700">Contacto personal</span>
+      <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+        <span className="text-sm text-foreground">Contacto personal</span>
         <button
           onClick={async () => {
             const nuevo = !d.contacto.esPersonal;
@@ -245,40 +245,40 @@ export function PanelConversacion({
             await cargar();
             onPersonal?.(nuevo);
           }}
-          className={`relative h-5 w-9 rounded-full transition ${d.contacto.esPersonal ? "bg-green-500" : "bg-slate-300"}`}
+          className={`relative h-5 w-9 rounded-full transition ${d.contacto.esPersonal ? "bg-green-500" : "bg-muted-foreground/40"}`}
           title={d.contacto.esPersonal ? "Quitar de Personal (vuelve a la bandeja principal)" : "Marcar como Personal (familia/amigos — el bot no responde)"}
         >
-          <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${d.contacto.esPersonal ? "left-[18px]" : "left-0.5"}`} />
+          <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-card transition-all ${d.contacto.esPersonal ? "left-[18px]" : "left-0.5"}`} />
         </button>
       </div>
       {d.contacto.esPersonal && (
-        <p className="text-[11px] text-slate-400">
+        <p className="text-[11px] text-muted-foreground">
           Marcado como Personal: el bot no responde, los archivos no se guardan y aparece en la bandeja Personal.
         </p>
       )}
 
       <div className="flex items-center justify-between">
-        <span className="text-xs text-slate-500">Estado: <b className="capitalize text-slate-700">{d.estado}</b></span>
+        <span className="text-xs text-muted-foreground">Estado: <b className="capitalize text-foreground">{d.estado}</b></span>
         {d.estado !== "cerrada" ? (
           <button onClick={() => patch({ estado: "cerrada" })} className="text-xs font-medium text-red-600 hover:underline">Cerrar chat</button>
         ) : (
-          <button onClick={() => patch({ estado: "abierta" })} className="text-xs font-medium text-navy hover:underline">Reabrir</button>
+          <button onClick={() => patch({ estado: "abierta" })} className="text-xs font-medium text-primary hover:underline">Reabrir</button>
         )}
       </div>
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-medium uppercase text-slate-400">Oportunidades</span>
-          <button onClick={() => setModal(true)} className="text-xs font-medium text-navy hover:underline">+ Nueva</button>
+          <span className="text-xs font-medium uppercase text-muted-foreground">Oportunidades</span>
+          <button onClick={() => setModal(true)} className="text-xs font-medium text-primary hover:underline">+ Nueva</button>
         </div>
         <div className="space-y-2">
-          {d.oportunidades.length === 0 && <p className="text-xs text-slate-400">Aún no está en ningún embudo.</p>}
+          {d.oportunidades.length === 0 && <p className="text-xs text-muted-foreground">Aún no está en ningún embudo.</p>}
           {d.oportunidades.map((o) => {
             const etapasEmbudo = embudos.find((e) => e.id === o.embudoId)?.etapas ?? [];
             return (
-              <div key={o.id} className="space-y-2 rounded-lg border border-slate-200 p-2">
+              <div key={o.id} className="space-y-2 rounded-lg border border-border p-2">
                 <div className="flex items-center justify-between gap-2">
-                  <a href={`/oportunidades/${o.id}`} className="truncate text-sm font-medium text-navy hover:underline">{o.titulo}</a>
+                  <a href={`/oportunidades/${o.id}`} className="truncate text-sm font-medium text-primary hover:underline">{o.titulo}</a>
                   {o.estado !== "abierto" && (
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${o.estado === "ganado" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                       {o.estado}
@@ -287,20 +287,20 @@ export function PanelConversacion({
                 </div>
                 <div className="flex gap-2">
                   <label className="flex-1 space-y-0.5">
-                    <span className="text-[10px] text-slate-400">Valor (MXN)</span>
+                    <span className="text-[10px] text-muted-foreground">Valor (MXN)</span>
                     <input
                       type="number"
                       defaultValue={o.valor}
                       onBlur={(e) => { if (Number(e.target.value) !== o.valor) actualizarOportunidad(o.id, { valor: e.target.value }); }}
-                      className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-navy/30"
+                      className="w-full rounded-lg border border-input px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/30"
                     />
                   </label>
                   <label className="flex-1 space-y-0.5">
-                    <span className="text-[10px] text-slate-400">Etapa</span>
+                    <span className="text-[10px] text-muted-foreground">Etapa</span>
                     <select
                       value={o.etapaId}
                       onChange={(e) => actualizarOportunidad(o.id, { etapaId: e.target.value })}
-                      className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                      className="w-full rounded-lg border border-input px-2 py-1 text-sm"
                     >
                       {etapasEmbudo.map((et) => <option key={et.id} value={et.id}>{et.nombre}</option>)}
                     </select>
@@ -314,14 +314,14 @@ export function PanelConversacion({
 
       {programados.length > 0 && (
         <div>
-          <span className="mb-1 block text-xs font-medium uppercase text-slate-400">Mensajes programados</span>
+          <span className="mb-1 block text-xs font-medium uppercase text-muted-foreground">Mensajes programados</span>
           <div className="space-y-1.5">
             {programados.map((p) => (
-              <div key={p.id} className="flex items-start gap-2 rounded-lg border border-slate-200 px-2.5 py-2">
-                <IconoReloj className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+              <div key={p.id} className="flex items-start gap-2 rounded-lg border border-border px-2.5 py-2">
+                <IconoReloj className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs text-slate-600">{p.contenido}</p>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="truncate text-xs text-muted-foreground">{p.contenido}</p>
+                  <p className="text-[10px] text-muted-foreground">
                     {new Date(p.enviarAt).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
@@ -329,7 +329,7 @@ export function PanelConversacion({
                   onClick={() => cancelarProgramado(p.id)}
                   title="Cancelar envío"
                   aria-label="Cancelar envío programado"
-                  className="grid h-5 w-5 shrink-0 place-items-center rounded text-slate-400 hover:bg-red-50 hover:text-red-600"
+                  className="grid h-5 w-5 shrink-0 place-items-center rounded text-muted-foreground hover:bg-red-50 hover:text-red-600"
                 >
                   <IconoCerrar className="h-3.5 w-3.5" />
                 </button>
@@ -340,11 +340,11 @@ export function PanelConversacion({
       )}
 
       <div>
-        <span className="mb-1 block text-xs font-medium uppercase text-slate-400">Recordatorio de seguimiento</span>
+        <span className="mb-1 block text-xs font-medium uppercase text-muted-foreground">Recordatorio de seguimiento</span>
         <div className="flex gap-2">
-          <button onClick={() => crearRecordatorio(1)} className="flex-1 rounded-lg border border-slate-200 py-1.5 text-xs text-slate-600 hover:bg-slate-50">Mañana</button>
-          <button onClick={() => crearRecordatorio(2)} className="flex-1 rounded-lg border border-slate-200 py-1.5 text-xs text-slate-600 hover:bg-slate-50">2 días</button>
-          <button onClick={() => crearRecordatorio(7)} className="flex-1 rounded-lg border border-slate-200 py-1.5 text-xs text-slate-600 hover:bg-slate-50">1 semana</button>
+          <button onClick={() => crearRecordatorio(1)} className="flex-1 rounded-lg border border-border py-1.5 text-xs text-muted-foreground hover:bg-muted/60">Mañana</button>
+          <button onClick={() => crearRecordatorio(2)} className="flex-1 rounded-lg border border-border py-1.5 text-xs text-muted-foreground hover:bg-muted/60">2 días</button>
+          <button onClick={() => crearRecordatorio(7)} className="flex-1 rounded-lg border border-border py-1.5 text-xs text-muted-foreground hover:bg-muted/60">1 semana</button>
         </div>
         {recordatorioOk && <p className="mt-1 flex items-center gap-1 text-xs text-green-600"><IconoCheck className="h-3.5 w-3.5" /> Recordatorio creado en Tareas</p>}
       </div>
@@ -410,13 +410,13 @@ function NuevaOportModal({
         <Campo label="Título" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder={tituloSugerido} />
         <Campo label="Valor (MXN)" type="number" value={valor} onChange={(e) => setValor(e.target.value)} />
         <label className="block space-y-1">
-          <span className="text-sm font-medium text-slate-600">Embudo</span>
+          <span className="text-sm font-medium text-muted-foreground">Embudo</span>
           <select value={embudoId} onChange={(e) => cambiarEmbudo(e.target.value)} className={SELECT}>
             {embudos.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
           </select>
         </label>
         <label className="block space-y-1">
-          <span className="text-sm font-medium text-slate-600">Etapa</span>
+          <span className="text-sm font-medium text-muted-foreground">Etapa</span>
           <select value={etapaId} onChange={(e) => setEtapaId(e.target.value)} className={SELECT}>
             {(embudo?.etapas ?? []).map((et) => <option key={et.id} value={et.id}>{et.nombre}</option>)}
           </select>

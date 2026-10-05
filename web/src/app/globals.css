@@ -2,46 +2,105 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body {
-  height: 100%;
+@layer base {
+  :root {
+    --background: 345 30% 98%;
+    --surface: 345 22% 96%;
+    --foreground: 224 30% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 30% 13%;
+    --muted: 345 18% 95%;
+    --muted-foreground: 220 13% 42%;
+    --border: 345 18% 88%;
+    --input: 345 18% 84%;
+    --primary: 344 93% 44%;
+    --primary-foreground: 0 0% 100%;
+    --brand-from: 344 93% 44%;
+    --brand-to: 327 82% 52%;
+    --accent: 327 76% 94%;
+    --accent-foreground: 327 72% 30%;
+    --success: 158 72% 30%;
+    --warning: 32 90% 38%;
+    --info: 204 86% 38%;
+    --destructive: 0 72% 48%;
+    --shadow-color: 344 48% 26%;
+    --shadow-soft: 0 1px 1px hsl(var(--shadow-color) / 0.05), 0 2px 8px hsl(var(--shadow-color) / 0.07);
+    --shadow-lift: 0 2px 4px hsl(var(--shadow-color) / 0.06), 0 14px 30px -10px hsl(var(--shadow-color) / 0.20);
+    --shadow-pop: 0 1px 2px hsl(var(--shadow-color) / 0.06), 0 24px 48px -16px hsl(var(--shadow-color) / 0.28);
+    --shadow-glow: 0 10px 34px -12px hsl(var(--primary) / 0.5);
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 340 25% 9%;
+    --surface: 340 20% 15%;
+    --foreground: 345 22% 95%;
+    --card: 340 22% 12.5%;
+    --card-foreground: 345 22% 95%;
+    --muted: 340 18% 18%;
+    --muted-foreground: 342 12% 68%;
+    --border: 340 15% 26%;
+    --input: 340 15% 28%;
+    --primary: 344 88% 61%;
+    --primary-foreground: 344 45% 10%;
+    --brand-from: 344 88% 59%;
+    --brand-to: 327 78% 62%;
+    --accent: 327 32% 22%;
+    --accent-foreground: 327 75% 88%;
+    --success: 158 62% 46%;
+    --warning: 36 88% 58%;
+    --info: 204 84% 62%;
+    --destructive: 0 72% 62%;
+    --shadow-color: 340 75% 3%;
+    --shadow-soft: 0 1px 1px hsl(var(--shadow-color) / 0.4), 0 2px 10px hsl(var(--shadow-color) / 0.45);
+    --shadow-lift: 0 2px 6px hsl(var(--shadow-color) / 0.45), 0 16px 34px -12px hsl(var(--shadow-color) / 0.6);
+    --shadow-pop: 0 2px 8px hsl(var(--shadow-color) / 0.5), 0 28px 56px -18px hsl(var(--shadow-color) / 0.7);
+    --shadow-glow: 0 10px 34px -12px hsl(var(--primary) / 0.42);
+  }
+
+  * { @apply border-border; }
+  html { height: 100%; -webkit-tap-highlight-color: transparent; }
+  body { @apply min-h-full bg-background font-sans text-foreground antialiased; }
+  h1, h2, h3, h4, h5, h6 { @apply font-display; letter-spacing: -0.018em; }
+  button, a, [role="button"] { touch-action: manipulation; }
+  ::selection { background: hsl(var(--primary) / 0.2); }
+  :focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
 }
 
-html {
-  scroll-behavior: smooth;
+@layer utilities {
+  .tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+  .surface { @apply rounded-xl border border-border/70 bg-card; box-shadow: var(--shadow-soft); }
+  .surface-lift { box-shadow: var(--shadow-lift); }
+  .surface-pop { box-shadow: var(--shadow-pop); }
+  .bg-mesh {
+    background-image:
+      radial-gradient(60% 55% at 12% 8%, hsl(var(--brand-from) / 0.14), transparent 60%),
+      radial-gradient(50% 50% at 92% 22%, hsl(var(--brand-to) / 0.12), transparent 62%),
+      radial-gradient(45% 60% at 60% 100%, hsl(var(--primary) / 0.08), transparent 65%);
+  }
+  .skeleton { @apply relative overflow-hidden rounded-md bg-muted; }
+  .skeleton::after {
+    content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, hsl(var(--foreground) / 0.07), transparent);
+    animation: shimmer 1.6s infinite;
+  }
+  .stagger > * { animation: fade-up 0.34s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .stagger > *:nth-child(2) { animation-delay: .05s; }
+  .stagger > *:nth-child(3) { animation-delay: .1s; }
+  .stagger > *:nth-child(4) { animation-delay: .15s; }
+  .stagger > *:nth-child(5) { animation-delay: .2s; }
 }
 
-/* La fuente (Inter) la aplica next/font en el layout raíz. */
-body {
-  @apply bg-slate-50 text-slate-800 antialiased;
-}
+@keyframes fade-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pop { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes shimmer { to { transform: translateX(100%); } }
+.animate-fade-up { animation: fade-up .3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-pop { animation: pop .18s cubic-bezier(0.22, 1, 0.36, 1); }
 
-/* Elimina delay de 300ms en mobile */
-button, a, [role="button"] {
-  touch-action: manipulation;
-}
-
-/* Foco visible para navegación por teclado (accesibilidad). */
-:focus-visible {
-  @apply outline-none ring-2 ring-navy/40 ring-offset-1;
-}
+* { scrollbar-width: thin; scrollbar-color: hsl(var(--muted-foreground) / .3) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / .24); border: 2px solid transparent; border-radius: 999px; background-clip: content-box; }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
-
-/* Scrollbar discreto en TODA la app (la default del navegador se ve tosca).
-   El thumb solo aparece al pasar el mouse por el contenedor. */
-* {
-  scrollbar-width: thin;              /* Firefox */
-  scrollbar-color: transparent transparent;
-}
-*:hover {
-  scrollbar-color: theme("colors.slate.300") transparent;
-}
-*::-webkit-scrollbar { width: 6px; height: 6px; }
-*::-webkit-scrollbar-thumb { background: transparent; border-radius: 9999px; }
-*:hover::-webkit-scrollbar-thumb { @apply bg-slate-300; }
-*::-webkit-scrollbar-track { background: transparent; }

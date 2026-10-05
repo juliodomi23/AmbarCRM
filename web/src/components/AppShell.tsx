@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { Toaster } from "@/components/Toaster";
 import { PushSetup } from "@/components/PushSetup";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type NavItem = { href: string; label: string; icon: string | string[]; soloAdmin?: boolean };
 type NavGrupo = { titulo?: string; items: NavItem[] };
@@ -80,7 +81,7 @@ export function AppShell({
   const visible = (n: NavItem) => !n.soloAdmin || usuario.rol === "admin";
 
   const Sidebar = (
-    <aside className="flex h-full w-64 flex-col bg-navy text-white">
+    <aside className="flex h-full w-64 flex-col bg-primary text-white">
       <div className="px-5 py-5 text-xl font-bold">
         Ambar<span className="text-amber-400">CRM</span>
       </div>
@@ -104,8 +105,8 @@ export function AppShell({
                     aria-current={activo ? "page" : undefined}
                     className={`relative flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                       activo
-                        ? "bg-white/15 text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-1 before:-translate-y-1/2 before:rounded-r before:bg-amber-400"
-                        : "text-white/80 hover:bg-white/10 hover:text-white"
+                        ? "bg-card/15 text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-1 before:-translate-y-1/2 before:rounded-r before:bg-primary"
+                        : "text-white/80 hover:bg-card/10 hover:text-white"
                     }`}
                   >
                     <Icono d={n.icon} />
@@ -127,9 +128,10 @@ export function AppShell({
           <p className="font-medium">{usuario.nombre}</p>
           <p className="text-xs text-white/70 capitalize">{usuario.rol}</p>
         </div>
+        <ThemeToggle />
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="w-full cursor-pointer rounded-lg bg-white/10 py-2.5 text-sm hover:bg-white/20 min-h-[44px]"
+          className="w-full cursor-pointer rounded-lg bg-card/10 py-2.5 text-sm hover:bg-card/20 min-h-[44px]"
         >
           Cerrar sesión
         </button>
@@ -145,21 +147,21 @@ export function AppShell({
       {/* Drawer móvil (botón "Más") */}
       {abierto && (
         <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setAbierto(false)} />
+          <div className="absolute inset-0 bg-foreground/40" onClick={() => setAbierto(false)} />
           <div className="absolute left-0 top-0 h-full">{Sidebar}</div>
         </div>
       )}
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 items-center gap-3 border-b border-slate-200 bg-white px-4 md:hidden">
-          <span className="font-bold text-navy">Ambar<span className="text-ambar">CRM</span></span>
+        <header className="flex h-14 items-center gap-3 border-b border-border bg-card px-4 md:hidden">
+          <span className="font-bold text-primary">Ambar<span className="text-primary">CRM</span></span>
         </header>
 
         {/* pb para que la barra inferior no tape el contenido en móvil (+ safe-area iOS) */}
         <main className="flex-1 overflow-auto pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
 
         {/* Barra inferior de pestañas (solo móvil) */}
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden">
           {MOVIL_PRIMARIOS.map((n) => {
             const activo = esActivo(n.href, pathname);
             const badge = n.href === "/tareas" && tareasPendientes > 0 ? tareasPendientes : 0;
@@ -169,7 +171,7 @@ export function AppShell({
                 href={n.href}
                 aria-current={activo ? "page" : undefined}
                 className={`relative flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium ${
-                  activo ? "text-navy" : "text-slate-500"
+                  activo ? "text-primary" : "text-muted-foreground"
                 }`}
               >
                 <Icono d={n.icon} className="h-5 w-5" />
@@ -184,7 +186,7 @@ export function AppShell({
           })}
           <button
             onClick={() => setAbierto(true)}
-            className="flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium text-slate-500"
+            className="flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium text-muted-foreground"
             aria-label="Más opciones"
           >
             <Icono d="M4 6h16M4 12h16M4 18h16" className="h-5 w-5" />

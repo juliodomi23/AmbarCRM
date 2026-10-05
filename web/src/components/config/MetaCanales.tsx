@@ -85,16 +85,16 @@ export function MetaCanales({ canales }: { canales: Canal[] }) {
       <EmbeddedSignup />
 
       {canales.length > 0 && (
-        <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+        <section className="space-y-3 rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-slate-800">Números conectados</p>
-              <p className="text-xs text-slate-500">Cada número se conecta directamente con Meta.</p>
+              <p className="font-semibold text-foreground">Números conectados</p>
+              <p className="text-xs text-muted-foreground">Cada número se conecta directamente con Meta.</p>
             </div>
             <select
               value={canal?.id || ""}
               onChange={(event) => setCanalId(event.target.value)}
-              className="max-w-64 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="max-w-64 rounded-lg border border-input px-3 py-2 text-sm"
             >
               {canales.map((item) => (
                 <option key={item.id} value={item.id}>{item.nombre}</option>
@@ -102,11 +102,11 @@ export function MetaCanales({ canales }: { canales: Canal[] }) {
             </select>
           </div>
           {canal && (
-            <div className="grid gap-2 rounded-lg bg-slate-50 p-3 text-sm sm:grid-cols-2">
-              <p><span className="text-slate-500">Teléfono:</span> {canal.telefono || "—"}</p>
-              <p><span className="text-slate-500">Estado:</span> {canal.estado}</p>
-              <p><span className="text-slate-500">Phone Number ID:</span> {canal.phoneNumberId || "—"}</p>
-              <p><span className="text-slate-500">Credencial:</span> {canal.credencialesConfiguradas ? "Protegida" : "Incompleta"}</p>
+            <div className="grid gap-2 rounded-lg bg-background p-3 text-sm sm:grid-cols-2">
+              <p><span className="text-muted-foreground">Teléfono:</span> {canal.telefono || "—"}</p>
+              <p><span className="text-muted-foreground">Estado:</span> {canal.estado}</p>
+              <p><span className="text-muted-foreground">Phone Number ID:</span> {canal.phoneNumberId || "—"}</p>
+              <p><span className="text-muted-foreground">Credencial:</span> {canal.credencialesConfiguradas ? "Protegida" : "Incompleta"}</p>
               <button type="button" onClick={desconectar} className="text-left text-xs text-red-600 hover:underline">
                 Desconectar de AmbarCRM
               </button>
@@ -116,12 +116,12 @@ export function MetaCanales({ canales }: { canales: Canal[] }) {
       )}
 
       {canal && (
-        <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
+        <section className="space-y-4 rounded-xl border border-border bg-card p-4">
           <div>
-            <p className="font-semibold text-slate-800">Plantillas oficiales de Meta</p>
-            <p className="text-xs text-slate-500">Crea y consulta plantillas sin salir del CRM.</p>
+            <p className="font-semibold text-foreground">Plantillas oficiales de Meta</p>
+            <p className="text-xs text-muted-foreground">Crea y consulta plantillas sin salir del CRM.</p>
           </div>
-          <form onSubmit={crearPlantilla} className="space-y-3 rounded-lg border border-slate-200 p-3">
+          <form onSubmit={crearPlantilla} className="space-y-3 rounded-lg border border-border p-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <Campo
                 label="Nombre interno"
@@ -131,11 +131,11 @@ export function MetaCanales({ canales }: { canales: Canal[] }) {
                 required
               />
               <label className="block space-y-1">
-                <span className="text-sm font-medium text-slate-600">Categoría</span>
+                <span className="text-sm font-medium text-muted-foreground">Categoría</span>
                 <select
                   value={form.category}
                   onChange={(event) => setForm({ ...form, category: event.target.value })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-input px-3 py-2 text-sm"
                 >
                   <option value="UTILITY">Utilidad</option>
                   <option value="MARKETING">Marketing</option>
@@ -143,28 +143,28 @@ export function MetaCanales({ canales }: { canales: Canal[] }) {
               </label>
             </div>
             <label className="block space-y-1">
-              <span className="text-sm font-medium text-slate-600">Mensaje</span>
+              <span className="text-sm font-medium text-muted-foreground">Mensaje</span>
               <textarea
                 value={form.body}
                 onChange={(event) => setForm({ ...form, body: event.target.value })}
                 rows={3}
                 maxLength={1024}
                 required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-navy/30"
+                className="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
               />
             </label>
             <Boton type="submit" disabled={cargando}>{cargando ? "Enviando…" : "Crear plantilla en Meta"}</Boton>
           </form>
 
-          <div className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+          <div className="divide-y divide-border rounded-lg border border-border">
             {plantillas.length === 0 && (
-              <p className="p-3 text-sm text-slate-500">{cargando ? "Consultando…" : "No hay plantillas oficiales."}</p>
+              <p className="p-3 text-sm text-muted-foreground">{cargando ? "Consultando…" : "No hay plantillas oficiales."}</p>
             )}
             {plantillas.map((item) => (
               <div key={`${item.name}-${item.language}`} className="flex items-center gap-3 p-3 text-sm">
-                <span className="min-w-0 flex-1 font-medium text-slate-700">{item.name}</span>
-                <span className="text-xs text-slate-500">{item.language}</span>
-                <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">{item.status || "PENDING"}</span>
+                <span className="min-w-0 flex-1 font-medium text-foreground">{item.name}</span>
+                <span className="text-xs text-muted-foreground">{item.language}</span>
+                <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">{item.status || "PENDING"}</span>
               </div>
             ))}
           </div>

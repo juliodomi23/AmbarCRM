@@ -45,24 +45,24 @@ function dentroDeRango(iso: string, rango: Rango): boolean {
 
 function TarjetaVista({ t, onBorrar }: { t: Tarjeta; onBorrar?: (id: string) => void }) {
   return (
-    <div className="group relative rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="group relative rounded-lg border border-border bg-card p-3 shadow-sm">
       {onBorrar && (
         <button
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => onBorrar(t.id)}
           title="Quitar del embudo"
           aria-label="Quitar del embudo"
-          className="absolute right-1.5 top-1.5 hidden h-5 w-5 place-items-center rounded text-slate-400 hover:bg-red-50 hover:text-red-600 group-hover:grid"
+          className="absolute right-1.5 top-1.5 hidden h-5 w-5 place-items-center rounded text-muted-foreground hover:bg-red-50 hover:text-red-600 group-hover:grid"
         >
           <IconoCerrar className="h-3.5 w-3.5" />
         </button>
       )}
-      <p className="pr-5 text-sm font-medium text-slate-800">{t.titulo}</p>
-      <p className="mt-0.5 text-xs text-slate-500">{t.contacto.nombre}</p>
+      <p className="pr-5 text-sm font-medium text-foreground">{t.titulo}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">{t.contacto.nombre}</p>
       <div className="mt-2 flex items-center justify-between">
-        <span className="text-sm font-semibold text-ambar">{formatoMoneda(t.valor, t.moneda)}</span>
+        <span className="text-sm font-semibold text-primary">{formatoMoneda(t.valor, t.moneda)}</span>
         {t.responsable && (
-          <span className="grid h-6 w-6 place-items-center rounded-full bg-navy/10 text-[10px] font-bold text-navy">
+          <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
             {t.responsable.nombre.slice(0, 2).toUpperCase()}
           </span>
         )}
@@ -70,7 +70,7 @@ function TarjetaVista({ t, onBorrar }: { t: Tarjeta; onBorrar?: (id: string) => 
       <Link
         href={`/oportunidades/${t.id}`}
         onPointerDown={(e) => e.stopPropagation()}
-        className="mt-2 flex items-center justify-end gap-1 text-[11px] font-medium text-navy hover:underline"
+        className="mt-2 flex items-center justify-end gap-1 text-[11px] font-medium text-primary hover:underline"
       >
         Abrir <IconoFlecha className="h-3 w-3 rotate-180" />
       </Link>
@@ -99,21 +99,21 @@ function ColumnaVista({ col, onBorrar, onChat }: { col: Columna; onBorrar: (id: 
   const { setNodeRef } = useDroppable({ id: `col-${col.id}` });
   const total = col.tarjetas.reduce((s, t) => s + t.valor, 0);
   return (
-    <div className="flex w-72 shrink-0 flex-col rounded-xl bg-slate-100">
+    <div className="flex w-72 shrink-0 flex-col rounded-xl bg-muted">
       <div className="flex items-center justify-between px-3 py-2.5">
         <div className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: col.color }} />
-          <span className="text-sm font-semibold text-slate-700">{col.nombre}</span>
-          <span className="text-xs text-slate-400">{col.tarjetas.length}</span>
+          <span className="text-sm font-semibold text-foreground">{col.nombre}</span>
+          <span className="text-xs text-muted-foreground">{col.tarjetas.length}</span>
         </div>
-        <span className="text-xs font-medium text-slate-400">{formatoMoneda(total, "MXN")}</span>
+        <span className="text-xs font-medium text-muted-foreground">{formatoMoneda(total, "MXN")}</span>
       </div>
       <div ref={setNodeRef} className="scroll-thin flex-1 space-y-2 overflow-y-auto px-2 pb-3">
         <SortableContext items={col.tarjetas.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {col.tarjetas.map((t) => <TarjetaSortable key={t.id} t={t} onBorrar={onBorrar} onChat={onChat} />)}
         </SortableContext>
         {col.tarjetas.length === 0 && (
-          <div className="grid h-20 place-items-center rounded-lg border-2 border-dashed border-slate-200 text-xs text-slate-400">
+          <div className="grid h-20 place-items-center rounded-lg border-2 border-dashed border-border text-xs text-muted-foreground">
             Arrastra tarjetas aquí
           </div>
         )}
@@ -228,12 +228,12 @@ export function Board({ columnasIniciales }: { columnasIniciales: Columna[] }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-1 px-4 pt-3">
-        <span className="mr-1 text-xs text-slate-400">Ver:</span>
+        <span className="mr-1 text-xs text-muted-foreground">Ver:</span>
         {RANGOS.map((r) => (
           <button
             key={r.id}
             onClick={() => setRango(r.id)}
-            className={`rounded-lg px-2.5 py-1 text-xs font-medium ${rango === r.id ? "bg-navy text-white" : "text-slate-600 hover:bg-slate-100"}`}
+            className={`rounded-lg px-2.5 py-1 text-xs font-medium ${rango === r.id ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted"}`}
           >
             {r.label}
           </button>

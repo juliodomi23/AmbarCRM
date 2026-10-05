@@ -43,15 +43,15 @@ export function PrimerosPasos({ pasos }: { pasos: Pasos }) {
     <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-navy">Primeros pasos</h2>
-          <p className="text-xs text-slate-500">Deja tu CRM listo en unos minutos.</p>
+          <h2 className="text-sm font-semibold text-primary">Primeros pasos</h2>
+          <p className="text-xs text-muted-foreground">Deja tu CRM listo en unos minutos.</p>
         </div>
-        <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-ambar">
+        <span className="shrink-0 rounded-full bg-card px-2.5 py-1 text-xs font-semibold text-primary">
           {hechos} de {PASOS.length}
         </span>
       </div>
       <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-amber-200/60">
-        <div className="h-full rounded-full bg-ambar transition-all" style={{ width: `${(hechos / PASOS.length) * 100}%` }} />
+        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(hechos / PASOS.length) * 100}%` }} />
       </div>
       <ol className="space-y-1">
         {PASOS.map((p) => {
@@ -60,21 +60,21 @@ export function PrimerosPasos({ pasos }: { pasos: Pasos }) {
             <li key={p.clave} className="flex items-center gap-3 rounded-lg px-2 py-2">
               <span
                 className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${
-                  hecho ? "bg-green-500 text-white" : "border-2 border-slate-300 bg-white"
+                  hecho ? "bg-green-500 text-white" : "border-2 border-input bg-card"
                 }`}
               >
                 {hecho && <IconoCheck className="h-3.5 w-3.5" />}
               </span>
               <span className="min-w-0 flex-1">
-                <span className={`block text-sm font-medium ${hecho ? "text-slate-400 line-through" : "text-slate-700"}`}>
+                <span className={`block text-sm font-medium ${hecho ? "text-muted-foreground line-through" : "text-foreground"}`}>
                   {p.titulo}
                 </span>
-                {!hecho && <span className="block text-xs text-slate-500">{p.detalle}</span>}
+                {!hecho && <span className="block text-xs text-muted-foreground">{p.detalle}</span>}
               </span>
               {!hecho && (
                 <Link
                   href={p.href}
-                  className="shrink-0 rounded-lg bg-navy px-3 py-1.5 text-xs font-medium text-white transition hover:bg-navy/90"
+                  className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition hover:bg-primary/90"
                 >
                   {p.cta}
                 </Link>

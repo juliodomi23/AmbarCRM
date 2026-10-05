@@ -23,7 +23,7 @@ function vencida(iso: string | null) {
   return iso ? new Date(iso) < new Date() : false;
 }
 
-function Grupo({ titulo, clase = "text-slate-600", children }: { titulo: string; clase?: string; children: React.ReactNode }) {
+function Grupo({ titulo, clase = "text-muted-foreground", children }: { titulo: string; clase?: string; children: React.ReactNode }) {
   return (
     <div className="mb-2">
       <h2 className={`mb-1 mt-4 text-sm font-semibold first:mt-0 ${clase}`}>{titulo}</h2>
@@ -97,20 +97,20 @@ export function TareasCliente({
 
   function Fila({ t }: { t: Tarea }) {
     return (
-      <div className="flex items-start gap-3 border-b border-slate-100 py-3">
-        <input type="checkbox" checked={t.completada} onChange={() => toggle(t)} className="mt-1 h-4 w-4 accent-navy" />
+      <div className="flex items-start gap-3 border-b border-border/60 py-3">
+        <input type="checkbox" checked={t.completada} onChange={() => toggle(t)} className="mt-1 h-4 w-4 accent-primary" />
         <div className="min-w-0 flex-1">
-          <p className={`text-sm font-medium ${t.completada ? "text-slate-400 line-through" : "text-slate-800"}`}>{t.titulo}</p>
-          {t.descripcion && <p className="text-xs text-slate-500">{t.descripcion}</p>}
+          <p className={`text-sm font-medium ${t.completada ? "text-muted-foreground line-through" : "text-foreground"}`}>{t.titulo}</p>
+          {t.descripcion && <p className="text-xs text-muted-foreground">{t.descripcion}</p>}
           <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px]">
             {t.venceAt && (
-              <span className={`flex items-center gap-1 ${vencida(t.venceAt) && !t.completada ? "font-medium text-red-600" : "text-slate-400"}`}>
+              <span className={`flex items-center gap-1 ${vencida(t.venceAt) && !t.completada ? "font-medium text-red-600" : "text-muted-foreground"}`}>
                 <IconoReloj className="h-3 w-3" /> {fecha(t.venceAt)}
               </span>
             )}
-            {t.responsable && <span className="text-slate-400">· {t.responsable}</span>}
+            {t.responsable && <span className="text-muted-foreground">· {t.responsable}</span>}
             {t.oportunidad && (
-              <a href={`/oportunidades/${t.oportunidad.id}`} className="text-navy hover:underline">
+              <a href={`/oportunidades/${t.oportunidad.id}`} className="text-primary hover:underline">
                 · {t.oportunidad.titulo} ({t.oportunidad.contacto})
               </a>
             )}
@@ -124,12 +124,12 @@ export function TareasCliente({
   return (
     <div className="p-4 md:p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-navy">Tareas</h1>
+        <h1 className="text-xl font-bold text-primary">Tareas</h1>
         <Boton onClick={() => setModal(true)}>+ Nueva tarea</Boton>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
-        {pendientes.length === 0 && <p className="py-4 text-sm text-slate-400">Nada pendiente</p>}
+      <div className="rounded-xl border border-border bg-card p-4">
+        {pendientes.length === 0 && <p className="py-4 text-sm text-muted-foreground">Nada pendiente</p>}
 
         {grupos.vencidas.length > 0 && (
           <Grupo titulo={`Vencidas (${grupos.vencidas.length})`} clase="text-red-600">
@@ -165,9 +165,9 @@ export function TareasCliente({
           <Campo label="Descripción" value={form.descripcion} onChange={(e) => set("descripcion", e.target.value)} />
           <Campo label="Vence" type="datetime-local" value={form.venceAt} onChange={(e) => set("venceAt", e.target.value)} />
           <label className="block space-y-1">
-            <span className="text-sm font-medium text-slate-600">Responsable</span>
+            <span className="text-sm font-medium text-muted-foreground">Responsable</span>
             <select value={form.responsableId} onChange={(e) => set("responsableId", e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-navy/30">
+              className="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30">
               <option value="">Yo</option>
               {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
             </select>

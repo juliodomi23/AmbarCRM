@@ -35,32 +35,32 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen grid place-items-center bg-navy px-4">
+    <div className="min-h-screen grid place-items-center bg-primary px-4">
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-8 space-y-5"
+        className="w-full max-w-sm bg-card rounded-2xl shadow-xl p-8 space-y-5"
       >
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-navy">
-            Ambar<span className="text-ambar">CRM</span>
+          <h1 className="text-2xl font-bold text-primary">
+            Ambar<span className="text-primary">CRM</span>
           </h1>
-          <p className="text-sm text-slate-500">Tus ventas y tu WhatsApp, en un solo lugar</p>
+          <p className="text-sm text-muted-foreground">Tus ventas y tu WhatsApp, en un solo lugar</p>
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="email" className="text-sm font-medium text-slate-600">Email</label>
+          <label htmlFor="email" className="text-sm font-medium text-muted-foreground">Email</label>
           <input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-navy/40"
+            className="w-full rounded-lg border border-input px-3 py-2 outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="password" className="text-sm font-medium text-slate-600">Contraseña</label>
+          <label htmlFor="password" className="text-sm font-medium text-muted-foreground">Contraseña</label>
           <div className="relative">
             <input
               id="password"
@@ -68,13 +68,13 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-navy/40"
+              className="w-full rounded-lg border border-input px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-primary/40"
             />
             <button
               type="button"
               onClick={() => setVerPassword(!verPassword)}
               aria-label={verPassword ? "Ocultar contraseña" : "Ver contraseña"}
-              className="absolute inset-y-0 right-0 grid w-10 place-items-center text-slate-400 hover:text-slate-600"
+              className="absolute inset-y-0 right-0 grid w-10 place-items-center text-muted-foreground hover:text-foreground"
             >
               {verPassword ? (
                 // ojo tachado
@@ -94,8 +94,8 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="org" className="text-sm font-medium text-slate-600">
-            Organización <span className="font-normal text-slate-400">(opcional)</span>
+          <label htmlFor="org" className="text-sm font-medium text-muted-foreground">
+            Organización <span className="font-normal text-muted-foreground">(opcional)</span>
           </label>
           <input
             id="org"
@@ -103,7 +103,7 @@ export default function LoginPage() {
             value={org}
             onChange={(e) => setOrg(e.target.value)}
             placeholder="Solo si te dieron una"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-navy/40"
+            className="w-full rounded-lg border border-input px-3 py-2 outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
 
@@ -116,13 +116,13 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={cargando}
-          className="w-full rounded-lg bg-navy py-2.5 font-medium text-white hover:bg-navy/90 disabled:opacity-60"
+          className="w-full rounded-lg bg-primary py-2.5 font-medium text-white hover:bg-primary/90 disabled:opacity-60"
         >
           {cargando ? "Entrando…" : "Entrar"}
         </button>
 
         {/* Marca de versión: si en producción no coincide con el último push, el deploy no corrió. */}
-        <p className="text-center text-[10px] text-slate-300">v2026-07-04</p>
+        <p className="text-center text-[10px] text-muted-foreground/60">v2026-07-04</p>
       </form>
     </div>
   );
