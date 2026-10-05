@@ -14,11 +14,27 @@ services:
       - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./deploy/02-multitenant.sh:/docker-entrypoint-initdb.d/02-multitenant.sh:ro
       - ./web/prisma/sql/multi-tenant.sql:/sql/multi-tenant.sql:ro
+      - ./web/prisma/sql/actualizaciones.sql:/sql/actualizaciones.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
+
+  db-migrate:
+    image: postgres:16
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+    volumes:
+      - ./web/prisma/sql/actualizaciones.sql:/sql/actualizaciones.sql:ro
+    command: ["psql", "-v", "ON_ERROR_STOP=1", "-f", "/sql/actualizaciones.sql"]
 
   app:
     build:
@@ -29,8 +45,8 @@ services:
         NEXT_PUBLIC_META_GRAPH_VERSION: ${NEXT_PUBLIC_META_GRAPH_VERSION:-v26.0}
     restart: unless-stopped
     depends_on:
-      db:
-        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     environment:
       # La app corre como crm_app (sometido a RLS), NUNCA como el dueño, o el aislamiento se ignora.
       DATABASE_URL: postgresql://crm_app:${CRM_APP_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public

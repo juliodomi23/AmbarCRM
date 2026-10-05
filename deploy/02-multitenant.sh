@@ -5,6 +5,7 @@
 set -euo pipefail
 
 psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /sql/multi-tenant.sql
+psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /sql/actualizaciones.sql
 
 # El SQL crea crm_app con una clave placeholder; aquí ponemos la real (escapando comillas).
 ESCAPED="${CRM_APP_PASSWORD//\'/\'\'}"
