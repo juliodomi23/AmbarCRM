@@ -55,6 +55,14 @@ En la explicación de cada permiso, indicar exactamente en qué minuto del video
 
 ## 6. Acceso del revisor
 
+- Crear o actualizar la organización, el administrador y los datos de ejemplo desde el contenedor de la aplicación:
+
+  ```bash
+  node scripts/seed-meta-review.mjs revisor@tu-dominio.com "contraseña-segura-de-12-caracteres" "Revisor Meta"
+  ```
+
+  El correo y la contraseña son argumentos obligatorios y no se guardan en el repositorio. El script es idempotente: puede repetirse para renovar la contraseña o reconstruir los ejemplos. La organización para iniciar sesión es `demo-meta`.
+
 - [ ] URL pública estable, sin VPN ni lista blanca de IP.
 - [ ] Credenciales de revisor con rol administrador y datos de demostración.
 - [ ] Instrucciones cortas para llegar a Configuración → WhatsApp.
