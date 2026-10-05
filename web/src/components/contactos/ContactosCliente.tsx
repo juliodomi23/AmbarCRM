@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Boton, Campo, Modal } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import { EtiquetaNueva } from "@/components/EtiquetaNueva";
+import { AvatarNombre } from "@/components/AvatarNombre";
+import { EmptyState } from "@/components/EmptyState";
 
 type Etiqueta = { id: string; nombre: string; color: string };
 type Contacto = {
@@ -188,12 +190,10 @@ export function ContactosCliente({
           </thead>
           <tbody>
             {filtrados.map((c) => (
-              <tr key={c.id} className="border-t border-border/60 hover:bg-muted/60">
-                <td className="px-4 py-3">
+              <tr key={c.id} className="h-10 border-t border-border/60 hover:bg-muted/60">
+                <td className="px-4 py-1.5">
                   <div className="flex items-center gap-3">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                      {c.nombre.slice(0, 2).toUpperCase()}
-                    </span>
+                    <AvatarNombre nombre={c.nombre} className="h-8 w-8" />
                     <div className="min-w-0 leading-tight">
                       <p className="truncate font-medium text-foreground">
                         {c.nombre}
@@ -203,8 +203,8 @@ export function ContactosCliente({
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-muted-foreground">{c.empresa ?? "—"}</td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-1.5 text-muted-foreground">{c.empresa ?? "—"}</td>
+                <td className="px-4 py-1.5">
                   <div className="flex flex-wrap gap-1">
                     {etiquetas.map((et) => {
                       const activa = c.etiquetas.some((x) => x.id === et.id);
@@ -225,16 +225,16 @@ export function ContactosCliente({
                     })}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-muted-foreground">{c.responsable ?? "—"}</td>
-                <td className="px-4 py-3 text-muted-foreground">{c.oportunidades}</td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-1.5 text-muted-foreground">{c.responsable ?? "—"}</td>
+                <td className="tnum px-4 py-1.5 text-muted-foreground">{c.oportunidades}</td>
+                <td className="px-4 py-1.5 text-right">
                   <button onClick={() => abrirEditar(c)} className="mr-3 text-primary hover:underline">Editar</button>
                   <button onClick={() => borrar(c)} className="text-red-600 hover:underline">Borrar</button>
                 </td>
               </tr>
             ))}
             {filtrados.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Sin contactos.</td></tr>
+              <tr><td colSpan={6} className="p-4"><EmptyState titulo="Sin contactos" descripcion="Agrega el primer contacto para comenzar a gestionar conversaciones y oportunidades." accion="Nuevo contacto" href="/contactos?nuevo=1" /></td></tr>
             )}
           </tbody>
         </table>

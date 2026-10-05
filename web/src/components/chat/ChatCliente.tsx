@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { Fragment, useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { aplicarVariables } from "@/lib/plantillas";
 import { PanelConversacion } from "@/components/chat/PanelConversacion";
 import { IconoAdjuntar, IconoIA, IconoMicro, IconoNota, IconoInfo, IconoEnviar, IconoCerrar, IconoCheck, IconoFlecha, IconoDeshacer, IconoReloj } from "@/components/icons";
 import { toast } from "@/components/Toaster";
 import { Boton, Lightbox, Modal } from "@/components/ui";
+import { AvatarNombre } from "@/components/AvatarNombre";
 
 type Embudo = { id: string; nombre: string; etapas: { id: string; nombre: string }[] };
 type Usuario = { id: string; nombre: string };
@@ -27,6 +28,7 @@ export type ConversacionItem = {
   canalId: string | null;
   canalNombre: string;
   canalActivo: boolean;
+  botActivo: boolean;
 };
 
 type Mensaje = {
@@ -46,6 +48,8 @@ function hora(iso: string | null) {
   if (!iso) return "";
   return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
 }
+function dia(iso: string) { return new Date(iso).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" }); }
+function claveDia(iso: string) { return new Date(iso).toISOString().slice(0, 10); }
 
 /** Acuse de un mensaje saliente: ✓ enviado · ✓✓ entregado · ✓✓ azul leído. */
 function ticks(status: string): { txt: string; clase: string } {
@@ -540,9 +544,7 @@ export function ChatCliente({
                 onClick={() => abrir(c.id)}
                 className="flex min-w-0 flex-1 items-center gap-3 text-left"
               >
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-                  {c.contacto.nombre.slice(0, 2).toUpperCase()}
-                </span>
+                <AvatarNombre nombre={c.contacto.nombre} className="h-10 w-10" />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center justify-between">
                     <span className="flex min-w-0 items-center gap-1">
@@ -552,7 +554,7 @@ export function ChatCliente({
                     <span className="ml-2 shrink-0 text-[10px] text-muted-foreground">{hora(c.ultimoMensajeAt)}</span>
                   </span>
                   <span className="truncate block text-xs text-muted-foreground">{c.preview}</span>
-                  <span className="truncate block text-[10px] text-muted-foreground">{c.canalNombre}</span>
+                  <span className="mt-1 flex flex-wrap gap-1 text-[9px] font-medium"><span className="rounded-full bg-info/10 px-1.5 py-0.5 text-info">{c.estado}</span>{c.noLeidos > 0 && <span className="rounded-full bg-warning/10 px-1.5 py-0.5 text-warning">sin leer</span>}{c.botActivo && <span className="rounded-full bg-success/10 px-1.5 py-0.5 text-success">bot activo</span>}</span>
                 </span>
               </button>
               <div className="flex shrink-0 flex-col items-center gap-1">
@@ -631,15 +633,17 @@ export function ChatCliente({
                     <div className="h-10 w-40 animate-pulse rounded-2xl bg-muted" />
                   </div>
                 ))}
-              {mensajes.map((m) => (
-                <div key={m.id} className={`flex ${m.direccion === "saliente" || m.interna ? "justify-end" : "justify-start"}`}>
+              {mensajes.map((m, indice) => (
+                <Fragment key={m.id}>
+                {(indice === 0 || claveDia(m.timestamp) !== claveDia(mensajes[indice - 1].timestamp)) && <div className="flex items-center gap-3 py-2"><span className="h-px flex-1 bg-border"/><span className="rounded-full bg-muted px-3 py-1 text-[10px] font-medium capitalize text-muted-foreground">{dia(m.timestamp)}</span><span className="h-px flex-1 bg-border"/></div>}
+                <div className={`flex ${m.direccion === "saliente" || m.interna ? "justify-end" : "justify-start"}`}>
                   <div
                     className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
                       m.interna
                         ? "border border-amber-200 bg-amber-50 text-foreground"
                         : m.direccion === "saliente"
-                        ? "bg-green-100 text-foreground"
-                        : "bg-card text-foreground"
+                        ? "bg-success/10 text-foreground"
+                        : "border border-border/70 bg-card text-foreground"
                     }`}
                   >
                     {m.interna && (
@@ -665,7 +669,7 @@ export function ChatCliente({
                     <p className="mt-0.5 text-right text-[10px] text-muted-foreground">
                       {hora(m.timestamp)}
                       {m.direccion === "saliente" && !m.interna && ticks(m.status).txt && (
-                        <span className={`ml-1 ${ticks(m.status).clase}`}>{ticks(m.status).txt}</span>
+                        <span title={m.status} aria-label={m.status} className={`ml-1 ${ticks(m.status).clase}`}>{ticks(m.status).txt}</span>
                       )}
                     </p>
                     {m.direccion === "saliente" && !m.interna && m.status === "fallido" && m.tipo === "texto" && m.contenido && (
@@ -678,6 +682,7 @@ export function ChatCliente({
                     )}
                   </div>
                 </div>
+                </Fragment>
               ))}
               <div ref={finRef} />
             </div>

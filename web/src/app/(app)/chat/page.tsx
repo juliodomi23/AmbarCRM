@@ -33,7 +33,8 @@ export default async function ChatPage() {
     etiquetas: c.etiquetas ?? [],
     canalId: c.canal?.id ?? null,
     canalNombre: c.canal?.nombre ?? "Sin canal",
-    canalActivo: c.canal?.activo ?? true
+    canalActivo: c.canal?.activo ?? true,
+    botActivo: c.botActivo
   }));
 
   const embudos = serializar(embudosRaw).map((e: any) => ({

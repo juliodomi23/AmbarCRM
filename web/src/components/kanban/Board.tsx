@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { formatoMoneda } from "@/components/ui";
 import { IconoCerrar, IconoFlecha } from "@/components/icons";
 import { toast } from "@/components/Toaster";
+import { AvatarNombre } from "@/components/AvatarNombre";
 
 export type Tarjeta = {
   id: string;
@@ -22,6 +23,7 @@ export type Tarjeta = {
   valor: number;
   moneda: string;
   createdAt: string;
+  diasEnEtapa: number;
   conversacionId: string | null;
   contacto: { nombre: string; telefono: string | null };
   responsable: { nombre: string } | null;
@@ -43,9 +45,10 @@ function dentroDeRango(iso: string, rango: Rango): boolean {
   return d >= desde;
 }
 
-function TarjetaVista({ t, onBorrar }: { t: Tarjeta; onBorrar?: (id: string) => void }) {
+function TarjetaVista({ t, onBorrar, color }: { t: Tarjeta; onBorrar?: (id: string) => void; color?: string }) {
   return (
-    <div className="group relative rounded-lg border border-border bg-card p-3 shadow-sm">
+    <div className="group relative overflow-hidden rounded-xl border border-border bg-card p-3 pl-4 shadow-soft transition-shadow hover:shadow-lift">
+      <span className="absolute inset-y-0 left-0 w-1" style={{ background: color ?? "hsl(var(--primary))" }}/>
       {onBorrar && (
         <button
           onPointerDown={(e) => e.stopPropagation()}
@@ -58,14 +61,10 @@ function TarjetaVista({ t, onBorrar }: { t: Tarjeta; onBorrar?: (id: string) => 
         </button>
       )}
       <p className="pr-5 text-sm font-medium text-foreground">{t.titulo}</p>
-      <p className="mt-0.5 text-xs text-muted-foreground">{t.contacto.nombre}</p>
+      <div className="mt-1 flex items-center gap-2"><AvatarNombre nombre={t.contacto.nombre} className="h-7 w-7"/><div className="min-w-0"><p className="truncate text-xs text-muted-foreground">{t.contacto.nombre}</p><p className="text-[10px] text-muted-foreground">{t.diasEnEtapa === 0 ? "Ingresó hoy" : `${t.diasEnEtapa} días en la etapa`}</p></div></div>
       <div className="mt-2 flex items-center justify-between">
         <span className="text-sm font-semibold text-primary">{formatoMoneda(t.valor, t.moneda)}</span>
-        {t.responsable && (
-          <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-            {t.responsable.nombre.slice(0, 2).toUpperCase()}
-          </span>
-        )}
+        {t.responsable && <span className="max-w-24 truncate text-[10px] text-muted-foreground">{t.responsable.nombre}</span>}
       </div>
       <Link
         href={`/oportunidades/${t.id}`}
@@ -78,7 +77,7 @@ function TarjetaVista({ t, onBorrar }: { t: Tarjeta; onBorrar?: (id: string) => 
   );
 }
 
-function TarjetaSortable({ t, onBorrar, onChat }: { t: Tarjeta; onBorrar: (id: string) => void; onChat: (t: Tarjeta) => void }) {
+function TarjetaSortable({ t, onBorrar, onChat, color }: { t: Tarjeta; onBorrar: (id: string) => void; onChat: (t: Tarjeta) => void; color: string }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: t.id });
   return (
     <div
@@ -90,7 +89,7 @@ function TarjetaSortable({ t, onBorrar, onChat }: { t: Tarjeta; onBorrar: (id: s
       title="Doble clic para abrir el chat"
       className="cursor-grab active:cursor-grabbing"
     >
-      <TarjetaVista t={t} onBorrar={onBorrar} />
+      <TarjetaVista t={t} onBorrar={onBorrar} color={color} />
     </div>
   );
 }
@@ -110,7 +109,7 @@ function ColumnaVista({ col, onBorrar, onChat }: { col: Columna; onBorrar: (id: 
       </div>
       <div ref={setNodeRef} className="scroll-thin flex-1 space-y-2 overflow-y-auto px-2 pb-3">
         <SortableContext items={col.tarjetas.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-          {col.tarjetas.map((t) => <TarjetaSortable key={t.id} t={t} onBorrar={onBorrar} onChat={onChat} />)}
+          {col.tarjetas.map((t) => <TarjetaSortable key={t.id} t={t} onBorrar={onBorrar} onChat={onChat} color={col.color} />)}
         </SortableContext>
         {col.tarjetas.length === 0 && (
           <div className="grid h-20 place-items-center rounded-lg border-2 border-dashed border-border text-xs text-muted-foreground">

@@ -1,24 +1,14 @@
-import Link from "next/link";
 import { getMetricasDashboard, getPrimerosPasos } from "@/lib/services/dashboard";
 import { getSesion } from "@/lib/session";
 import { IconoDescargar } from "@/components/icons";
 import { PrimerosPasos } from "@/components/PrimerosPasos";
+import { KpiCard } from "@/components/DashboardVisuals";
+import { EmptyState } from "@/components/EmptyState";
 
 export const dynamic = "force-dynamic";
 
 function moneda(v: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(v);
-}
-
-function Kpi({ titulo, valor, sub, href, acento = "text-primary" }: { titulo: string; valor: string; sub?: string; href?: string; acento?: string }) {
-  const card = (
-    <div className="rounded-xl border border-border bg-card p-4 transition hover:shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{titulo}</p>
-      <p className={`mt-1 text-2xl font-bold ${acento}`}>{valor}</p>
-      {sub && <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>}
-    </div>
-  );
-  return href ? <Link href={href}>{card}</Link> : card;
 }
 
 export default async function DashboardPage() {
@@ -33,33 +23,24 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <h1 className="text-xl font-bold text-primary">Inicio</h1>
+      <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-primary">Resumen operativo</p><h1 className="mt-1 text-2xl font-bold">Inicio</h1><p className="text-sm text-muted-foreground">Datos reales de conversaciones y ventas de {mes}.</p></div>
 
       {pasos && <PrimerosPasos pasos={pasos} />}
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi titulo="Pipeline abierto" valor={moneda(m.pipelineValor)} sub={`${m.pipelineCount} oportunidades`} href="/embudos" />
-        <Kpi titulo={`Ganado en ${mes}`} valor={moneda(m.ganadasValor)} sub={`${m.ganadasCount} cerradas`} acento="text-green-600" href="/embudos" />
-        <Kpi titulo="Conversión del mes" valor={`${m.conversion}%`} sub={`${m.ganadasCount} ganadas · ${m.perdidasCount} perdidas`} />
-        <Kpi titulo="Tareas urgentes" valor={String(m.tareasUrgentes)} sub="vencen hoy o antes" acento={m.tareasUrgentes > 0 ? "text-red-600" : "text-primary"} href="/tareas" />
+      <div className="stagger grid grid-cols-2 gap-3 xl:grid-cols-5">
+        <KpiCard titulo="Chats abiertos" valor={String(m.convAbiertas)} detalle="conversaciones activas" href="/chat" rail="bg-info" datos={m.serieConversaciones} tendencia={m.tendenciaConversaciones} />
+        <KpiCard titulo="Sin responder" valor={String(m.sinResponder)} detalle="con mensajes sin leer" href="/chat" rail={m.sinResponder ? "bg-warning" : "bg-success"} />
+        <KpiCard titulo="Oportunidades" valor={String(m.pipelineCount)} detalle={`${m.porEtapa.length} etapas activas`} href="/embudos" rail="bg-primary" datos={m.porEtapa.map((e) => e.count)} />
+        <KpiCard titulo="Valor del embudo" valor={moneda(m.pipelineValor)} detalle="pipeline abierto" href="/embudos" rail="bg-success" datos={m.porEtapa.map((e) => e.valor)} />
+        <KpiCard titulo="Satisfacción" valor={m.csatPromedio != null ? `${m.csatPromedio} / 5` : "—"} detalle={m.csatRespuestas ? `${m.csatRespuestas} respuestas` : "sin respuestas todavía"} rail="bg-warning" />
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi titulo={`Leads en ${mes}`} valor={String(m.leadsMes)} href="/contactos" />
-        <Kpi titulo="Chats abiertos" valor={String(m.convAbiertas)} href="/chat" />
-        <Kpi
-          titulo="Primera respuesta"
-          valor={m.primeraRespuestaMin != null ? (m.primeraRespuestaMin >= 90 ? `${Math.round(m.primeraRespuestaMin / 6) / 10} h` : `${m.primeraRespuestaMin} min`) : "—"}
-          sub={m.primeraRespuestaMuestras ? `mediana · ${m.primeraRespuestaMuestras} chats en ${mes}` : "sin datos este mes"}
-          acento={m.primeraRespuestaMin != null && m.primeraRespuestaMin <= 15 ? "text-green-600" : "text-primary"}
-        />
-        <Kpi
-          titulo="Satisfacción (CSAT)"
-          valor={m.csatPromedio != null ? `${m.csatPromedio} / 5` : "—"}
-          sub={`${m.csatRespuestas} respuestas en ${mes}`}
-          acento={m.csatPromedio != null && m.csatPromedio >= 4 ? "text-green-600" : "text-primary"}
-        />
+        <KpiCard titulo={`Ganado en ${mes}`} valor={moneda(m.ganadasValor)} detalle={`${m.ganadasCount} cerradas`} href="/embudos" rail="bg-success" />
+        <KpiCard titulo="Conversión" valor={`${m.conversion}%`} detalle={`${m.ganadasCount} ganadas · ${m.perdidasCount} perdidas`} rail="bg-info" />
+        <KpiCard titulo={`Leads en ${mes}`} valor={String(m.leadsMes)} href="/contactos" rail="bg-primary" />
+        <KpiCard titulo="Primera respuesta" valor={m.primeraRespuestaMin != null ? (m.primeraRespuestaMin >= 90 ? `${Math.round(m.primeraRespuestaMin / 6) / 10} h` : `${m.primeraRespuestaMin} min`) : "—"} detalle={m.primeraRespuestaMuestras ? `mediana · ${m.primeraRespuestaMuestras} chats` : "sin datos este mes"} rail="bg-warning" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -68,7 +49,7 @@ export default async function DashboardPage() {
           <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
             Pipeline por etapa{m.embudoNombre ? ` · ${m.embudoNombre}` : ""}
           </h2>
-          {m.porEtapa.length === 0 && <p className="py-4 text-sm text-muted-foreground">No hay embudo configurado.</p>}
+          {m.porEtapa.length === 0 && <EmptyState titulo="Sin embudo configurado" descripcion="Crea las etapas de tu proceso comercial para ver aquí el avance." accion="Configurar embudo" href="/configuracion?tab=embudos" />}
           <div className="space-y-3">
             {m.porEtapa.map((e) => (
               <div key={e.nombre}>
@@ -87,7 +68,7 @@ export default async function DashboardPage() {
         {/* Ranking de agentes */}
         <div className="rounded-xl border border-border bg-card p-4">
           <h2 className="mb-3 text-sm font-semibold text-muted-foreground">Ranking de ventas · {mes}</h2>
-          {m.ranking.length === 0 && <p className="py-4 text-sm text-muted-foreground">Aún no hay ventas cerradas este mes.</p>}
+          {m.ranking.length === 0 && <EmptyState titulo="Aún no hay cierres" descripcion="El ranking aparecerá cuando se ganen oportunidades este mes." accion="Abrir embudo" href="/embudos" />}
           <div className="divide-y divide-border">
             {m.ranking.map((r, i) => (
               <div key={r.nombre} className="flex items-center justify-between py-2">

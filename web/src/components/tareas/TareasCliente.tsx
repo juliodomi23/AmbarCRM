@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Boton, Campo, Modal } from "@/components/ui";
 import { IconoReloj } from "@/components/icons";
+import { EmptyState } from "@/components/EmptyState";
 
 type Tarea = {
   id: string;
@@ -98,7 +99,7 @@ export function TareasCliente({
 
   function Fila({ t }: { t: Tarea }) {
     return (
-      <div className="flex items-start gap-3 border-b border-border/60 py-3">
+      <div className="flex min-h-10 items-center gap-3 border-b border-border/60 px-3 py-1.5 hover:bg-muted/40">
         <input type="checkbox" checked={t.completada} onChange={() => toggle(t)} className="mt-1 h-4 w-4 accent-primary" />
         <div className="min-w-0 flex-1">
           <p className={`text-sm font-medium ${t.completada ? "text-muted-foreground line-through" : "text-foreground"}`}>{t.titulo}</p>
@@ -129,8 +130,8 @@ export function TareasCliente({
         <Boton onClick={() => setModal(true)}>+ Nueva tarea</Boton>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-4">
-        {pendientes.length === 0 && <p className="py-4 text-sm text-muted-foreground">Nada pendiente</p>}
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        {tareas.length === 0 && <div className="p-4"><EmptyState titulo="Nada pendiente" descripcion="Crea una tarea para que el siguiente seguimiento no se pierda." accion="Nueva tarea" href="/tareas?nueva=1" /></div>}
 
         {grupos.vencidas.length > 0 && (
           <Grupo titulo={`Vencidas (${grupos.vencidas.length})`} clase="text-red-600">

@@ -9,7 +9,7 @@ export function Boton({
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variante?: "primary" | "ghost" | "danger" }) {
   const estilos = {
-    primary: "bg-primary text-white hover:bg-primary/90",
+    primary: "bg-primary text-primary-foreground hover:bg-primary/90",
     ghost: "bg-muted text-foreground hover:bg-muted",
     danger: "bg-red-600 text-white hover:bg-red-700"
   }[variante];

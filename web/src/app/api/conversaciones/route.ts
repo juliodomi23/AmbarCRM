@@ -16,7 +16,11 @@ function mapearConv(c: any) {
     ultimoMensajeAt: c.ultimoMensajeAt,
     preview: c.mensajes[0]?.contenido ?? (c.mensajes[0] ? `[${c.mensajes[0].tipo}]` : ""),
     estado: c.estado,
-    etiquetas: c.etiquetas ?? []
+    etiquetas: c.etiquetas ?? [],
+    canalId: c.canal?.id ?? null,
+    canalNombre: c.canal?.nombre ?? "Sin canal",
+    canalActivo: c.canal?.activo ?? true,
+    botActivo: c.botActivo
   };
 }
 

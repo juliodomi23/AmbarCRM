@@ -50,6 +50,7 @@ export default async function EmbudosPage(
       valor: Number(o.valor),
       moneda: o.moneda,
       createdAt: o.createdAt,
+      diasEnEtapa: Math.max(0, Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 86400000)),
       conversacionId: o.contacto.conversaciones[0]?.id ?? null,
       contacto: { nombre: o.contacto.nombre, telefono: o.contacto.telefono },
       responsable: o.responsable ? { nombre: o.responsable.nombre } : null

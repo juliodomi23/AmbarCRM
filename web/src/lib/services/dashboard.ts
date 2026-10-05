@@ -24,20 +24,25 @@ export async function getMetricasDashboard() {
   const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
   const finHoy = new Date();
   finHoy.setHours(23, 59, 59, 999);
+  const haceCatorceDias = new Date();
+  haceCatorceDias.setDate(haceCatorceDias.getDate() - 13);
+  haceCatorceDias.setHours(0, 0, 0, 0);
 
-  const [pipeline, ganadas, perdidasCount, leadsMes, convAbiertas, tareasUrgentes, embudo, porEtapaRaw, rankingRaw, usuarios, csat] =
+  const [pipeline, ganadas, perdidasCount, leadsMes, convAbiertas, sinResponder, tareasUrgentes, embudo, porEtapaRaw, rankingRaw, usuarios, csat, conversacionesRecientes] =
     await Promise.all([
       db.oportunidad.aggregate({ _sum: { valor: true }, _count: true, where: { estado: "abierto" } }),
       db.oportunidad.aggregate({ _sum: { valor: true }, _count: true, where: { estado: "ganado", closedAt: { gte: inicioMes } } }),
       db.oportunidad.count({ where: { estado: "perdido", closedAt: { gte: inicioMes } } }),
       db.contacto.count({ where: { createdAt: { gte: inicioMes } } }),
       db.conversacion.count({ where: { estado: "abierta" } }),
+      db.conversacion.count({ where: { estado: { not: "cerrada" }, noLeidos: { gt: 0 } } }),
       db.tarea.count({ where: { completada: false, venceAt: { lte: finHoy } } }),
       db.embudo.findFirst({ where: { activo: true }, orderBy: { orden: "asc" }, include: { etapas: { orderBy: { orden: "asc" } } } }),
       db.oportunidad.groupBy({ by: ["etapaId"], where: { estado: "abierto" }, _sum: { valor: true }, _count: true }),
       db.oportunidad.groupBy({ by: ["responsableId"], where: { estado: "ganado", closedAt: { gte: inicioMes } }, _sum: { valor: true }, _count: true }),
       db.usuario.findMany({ select: { id: true, nombre: true } }),
-      db.conversacion.aggregate({ _avg: { csatScore: true }, _count: { csatScore: true }, where: { csatScore: { not: null }, csatEnviadoAt: { gte: inicioMes } } })
+      db.conversacion.aggregate({ _avg: { csatScore: true }, _count: { csatScore: true }, where: { csatScore: { not: null }, csatEnviadoAt: { gte: inicioMes } } }),
+      db.conversacion.findMany({ where: { createdAt: { gte: haceCatorceDias } }, select: { createdAt: true } })
     ]);
 
   // Tiempo de primera respuesta HUMANA (mediana, en minutos) de las conversaciones del mes:
@@ -86,6 +91,14 @@ export async function getMetricasDashboard() {
 
   const ganadasCount = ganadas._count;
   const conversion = ganadasCount + perdidasCount > 0 ? Math.round((ganadasCount / (ganadasCount + perdidasCount)) * 100) : 0;
+  const serieConversaciones = Array.from({ length: 14 }, (_, i) => {
+    const dia = new Date(haceCatorceDias); dia.setDate(dia.getDate() + i);
+    const clave = dia.toISOString().slice(0, 10);
+    return conversacionesRecientes.filter((c) => c.createdAt.toISOString().slice(0, 10) === clave).length;
+  });
+  const semanaAnterior = serieConversaciones.slice(0, 7).reduce((a, b) => a + b, 0);
+  const semanaActual = serieConversaciones.slice(7).reduce((a, b) => a + b, 0);
+  const tendenciaConversaciones = semanaAnterior ? Math.round(((semanaActual - semanaAnterior) / semanaAnterior) * 100) : null;
 
   return {
     pipelineValor: num(pipeline._sum.valor),
@@ -96,6 +109,9 @@ export async function getMetricasDashboard() {
     conversion,
     leadsMes,
     convAbiertas,
+    sinResponder,
+    serieConversaciones,
+    tendenciaConversaciones,
     tareasUrgentes,
     embudoNombre: embudo?.nombre ?? null,
     porEtapa,
