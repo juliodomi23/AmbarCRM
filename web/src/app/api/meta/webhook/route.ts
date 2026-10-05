@@ -82,8 +82,18 @@ export async function POST(req: NextRequest) {
     const provider = getProvider("cloud_api", canal.config, canal.instancia);
     const statuses = provider.normalizarEstado?.(payload) || [];
     for (const status of statuses) {
+      const estadosAnteriores = {
+        enviado: ["pendiente", "enviado"],
+        entregado: ["pendiente", "enviado", "entregado"],
+        leido: ["pendiente", "enviado", "entregado", "leido"]
+      } as const;
       await db.mensaje.updateMany({
-        where: { waMessageId: status.waMessageId },
+        where: {
+          waMessageId: status.waMessageId,
+          ...(status.status === "fallido"
+            ? {}
+            : { status: { in: [...estadosAnteriores[status.status]] } })
+        },
         data: { status: status.status }
       });
     }
