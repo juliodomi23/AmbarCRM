@@ -87,9 +87,7 @@ enum StatusMsg {
 }
 
 enum ProveedorCanal {
-  evolution
   cloud_api
-  ycloud
 
   @@map("proveedor_canal")
 }
@@ -275,7 +273,7 @@ model CanalWhatsapp {
   id        BigInt         @id @default(autoincrement())
   orgId     BigInt         @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre    String
-  proveedor ProveedorCanal @default(evolution)
+  proveedor ProveedorCanal @default(cloud_api)
   telefono  String?
   instancia String?
   estado    EstadoCanal    @default(desconectado)
@@ -334,7 +332,7 @@ model MensajeGrupo {
   @@map("mensajes_grupo")
 }
 
-// Bot estilo "Agent Bot" de Chatwoot: webhook saliente (CRM->n8n) + token para responder (n8n->CRM).
+// Bot nativo: webhook saliente (CRM->n8n) + token para responder (n8n->CRM).
 model Bot {
   id         BigInt   @id @default(autoincrement())
   orgId      BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")

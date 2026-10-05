@@ -1,6 +1,4 @@
-// Capa de abstracción de canal de WhatsApp.
-// Toda la app habla con esta interfaz. Cambiar de Evolution a Cloud API (coexistencia Meta)
-// = registrar otra implementación; ni la UI ni la lógica del embudo cambian.
+// Contrato del canal oficial de WhatsApp Cloud API.
 
 export type TipoMensaje =
   | "texto" | "imagen" | "audio" | "video" | "documento" | "ubicacion" | "plantilla";
@@ -15,6 +13,7 @@ export interface MensajeEntranteNormalizado {
   mediaUrl?: string;            // URL cruda del proveedor (cifrada en WhatsApp, no servible)
   mediaMime?: string;
   direccion?: "entrante" | "saliente"; // saliente = lo mandó el propio número (desde el celular)
+  historico?: boolean;         // importado por Coexistence; no dispara bots, push ni automatizaciones
   raw?: unknown;                // mensaje original del proveedor (para descargar el media)
   timestamp: Date;
 }
@@ -95,7 +94,7 @@ export interface DatosConexion {
 
 /** Contrato común de todos los proveedores. */
 export interface ChannelProvider {
-  readonly nombre: "evolution" | "cloud_api" | "ycloud";
+  readonly nombre: "cloud_api";
 
   enviarTexto(telefono: string, texto: string): Promise<ResultadoEnvio>;
 
@@ -143,16 +142,4 @@ export interface ChannelProvider {
   /** Lista los grupos del número. */
   listarGruposWA?(instancia: string): Promise<{ jid: string; nombre: string }[]>;
 
-  // --- Gestión de conexión (opcional) ---
-  // Solo aplica a proveedores que vinculan por QR (Evolution). Cloud API usa token,
-  // así que estos métodos quedan ausentes y la UI no muestra el flujo de QR.
-
-  /** Crea la instancia si no existe y pide el QR/código para vincular el número. */
-  conectar?(instancia: string): Promise<DatosConexion>;
-
-  /** Consulta el estado real de la conexión contra el proveedor. */
-  estadoConexion?(instancia: string): Promise<{ estado: EstadoConexion; telefono?: string }>;
-
-  /** Cierra la sesión del número vinculado. */
-  desconectar?(instancia: string): Promise<ResultadoEnvio>;
 }

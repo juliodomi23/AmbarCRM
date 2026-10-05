@@ -26,7 +26,8 @@ export async function GET(_req: NextRequest) {
     const canal = canalId
       ? await db.canalWhatsapp.findFirst({ where: { id: BigInt(canalId), activo: true } })
       : await db.canalWhatsapp.findFirst({ where: { activo: true }, orderBy: { id: "asc" } });
-    const provider = getProvider(canal?.proveedor ?? "evolution", canal?.config, canal?.instancia);
+    if (!canal || canal.proveedor !== "cloud_api") return NextResponse.json({ plantillas: [], disponible: false });
+    const provider = getProvider("cloud_api", canal.config, canal.instancia);
     if (!provider.listarPlantillas) return NextResponse.json({ plantillas: [], disponible: false });
     return NextResponse.json({ plantillas: await provider.listarPlantillas(), disponible: true });
   }
@@ -44,10 +45,10 @@ export async function POST(req: NextRequest) {
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
 
-  const { etiquetaId, plantillaId, texto, ycloudTemplate, ycloudVariables, canalId } = await req.json().catch(() => ({}));
+  const { etiquetaId, plantillaId, texto, metaTemplate, metaVariables, canalId } = await req.json().catch(() => ({}));
   if (!etiquetaId) return NextResponse.json({ error: "falta etiquetaId" }, { status: 400 });
 
-  const esPlantillaOficial = !!ycloudTemplate?.name;
+  const esPlantillaOficial = !!metaTemplate?.name;
   let contenido = (texto ?? "").toString();
   if (plantillaId) {
     const p = await db.plantillaMensaje.findUnique({ where: { id: BigInt(plantillaId) } });
@@ -73,10 +74,10 @@ export async function POST(req: NextRequest) {
   const canal = canalId
     ? await db.canalWhatsapp.findFirst({ where: { id: BigInt(canalId), activo: true } })
     : await db.canalWhatsapp.findFirst({ where: { activo: true }, orderBy: { id: "asc" } });
-  const provider = getProvider(canal?.proveedor ?? "evolution", canal?.config, canal?.instancia);
-  if (esPlantillaOficial && (!provider.enviarPlantilla || provider.nombre !== "ycloud")) {
-    return NextResponse.json({ error: "Las plantillas oficiales requieren un canal YCloud conectado" }, { status: 400 });
+  if (!canal || canal.proveedor !== "cloud_api") {
+    return NextResponse.json({ error: "Selecciona un canal oficial de Meta" }, { status: 400 });
   }
+  const provider = getProvider("cloud_api", canal.config, canal.instancia);
 
   const contactos = await db.contacto.findMany({
     where: {
@@ -98,11 +99,11 @@ export async function POST(req: NextRequest) {
       if (!c.telefono) continue;
       try {
         const msg = aplicarVariables(contenido, c);
-        const variables = Array.isArray(ycloudVariables)
-          ? ycloudVariables.map((value: unknown) => aplicarVariables(String(value), c))
+        const variables = Array.isArray(metaVariables)
+          ? metaVariables.map((value: unknown) => aplicarVariables(String(value), c))
           : [];
         const envio = esPlantillaOficial
-          ? await provider.enviarPlantilla!(c.telefono, ycloudTemplate, variables)
+          ? await provider.enviarPlantilla!(c.telefono, metaTemplate, variables)
           : await provider.enviarTexto(c.telefono, msg);
 
         const conv = await db.conversacion.upsert({
@@ -115,7 +116,7 @@ export async function POST(req: NextRequest) {
             conversacionId: conv.id,
             direccion: "saliente",
             tipo: esPlantillaOficial ? "plantilla" : "texto",
-            contenido: esPlantillaOficial ? `[YCloud] ${ycloudTemplate.name}` : msg,
+            contenido: esPlantillaOficial ? `[Meta] ${metaTemplate.name}` : msg,
             esDifusion: true,
             status: envio.ok ? "enviado" : "fallido",
             waMessageId: envio.waMessageId,

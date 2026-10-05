@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
+import { META_GRAPH_URL } from "@/lib/meta/config";
+import { tokenFromChannelConfig } from "@/lib/meta/credentials";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,25 @@ export async function DELETE(req: NextRequest, props: { params: Promise<{ id: st
   const canalId = BigInt(params.id);
   const canal = await db.canalWhatsapp.findUnique({ where: { id: canalId } });
   if (!canal) return NextResponse.json({ error: "canal inexistente" }, { status: 404 });
+
+  if (canal.proveedor === "cloud_api") {
+    const config = (canal.config || {}) as Record<string, unknown>;
+    const wabaId = typeof config.wabaId === "string" ? config.wabaId : "";
+    const token = tokenFromChannelConfig(config);
+    if (wabaId && token) {
+      const response = await fetch(`${META_GRAPH_URL}/${wabaId}/subscribed_apps`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        return NextResponse.json(
+          { error: data?.error?.message || "Meta no permitió desconectar la aplicación" },
+          { status: 502 }
+        );
+      }
+    }
+  }
 
   const body = await req.json().catch(() => ({}));
   let borrados: { conversaciones: number; grupos: number } | undefined;

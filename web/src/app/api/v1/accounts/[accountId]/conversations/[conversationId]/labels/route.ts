@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 const ETIQUETAS_HANDOFF = ["escalado_humano", "bot_off"];
 
 /**
- * Compatible con Chatwoot: el bot fija las etiquetas de la conversación.
+ * El bot fija las etiquetas de la conversación mediante la API de AmbarCRM.
  * Lo usamos para el handoff: si manda `escalado_humano`/`bot_off`, apagamos el bot y
  * dejamos la conversación pendiente para que la tome un humano.
  * POST /api/v1/accounts/:accountId/conversations/:conversationId/labels

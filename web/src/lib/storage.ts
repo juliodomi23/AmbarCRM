@@ -1,7 +1,6 @@
 // Almacenamiento simple de archivos en disco para el media saliente del chat.
 // El archivo se guarda local (volumen Docker) y se sirve por /api/media/<archivo>
-// SOLO para mostrarlo dentro del CRM. A WhatsApp se manda el base64 directo (Evolution
-// lo incrusta), así que Evolution nunca necesita alcanzar esta URL.
+// Solo para mostrarlo dentro del CRM. Cloud API recibe el archivo mediante /media.
 
 import { promises as fs } from "fs";
 import path from "path";

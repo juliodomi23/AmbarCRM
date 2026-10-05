@@ -33,7 +33,8 @@ export async function POST(req: NextRequest) {
           fallidos++;
           continue;
         }
-        const provider = getProvider(conv.canal?.proveedor ?? "evolution", conv.canal?.config, conv.canal?.instancia);
+        if (!conv.canal || conv.canal.proveedor !== "cloud_api") throw new Error("canal oficial de Meta inexistente");
+        const provider = getProvider("cloud_api", conv.canal.config, conv.canal.instancia);
         const envio = await provider.enviarTexto(conv.contacto.telefono, p.contenido);
 
         await db.mensaje.create({

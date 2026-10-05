@@ -58,13 +58,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "el contacto no tiene teléfono" }, { status: 400 });
   }
 
-  const provider = getProvider(conv.canal?.proveedor ?? "evolution", conv.canal?.config, conv.canal?.instancia);
+  if (!conv.canal || conv.canal.proveedor !== "cloud_api") {
+    return NextResponse.json({ error: "la conversación no tiene un canal oficial de Meta" }, { status: 400 });
+  }
+  const provider = getProvider("cloud_api", conv.canal.config, conv.canal.instancia);
 
   let envio;
   let datosMensaje: { tipo: TipoMensaje; contenido: string | null; mediaUrl: string | null; mediaMime: string | null };
 
   if (esAudio) {
-    // Nota de voz: a Evolution va el base64 limpio; en local guardamos el archivo para reproducirlo.
+    // Cloud API recibe el audio mediante su endpoint de media; en local lo conservamos para reproducirlo.
     const limpio = audioBase64.includes(",") ? audioBase64.split(",")[1] : audioBase64;
     envio = provider.enviarAudio
       ? await provider.enviarAudio(conv.contacto.telefono, limpio)

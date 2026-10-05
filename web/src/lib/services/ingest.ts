@@ -1,6 +1,5 @@
 import { db } from "@/lib/db";
 import { getProvider, type MensajeEntranteNormalizado } from "@/lib/channel";
-import { instanciaPorDefecto } from "@/lib/channel/evolution";
 import { getAjustes } from "@/lib/services/config";
 import { botParaCanal, dispatchABot } from "@/lib/services/bots";
 import { crearLeadSiNoTiene } from "@/lib/services/funnel";
@@ -47,8 +46,8 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
 
   const ajustes = await getAjustes();
   const canal = canalId ? await db.canalWhatsapp.findUnique({ where: { id: canalId } }) : null;
-  const provider = getProvider(canal?.proveedor ?? "evolution", canal?.config, canal?.instancia);
-  const instancia = canal?.instancia?.trim() || instanciaPorDefecto;
+  if (!canal || canal.proveedor !== "cloud_api") throw new Error("canal oficial de Meta inexistente");
+  const provider = getProvider("cloud_api", canal.config, canal.instancia);
 
   // --- Contacto ---
   let contacto = await db.contacto.findFirst({ where: { telefono: m.telefono } });
@@ -79,7 +78,7 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
   let mediaUrl = m.mediaUrl;
   let mediaMime = m.mediaMime;
   if (m.tipo !== "texto" && m.raw && provider.descargarMedia && !esPersonal) {
-    const media = await provider.descargarMedia(m.raw, instancia);
+    const media = await provider.descargarMedia(m.raw, canal.instancia || "");
     if (media) {
       mediaUrl = await guardarMediaBase64(media.base64, media.mime);
       mediaMime = media.mime;
@@ -104,12 +103,19 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
 
   await db.conversacion.update({
     where: { id: conversacion.id },
-    data: esSaliente
-      // Respondió desde su celular: ya leyó el chat → se limpia el contador en el CRM.
-      // (Evolution no manda el "leído sin responder": su chats.update viene sin contador.)
+    data: m.historico
+      ? { ultimoMensajeAt: m.timestamp }
+      : esSaliente
+      // Respondió desde el celular mediante Coexistence: se limpia el contador en el CRM.
       ? { ultimoMensajeAt: m.timestamp, noLeidos: 0 }
       : { noLeidos: { increment: 1 }, ultimoMensajeAt: m.timestamp, estado: "abierta" }
   });
+
+  // El historial de Coexistence solo reconstruye el chat. No debe generar leads,
+  // notificaciones, respuestas automáticas, CSAT ni llamadas a bots.
+  if (m.historico) {
+    return { duplicado: false as const, mensajeId: mensaje.id, conversacionId: conversacion.id };
+  }
 
   // Si lo mandó el propio número (desde el celular), no hay nada más que hacer:
   // no es un lead entrante, no notifica al bot, ni CSAT, ni bienvenida.

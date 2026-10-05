@@ -1,65 +1,35 @@
-# Agente de n8n para AmbarCRM
+# Configuración de un agente de n8n
 
-Template base: `agente-ambarcrm.template.json`. Es la versión "general" del agente, adaptada del
-**Agente principal de Belisario** (que estaba hecho para Chatwoot). Como AmbarCRM habla el mismo
-dialecto que Chatwoot, migrar es básicamente cambiar el nodo de configuración y la URL del webhook.
+Esta guía conecta un workflow de n8n con el sistema de bots propio de AmbarCRM.
 
-## Flujo del template
+## 1. Crear el webhook
 
-```
-Entrada AmbarCRM (webhook)
-  └─ Solo entrantes (IF message_type = incoming)
-       └─ Datos (extrae texto, conversacionId, urls del payload)
-            └─ ⚙️ Configuración (pega el TOKEN del bot)
-                 └─ AI Agent  (modelo + memoria + tools)
-                      ├─ tool escalar_a_humano  → POST handoff_url (label escalado_humano)
-                      ├─ tool actualizar_funnel → POST funnel_url  (mueve el lead)
-                      └─ Respuesta → POST responder_url (manda el mensaje al cliente)
-```
+Crea un nodo Webhook POST en n8n y activa el workflow. Copia su URL de producción.
 
-El CRM ya manda en cada mensaje un bloque `ambarcrm` con las URLs listas:
-`responder_url`, `handoff_url`, `funnel_url`, además de `conversacionId`, `telefono`, `nombre`.
-Por eso el template no necesita armar URLs a mano.
+## 2. Registrar el bot
 
-## Pasos
+En AmbarCRM abre Configuración → Bots:
 
-1. **Crear el bot en el CRM**: Configuración → Bots → + Crear bot. Copia el **token**.
-2. **Importar** `agente-ambarcrm.template.json` en n8n (Workflows → Import from File).
-3. **Webhook**: abre el nodo `Entrada AmbarCRM`, copia su **Production URL** y pégala en el campo
-   *Webhook URL* del bot en el CRM. Activa el workflow.
-4. **⚙️ Configuración**: pega el **token del bot** en `apiToken`.
-5. **OpenAI Chat Model**: conecta tu credencial de OpenAI (y ajusta el modelo si quieres).
-6. **AI Agent → System Message**: personaliza rol, servicios, precios y reglas del negocio.
-7. (Opcional) Ajusta las etapas en la descripción de `actualizar_funnel` para que coincidan con
-   las de tu embudo.
+1. Crea el bot.
+2. Pega la URL de producción del webhook.
+3. Copia el token generado.
+4. Asocia el bot al canal de WhatsApp.
 
-## Cómo responde / actúa (endpoints del CRM)
+## 3. Variables recomendadas en n8n
 
-| Acción | Endpoint | Lo usa |
-|--------|----------|--------|
-| Responder al cliente | `POST responder_url` body `{ content, message_type: "outgoing" }` | nodo `Respuesta` |
-| Ceder a humano (handoff) | `POST handoff_url` body `{ labels: ["escalado_humano"] }` | tool `escalar_a_humano` |
-| Mover el lead de etapa | `POST funnel_url` body `{ etapa: "Contactado" }` | tool `actualizar_funnel` |
+- `cfg_baseUrl`: URL pública de AmbarCRM.
+- `cfg_apiToken`: token del bot.
+- `conversationId`: valor recibido en el evento.
 
-Todos con header `api_access_token: <token del bot>`. El CRM **solo** manda el mensaje al bot si el
-bot está activo en esa conversación (el toggle 🤖 del chat / handoff lo apaga), así que el agente no
-contesta cuando un humano tomó el chat.
+## 4. Responder
 
-## Migrar el Agente de Belisario (Chatwoot → AmbarCRM)
+Configura un nodo HTTP Request:
 
-No reescribes la lógica; solo cambias los puntos de entrada/salida:
+- Método: POST.
+- URL: `{{$json.cfg_baseUrl}}/api/v1/accounts/1/conversations/{{$json.conversationId}}/messages`.
+- Header `api_access_token`: token del bot.
+- Body JSON: `{"content":"texto de respuesta","message_type":"outgoing"}`.
 
-| En Belisario (Chatwoot) | En AmbarCRM |
-|--------------------------|-------------|
-| `EntradaChatwoot` (webhook en Chatwoot) | Webhook normal; su URL va en el campo Webhook del bot del CRM |
-| `⚙️ Configuración`: `cfg_serverUrl`, `cfg_accountId`, `cfg_apiToken` | `serverUrl` = URL del CRM, `accountId` = 1, `apiToken` = token del bot |
-| `Respuesta` → `/api/v1/accounts/{id}/conversations/{cid}/messages` | **mismo formato** (usa `responder_url` del payload) |
-| `escalar_a_humano` (label `escalado_humano`) | **mismo** (usa `handoff_url`) |
-| `actualizar_funnel` | `funnel_url` con `{ etapa }` |
-| Descargar adjuntos con `api_access_token` | `data_url` del payload + header `api_access_token` |
+## 5. Handoff
 
-Lo demás (Redis para debounce/lock, Whisper para audios, sub-workflows de citas, etc.) se conecta
-igual; son nodos internos que no dependen del CRM.
-
-> Nota: este template es la versión **general/mínima** (sin Redis ni tools de citas). Para un cliente
-> con agenda, agrega esos nodos como en Belisario.
+Cuando el flujo requiera intervención humana, desactiva el bot en la conversación y agrega una nota o etiqueta que explique el motivo. Evita que el workflow siga respondiendo después del handoff.

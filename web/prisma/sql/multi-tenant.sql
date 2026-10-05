@@ -16,8 +16,6 @@
 -- (En deploy nuevo esto lo hace `prisma db push`; sáltate la PARTE A.)
 -- ─────────────────────────────────────────────────────────────────────────────
 
-ALTER TYPE proveedor_canal ADD VALUE IF NOT EXISTS 'ycloud';
-
 CREATE TABLE IF NOT EXISTS orgs (
   id         BIGSERIAL PRIMARY KEY,
   nombre     TEXT NOT NULL,
@@ -91,7 +89,9 @@ CREATE OR REPLACE FUNCTION resolve_org_by_canal(p_id bigint)
 $$;
 CREATE OR REPLACE FUNCTION resolve_org_by_phone(p_phone text)
   RETURNS bigint LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
-    SELECT org_id FROM canales_whatsapp WHERE config->>'phoneNumberId' = p_phone LIMIT 1
+    SELECT org_id FROM canales_whatsapp
+    WHERE activo AND (config->>'phoneNumberId' = p_phone OR instancia = p_phone)
+    ORDER BY id DESC LIMIT 1
 $$;
 CREATE OR REPLACE FUNCTION resolve_org_by_bot_token(p_token text)
   RETURNS bigint LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
@@ -186,3 +186,34 @@ END $$;
 -- se corre en una BD donde aún no existían, se los damos explícitos:
 GRANT SELECT, INSERT, UPDATE, DELETE ON mensajes_programados, push_suscripciones TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PARTE F — SIEMPRE (2026-10): solo WhatsApp Cloud API oficial de Meta.
+-- Desactiva canales de proveedores anteriores (Evolution, YCloud…) y deja el enum
+-- con solo 'cloud_api'. Idempotente: en BD nueva no hace nada.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+    WHERE t.typname = 'proveedor_canal' AND e.enumlabel <> 'cloud_api'
+  ) THEN
+    UPDATE canales_whatsapp SET activo = false, estado = 'desconectado'
+    WHERE proveedor::text <> 'cloud_api';
+
+    ALTER TYPE proveedor_canal RENAME TO proveedor_canal_old;
+    CREATE TYPE proveedor_canal AS ENUM ('cloud_api');
+    ALTER TABLE canales_whatsapp ALTER COLUMN proveedor DROP DEFAULT;
+    ALTER TABLE canales_whatsapp
+      ALTER COLUMN proveedor TYPE proveedor_canal USING 'cloud_api'::proveedor_canal;
+    ALTER TABLE canales_whatsapp ALTER COLUMN proveedor SET DEFAULT 'cloud_api';
+    DROP TYPE proveedor_canal_old;
+  END IF;
+END $$;
+
+-- Un phone_number_id de Meta solo puede estar activo en UNA org: el webhook enruta por él.
+-- Si falla por duplicados, desactiva a mano el canal viejo y vuelve a correr esta parte.
+CREATE UNIQUE INDEX IF NOT EXISTS canales_whatsapp_phone_number_id_activo_uq
+  ON canales_whatsapp ((config->>'phoneNumberId'))
+  WHERE activo AND config->>'phoneNumberId' IS NOT NULL;

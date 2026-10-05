@@ -78,8 +78,8 @@ export function DifusionCliente({ etiquetas, plantillas, canales }: { etiquetas:
         etiquetaId,
         canalId,
         texto,
-        ycloudTemplate: oficial ? { name: oficial.name, language: oficial.language } : undefined,
-        ycloudVariables: oficial ? variablesOficiales.split(",").map((x) => x.trim()).filter(Boolean) : undefined
+        metaTemplate: oficial ? { name: oficial.name, language: oficial.language } : undefined,
+        metaVariables: oficial ? variablesOficiales.split(",").map((x) => x.trim()).filter(Boolean) : undefined
       })
     });
     const d = await res.json().catch(() => ({}));
@@ -155,7 +155,7 @@ export function DifusionCliente({ etiquetas, plantillas, canales }: { etiquetas:
         {oficiales.length > 0 && (
           <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
             <label className="block space-y-1">
-              <span className="text-sm font-medium text-blue-900">Plantilla oficial YCloud</span>
+              <span className="text-sm font-medium text-blue-900">Plantilla oficial de Meta</span>
               <select value={oficialId} onChange={(e) => elegirOficial(e.target.value)}
                 className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm">
                 <option value="">Usar mensaje libre / plantilla interna</option>

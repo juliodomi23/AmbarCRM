@@ -5,7 +5,7 @@ import { requireBot } from "@/lib/bot-auth";
 export const dynamic = "force-dynamic";
 
 /**
- * Estado de la conversación en formato tipo Chatwoot. Sirve para que el bot relea si está
+ * Estado de la conversación para que el bot relea si está
  * encendido/apagado (label bot_off) antes de responder.
  * GET /api/v1/accounts/:accountId/conversations/:conversationId  · Header: api_access_token
  */

@@ -11,8 +11,28 @@ export function listarUsuarios() {
   return db.usuario.findMany({ orderBy: { nombre: "asc" } });
 }
 
-export function listarCanales() {
-  return db.canalWhatsapp.findMany({ orderBy: { id: "asc" } });
+export async function listarCanales() {
+  const canales = await db.canalWhatsapp.findMany({
+    where: { proveedor: "cloud_api" },
+    orderBy: { id: "asc" }
+  });
+  return canales.map((canal) => {
+    const config = (canal.config || {}) as Record<string, unknown>;
+    return {
+      id: canal.id,
+      orgId: canal.orgId,
+      nombre: canal.nombre,
+      proveedor: canal.proveedor,
+      telefono: canal.telefono,
+      instancia: canal.instancia,
+      estado: canal.estado,
+      activo: canal.activo,
+      createdAt: canal.createdAt,
+      credencialesConfiguradas: Boolean(config.tokenEncrypted || config.token),
+      wabaId: typeof config.wabaId === "string" ? config.wabaId : null,
+      phoneNumberId: typeof config.phoneNumberId === "string" ? config.phoneNumberId : null
+    };
+  });
 }
 
 export function listarPlantillas() {

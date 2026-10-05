@@ -13,7 +13,7 @@ DO $$ BEGIN
   CREATE TYPE direccion_msg    AS ENUM ('entrante', 'saliente');
   CREATE TYPE tipo_msg         AS ENUM ('texto','imagen','audio','video','documento','ubicacion','plantilla');
   CREATE TYPE status_msg       AS ENUM ('pendiente','enviado','entregado','leido','fallido');
-  CREATE TYPE proveedor_canal  AS ENUM ('evolution', 'cloud_api', 'ycloud');
+  CREATE TYPE proveedor_canal  AS ENUM ('cloud_api');
   CREATE TYPE estado_canal     AS ENUM ('conectado', 'desconectado');
   CREATE TYPE tipo_evento      AS ENUM ('creada','etapa_cambio','ganada','perdida','nota','tarea','mensaje','asignacion');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -109,16 +109,16 @@ CREATE INDEX IF NOT EXISTS idx_oport_contacto ON oportunidades(contacto_id);
 CREATE TABLE IF NOT EXISTS canales_whatsapp (
   id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   nombre     TEXT            NOT NULL,
-  proveedor  proveedor_canal NOT NULL DEFAULT 'evolution',
+  proveedor  proveedor_canal NOT NULL DEFAULT 'cloud_api',
   telefono   TEXT,
-  instancia  TEXT,            -- nombre de instancia Evolution / phone_number_id de Meta
+  instancia  TEXT,            -- phone_number_id de Meta
   estado     estado_canal    NOT NULL DEFAULT 'desconectado',
   config     JSONB           NOT NULL DEFAULT '{}'::jsonb,  -- urls, tokens NO secretos
   activo     BOOLEAN         NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ     NOT NULL DEFAULT now()
 );
 
--- ---------- bots (estilo Agent Bot de Chatwoot) ----------
+-- ---------- bots nativos de AmbarCRM ----------
 CREATE TABLE IF NOT EXISTS bots (
   id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   nombre      TEXT    NOT NULL,
@@ -331,11 +331,6 @@ FROM e CROSS JOIN (VALUES
   ('Ganado',         '#16A34A', 4, 'ganado'),
   ('Perdido',        '#DC2626', 5, 'perdido')
 ) AS x(nombre, color, orden, tipo);
-
--- Canal de WhatsApp por defecto (Evolution)
-INSERT INTO canales_whatsapp (nombre, proveedor, estado)
-SELECT 'WhatsApp principal', 'evolution', 'desconectado'
-WHERE NOT EXISTS (SELECT 1 FROM canales_whatsapp);
 
 -- Fila única de ajustes (automatizaciones desactivadas por defecto)
 INSERT INTO ajustes (auto_asignar, bienvenida_activa, bienvenida_texto)

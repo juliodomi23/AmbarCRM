@@ -23,7 +23,7 @@ CREATE TYPE "tipo_msg" AS ENUM ('texto', 'imagen', 'audio', 'video', 'documento'
 CREATE TYPE "status_msg" AS ENUM ('pendiente', 'enviado', 'entregado', 'leido', 'fallido');
 
 -- CreateEnum
-CREATE TYPE "proveedor_canal" AS ENUM ('evolution', 'cloud_api', 'ycloud');
+CREATE TYPE "proveedor_canal" AS ENUM ('cloud_api');
 
 -- CreateEnum
 CREATE TYPE "estado_canal" AS ENUM ('conectado', 'desconectado');
@@ -132,7 +132,7 @@ CREATE TABLE "oportunidades" (
 CREATE TABLE "canales_whatsapp" (
     "id" BIGSERIAL NOT NULL,
     "nombre" TEXT NOT NULL,
-    "proveedor" "proveedor_canal" NOT NULL DEFAULT 'evolution',
+    "proveedor" "proveedor_canal" NOT NULL DEFAULT 'cloud_api',
     "telefono" TEXT,
     "instancia" TEXT,
     "estado" "estado_canal" NOT NULL DEFAULT 'desconectado',

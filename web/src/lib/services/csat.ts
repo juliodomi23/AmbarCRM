@@ -15,7 +15,8 @@ export async function enviarCsat(conversacionId: bigint) {
   });
   if (!conv || conv.csatEnviadoAt || !conv.contacto.telefono) return;
 
-  const provider = getProvider(conv.canal?.proveedor ?? "evolution", conv.canal?.config, conv.canal?.instancia);
+  if (!conv.canal || conv.canal.proveedor !== "cloud_api") return false;
+  const provider = getProvider("cloud_api", conv.canal.config, conv.canal.instancia);
   const texto = ajustes.csatTexto?.trim() || CSAT_DEFAULT;
   const envio = await provider.enviarTexto(conv.contacto.telefono, texto);
 

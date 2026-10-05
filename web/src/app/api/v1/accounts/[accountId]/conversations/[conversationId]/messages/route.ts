@@ -7,7 +7,7 @@ import { aBigInt } from "@/lib/ids";
 export const dynamic = "force-dynamic";
 
 /**
- * Endpoint compatible con la API de Chatwoot para que el bot responda.
+ * Endpoint de AmbarCRM para que los bots de n8n respondan.
  * POST /api/v1/accounts/:accountId/conversations/:conversationId/messages
  * Header: api_access_token = token del bot
  * Body:   { content, message_type?: "outgoing", private?: boolean }
@@ -35,7 +35,7 @@ export async function POST(
   if (!conv) return NextResponse.json({ error: "conversación inexistente" }, { status: 404 });
   if (!botAutorizado(bot, conv)) return NextResponse.json({ error: "el bot no opera en este canal" }, { status: 403 });
 
-  // Nota privada: se guarda pero no se manda a WhatsApp (igual que en Chatwoot).
+  // Nota privada: se guarda pero no se manda a WhatsApp.
   if (esPrivado) {
     const nota = await db.mensaje.create({
       data: { conversacionId: conv.id, direccion: "saliente", tipo: "texto", contenido: content, interna: true, status: "enviado" }
@@ -45,7 +45,10 @@ export async function POST(
 
   if (!conv.contacto.telefono) return NextResponse.json({ error: "el contacto no tiene teléfono" }, { status: 422 });
 
-  const provider = getProvider(conv.canal?.proveedor ?? "evolution", conv.canal?.config, conv.canal?.instancia);
+  if (!conv.canal || conv.canal.proveedor !== "cloud_api") {
+    return NextResponse.json({ error: "canal oficial de Meta inexistente" }, { status: 400 });
+  }
+  const provider = getProvider("cloud_api", conv.canal.config, conv.canal.instancia);
   const envio = await provider.enviarTexto(conv.contacto.telefono, content);
 
   const mensaje = await db.mensaje.create({
@@ -63,7 +66,7 @@ export async function POST(
 
   if (!envio.ok) return NextResponse.json({ error: envio.error ?? "fallo al enviar" }, { status: 502 });
 
-  // Forma de respuesta tipo Chatwoot.
+  // Respuesta estable para los workflows de n8n.
   return NextResponse.json({
     id: Number(mensaje.id),
     content,

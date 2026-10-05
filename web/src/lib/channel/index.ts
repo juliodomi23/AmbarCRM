@@ -1,21 +1,18 @@
 import type { ChannelProvider } from "./types";
-import { makeEvolutionProvider } from "./evolution";
 import { makeCloudApiProvider, type CloudConfig } from "./cloudapi";
-import { makeYCloudProvider, type YCloudConfig } from "./ycloud";
 
 export * from "./types";
 
 /**
- * Devuelve el proveedor según el canal (tabla canales_whatsapp).
- * - `cloud_api`: recibe las credenciales del canal (`config`); sin ellas cae al env.
- * - `evolution`: recibe la `instancia` del canal (multi-tenant); sin ella cae a EVOLUTION_INSTANCE.
+ * Construye el canal oficial de Meta con las credenciales cifradas del tenant.
  */
 export function getProvider(
-  proveedor: "evolution" | "cloud_api" | "ycloud",
+  proveedor: string,
   config?: unknown,
-  instancia?: string | null
+  _instancia?: string | null
 ): ChannelProvider {
-  if (proveedor === "cloud_api") return makeCloudApiProvider(config as CloudConfig | undefined);
-  if (proveedor === "ycloud") return makeYCloudProvider(config as YCloudConfig | undefined, instancia ?? undefined);
-  return makeEvolutionProvider(instancia);
+  if (proveedor !== "cloud_api") {
+    throw new Error(`proveedor de WhatsApp no soportado: ${proveedor}`);
+  }
+  return makeCloudApiProvider(config as CloudConfig | undefined);
 }

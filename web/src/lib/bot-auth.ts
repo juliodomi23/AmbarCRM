@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { db, dbRaw, setOrg } from "@/lib/db";
 
 /**
- * Autentica un bot por su token. Acepta el header `api_access_token` (igual que Chatwoot)
+ * Autentica un bot por su token mediante el header `api_access_token`
  * o `x-bot-token`. Devuelve el bot (con su orgId) o null.
  *
  * El token es global; primero resolvemos su org con una función SECURITY DEFINER

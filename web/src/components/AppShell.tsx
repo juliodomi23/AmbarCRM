@@ -22,7 +22,6 @@ const GRUPOS: NavGrupo[] = [
     titulo: "Conversaciones",
     items: [
       CHAT,
-      { href: "/grupos", label: "Grupos", icon: "M17 20h5v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 3-3.87m6-1.13a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 11a4 4 0 0 0-3-3.87M1 11a4 4 0 0 1 3-3.87" },
       { href: "/personal", label: "Personal", icon: "M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" }
     ]
   },

@@ -8,8 +8,8 @@ function igual(a: string, b: string) {
 }
 
 /**
- * Valida la API key que usa n8n/Evolution para llamar los endpoints /api/wa/*.
- * Solo por header `x-api-key` (Evolution lo reenvía en cada webhook): la query string
+ * Valida la API key que usan los crons y automatizaciones internas de n8n.
+ * Solo por header `x-api-key`: la query string
  * se loguea en proxies y filtraría la credencial maestra.
  */
 export function requireApiKey(req: NextRequest): NextResponse | null {

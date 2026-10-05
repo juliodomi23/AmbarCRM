@@ -34,8 +34,7 @@ type DatosDispatch = {
 };
 
 /**
- * Manda el mensaje entrante al webhook del bot con un payload estilo Chatwoot `message_created`.
- * Así un workflow de n8n hecho para Chatwoot funciona cambiando solo el nodo de configuración.
+ * Manda el mensaje entrante al webhook del bot con el evento `message_created` de AmbarCRM.
  */
 export async function dispatchABot(bot: { webhookUrl: string }, d: DatosDispatch) {
   // El valor también se valida al guardar, pero se vuelve a comprobar aquí
@@ -62,7 +61,7 @@ export async function dispatchABot(bot: { webhookUrl: string }, d: DatosDispatch
     sender,
     attachments,
     account: { id: 1 },
-    // Atajos propios de AmbarCRM (no-Chatwoot) por si el flujo es nuevo:
+    // Atajos propios de AmbarCRM para workflows nuevos:
     ambarcrm: {
       conversacionId: d.conversacionId.toString(),
       contactoId: d.contactoId.toString(),

@@ -69,10 +69,8 @@ export async function POST(req: NextRequest) {
         }
       }
     });
-    // Instancia de Evolution propia del tenant (el slug): sus envíos no se mezclan con otras orgs.
-    await db.canalWhatsapp.create({
-      data: { nombre: "WhatsApp principal", proveedor: "evolution", estado: "desconectado", instancia: slug }
-    });
+    // El canal se crea al terminar Embedded Signup. Cada fila representa un
+    // phone_number_id real de Meta, no una conexión provisional.
   });
 
   return NextResponse.json({ ok: true, org: { id: Number(org.id), nombre: org.nombre, slug: org.slug } });
