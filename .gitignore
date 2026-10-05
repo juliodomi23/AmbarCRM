@@ -1,0 +1,23 @@
+# Dependencias y build
+node_modules/
+web/node_modules/
+web/.next/
+web/next-env.d.ts
+
+# Secretos / entorno (en EasyPanel se ponen como variables)
+.env
+.env.local
+web/.env
+web/.env.local
+
+# Media subido en runtime
+uploads/
+web/uploads/
+
+# Logs y basura del SO
+*.log
+.DS_Store
+Thumbs.db
+
+# Build info de TS
+*.tsbuildinfo

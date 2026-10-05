@@ -1,0 +1,75 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      CRM_APP_PASSWORD: ${CRM_APP_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Init la PRIMERA vez que arranca (solo si el volumen está vacío), en orden:
+      # 01 crea el esquema base, 02 aplica multi-tenant (org_id + RLS) y crea el rol crm_app.
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./deploy/02-multitenant.sh:/docker-entrypoint-initdb.d/02-multitenant.sh:ro
+      - ./web/prisma/sql/multi-tenant.sql:/sql/multi-tenant.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_META_APP_ID: ${NEXT_PUBLIC_META_APP_ID}
+        NEXT_PUBLIC_META_CONFIG_ID: ${NEXT_PUBLIC_META_CONFIG_ID}
+        NEXT_PUBLIC_META_GRAPH_VERSION: ${NEXT_PUBLIC_META_GRAPH_VERSION:-v26.0}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # La app corre como crm_app (sometido a RLS), NUNCA como el dueño, o el aislamiento se ignora.
+      DATABASE_URL: postgresql://crm_app:${CRM_APP_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      WA_API_KEY: ${WA_API_KEY}
+      META_APP_ID: ${META_APP_ID}
+      META_APP_SECRET: ${META_APP_SECRET}
+      META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN}
+      META_GRAPH_VERSION: ${META_GRAPH_VERSION:-v26.0}
+      META_TOKEN_ENCRYPTION_KEY: ${META_TOKEN_ENCRYPTION_KEY}
+      LEGAL_BUSINESS_NAME: ${LEGAL_BUSINESS_NAME:-Ámbar Rojo Studios}
+      PRIVACY_EMAIL: ${PRIVACY_EMAIL:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Notificaciones push (opcional): npx web-push generate-vapid-keys
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      UPLOAD_DIR: /app/uploads
+      # Admin inicial (se crea/actualiza solo en CADA arranque; el seed es idempotente).
+      # La contraseña efectiva SIEMPRE es esta: para cambiarla, cambia la variable y redeploya.
+      ADMIN_NOMBRE: ${ADMIN_NOMBRE:-Julio}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-juliodomi0301@gmail.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-AmbarRojo2026}
+      # En el dominio compartido, el subdominio (julio-crmlite) NO es una org: con esto el
+      # login sin campo "Organización" cae a la org por defecto (inicial).
+      BASE_DOMAIN_FIRST_LABEL: ${BASE_DOMAIN_FIRST_LABEL:-julio-crmlite}
+      DEFAULT_ORG_SLUG: ${DEFAULT_ORG_SLUG:-inicial}
+    # Siembra el admin y luego arranca la app. Si el seed falla (p. ej. BD a medio migrar),
+    # la app arranca igual y se reintenta en el próximo arranque.
+    command: sh -c 'if [ -n "$$ADMIN_PASSWORD" ]; then node scripts/seed-admin.mjs "$$ADMIN_NOMBRE" "$$ADMIN_EMAIL" "$$ADMIN_PASSWORD" || echo "[seed-admin] falló, la app arranca igual"; fi; exec npm start'
+    volumes:
+      # Media saliente del chat (imágenes/archivos que mandan los agentes).
+      - uploads:/app/uploads
+    # En EasyPanel NO se publican puertos: el dominio se mapea al puerto 3000 del
+    # contenedor por la red interna (Domains → Target port 3000). El contenedor ya
+    # lo expone vía EXPOSE 3000 en el Dockerfile.
+    expose:
+      - "3000"
+
+volumes:
+  pgdata:
+  uploads:

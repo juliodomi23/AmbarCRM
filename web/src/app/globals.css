@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  height: 100%;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* La fuente (Inter) la aplica next/font en el layout raíz. */
+body {
+  @apply bg-slate-50 text-slate-800 antialiased;
+}
+
+/* Elimina delay de 300ms en mobile */
+button, a, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Foco visible para navegación por teclado (accesibilidad). */
+:focus-visible {
+  @apply outline-none ring-2 ring-navy/40 ring-offset-1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Scrollbar discreto en TODA la app (la default del navegador se ve tosca).
+   El thumb solo aparece al pasar el mouse por el contenedor. */
+* {
+  scrollbar-width: thin;              /* Firefox */
+  scrollbar-color: transparent transparent;
+}
+*:hover {
+  scrollbar-color: theme("colors.slate.300") transparent;
+}
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-thumb { background: transparent; border-radius: 9999px; }
+*:hover::-webkit-scrollbar-thumb { @apply bg-slate-300; }
+*::-webkit-scrollbar-track { background: transparent; }
