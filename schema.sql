@@ -309,11 +309,6 @@ CREATE TRIGGER trg_notify_mensaje
 -- SEED mínimo
 -- ============================================================
 
--- Usuario admin demo (password: demo1234 -> reemplazar hash bcrypt real en deploy)
-INSERT INTO usuarios (nombre, email, password_hash, rol)
-SELECT 'Admin', 'admin@ambarcrm.mx', '$2a$10$DEMOHASHREPLACEME', 'admin'
-WHERE NOT EXISTS (SELECT 1 FROM usuarios);
-
 -- Embudo de ventas por defecto + etapas
 WITH e AS (
   INSERT INTO embudos (nombre, descripcion, orden)

@@ -5,7 +5,11 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
-const [, , nombre = "Admin", email = "admin@ambarcrm.mx", pass = "demo1234"] = process.argv;
+const [, , nombre = "Admin", email, pass] = process.argv;
+if (!email || !pass) {
+  console.error('Uso: node scripts/seed-admin.mjs "Nombre" correo "contraseña"');
+  process.exit(1);
+}
 const orgId = process.env.SEED_ORG_ID ?? "1";
 const db = new PrismaClient();
 
@@ -24,5 +28,5 @@ const [, rows] = await db.$transaction([
 ]);
 
 const u = rows[0];
-console.log(`Admin listo: ${u.email} (id ${u.id}, org ${orgId}). Contraseña: ${pass}`);
+console.log(`Admin listo: ${u.email} (id ${u.id}, org ${orgId}).`);
 await db.$disconnect();
