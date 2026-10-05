@@ -97,7 +97,9 @@ export function EmbeddedSignup() {
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
-  async function conectar() {
+  // coexistencia = número que vive en la app WhatsApp Business del celular.
+  // Sin ella: número nuevo o ya registrado en la API de Meta.
+  async function conectar(coexistencia: boolean) {
     setError(null);
     setInfo(null);
     setOk(null);
@@ -148,7 +150,9 @@ export function EmbeddedSignup() {
         config_id: CONFIG_ID,
         response_type: "code",
         override_default_response_type: true,
-        extras: { setup: {}, featureType: "whatsapp_business_app_onboarding" }
+        extras: coexistencia
+          ? { setup: {}, featureType: "whatsapp_business_app_onboarding" }
+          : { setup: {} }
       }
     );
   }
@@ -156,26 +160,35 @@ export function EmbeddedSignup() {
   if (!APP_ID || !CONFIG_ID) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        WhatsApp Oficial con Coexistence sin configurar. Define{" "}
-        <code>NEXT_PUBLIC_META_APP_ID</code> y <code>NEXT_PUBLIC_META_CONFIG_ID</code> tras
-        aprobarte como Tech Provider. Ver <code>MULTI-TENANT.md</code>.
+        WhatsApp Oficial sin configurar. Define <code>NEXT_PUBLIC_META_APP_ID</code> y{" "}
+        <code>NEXT_PUBLIC_META_CONFIG_ID</code> y vuelve a desplegar. Ver <code>DESPLIEGUE.md</code>.
       </div>
     );
   }
 
   return (
     <div className="space-y-2 rounded-xl border border-border bg-card p-4">
-      <p className="font-semibold text-foreground">WhatsApp Oficial · Meta Coexistence</p>
+      <p className="font-semibold text-foreground">WhatsApp Oficial · Meta</p>
       <p className="text-xs text-muted-foreground">
-        Conecta directamente con Meta y conserva la app WhatsApp Business en el teléfono.
+        Usa el primer botón para un número nuevo o que ya está en la API de Meta. Usa el segundo
+        para un número que hoy usas en la app WhatsApp Business del celular y quieres seguir usando ahí.
       </p>
-      <button
-        onClick={conectar}
-        disabled={cargando}
-        className="rounded-lg bg-[rgb(24,119,242)] px-4 py-2 text-sm font-medium text-white hover:bg-[rgb(21,104,216)] disabled:opacity-60"
-      >
-        {cargando ? "Conectando…" : "Conectar con Meta"}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => conectar(false)}
+          disabled={cargando}
+          className="rounded-lg bg-[rgb(24,119,242)] px-4 py-2 text-sm font-medium text-white hover:bg-[rgb(21,104,216)] disabled:opacity-60"
+        >
+          {cargando ? "Conectando…" : "Conectar con Meta"}
+        </button>
+        <button
+          onClick={() => conectar(true)}
+          disabled={cargando}
+          className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-surface disabled:opacity-60"
+        >
+          Conectar mi app WhatsApp Business
+        </button>
+      </div>
       <div aria-live="polite">
         {info && <p className="text-sm text-blue-700">{info}</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
