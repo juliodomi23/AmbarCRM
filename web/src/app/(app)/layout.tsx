@@ -5,7 +5,6 @@ import { AppShell } from "@/components/AppShell";
 import { getAjustes } from "@/lib/services/config";
 import { obtenerContadoresShell } from "@/lib/services/shell";
 import { normalizarMarca } from "@/lib/brand";
-import { BrandRuntime } from "@/components/BrandRuntime";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
@@ -16,8 +15,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const marca = normalizarMarca(ajustes);
 
   return (
-    <>
-    <BrandRuntime marca={marca} />
     <AppShell
       usuario={{
         nombre: session.user.name ?? "Usuario",
@@ -28,6 +25,5 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     >
       {children}
     </AppShell>
-    </>
   );
 }
