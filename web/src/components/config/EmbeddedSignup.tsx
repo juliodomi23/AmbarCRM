@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 // Lanza el popup de Meta, captura el `code` + el evento WA_EMBEDDED_SIGNUP
 // (waba_id / phone_number_id) y lo manda a /api/wa/onboard.
 // Requiere: NEXT_PUBLIC_META_APP_ID y NEXT_PUBLIC_META_CONFIG_ID.
+// Referencia: https://developers.facebook.com/documentation/business-messaging/whatsapp/embedded-signup/implementation
 
 declare global {
   interface Window {
@@ -20,13 +21,16 @@ const CONFIG_ID = process.env.NEXT_PUBLIC_META_CONFIG_ID;
 const GRAPH_VERSION = process.env.NEXT_PUBLIC_META_GRAPH_VERSION || "v26.0";
 const FB_ORIGINS = ["https://www.facebook.com", "https://web.facebook.com"];
 
+type ResultadoSignup = "numero" | "solo-waba" | "coexistencia" | "cancelado" | "error";
+
 export function EmbeddedSignup() {
   const router = useRouter();
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   // Datos del evento WA_EMBEDDED_SIGNUP (llegan por postMessage, no por el callback de FB.login).
-  const datos = useRef<{ wabaId?: string; phoneNumberId?: string }>({});
+  const datos = useRef<{ resultado?: ResultadoSignup; wabaId?: string; phoneNumberId?: string }>({});
 
   useEffect(() => {
     if (!APP_ID) return;
@@ -48,14 +52,41 @@ export function EmbeddedSignup() {
       if (!FB_ORIGINS.includes(event.origin)) return;
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-        const finished = data.event === "FINISH" || data.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING";
-        if (data.type === "WA_EMBEDDED_SIGNUP" && finished) {
-          datos.current = { wabaId: data.data?.waba_id, phoneNumberId: data.data?.phone_number_id };
-        } else if (data.type === "WA_EMBEDDED_SIGNUP" && data.event === "ERROR") {
-          setError(data.data?.error_message || "Meta no pudo completar la conexión.");
+        if (data.type !== "WA_EMBEDDED_SIGNUP") return;
+        const payload = data.data || {};
+
+        if (data.event === "FINISH") {
+          datos.current = {
+            resultado: "numero",
+            wabaId: payload.waba_id,
+            phoneNumberId: payload.phone_number_id
+          };
+          setInfo("Meta conectó el número. Terminando la configuración en AmbarCRM…");
+        } else if (data.event === "FINISH_ONLY_WABA") {
+          datos.current = { resultado: "solo-waba", wabaId: payload.waba_id };
+          setInfo("Meta compartió la cuenta de WhatsApp, pero no conectó ningún número. Repite el flujo y agrega o selecciona un número.");
           setCargando(false);
-        } else if (data.type === "WA_EMBEDDED_SIGNUP" && data.event === "CANCEL") {
-          setError("Conexión cancelada.");
+        } else if (data.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING") {
+          datos.current = {
+            resultado: "coexistencia",
+            wabaId: payload.waba_id,
+            phoneNumberId: payload.phone_number_id
+          };
+          setInfo("Coexistence fue autorizado. Sincronizando el número con AmbarCRM…");
+        } else if (data.event === "ERROR") {
+          datos.current = { resultado: "error" };
+          const referencia = payload.error_code ? ` Código: ${payload.error_code}.` : "";
+          setError(`${payload.error_message || "Meta no pudo completar la conexión."}${referencia}`);
+          setCargando(false);
+        } else if (data.event === "CANCEL") {
+          datos.current = { resultado: "cancelado" };
+          if (payload.error_message) {
+            const referencia = payload.error_code ? ` Código: ${payload.error_code}.` : "";
+            setError(`Meta reportó un problema: ${payload.error_message}.${referencia}`);
+          } else {
+            const paso = payload.current_step ? ` en el paso ${payload.current_step}` : "";
+            setError(`La conexión fue cancelada${paso}. No se guardaron cambios.`);
+          }
           setCargando(false);
         }
       } catch {
@@ -68,6 +99,7 @@ export function EmbeddedSignup() {
 
   async function conectar() {
     setError(null);
+    setInfo(null);
     setOk(null);
     if (!window.FB) return setError("El SDK de Meta aún no cargó. Reintenta en unos segundos.");
     if (!CONFIG_ID) return setError("Falta NEXT_PUBLIC_META_CONFIG_ID.");
@@ -79,13 +111,18 @@ export function EmbeddedSignup() {
         const code = resp?.authResponse?.code;
         if (!code) {
           setCargando(false);
+          if (["cancelado", "error", "solo-waba"].includes(datos.current.resultado || "")) return;
           return setError("Conexión cancelada o sin permisos.");
         }
         // El callback OAuth y el postMessage de sesión pueden llegar en distinto orden.
-        for (let intento = 0; intento < 20 && !datos.current.wabaId; intento++) {
+        for (let intento = 0; intento < 20 && !datos.current.resultado; intento++) {
           await new Promise((resolve) => setTimeout(resolve, 250));
         }
-        const { wabaId, phoneNumberId } = datos.current;
+        const { resultado, wabaId, phoneNumberId } = datos.current;
+        if (["cancelado", "error", "solo-waba"].includes(resultado || "")) {
+          setCargando(false);
+          return;
+        }
         if (!wabaId) {
           setCargando(false);
           return setError("Meta no devolvió la WABA. Reintenta el flujo completo.");
@@ -93,12 +130,18 @@ export function EmbeddedSignup() {
         const res = await fetch("/api/wa/onboard", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code, wabaId, phoneNumberId, onboardingMode: "coexistence" })
+          body: JSON.stringify({
+            code,
+            wabaId,
+            phoneNumberId,
+            onboardingMode: resultado === "coexistencia" ? "coexistence" : "cloud_api"
+          })
         });
         const d = await res.json().catch(() => ({}));
         setCargando(false);
         if (!res.ok) return setError(d.error ?? "Error al conectar.");
-        setOk(`Conectado · ${d.phoneNumberId}`);
+        setInfo(null);
+        setOk(`${resultado === "coexistencia" ? "Coexistence conectado" : "Número conectado"} · ${d.phoneNumberId}`);
         router.refresh();
       },
       {
@@ -133,8 +176,11 @@ export function EmbeddedSignup() {
       >
         {cargando ? "Conectando…" : "Conectar con Meta"}
       </button>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {ok && <p className="text-sm text-green-600">{ok}</p>}
+      <div aria-live="polite">
+        {info && <p className="text-sm text-blue-700">{info}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        {ok && <p className="text-sm text-green-600">{ok}</p>}
+      </div>
     </div>
   );
 }
