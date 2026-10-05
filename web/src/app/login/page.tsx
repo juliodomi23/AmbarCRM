@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { BrandRuntime } from "@/components/BrandRuntime";
+import { DEFAULT_BRAND, BrandConfig } from "@/lib/brand";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,11 +15,20 @@ export default function LoginPage() {
   const [org, setOrg] = useState("");
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
+  const [marca, setMarca] = useState<BrandConfig>(DEFAULT_BRAND);
 
   // La liga que se comparte al cliente trae su org: /login?org=clinica-x
   useEffect(() => {
-    const o = new URLSearchParams(window.location.search).get("org");
-    if (o) setOrg(o);
+    const queryOrg = new URLSearchParams(window.location.search).get("org");
+    const subdominio = window.location.hostname.split(".").length > 2 ? window.location.hostname.split(".")[0] : "";
+    const o = queryOrg || subdominio;
+    if (o) {
+      setOrg(o);
+      fetch(`/api/public/brand?slug=${encodeURIComponent(o)}`)
+        .then((res) => res.ok ? res.json() : DEFAULT_BRAND)
+        .then(setMarca)
+        .catch(() => setMarca(DEFAULT_BRAND));
+    }
   }, []);
 
   async function onSubmit(e: React.FormEvent) {
@@ -35,15 +47,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen grid place-items-center bg-primary px-4">
+    <div className="min-h-screen grid place-items-center bg-mesh bg-background px-4">
+      <BrandRuntime marca={marca} />
       <form
         onSubmit={onSubmit}
         className="w-full max-w-sm bg-card rounded-2xl shadow-xl p-8 space-y-5"
       >
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-primary">
-            Ambar<span className="text-primary">CRM</span>
-          </h1>
+          {marca.logo ? <Image unoptimized width={192} height={56} src={marca.logo} alt={`Logo de ${marca.nombre}`} className="mx-auto mb-3 h-14 max-w-48 object-contain" /> : null}
+          <h1 className="text-2xl font-bold text-primary">{marca.nombre}</h1>
           <p className="text-sm text-muted-foreground">Tus ventas y tu WhatsApp, en un solo lugar</p>
         </div>
 

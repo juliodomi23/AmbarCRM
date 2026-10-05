@@ -1,6 +1,12 @@
 -- Actualizaciones idempotentes para bases nuevas y existentes.
 -- Este archivo se ejecuta con el usuario dueño en cada deploy.
 
+ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS marca_nombre TEXT;
+ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS marca_logo TEXT;
+ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS marca_color_primario TEXT;
+ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS marca_color_acento TEXT;
+ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS marca_preset TEXT;
+
 -- Solo WhatsApp Cloud API oficial de Meta.
 DO $$
 BEGIN

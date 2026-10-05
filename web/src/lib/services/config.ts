@@ -56,6 +56,11 @@ const AJUSTES_DEFAULT = {
   autoResolverHoras: 24,
   nombreNegocio: "" as string | null,
   iaPromptSistema: "" as string | null,
+  marcaNombre: null as string | null,
+  marcaLogo: null as string | null,
+  marcaColorPrimario: null as string | null,
+  marcaColorAcento: null as string | null,
+  marcaPreset: null as string | null,
   updatedAt: new Date()
 };
 
@@ -82,6 +87,11 @@ export async function actualizarAjustes(data: {
   autoResolverHoras?: number;
   nombreNegocio?: string | null;
   iaPromptSistema?: string | null;
+  marcaNombre?: string | null;
+  marcaLogo?: string | null;
+  marcaColorPrimario?: string | null;
+  marcaColorAcento?: string | null;
+  marcaPreset?: string | null;
 }) {
   const a = await db.ajustes.findFirst({ orderBy: { id: "asc" } });
   if (a) return db.ajustes.update({ where: { id: a.id }, data });

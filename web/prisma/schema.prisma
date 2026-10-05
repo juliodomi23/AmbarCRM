@@ -506,6 +506,11 @@ model Ajustes {
   // IA
   nombreNegocio    String?  @map("nombre_negocio")
   iaPromptSistema  String?  @map("ia_prompt_sistema")
+  marcaNombre       String?  @map("marca_nombre")
+  marcaLogo         String?  @map("marca_logo")
+  marcaColorPrimario String? @map("marca_color_primario")
+  marcaColorAcento  String?  @map("marca_color_acento")
+  marcaPreset       String?  @map("marca_preset")
   updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@unique([orgId])

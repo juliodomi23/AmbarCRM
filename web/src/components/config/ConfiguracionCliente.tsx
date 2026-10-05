@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { Boton, Campo, Modal } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import { MetaCanales } from "@/components/config/MetaCanales";
+import { MarcaConfig } from "@/components/config/MarcaConfig";
 
-const TABS = ["Embudos", "Usuarios", "Canal WhatsApp", "Plantillas", "Automatizaciones", "Bots", "IA"] as const;
+const TABS = ["Marca", "Embudos", "Usuarios", "Canal WhatsApp", "Plantillas", "Automatizaciones", "Bots", "IA"] as const;
 type Tab = (typeof TABS)[number] | "Clientes";
 
 async function api(url: string, metodo: string, body?: unknown) {
@@ -49,6 +50,7 @@ export function ConfiguracionCliente({
     const t = new URLSearchParams(window.location.search).get("tab");
     const mapa: Record<string, Tab> = {
       embudos: "Embudos",
+      marca: "Marca",
       usuarios: "Usuarios",
       canal: "Canal WhatsApp",
       plantillas: "Plantillas",
@@ -77,6 +79,7 @@ export function ConfiguracionCliente({
         ))}
       </div>
 
+      {tab === "Marca" && <MarcaConfig ajustes={ajustes} />}
       {tab === "Embudos" && <TabEmbudos embudos={embudos} />}
       {tab === "Usuarios" && <TabUsuarios usuarios={usuarios} />}
       {tab === "Canal WhatsApp" && <TabCanal canales={canales} />}

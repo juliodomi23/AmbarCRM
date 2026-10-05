@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { Toaster } from "@/components/Toaster";
 import { PushSetup } from "@/components/PushSetup";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import type { BrandConfig } from "@/lib/brand";
 
 type NavItem = { href: string; label: string; icon: string | string[]; soloAdmin?: boolean };
 type NavGrupo = { titulo?: string; items: NavItem[] };
@@ -70,11 +72,13 @@ function esActivo(href: string, pathname: string) {
 export function AppShell({
   children,
   usuario,
-  tareasPendientes = 0
+  tareasPendientes = 0,
+  marca
 }: {
   children: React.ReactNode;
   usuario: { nombre: string; rol: "admin" | "agente" };
   tareasPendientes?: number;
+  marca: BrandConfig;
 }) {
   const pathname = usePathname();
   const [abierto, setAbierto] = useState(false);
@@ -82,8 +86,9 @@ export function AppShell({
 
   const Sidebar = (
     <aside className="flex h-full w-64 flex-col bg-primary text-white">
-      <div className="px-5 py-5 text-xl font-bold">
-        Ambar<span className="text-amber-400">CRM</span>
+      <div className="flex items-center gap-3 px-5 py-5 text-lg font-bold">
+        {marca.logo ? <Image unoptimized width={36} height={36} src={marca.logo} alt="" className="h-9 w-9 rounded-lg bg-white/90 object-contain p-1" /> : <span className="grid h-9 w-9 place-items-center rounded-lg bg-white/15">{marca.nombre[0]}</span>}
+        <span className="truncate">{marca.nombre}</span>
       </div>
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 pb-4">
         {GRUPOS.map((grupo, gi) => {
@@ -154,7 +159,8 @@ export function AppShell({
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-14 items-center gap-3 border-b border-border bg-card px-4 md:hidden">
-          <span className="font-bold text-primary">Ambar<span className="text-primary">CRM</span></span>
+          {marca.logo ? <Image unoptimized width={32} height={32} src={marca.logo} alt="" className="h-8 w-8 rounded-lg object-contain" /> : null}
+          <span className="truncate font-bold text-primary">{marca.nombre}</span>
         </header>
 
         {/* pb para que la barra inferior no tape el contenido en móvil (+ safe-area iOS) */}
