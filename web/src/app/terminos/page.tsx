@@ -1,5 +1,7 @@
 import { LegalPage } from "@/components/LegalPage";
 
+export const dynamic = "force-dynamic";
+
 export default function TermsPage() {
   return (
     <LegalPage title="Términos de servicio" updated="5 de octubre de 2026">
