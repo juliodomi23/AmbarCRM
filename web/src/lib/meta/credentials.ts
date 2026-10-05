@@ -40,5 +40,5 @@ export function tokenFromChannelConfig(config?: Record<string, unknown>): string
   // Compatibilidad temporal con canales creados por la implementación anterior.
   // Al reconectarlos mediante Embedded Signup se guardarán cifrados automáticamente.
   const legacy = typeof config?.token === "string" ? config.token : "";
-  return legacy || process.env.CLOUD_API_TOKEN?.trim() || "";
+  return legacy;
 }

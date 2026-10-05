@@ -18,8 +18,8 @@ export interface CloudConfig extends Record<string, unknown> {
 function credentials(config?: CloudConfig) {
   return {
     token: tokenFromChannelConfig(config),
-    phoneId: String(config?.phoneNumberId || process.env.CLOUD_API_PHONE_NUMBER_ID || ""),
-    wabaId: String(config?.wabaId || process.env.CLOUD_API_WABA_ID || "")
+    phoneId: String(config?.phoneNumberId || ""),
+    wabaId: String(config?.wabaId || "")
   };
 }
 

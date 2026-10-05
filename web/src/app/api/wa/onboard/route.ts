@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, dbRaw } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { META_GRAPH_URL, requireMetaAppCredentials } from "@/lib/meta/config";
 import { encryptMetaToken } from "@/lib/meta/credentials";
@@ -51,6 +51,18 @@ export async function POST(req: NextRequest) {
         phones.length > 1
           ? "la WABA tiene varios números y Meta no indicó cuál se conectó"
           : "no se encontró el número conectado dentro de la WABA"
+      );
+    }
+
+    const owner = await dbRaw.$queryRawUnsafe<{ org: bigint | null }[]>(
+      "SELECT resolve_org_by_phone($1) AS org",
+      phoneNumberId
+    );
+    const ownerOrg = owner[0]?.org;
+    if (ownerOrg != null && ownerOrg !== session.orgId) {
+      return NextResponse.json(
+        { error: "este número ya está conectado en otra organización; desconéctalo allá primero" },
+        { status: 409 }
       );
     }
 

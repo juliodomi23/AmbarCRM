@@ -14,7 +14,7 @@
 DATABASE_URL=postgresql://usuario:password@postgres:5432/ambar_crm
 NEXTAUTH_URL=https://crm.tudominio.com
 NEXTAUTH_SECRET=<secreto-largo>
-API_KEY=<secreto-para-integraciones-internas>
+WA_API_KEY=<secreto-para-integraciones-internas>
 
 META_APP_ID=<app-id>
 META_APP_SECRET=<app-secret>
@@ -34,14 +34,18 @@ Genera la clave de cifrado una sola vez y consérvala en el gestor de secretos. 
 
 ## 3. Base de datos y aplicación
 
-Desde `web/`:
+BD nueva, desde `web/` (con el usuario dueño de la BD, no `crm_app`):
 
 ```bash
 npm ci
-npx prisma migrate deploy
+npx prisma db push
+psql "$DATABASE_URL_DUENO" -f prisma/sql/multi-tenant.sql   # solo PARTES B en adelante
 npm run build
 npm run start
 ```
+
+BD existente: corre `prisma/sql/multi-tenant.sql` como dueño (ver `MULTI-TENANT.md`).
+La PARTE F desactiva los canales de proveedores anteriores y deja solo `cloud_api`.
 
 Con Docker:
 
