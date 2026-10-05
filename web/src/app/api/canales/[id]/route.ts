@@ -6,7 +6,7 @@ import { tokenFromChannelConfig } from "@/lib/meta/credentials";
 
 export const dynamic = "force-dynamic";
 
-/** Edita un canal de WhatsApp. Body: { nombre?, proveedor?, telefono?, instancia?, estado?, config? } */
+/** Edita únicamente los campos administrativos permitidos del canal. */
 export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const s = await requireSesion(true);
@@ -14,7 +14,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 
   const body = await req.json().catch(() => ({}));
   const data: Record<string, unknown> = {};
-  for (const k of ["nombre", "proveedor", "telefono", "instancia", "estado", "config", "activo"]) {
+  for (const k of ["nombre", "activo"]) {
     if (k in body) data[k] = body[k];
   }
   await db.canalWhatsapp.update({ where: { id: BigInt(params.id) }, data });
