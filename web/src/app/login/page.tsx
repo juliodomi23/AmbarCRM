@@ -42,6 +42,7 @@ export default function LoginPage() {
     setCargando(false);
     if (res?.error) setError("Credenciales incorrectas");
     // Carga completa: el layout raíz se vuelve a renderizar con la sesión y aplica la marca de la org.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- recarga completa a propósito
     else window.location.assign("/embudos");
   }
 
