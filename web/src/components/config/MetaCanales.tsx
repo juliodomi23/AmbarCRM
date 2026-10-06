@@ -24,7 +24,8 @@ type PlantillaMeta = {
   category?: string;
 };
 
-export function MetaCanales({ canales }: { canales: Canal[] }) {
+// vista "canal": conexión y números · vista "plantillas": plantillas de Meta del número elegido.
+export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vista?: "canal" | "plantillas" }) {
   const router = useRouter();
   const [canalId, setCanalId] = useState(canales[0]?.id || "");
   const canal = canales.find((item) => item.id === canalId) || canales[0];
@@ -40,7 +41,7 @@ export function MetaCanales({ canales }: { canales: Canal[] }) {
   const variables = variablesDePlantilla(form.body);
 
   useEffect(() => {
-    if (!canal?.id) return setPlantillas([]);
+    if (vista !== "plantillas" || !canal?.id) return setPlantillas([]);
     setCargando(true);
     fetch(`/api/meta/templates?canalId=${encodeURIComponent(canal.id)}`)
       .then(async (response) => ({ response, data: await response.json().catch(() => ({})) }))
@@ -50,7 +51,7 @@ export function MetaCanales({ canales }: { canales: Canal[] }) {
       })
       .catch((error) => toast(error.message, "error"))
       .finally(() => setCargando(false));
-  }, [canal?.id]);
+  }, [canal?.id, vista]);
 
   async function crearPlantilla(event: React.FormEvent) {
     event.preventDefault();
@@ -97,9 +98,27 @@ export function MetaCanales({ canales }: { canales: Canal[] }) {
 
   return (
     <div className="max-w-2xl space-y-5">
-      <EmbeddedSignup />
+      {vista === "canal" && <EmbeddedSignup />}
 
-      {canales.length > 0 && (
+      {vista === "plantillas" && canales.length === 0 && (
+        <p className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+          Conecta un número en la pestaña Canal WhatsApp para crear plantillas de Meta.
+        </p>
+      )}
+
+      {vista === "plantillas" && canales.length > 1 && (
+        <select
+          value={canal?.id || ""}
+          onChange={(event) => setCanalId(event.target.value)}
+          className="max-w-64 rounded-lg border border-input px-3 py-2 text-sm"
+        >
+          {canales.map((item) => (
+            <option key={item.id} value={item.id}>{item.nombre}</option>
+          ))}
+        </select>
+      )}
+
+      {vista === "canal" && canales.length > 0 && (
         <section className="space-y-3 rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
@@ -133,10 +152,10 @@ export function MetaCanales({ canales }: { canales: Canal[] }) {
         </section>
       )}
 
-      {canal && (
+      {vista === "plantillas" && canal && (
         <section className="space-y-4 rounded-xl border border-border bg-card p-4">
           <div>
-            <p className="font-semibold text-foreground">Plantillas oficiales de Meta</p>
+            <p className="font-semibold text-foreground">Plantillas de Meta</p>
             <p className="text-xs text-muted-foreground">Crea y consulta plantillas sin salir del CRM.</p>
           </div>
           <form onSubmit={crearPlantilla} className="space-y-3 rounded-lg border border-border p-3">

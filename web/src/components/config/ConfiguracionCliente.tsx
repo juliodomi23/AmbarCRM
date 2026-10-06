@@ -7,7 +7,7 @@ import { toast } from "@/components/Toaster";
 import { MetaCanales } from "@/components/config/MetaCanales";
 import { MarcaConfig } from "@/components/config/MarcaConfig";
 
-const TABS = ["Marca", "Embudos", "Usuarios", "Canal WhatsApp", "Respuestas rápidas", "Automatizaciones", "Bots", "IA"] as const;
+const TABS = ["Marca", "Embudos", "Usuarios", "Canal WhatsApp", "Plantillas", "Plantillas de Meta", "Automatizaciones", "Bots", "IA"] as const;
 type Tab = (typeof TABS)[number] | "Clientes";
 
 async function api(url: string, metodo: string, body?: unknown) {
@@ -53,7 +53,8 @@ export function ConfiguracionCliente({
       marca: "Marca",
       usuarios: "Usuarios",
       canal: "Canal WhatsApp",
-      plantillas: "Respuestas rápidas",
+      plantillas: "Plantillas",
+      meta: "Plantillas de Meta",
       automatizaciones: "Automatizaciones",
       bots: "Bots",
       ia: "IA",
@@ -83,7 +84,8 @@ export function ConfiguracionCliente({
       {tab === "Embudos" && <TabEmbudos embudos={embudos} />}
       {tab === "Usuarios" && <TabUsuarios usuarios={usuarios} />}
       {tab === "Canal WhatsApp" && <TabCanal canales={canales} />}
-      {tab === "Respuestas rápidas" && <TabPlantillas plantillas={plantillas} />}
+      {tab === "Plantillas" && <TabPlantillas plantillas={plantillas} />}
+      {tab === "Plantillas de Meta" && <MetaCanales canales={canales} vista="plantillas" />}
       {tab === "Automatizaciones" && <TabAutomatizaciones ajustes={ajustes} />}
       {tab === "Bots" && <TabBots bots={bots} canales={canales} />}
       {tab === "IA" && <TabIA ajustes={ajustes} />}
