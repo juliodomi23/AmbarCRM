@@ -8,6 +8,8 @@ import { IconoAdjuntar, IconoIA, IconoMicro, IconoNota, IconoInfo, IconoEnviar, 
 import { toast } from "@/components/Toaster";
 import { Boton, Lightbox, Modal } from "@/components/ui";
 import { AvatarNombre } from "@/components/AvatarNombre";
+import { EnviarPlantilla } from "@/components/chat/EnviarPlantilla";
+import { estadoVentana, textoRestante } from "@/lib/meta/ventana";
 
 type Embudo = { id: string; nombre: string; etapas: { id: string; nombre: string }[] };
 type Usuario = { id: string; nombre: string };
@@ -39,6 +41,7 @@ type Mensaje = {
   mediaUrl: string | null;
   interna: boolean;
   status: string;
+  errorDetalle?: string | null;
   timestamp: string;
 };
 
@@ -160,6 +163,17 @@ export function ChatCliente({
   convsRef.current = convs;
 
   const seleccionada = convs.find((c) => c.id === selId) ?? null;
+
+  // Ventana de 24 h: se recalcula cada minuto a partir del último mensaje del cliente.
+  const [modalPlantilla, setModalPlantilla] = useState(false);
+  const [ahora, setAhora] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setAhora(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const ultimoEntrante = [...mensajes].reverse().find((m) => m.direccion === "entrante" && !m.interna)?.timestamp;
+  const ventana = estadoVentana(ultimoEntrante, ahora);
+  const ventanaCerrada = !cargandoMsgs && mensajes.length > 0 && !ventana.abierta;
   const sinAsignarCount = convs.filter((c) => !c.esPersonal && !c.responsableId && c.estado !== "cerrada").length;
   const misCount = usuarioId ? convs.filter((c) => !c.esPersonal && c.responsableId === usuarioId).length : 0;
   const personalCount = convs.filter((c) => c.esPersonal).length;
@@ -320,6 +334,7 @@ export function ChatCliente({
       setNotaInterna(false);
     } else {
       toast(data?.error ? `No se pudo enviar: ${data.error}` : "No se pudo enviar el mensaje", "error");
+      if (data?.ventanaCerrada) setModalPlantilla(true);
     }
   }
 
@@ -686,6 +701,9 @@ export function ChatCliente({
                         <IconoDeshacer className="h-3 w-3" /> Reintentar
                       </button>
                     )}
+                    {m.direccion === "saliente" && m.status === "fallido" && m.errorDetalle && (
+                      <p className="mt-0.5 max-w-xs text-right text-[10px] text-red-600">{m.errorDetalle}</p>
+                    )}
                   </div>
                 </div>
                 </Fragment>
@@ -728,6 +746,28 @@ export function ChatCliente({
               </div>
             )}
 
+            {mensajes.length > 0 && !cargandoMsgs && (
+              ventanaCerrada ? (
+                <div className="flex flex-wrap items-center gap-2 border-t border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground">
+                  <span className="flex-1">
+                    Pasaron más de 24 h desde el último mensaje del cliente. Solo puedes enviar una plantilla aprobada
+                    (las notas internas sí funcionan).
+                  </span>
+                  <button type="button" onClick={() => setModalPlantilla(true)} className="rounded-full bg-primary px-3 py-1 font-medium text-primary-foreground">
+                    Enviar plantilla
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 border-t border-border bg-card px-3 py-1 text-[11px] text-muted-foreground">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                  <span className="flex-1">Ventana de 24 h abierta · quedan {textoRestante(ventana.restanteMs)}</span>
+                  <button type="button" onClick={() => setModalPlantilla(true)} className="font-medium text-primary hover:underline">
+                    Plantilla
+                  </button>
+                </div>
+              )
+            )}
+
             <form onSubmit={enviar} className="flex items-center gap-2 border-t border-border bg-card p-3">
               <input
                 ref={archivoRef}
@@ -739,7 +779,7 @@ export function ChatCliente({
               <button
                 type="button"
                 title="Adjuntar archivo"
-                disabled={enviando || notaInterna}
+                disabled={enviando || notaInterna || ventanaCerrada}
                 onClick={() => archivoRef.current?.click()}
                 className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-50"
               >
@@ -757,7 +797,7 @@ export function ChatCliente({
               <button
                 type="button"
                 title={grabando ? "Detener y enviar nota de voz" : "Grabar nota de voz"}
-                disabled={enviando || notaInterna}
+                disabled={enviando || notaInterna || ventanaCerrada}
                 onClick={grabarVoz}
                 className={`grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-muted disabled:opacity-50 ${grabando ? "animate-pulse bg-red-100 text-red-600" : "text-muted-foreground"}`}
               >
@@ -774,7 +814,7 @@ export function ChatCliente({
               <button
                 type="button"
                 title="Programar envío (escribe el mensaje primero)"
-                disabled={enviando || notaInterna || !texto.trim()}
+                disabled={enviando || notaInterna || ventanaCerrada || !texto.trim()}
                 onClick={abrirProgramar}
                 className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-50"
               >
@@ -783,12 +823,13 @@ export function ChatCliente({
               <input
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
-                placeholder={notaInterna ? "Nota interna (solo para el equipo)…" : "Escribe un mensaje…"}
+                disabled={ventanaCerrada && !notaInterna}
+                placeholder={notaInterna ? "Nota interna (solo para el equipo)…" : ventanaCerrada ? "Ventana cerrada: envía una plantilla o una nota interna" : "Escribe un mensaje…"}
                 className={`flex-1 rounded-full border px-4 py-2 text-sm outline-none focus:ring-2 ${notaInterna ? "border-amber-300 bg-amber-50 focus:ring-amber-300/40" : "border-input focus:ring-primary/30"}`}
               />
               <button
                 type="submit"
-                disabled={enviando || !texto.trim()}
+                disabled={enviando || !texto.trim() || (ventanaCerrada && !notaInterna)}
                 className="grid h-10 w-10 place-items-center rounded-full bg-primary text-white disabled:opacity-50"
               >
                 <IconoEnviar className="h-5 w-5" />
@@ -820,6 +861,21 @@ export function ChatCliente({
 
     {/* Imagen ampliada sin salir del chat */}
     <Lightbox url={imagenAbierta} onClose={() => setImagenAbierta(null)} />
+
+    {seleccionada && (
+      <EnviarPlantilla
+        abierto={modalPlantilla}
+        onClose={() => setModalPlantilla(false)}
+        canalId={seleccionada.canalId}
+        conversacionId={seleccionada.id}
+        nombreContacto={seleccionada.contacto.nombre}
+        onEnviado={(mensaje) => {
+          const m = mensaje as Mensaje;
+          setMensajes((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+          setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, ultimoMensajeAt: new Date().toISOString(), preview: m.contenido ?? "" } : c)));
+        }}
+      />
+    )}
 
     {/* Programar envío */}
     <Modal abierto={programando} onClose={() => setProgramando(false)} titulo="Programar mensaje">

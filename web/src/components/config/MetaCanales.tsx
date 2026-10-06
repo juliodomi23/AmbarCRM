@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { EmbeddedSignup } from "@/components/config/EmbeddedSignup";
 import { Boton, Campo } from "@/components/ui";
 import { toast } from "@/components/Toaster";
-import { errorDePlantilla, variablesDePlantilla } from "@/lib/meta/plantillaMeta";
+import { errorDeBotones, errorDePlantilla, MAX_BOTONES, variablesDePlantilla, type BotonPlantilla } from "@/lib/meta/plantillaMeta";
 
 type Canal = {
   id: string;
@@ -47,6 +47,7 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
     body: ""
   });
   const [ejemplos, setEjemplos] = useState<string[]>([]);
+  const [botones, setBotones] = useState<BotonPlantilla[]>([]);
   const variables = variablesDePlantilla(form.body);
 
   useEffect(() => {
@@ -65,13 +66,13 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
   async function crearPlantilla(event: React.FormEvent) {
     event.preventDefault();
     if (!canal) return;
-    const error = errorDePlantilla(form.body, ejemplos);
+    const error = errorDePlantilla(form.body, ejemplos) ?? errorDeBotones(botones);
     if (error) return toast(error, "error");
     setEnviando(true);
     const response = await fetch("/api/meta/templates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ canalId: canal.id, ...form, ejemplos: ejemplos.slice(0, variables.length) })
+      body: JSON.stringify({ canalId: canal.id, ...form, ejemplos: ejemplos.slice(0, variables.length), botones })
     });
     const data = await response.json().catch(() => ({}));
     setEnviando(false);
@@ -79,6 +80,7 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
     toast("Plantilla enviada a revisión de Meta", "ok");
     setForm({ ...form, name: "", body: "" });
     setEjemplos([]);
+    setBotones([]);
     setPlantillas((current) => [data.plantilla, ...current]);
   }
 
@@ -225,6 +227,56 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
                 ))}
               </div>
             )}
+            <div className="space-y-2">
+              <span className="text-sm font-medium text-muted-foreground">Botones (opcional)</span>
+              {botones.map((b, i) => {
+                const cambiar = (parcial: Partial<{ texto: string; url: string; telefono: string }>) =>
+                  setBotones(botones.map((x, j) => (j === i ? ({ ...x, ...parcial } as BotonPlantilla) : x)));
+                return (
+                  <div key={i} className="grid gap-2 rounded-lg bg-background p-2 sm:grid-cols-[8rem_1fr_1fr_auto]">
+                    <select
+                      value={b.tipo}
+                      onChange={(e) => {
+                        const tipo = e.target.value as BotonPlantilla["tipo"];
+                        const nuevo: BotonPlantilla = tipo === "URL" ? { tipo, texto: b.texto, url: "" } : tipo === "PHONE_NUMBER" ? { tipo, texto: b.texto, telefono: "" } : { tipo, texto: b.texto };
+                        setBotones(botones.map((x, j) => (j === i ? nuevo : x)));
+                      }}
+                      className="rounded-lg border border-input px-2 py-2 text-sm"
+                    >
+                      <option value="QUICK_REPLY">Respuesta</option>
+                      <option value="URL">Enlace</option>
+                      <option value="PHONE_NUMBER">Llamar</option>
+                    </select>
+                    <input
+                      value={b.texto}
+                      maxLength={25}
+                      onChange={(e) => cambiar({ texto: e.target.value })}
+                      placeholder="Texto del botón"
+                      className="rounded-lg border border-input px-3 py-2 text-sm"
+                    />
+                    {b.tipo === "URL" ? (
+                      <input value={b.url} onChange={(e) => cambiar({ url: e.target.value })} placeholder="https://tusitio.com" className="rounded-lg border border-input px-3 py-2 text-sm" />
+                    ) : b.tipo === "PHONE_NUMBER" ? (
+                      <input value={b.telefono} onChange={(e) => cambiar({ telefono: e.target.value })} placeholder="+529611234567" className="rounded-lg border border-input px-3 py-2 text-sm" />
+                    ) : (
+                      <span className="self-center text-xs text-muted-foreground">El cliente toca y responde con este texto</span>
+                    )}
+                    <button type="button" onClick={() => setBotones(botones.filter((_, j) => j !== i))} className="text-xs text-red-600 hover:underline">
+                      Quitar
+                    </button>
+                  </div>
+                );
+              })}
+              {botones.length < MAX_BOTONES && (
+                <button
+                  type="button"
+                  onClick={() => setBotones([...botones, { tipo: "QUICK_REPLY", texto: "" }])}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  + Agregar botón
+                </button>
+              )}
+            </div>
             <Boton type="submit" disabled={enviando}>{enviando ? "Enviando…" : "Crear plantilla en Meta"}</Boton>
           </form>
 

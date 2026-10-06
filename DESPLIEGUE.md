@@ -76,3 +76,20 @@ docker compose up -d --build
 - Desconecta el número y confirma que deja de recibir eventos.
 
 Consulta `META-APP-REVIEW.md` antes de enviar la app a revisión.
+
+## 6. Respaldos
+
+El servicio `backup` del compose genera cada 24 h un respaldo comprimido de la BD en el
+volumen `backups` (`ambarcrm-AAAA-MM-DD-HHMM.sql.gz`) y borra los de más de `BACKUP_DIAS`
+días (14 por defecto). En los logs del servicio verás `[backup] ok …` o `[backup] ERROR`.
+
+Los respaldos viven en el mismo VPS: descárgalos de vez en cuando (o súbelos a un
+almacenamiento externo) para no perderlos si se pierde el servidor.
+
+Restaurar (desde la consola del servicio `backup`, con la app detenida y sobre una BD vacía;
+pide ayuda antes de hacerlo en producción):
+
+```bash
+ls /backups
+gunzip -c /backups/ambarcrm-AAAA-MM-DD-HHMM.sql.gz | psql -v ON_ERROR_STOP=1
+```
