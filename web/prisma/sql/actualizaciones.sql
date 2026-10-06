@@ -7,6 +7,9 @@ ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS marca_color_primario TEXT;
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS marca_color_acento TEXT;
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS marca_preset TEXT;
 
+-- Motivo legible cuando Meta rechaza un mensaje (se muestra en el chat).
+ALTER TABLE mensajes ADD COLUMN IF NOT EXISTS error_detalle TEXT;
+
 -- Solo WhatsApp Cloud API oficial de Meta.
 DO $$
 BEGIN

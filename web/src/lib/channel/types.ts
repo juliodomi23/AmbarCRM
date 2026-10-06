@@ -63,6 +63,8 @@ export type EstadoMensaje = "enviado" | "entregado" | "leido" | "fallido";
 export interface ActualizacionEstado {
   waMessageId: string;
   status: EstadoMensaje;
+  /** Motivo legible cuando el status es "fallido". */
+  error?: string;
 }
 
 /** Resultado de un envío. */

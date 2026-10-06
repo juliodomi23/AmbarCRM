@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
             ? {}
             : { status: { in: [...estadosAnteriores[status.status]] } })
         },
-        data: { status: status.status }
+        data: { status: status.status, ...(status.error ? { errorDetalle: status.error } : {}) }
       });
     }
 

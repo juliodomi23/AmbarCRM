@@ -7,6 +7,7 @@ import type {
 } from "./types";
 import { META_GRAPH_URL } from "@/lib/meta/config";
 import { tokenFromChannelConfig } from "@/lib/meta/credentials";
+import { motivoDeErrorMeta } from "@/lib/meta/errores";
 
 export interface CloudConfig extends Record<string, unknown> {
   token?: string;
@@ -121,7 +122,7 @@ export function makeCloudApiProvider(config?: CloudConfig): ChannelProvider {
       headers: { Authorization: `Bearer ${token}`, ...(init?.headers || {}) }
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data?.error?.message || `Meta HTTP ${response.status}`);
+    if (!response.ok) throw new Error(data?.error ? motivoDeErrorMeta(data.error) : `Meta HTTP ${response.status}`);
     return data;
   }
 
@@ -272,7 +273,13 @@ export function makeCloudApiProvider(config?: CloudConfig): ChannelProvider {
         for (const change of entry?.changes || []) {
           for (const status of change?.value?.statuses || []) {
             const normalized = statusMap[status.status];
-            if (status.id && normalized) output.push({ waMessageId: status.id, status: normalized });
+            if (status.id && normalized) {
+              output.push({
+                waMessageId: status.id,
+                status: normalized,
+                ...(normalized === "fallido" && status.errors?.[0] ? { error: motivoDeErrorMeta(status.errors[0]) } : {})
+              });
+            }
           }
         }
       }

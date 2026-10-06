@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { getProvider, type TipoMensaje } from "@/lib/channel";
 import { guardarMediaBase64 } from "@/lib/storage";
 import { serializar } from "@/lib/serialize";
+import { estadoVentana } from "@/lib/meta/ventana";
+import { motivoDeError } from "@/lib/meta/errores";
 
 export const dynamic = "force-dynamic";
 
@@ -28,8 +30,17 @@ export async function POST(req: NextRequest) {
   const { conversacionId, texto, mediaBase64, mediaMime, caption, interna, audioBase64 } = body;
   const esMedia = !!mediaBase64;
   const esAudio = !!audioBase64;
+  // Plantilla aprobada: única forma de escribir fuera de la ventana de 24 h.
+  const plantilla = typeof body.plantilla?.name === "string" && typeof body.plantilla?.language === "string"
+    ? {
+        name: body.plantilla.name as string,
+        language: body.plantilla.language as string,
+        variables: Array.isArray(body.plantilla.variables) ? body.plantilla.variables.map((v: unknown) => String(v ?? "")) : [],
+        vistaPrevia: String(body.plantilla.vistaPrevia || `[Plantilla ${body.plantilla.name}]`).slice(0, 4096)
+      }
+    : null;
 
-  if (!conversacionId || (!esMedia && !esAudio && !texto?.trim())) {
+  if (!conversacionId || (!esMedia && !esAudio && !plantilla && !texto?.trim())) {
     return NextResponse.json({ error: "faltan campos" }, { status: 400 });
   }
 
@@ -63,10 +74,29 @@ export async function POST(req: NextRequest) {
   }
   const provider = getProvider("cloud_api", conv.canal.config, conv.canal.instancia);
 
+  if (!plantilla) {
+    const ultimoEntrante = await db.mensaje.findFirst({
+      where: { conversacionId: conv.id, direccion: "entrante" },
+      orderBy: { timestamp: "desc" },
+      select: { timestamp: true }
+    });
+    if (!estadoVentana(ultimoEntrante?.timestamp).abierta) {
+      return NextResponse.json({ error: motivoDeError(131047), ventanaCerrada: true }, { status: 400 });
+    }
+  }
+
   let envio;
   let datosMensaje: { tipo: TipoMensaje; contenido: string | null; mediaUrl: string | null; mediaMime: string | null };
 
-  if (esAudio) {
+  if (plantilla) {
+    if (!provider.enviarPlantilla) return NextResponse.json({ error: "el canal no admite plantillas" }, { status: 400 });
+    envio = await provider.enviarPlantilla(
+      conv.contacto.telefono,
+      { name: plantilla.name, language: plantilla.language },
+      plantilla.variables
+    );
+    datosMensaje = { tipo: "texto", contenido: plantilla.vistaPrevia, mediaUrl: null, mediaMime: null };
+  } else if (esAudio) {
     // Cloud API recibe el audio mediante su endpoint de media; en local lo conservamos para reproducirlo.
     const limpio = audioBase64.includes(",") ? audioBase64.split(",")[1] : audioBase64;
     envio = provider.enviarAudio
@@ -94,6 +124,7 @@ export async function POST(req: NextRequest) {
       mediaUrl: datosMensaje.mediaUrl,
       mediaMime: datosMensaje.mediaMime,
       status: envio.ok ? "enviado" : "fallido",
+      errorDetalle: envio.ok ? null : envio.error ?? null,
       waMessageId: envio.waMessageId,
       enviadoPor: session.user.id ? BigInt(session.user.id) : null
     }

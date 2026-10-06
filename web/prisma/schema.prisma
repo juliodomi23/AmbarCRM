@@ -423,6 +423,7 @@ model Mensaje {
   interna        Boolean       @default(false)
   esDifusion     Boolean       @default(false) @map("es_difusion")
   status         StatusMsg     @default(enviado)
+  errorDetalle   String?       @map("error_detalle")
   waMessageId    String?       @unique @map("wa_message_id")
   enviadoPor     BigInt?       @map("enviado_por")
   timestamp      DateTime      @default(now())
