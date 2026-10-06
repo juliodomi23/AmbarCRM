@@ -16,7 +16,8 @@ export const metadata: Metadata = {
   title: "AmbarCRM",
   description: "CRM conversacional con WhatsApp — Ámbar Rojo",
   manifest: "/manifest.json",
-  icons: { icon: "/icon.svg" }
+  icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "AmbarCRM", statusBarStyle: "default" }
 };
 
 export const viewport = { themeColor: "rgb(215, 8, 63)" };

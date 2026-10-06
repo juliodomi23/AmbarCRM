@@ -768,7 +768,7 @@ export function ChatCliente({
               )
             )}
 
-            <form onSubmit={enviar} className="flex items-center gap-2 border-t border-border bg-card p-3">
+            <form onSubmit={enviar} className="flex flex-wrap items-center gap-2 border-t border-border bg-card p-3 sm:flex-nowrap">
               <input
                 ref={archivoRef}
                 type="file"
@@ -825,12 +825,12 @@ export function ChatCliente({
                 onChange={(e) => setTexto(e.target.value)}
                 disabled={ventanaCerrada && !notaInterna}
                 placeholder={notaInterna ? "Nota interna (solo para el equipo)…" : ventanaCerrada ? "Ventana cerrada: envía una plantilla o una nota interna" : "Escribe un mensaje…"}
-                className={`flex-1 rounded-full border px-4 py-2 text-sm outline-none focus:ring-2 ${notaInterna ? "border-amber-300 bg-amber-50 focus:ring-amber-300/40" : "border-input focus:ring-primary/30"}`}
+                className={`order-first min-w-0 flex-1 basis-[calc(100%-3rem)] rounded-full border px-4 py-2 text-sm outline-none focus:ring-2 sm:order-none sm:basis-auto ${notaInterna ? "border-amber-300 bg-amber-50 focus:ring-amber-300/40" : "border-input focus:ring-primary/30"}`}
               />
               <button
                 type="submit"
                 disabled={enviando || !texto.trim() || (ventanaCerrada && !notaInterna)}
-                className="grid h-10 w-10 place-items-center rounded-full bg-primary text-white disabled:opacity-50"
+                className="order-first grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-white disabled:opacity-50 sm:order-none"
               >
                 <IconoEnviar className="h-5 w-5" />
               </button>
