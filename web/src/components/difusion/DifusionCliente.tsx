@@ -165,6 +165,11 @@ export function DifusionCliente({ etiquetas, plantillas, canales }: { etiquetas:
                   </option>
                 ))}
               </select>
+              {oficiales.some((p) => p.status === "PENDING") && (
+                <span className="block text-xs text-blue-700">
+                  {oficiales.filter((p) => p.status === "PENDING").length} en revisión de Meta: aparecerán aquí cuando las aprueben.
+                </span>
+              )}
             </label>
             {oficial && (
               <label className="block space-y-1">
