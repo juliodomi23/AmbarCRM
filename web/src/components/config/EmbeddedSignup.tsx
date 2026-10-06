@@ -97,9 +97,47 @@ export function EmbeddedSignup() {
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
+  async function finalizar(resp: any) {
+    const code = resp?.authResponse?.code;
+    if (!code) {
+      setCargando(false);
+      if (["cancelado", "error", "solo-waba"].includes(datos.current.resultado || "")) return;
+      return setError("Conexión cancelada o sin permisos.");
+    }
+    // El callback OAuth y el postMessage de sesión pueden llegar en distinto orden.
+    for (let intento = 0; intento < 20 && !datos.current.resultado; intento++) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    const { resultado, wabaId, phoneNumberId } = datos.current;
+    if (["cancelado", "error", "solo-waba"].includes(resultado || "")) {
+      setCargando(false);
+      return;
+    }
+    if (!wabaId) {
+      setCargando(false);
+      return setError("Meta no devolvió la WABA. Reintenta el flujo completo.");
+    }
+    const res = await fetch("/api/wa/onboard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code,
+        wabaId,
+        phoneNumberId,
+        onboardingMode: resultado === "coexistencia" ? "coexistence" : "cloud_api"
+      })
+    });
+    const d = await res.json().catch(() => ({}));
+    setCargando(false);
+    if (!res.ok) return setError(d.error ?? "Error al conectar.");
+    setInfo(null);
+    setOk(`${resultado === "coexistencia" ? "Coexistence conectado" : "Número conectado"} · ${d.phoneNumberId}`);
+    router.refresh();
+  }
+
   // coexistencia = número que vive en la app WhatsApp Business del celular.
   // Sin ella: número nuevo o ya registrado en la API de Meta.
-  async function conectar(coexistencia: boolean) {
+  function conectar(coexistencia: boolean) {
     setError(null);
     setInfo(null);
     setOk(null);
@@ -108,43 +146,14 @@ export function EmbeddedSignup() {
     datos.current = {};
     setCargando(true);
 
+    // El SDK de Meta rechaza callbacks async ("asyncfunction, not function"): por eso
+    // el callback es síncrono y delega en finalizar().
     window.FB.login(
-      async (resp: any) => {
-        const code = resp?.authResponse?.code;
-        if (!code) {
+      (resp: any) => {
+        finalizar(resp).catch(() => {
           setCargando(false);
-          if (["cancelado", "error", "solo-waba"].includes(datos.current.resultado || "")) return;
-          return setError("Conexión cancelada o sin permisos.");
-        }
-        // El callback OAuth y el postMessage de sesión pueden llegar en distinto orden.
-        for (let intento = 0; intento < 20 && !datos.current.resultado; intento++) {
-          await new Promise((resolve) => setTimeout(resolve, 250));
-        }
-        const { resultado, wabaId, phoneNumberId } = datos.current;
-        if (["cancelado", "error", "solo-waba"].includes(resultado || "")) {
-          setCargando(false);
-          return;
-        }
-        if (!wabaId) {
-          setCargando(false);
-          return setError("Meta no devolvió la WABA. Reintenta el flujo completo.");
-        }
-        const res = await fetch("/api/wa/onboard", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            code,
-            wabaId,
-            phoneNumberId,
-            onboardingMode: resultado === "coexistencia" ? "coexistence" : "cloud_api"
-          })
+          setError("No se pudo completar la conexión. Reintenta.");
         });
-        const d = await res.json().catch(() => ({}));
-        setCargando(false);
-        if (!res.ok) return setError(d.error ?? "Error al conectar.");
-        setInfo(null);
-        setOk(`${resultado === "coexistencia" ? "Coexistence conectado" : "Número conectado"} · ${d.phoneNumberId}`);
-        router.refresh();
       },
       {
         config_id: CONFIG_ID,

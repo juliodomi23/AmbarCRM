@@ -48,8 +48,12 @@ export function AppShell({ children, usuario, marca, contadoresIniciales }: {
   const [paleta, setPaleta] = useState(false);
   const [contadores, setContadores] = useState(contadoresIniciales);
   const visible = (item: NavItem) => !item.soloAdmin || usuario.rol === "admin";
-  const fecha = new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
-  const hora = new Date().getHours();
+  // Zona fija: el servidor corre en UTC y el navegador en hora local; si no coinciden,
+  // React marca error de hidratación (#418) y el saludo sale mal.
+  // ponytail: zona de México fija; tomarla de los ajustes de la org si hay clientes en otras zonas.
+  const zona = "America/Mexico_City";
+  const fecha = new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long", timeZone: zona }).format(new Date());
+  const hora = Number(new Intl.DateTimeFormat("es-MX", { hour: "numeric", hourCycle: "h23", timeZone: zona }).format(new Date()));
   const saludo = hora < 12 ? "Buenos días" : hora < 19 ? "Buenas tardes" : "Buenas noches";
 
   useEffect(() => {
