@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
     // Coexistence puede terminar sin phone_number_id. Lo descubrimos desde la WABA.
     const phonesData = await graph(
-      `${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating&limit=100`,
+      `${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,platform_type&limit=100`,
       token
     );
     const phones = Array.isArray(phonesData?.data) ? phonesData.data : [];
@@ -71,7 +71,10 @@ export async function POST(req: NextRequest) {
 
     // Coexistence usa el registro de la app del celular; los demás números hay que activarlos.
     const coexistencia = body.onboardingMode === "coexistence";
-    const registro: { pinEncrypted?: string; error?: string } = coexistencia
+    // Un número ya activo en Cloud API (p. ej. al reconectarlo) no se vuelve a registrar:
+    // Meta lo rechazaría por el PIN de verificación en dos pasos que ya tiene.
+    const yaActivo = phone.platform_type === "CLOUD_API";
+    const registro: { pinEncrypted?: string; error?: string } = coexistencia || yaActivo
       ? {}
       : await registrarNumero(phoneNumberId, token);
 
