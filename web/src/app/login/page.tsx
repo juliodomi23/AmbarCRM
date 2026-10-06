@@ -2,13 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { BrandRuntime } from "@/components/BrandRuntime";
 import { DEFAULT_BRAND, BrandConfig } from "@/lib/brand";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [verPassword, setVerPassword] = useState(false);
@@ -43,7 +41,8 @@ export default function LoginPage() {
     });
     setCargando(false);
     if (res?.error) setError("Credenciales incorrectas");
-    else router.push("/embudos");
+    // Carga completa: el layout raíz se vuelve a renderizar con la sesión y aplica la marca de la org.
+    else window.location.assign("/embudos");
   }
 
   return (

@@ -142,7 +142,11 @@ export function EmbeddedSignup() {
     setError(null);
     setInfo(null);
     setOk(null);
-    if (!window.FB) return setError("El SDK de Meta aún no cargó. Reintenta en unos segundos.");
+    if (!window.FB) {
+      return setError(
+        "No se pudo cargar la conexión con Meta. Si usas Brave o un bloqueador de anuncios, desactívalo para este sitio y recarga la página."
+      );
+    }
     if (!CONFIG_ID) return setError("Falta NEXT_PUBLIC_META_CONFIG_ID.");
     datos.current = {};
     setCargando(true);
@@ -182,6 +186,9 @@ export function EmbeddedSignup() {
       <p className="text-xs text-muted-foreground">
         Usa el primer botón para un número nuevo o que ya está en la API de Meta. Usa el segundo
         para un número que hoy usas en la app WhatsApp Business del celular y quieres seguir usando ahí.
+      </p>
+      <p className="text-xs font-medium text-foreground">
+        En la ventana de Meta, revisa que el portafolio seleccionado sea el de tu negocio.
       </p>
       <div className="flex flex-wrap gap-2">
         <button
