@@ -24,6 +24,14 @@ type PlantillaMeta = {
   category?: string;
 };
 
+const ESTADOS: Record<string, { label: string; clase: string }> = {
+  PENDING: { label: "En revisión", clase: "bg-warning/15 text-warning" },
+  APPROVED: { label: "Aprobada", clase: "bg-success/15 text-success" },
+  REJECTED: { label: "Rechazada", clase: "bg-destructive/15 text-destructive" },
+  PAUSED: { label: "Pausada", clase: "bg-muted text-muted-foreground" },
+  DISABLED: { label: "Desactivada", clase: "bg-muted text-muted-foreground" }
+};
+
 // vista "canal": conexión y números · vista "plantillas": plantillas de Meta del número elegido.
 export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vista?: "canal" | "plantillas" }) {
   const router = useRouter();
@@ -31,6 +39,7 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
   const canal = canales.find((item) => item.id === canalId) || canales[0];
   const [plantillas, setPlantillas] = useState<PlantillaMeta[]>([]);
   const [cargando, setCargando] = useState(false);
+  const [enviando, setEnviando] = useState(false);
   const [form, setForm] = useState({
     name: "",
     language: "es_MX",
@@ -58,14 +67,14 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
     if (!canal) return;
     const error = errorDePlantilla(form.body, ejemplos);
     if (error) return toast(error, "error");
-    setCargando(true);
+    setEnviando(true);
     const response = await fetch("/api/meta/templates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ canalId: canal.id, ...form, ejemplos: ejemplos.slice(0, variables.length) })
     });
     const data = await response.json().catch(() => ({}));
-    setCargando(false);
+    setEnviando(false);
     if (!response.ok) return toast(data.error || "Meta rechazó la plantilla", "error");
     toast("Plantilla enviada a revisión de Meta", "ok");
     setForm({ ...form, name: "", body: "" });
@@ -211,18 +220,20 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
                 ))}
               </div>
             )}
-            <Boton type="submit" disabled={cargando}>{cargando ? "Enviando…" : "Crear plantilla en Meta"}</Boton>
+            <Boton type="submit" disabled={enviando}>{enviando ? "Enviando…" : "Crear plantilla en Meta"}</Boton>
           </form>
 
           <div className="divide-y divide-border rounded-lg border border-border">
             {plantillas.length === 0 && (
-              <p className="p-3 text-sm text-muted-foreground">{cargando ? "Consultando…" : "No hay plantillas oficiales."}</p>
+              <p className="p-3 text-sm text-muted-foreground">{cargando ? "Cargando plantillas…" : "No hay plantillas oficiales."}</p>
             )}
             {plantillas.map((item) => (
               <div key={`${item.name}-${item.language}`} className="flex items-center gap-3 p-3 text-sm">
                 <span className="min-w-0 flex-1 font-medium text-foreground">{item.name}</span>
                 <span className="text-xs text-muted-foreground">{item.language}</span>
-                <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">{item.status || "PENDING"}</span>
+                <span className={`rounded-full px-2 py-1 text-xs font-medium ${(ESTADOS[item.status || "PENDING"] ?? ESTADOS.PENDING).clase}`}>
+                  {(ESTADOS[item.status || "PENDING"] ?? { label: item.status }).label}
+                </span>
               </div>
             ))}
           </div>
