@@ -30,7 +30,8 @@ export function PanelConversacion({
   etiquetas = [],
   onCambio,
   onRenombrar,
-  onPersonal
+  onPersonal,
+  onBorrada
 }: {
   conversacionId: string;
   usuarios: Usuario[];
@@ -40,6 +41,8 @@ export function PanelConversacion({
   onRenombrar?: (nombre: string) => void;
   /** Cambió el flag Personal del contacto: el padre mueve la conversación de pestaña. */
   onPersonal?: (esPersonal: boolean) => void;
+  /** Se borró la conversación: el padre la quita de la lista. */
+  onBorrada?: () => void;
 }) {
   const [d, setD] = useState<Detalle | null>(null);
   const [modal, setModal] = useState(false);
@@ -50,6 +53,15 @@ export function PanelConversacion({
 
   type Programado = { id: string; contenido: string; enviarAt: string };
   const [programados, setProgramados] = useState<Programado[]>([]);
+
+  async function borrarChat() {
+    if (!confirm("¿Borrar este chat y todos sus mensajes? El contacto se conserva. No se puede deshacer.")) return;
+    const res = await fetch(`/api/conversaciones/${conversacionId}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return toast(data.error || "No se pudo borrar el chat", "error");
+    toast("Chat borrado", "ok");
+    onBorrada?.();
+  }
 
   async function cargar() {
     const res = await fetch(`/api/conversaciones/${conversacionId}`);
@@ -265,6 +277,9 @@ export function PanelConversacion({
           <button onClick={() => patch({ estado: "abierta" })} className="text-xs font-medium text-primary hover:underline">Reabrir</button>
         )}
       </div>
+      <button onClick={borrarChat} className="text-xs text-muted-foreground hover:text-red-600 hover:underline">
+        Borrar chat
+      </button>
 
       <div>
         <div className="mb-2 flex items-center justify-between">

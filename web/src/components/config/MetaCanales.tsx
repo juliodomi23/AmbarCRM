@@ -92,15 +92,20 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
   }
 
   async function desconectar() {
-    if (!canal || !confirm(`¿Desconectar ${canal.nombre} de AmbarCRM? El historial se conservará.`)) return;
+    if (!canal || !confirm(`¿Desconectar ${canal.nombre} de AmbarCRM?`)) return;
+    const borrarDatos = confirm(
+      "¿También quieres BORRAR las conversaciones de este número?\n\n" +
+      "Aceptar = borrar los chats y sus mensajes (no se puede deshacer)\n" +
+      "Cancelar = conservar el historial"
+    );
     const response = await fetch(`/api/canales/${canal.id}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ borrarDatos: false })
+      body: JSON.stringify({ borrarDatos })
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) return toast(data.error || "No se pudo desconectar", "error");
-    toast("Canal desconectado; el historial se conservó", "ok");
+    toast(borrarDatos ? "Número desconectado y conversaciones borradas" : "Número desconectado; el historial se conservó", "ok");
     setCanalId("");
     router.refresh();
   }

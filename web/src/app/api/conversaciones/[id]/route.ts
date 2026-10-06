@@ -80,3 +80,14 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 
   return NextResponse.json({ ok: true });
 }
+
+/** Borra la conversación y sus mensajes (cascada en BD). El contacto se conserva. Solo admin. */
+export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const s = await requireSesion(true);
+  if ("error" in s) return s.error;
+
+  const borradas = await db.conversacion.deleteMany({ where: { id: BigInt(params.id) } });
+  if (borradas.count === 0) return NextResponse.json({ error: "conversación inexistente" }, { status: 404 });
+  return NextResponse.json({ ok: true });
+}

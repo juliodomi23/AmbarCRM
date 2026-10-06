@@ -131,6 +131,12 @@ export function ChatCliente({
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [panelMovil, setPanelMovil] = useState(false);
+
+  function quitarConversacion(id: string) {
+    setConvs((prev) => prev.filter((c) => c.id !== id));
+    setSelId(null);
+    setPanelMovil(false);
+  }
   const [enVivo, setEnVivo] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
@@ -803,6 +809,7 @@ export function ChatCliente({
             onRenombrar={(nombre) =>
               setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, contacto: { ...c.contacto, nombre } } : c)))
             }
+            onBorrada={() => quitarConversacion(seleccionada.id)}
             onPersonal={(v) =>
               setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, esPersonal: v } : c)))
             }
@@ -851,6 +858,7 @@ export function ChatCliente({
             onRenombrar={(nombre) =>
               setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, contacto: { ...c.contacto, nombre } } : c)))
             }
+            onBorrada={() => quitarConversacion(seleccionada.id)}
             onPersonal={(v) => {
               setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, esPersonal: v } : c)));
               setPanelMovil(false);
