@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { EmbeddedSignup } from "@/components/config/EmbeddedSignup";
 import { Boton, Campo } from "@/components/ui";
 import { toast } from "@/components/Toaster";
+import { errorDePlantilla, variablesDePlantilla } from "@/lib/meta/plantillaMeta";
 
 type Canal = {
   id: string;
@@ -35,6 +36,8 @@ export function MetaCanales({ canales }: { canales: Canal[] }) {
     category: "UTILITY",
     body: ""
   });
+  const [ejemplos, setEjemplos] = useState<string[]>([]);
+  const variables = variablesDePlantilla(form.body);
 
   useEffect(() => {
     if (!canal?.id) return setPlantillas([]);
@@ -52,17 +55,20 @@ export function MetaCanales({ canales }: { canales: Canal[] }) {
   async function crearPlantilla(event: React.FormEvent) {
     event.preventDefault();
     if (!canal) return;
+    const error = errorDePlantilla(form.body, ejemplos);
+    if (error) return toast(error, "error");
     setCargando(true);
     const response = await fetch("/api/meta/templates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ canalId: canal.id, ...form })
+      body: JSON.stringify({ canalId: canal.id, ...form, ejemplos: ejemplos.slice(0, variables.length) })
     });
     const data = await response.json().catch(() => ({}));
     setCargando(false);
     if (!response.ok) return toast(data.error || "Meta rechazó la plantilla", "error");
     toast("Plantilla enviada a revisión de Meta", "ok");
     setForm({ ...form, name: "", body: "" });
+    setEjemplos([]);
     setPlantillas((current) => [data.plantilla, ...current]);
   }
 
@@ -152,7 +158,28 @@ export function MetaCanales({ canales }: { canales: Canal[] }) {
                 required
                 className="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
               />
+              <span className="block text-xs text-muted-foreground">
+                Usa {"{{1}}"}, {"{{2}}"}… para datos que cambian, como el nombre o la fecha. No empieces ni termines el mensaje con una variable.
+              </span>
             </label>
+            {variables.length > 0 && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {variables.map((n) => (
+                  <Campo
+                    key={n}
+                    label={`Ejemplo para {{${n}}}`}
+                    value={ejemplos[n - 1] || ""}
+                    onChange={(event) => {
+                      const siguientes = [...ejemplos];
+                      siguientes[n - 1] = event.target.value;
+                      setEjemplos(siguientes);
+                    }}
+                    placeholder={n === 1 ? "Ana" : "lunes 10 a las 4 pm"}
+                    required
+                  />
+                ))}
+              </div>
+            )}
             <Boton type="submit" disabled={cargando}>{cargando ? "Enviando…" : "Crear plantilla en Meta"}</Boton>
           </form>
 

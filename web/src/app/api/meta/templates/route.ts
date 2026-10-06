@@ -4,6 +4,7 @@ import { requireSesion } from "@/lib/session";
 import { getProvider } from "@/lib/channel";
 import { META_GRAPH_URL } from "@/lib/meta/config";
 import { tokenFromChannelConfig } from "@/lib/meta/credentials";
+import { errorDePlantilla, variablesDePlantilla } from "@/lib/meta/plantillaMeta";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,13 @@ export async function POST(req: NextRequest) {
   if (!new Set(["UTILITY", "MARKETING"]).has(category)) {
     return NextResponse.json({ error: "categoría inválida" }, { status: 400 });
   }
+  const ejemplos = Array.isArray(body.ejemplos) ? body.ejemplos.map((e: unknown) => String(e ?? "").trim()) : [];
+  const errorPlantilla = errorDePlantilla(text, ejemplos);
+  if (errorPlantilla) return NextResponse.json({ error: errorPlantilla }, { status: 400 });
+  const totalVariables = variablesDePlantilla(text).length;
+  const cuerpo = totalVariables
+    ? { type: "BODY", text, example: { body_text: [ejemplos.slice(0, totalVariables)] } }
+    : { type: "BODY", text };
 
   const config = (canal.config || {}) as Record<string, unknown>;
   const wabaId = typeof config.wabaId === "string" ? config.wabaId : "";
@@ -52,7 +60,7 @@ export async function POST(req: NextRequest) {
   const response = await fetch(`${META_GRAPH_URL}/${wabaId}/message_templates`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ name, language, category, components: [{ type: "BODY", text }] })
+    body: JSON.stringify({ name, language, category, components: [cuerpo] })
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
