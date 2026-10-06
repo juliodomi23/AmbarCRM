@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   if (!verifyMetaWebhookSignature(rawBody, req.headers.get("x-hub-signature-256"))) {
+    console.warn("[meta/webhook] firma inválida: revisa META_APP_SECRET");
     return NextResponse.json({ error: "firma inválida" }, { status: 401 });
   }
 
@@ -53,6 +54,8 @@ export async function POST(req: NextRequest) {
 
   // Los eventos de cuenta sin teléfono no corresponden a una conversación y se confirman.
   const phoneId = phoneNumberId(payload);
+  // Una línea por evento: confirma en los logs si Meta está entregando webhooks.
+  console.log(`[meta/webhook] evento phone_number_id=${phoneId ?? "-"} campos=${eventFields(payload).join(",") || "-"}`);
   if (!phoneId) return NextResponse.json({ ok: true, procesados: 0, fields: eventFields(payload) });
 
   const result = await dbRaw.$queryRawUnsafe<{ org: bigint | null }[]>(
