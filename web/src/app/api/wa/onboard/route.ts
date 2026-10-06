@@ -3,6 +3,7 @@ import { db, dbRaw } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { META_GRAPH_URL, requireMetaAppCredentials } from "@/lib/meta/config";
 import { encryptMetaToken } from "@/lib/meta/credentials";
+import { registrarNumero } from "@/lib/meta/registro";
 
 export const dynamic = "force-dynamic";
 
@@ -68,11 +69,18 @@ export async function POST(req: NextRequest) {
 
     await graph(`${wabaId}/subscribed_apps`, token, { method: "POST" });
 
+    // Coexistence usa el registro de la app del celular; los demás números hay que activarlos.
+    const coexistencia = body.onboardingMode === "coexistence";
+    const registro: { pinEncrypted?: string; error?: string } = coexistencia
+      ? {}
+      : await registrarNumero(phoneNumberId, token);
+
     const config = {
       tokenEncrypted: encryptMetaToken(token),
       phoneNumberId,
       wabaId,
-      onboardingMode: body.onboardingMode === "standard" ? "standard" : "coexistence",
+      onboardingMode: coexistencia ? "coexistence" : "cloud_api",
+      ...(registro.pinEncrypted ? { pinEncrypted: registro.pinEncrypted } : {}),
       verifiedName: phone.verified_name || null,
       qualityRating: phone.quality_rating || null,
       connectedAt: new Date().toISOString()
@@ -101,7 +109,10 @@ export async function POST(req: NextRequest) {
       canalId: Number(canal.id),
       phoneNumberId,
       telefono: canal.telefono,
-      nombre: canal.nombre
+      nombre: canal.nombre,
+      aviso: registro.error
+        ? `El número quedó conectado, pero Meta no lo activó: ${registro.error}. Usa "Activar número" en Números conectados.`
+        : undefined
     });
   } catch (error) {
     return NextResponse.json(

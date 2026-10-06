@@ -72,6 +72,15 @@ export function MetaCanales({ canales }: { canales: Canal[] }) {
     setPlantillas((current) => [data.plantilla, ...current]);
   }
 
+  async function activar() {
+    if (!canal) return;
+    const response = await fetch(`/api/canales/${canal.id}/registrar`, { method: "POST" });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return toast(`Meta no activó el número: ${data.error || "error desconocido"}`, "error");
+    toast("Número activado en WhatsApp. Ya puede recibir mensajes.", "ok");
+    router.refresh();
+  }
+
   async function desconectar() {
     if (!canal || !confirm(`¿Desconectar ${canal.nombre} de AmbarCRM? El historial se conservará.`)) return;
     const response = await fetch(`/api/canales/${canal.id}`, {
@@ -113,6 +122,9 @@ export function MetaCanales({ canales }: { canales: Canal[] }) {
               <p><span className="text-muted-foreground">Estado:</span> {canal.estado}</p>
               <p><span className="text-muted-foreground">Phone Number ID:</span> {canal.phoneNumberId || "—"}</p>
               <p><span className="text-muted-foreground">Credencial:</span> {canal.credencialesConfiguradas ? "Protegida" : "Incompleta"}</p>
+              <button type="button" onClick={activar} className="text-left text-xs font-medium text-primary hover:underline">
+                Activar número (si no recibe mensajes)
+              </button>
               <button type="button" onClick={desconectar} className="text-left text-xs text-red-600 hover:underline">
                 Desconectar de AmbarCRM
               </button>

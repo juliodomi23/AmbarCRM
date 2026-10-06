@@ -132,6 +132,7 @@ export function EmbeddedSignup() {
     if (!res.ok) return setError(d.error ?? "Error al conectar.");
     setInfo(null);
     setOk(`${resultado === "coexistencia" ? "Coexistence conectado" : "Número conectado"} · ${d.phoneNumberId}`);
+    if (d.aviso) setError(d.aviso);
     router.refresh();
   }
 
