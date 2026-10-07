@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
+import { validarCampos } from "@/lib/campos-personalizados";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,12 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
   if ("titulo" in body) data.titulo = body.titulo;
   if ("valor" in body) data.valor = Number(body.valor) || 0;
   if ("motivoPerdida" in body) data.motivoPerdida = body.motivoPerdida || null;
+  if ("campos" in body) {
+    const defs = await db.campoPersonalizado.findMany({ where: { entidad: "oportunidad" } });
+    const resultado = validarCampos(defs as any, body.campos);
+    if (resultado.errores.length) return NextResponse.json({ error: resultado.errores.join(", ") }, { status: 400 });
+    data.campos = resultado.campos;
+  }
   if ("responsableId" in body) data.responsableId = body.responsableId ? BigInt(body.responsableId) : null;
   if ("fechaCierreEstimada" in body)
     data.fechaCierreEstimada = body.fechaCierreEstimada ? new Date(body.fechaCierreEstimada) : null;
