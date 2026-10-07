@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireModuloActivo } from "@/lib/modulos";
+import { serializar } from "@/lib/serialize";
 import { requireSesion } from "@/lib/session";
+
 export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   const s = await requireSesion();
   if ("error" in s) return s.error;
@@ -16,17 +19,17 @@ export async function GET(req: NextRequest) {
       new Date(desde.getTime() + 7 * 86400000).toISOString(),
   );
   const contactoId = req.nextUrl.searchParams.get("contactoId");
-  return NextResponse.json({
-    citas: await db.cita.findMany({
-      where: {
-        inicio: { gte: desde, lt: hasta },
-        contactoId: contactoId ? BigInt(contactoId) : undefined,
-      },
-      include: { contacto: true, responsable: true },
-      orderBy: { inicio: "asc" },
-    }),
+  const citas = await db.cita.findMany({
+    where: {
+      inicio: { gte: desde, lt: hasta },
+      contactoId: contactoId ? BigInt(contactoId) : undefined,
+    },
+    include: { contacto: true, responsable: true },
+    orderBy: { inicio: "asc" },
   });
+  return NextResponse.json(serializar({ citas }));
 }
+
 export async function POST(req: NextRequest) {
   const s = await requireSesion();
   if ("error" in s) return s.error;
@@ -58,5 +61,5 @@ export async function POST(req: NextRequest) {
     },
     include: { contacto: true },
   });
-  return NextResponse.json({ cita });
+  return NextResponse.json(serializar({ cita }), { status: 201 });
 }

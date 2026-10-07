@@ -1,166 +1,201 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Boton, Campo } from "@/components/ui";
+import { CalendarioSemanal } from "@/components/citas/CalendarioSemanal";
+import {
+  claveFecha,
+  convertirFormularioAISO,
+  fechaMexicoAUTC,
+  HORA_FIN,
+  HORA_INICIO,
+  inicioDeSemana,
+  sumarDias,
+  valorFechaLocal,
+  valorInicial,
+  ZONA_CITAS,
+} from "@/components/citas/fecha";
+import { FormularioCitaModal } from "@/components/citas/FormularioCitaModal";
+import type {
+  Cita,
+  ContactoCita,
+  EstadoCita,
+  FormularioCita,
+  UsuarioCita,
+} from "@/components/citas/tipos";
+import { Boton } from "@/components/ui";
 import { toast } from "@/components/Toaster";
-const zona = "America/Mexico_City";
+
+function mensajeError(payload: unknown, respaldo: string) {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "error" in payload &&
+    typeof payload.error === "string"
+  ) {
+    return payload.error;
+  }
+  return respaldo;
+}
+
 export function CitasCliente({
   contactos,
   usuarios,
 }: {
-  contactos: any[];
-  usuarios: any[];
+  contactos: ContactoCita[];
+  usuarios: UsuarioCita[];
 }) {
   const params = useSearchParams();
-  const [citas, setCitas] = useState<any[]>([]);
-  const [semana, setSemana] = useState(false);
-  const [f, setF] = useState({
-    contactoId: params.get("contactoId") ?? "",
+  const contactoInicial = params.get("contactoId") ?? "";
+  const [citas, setCitas] = useState<Cita[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [modalAbierto, setModalAbierto] = useState(Boolean(contactoInicial));
+  const [semana, setSemana] = useState(() =>
+    inicioDeSemana(claveFecha(new Date())),
+  );
+  const [formulario, setFormulario] = useState<FormularioCita>({
+    contactoId: contactoInicial,
     conversacionId: params.get("conversacionId") ?? "",
     titulo: "Cita",
-    inicio: "",
-    fin: "",
+    notas: "",
+    inicio: valorInicial(),
+    fin: valorInicial(60),
     responsableId: "",
   });
-  const inicio = new Date();
-  inicio.setHours(0, 0, 0, 0);
-  if (semana) inicio.setDate(inicio.getDate() - inicio.getDay() + 1);
-  const fin = new Date(inicio);
-  fin.setDate(fin.getDate() + (semana ? 7 : 1));
-  const cargar = () =>
-    fetch(`/api/citas?desde=${inicio.toISOString()}&hasta=${fin.toISOString()}`)
-      .then((r) => (r.ok ? r.json() : { citas: [] }))
-      .then((d) => setCitas(d.citas));
-  useEffect(() => {
-    cargar(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  const hoy = claveFecha(new Date());
+
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    const desde = fechaMexicoAUTC(semana, "00:00").toISOString();
+    const hasta = fechaMexicoAUTC(sumarDias(semana, 7), "00:00").toISOString();
+    const respuesta = await fetch(
+      `/api/citas?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`,
+    );
+    const payload = await respuesta.json().catch(() => null);
+    setCargando(false);
+
+    if (!respuesta.ok) {
+      toast(mensajeError(payload, "No se pudieron cargar las citas"), "error");
+      return;
+    }
+
+    setCitas(
+      payload && typeof payload === "object" && "citas" in payload
+        ? (payload.citas as Cita[])
+        : [],
+    );
   }, [semana]);
-  async function crear(e: React.FormEvent) {
-    e.preventDefault();
-    const res = await fetch("/api/citas", {
+
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
+
+  async function crear(evento: React.FormEvent) {
+    evento.preventDefault();
+    setGuardando(true);
+    const respuesta = await fetch("/api/citas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(f),
+      body: JSON.stringify({
+        ...formulario,
+        inicio: convertirFormularioAISO(formulario.inicio),
+        fin: convertirFormularioAISO(formulario.fin),
+      }),
     });
-    if (!res.ok)
-      return toast((await res.json()).error ?? "No se pudo crear", "error");
+    const payload = await respuesta.json().catch(() => null);
+    setGuardando(false);
+
+    if (!respuesta.ok) {
+      toast(mensajeError(payload, "No se pudo crear la cita"), "error");
+      return;
+    }
+
     toast("Cita creada");
-    cargar();
+    setModalAbierto(false);
+    setFormulario((actual) => ({
+      ...actual,
+      titulo: "Cita",
+      notas: "",
+      inicio: valorInicial(),
+      fin: valorInicial(60),
+    }));
+    await cargar();
   }
+
+  async function cambiarEstado(cita: Cita, estado: EstadoCita) {
+    const respuesta = await fetch(`/api/citas/${cita.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado }),
+    });
+    const payload = await respuesta.json().catch(() => null);
+    if (!respuesta.ok) {
+      toast(mensajeError(payload, "No se pudo actualizar la cita"), "error");
+      return;
+    }
+    setCitas((actuales) =>
+      actuales.map((actual) =>
+        actual.id === cita.id ? { ...actual, estado } : actual,
+      ),
+    );
+  }
+
+  function abrirEnHorario(fecha: string, minutos: number) {
+    const minutosLimitados = Math.min(
+      HORA_FIN * 60 - 60,
+      Math.max(HORA_INICIO * 60, minutos),
+    );
+    const hora = Math.floor(minutosLimitados / 60);
+    const minuto = minutosLimitados % 60;
+    const textoHora = `${String(hora).padStart(2, "0")}:${String(
+      minuto,
+    ).padStart(2, "0")}`;
+    const fin = new Date(
+      fechaMexicoAUTC(fecha, textoHora).getTime() + 60 * 60_000,
+    );
+    setFormulario((actual) => ({
+      ...actual,
+      inicio: `${fecha}T${textoHora}`,
+      fin: valorFechaLocal(fin),
+    }));
+    setModalAbierto(true);
+  }
+
   return (
     <div className="space-y-5 p-4 md:p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Citas</h1>
+          <h1 className="text-2xl font-bold text-foreground">Citas</h1>
           <p className="text-sm text-muted-foreground">
-            Agenda en zona horaria {zona}.
+            Calendario en zona horaria {ZONA_CITAS}.
           </p>
         </div>
-        <button
-          className="rounded-lg border px-3 py-2 text-sm"
-          onClick={() => setSemana(!semana)}
-        >
-          {semana ? "Ver día" : "Ver semana"}
-        </button>
+        <Boton onClick={() => setModalAbierto(true)}>+ Nueva cita</Boton>
       </div>
-      <form
-        onSubmit={crear}
-        className="grid gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-3"
-      >
-        <select
-          required
-          value={f.contactoId}
-          onChange={(e) => setF({ ...f, contactoId: e.target.value })}
-          className="rounded-lg border border-input px-3 py-2 text-sm"
-        >
-          <option value="">Contacto…</option>
-          {contactos.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nombre}
-            </option>
-          ))}
-        </select>
-        <Campo
-          label="Título"
-          value={f.titulo}
-          onChange={(e) => setF({ ...f, titulo: e.target.value })}
-          required
-        />
-        <select
-          value={f.responsableId}
-          onChange={(e) => setF({ ...f, responsableId: e.target.value })}
-          className="rounded-lg border border-input px-3 py-2 text-sm"
-        >
-          <option value="">Responsable</option>
-          {usuarios.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.nombre}
-            </option>
-          ))}
-        </select>
-        <input
-          required
-          type="datetime-local"
-          value={f.inicio}
-          onChange={(e) => setF({ ...f, inicio: e.target.value })}
-          className="rounded-lg border border-input px-3 py-2 text-sm"
-        />
-        <input
-          required
-          type="datetime-local"
-          value={f.fin}
-          onChange={(e) => setF({ ...f, fin: e.target.value })}
-          className="rounded-lg border border-input px-3 py-2 text-sm"
-        />
-        <Boton type="submit">Crear cita</Boton>
-      </form>
-      <div className="space-y-2">
-        {citas.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            No hay citas en este periodo.
-          </p>
-        )}
-        {citas.map((c) => (
-          <div
-            key={c.id}
-            className="flex items-center justify-between rounded-xl border border-border bg-card p-4"
-          >
-            <div>
-              <p className="font-medium">
-                {c.titulo} · {c.contacto.nombre}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {new Intl.DateTimeFormat("es-MX", {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                  timeZone: zona,
-                }).format(new Date(c.inicio))}
-              </p>
-            </div>
-            <select
-              value={c.estado}
-              onChange={async (e) => {
-                await fetch(`/api/citas/${c.id}`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ estado: e.target.value }),
-                });
-                cargar();
-              }}
-              className="rounded-lg border border-input p-2 text-sm"
-            >
-              {[
-                "programada",
-                "confirmada",
-                "completada",
-                "cancelada",
-                "no_asistio",
-              ].map((x) => (
-                <option key={x}>{x}</option>
-              ))}
-            </select>
-          </div>
-        ))}
-      </div>
+
+      <CalendarioSemanal
+        citas={citas}
+        cargando={cargando}
+        semana={semana}
+        hoy={hoy}
+        onCambiarSemana={setSemana}
+        onNuevoHorario={abrirEnHorario}
+        onCambiarEstado={(cita, estado) =>
+          void cambiarEstado(cita, estado)
+        }
+      />
+
+      <FormularioCitaModal
+        abierto={modalAbierto}
+        guardando={guardando}
+        formulario={formulario}
+        contactos={contactos}
+        usuarios={usuarios}
+        onChange={setFormulario}
+        onClose={() => setModalAbierto(false)}
+        onSubmit={(evento) => void crear(evento)}
+      />
     </div>
   );
 }
