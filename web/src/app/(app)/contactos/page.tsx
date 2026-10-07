@@ -6,11 +6,12 @@ import {
 } from "@/lib/services/contactos";
 import { serializar } from "@/lib/serialize";
 import { ContactosCliente } from "@/components/contactos/ContactosCliente";
+import { moduloActivo } from "@/lib/modulos";
 
 export const dynamic = "force-dynamic";
 
 export default async function ContactosPage() {
-  const [contactos, etiquetas, usuarios, campos] = await Promise.all([
+  const [contactos, etiquetas, usuarios, campos, citasActivo] = await Promise.all([
     listarContactos(),
     listarEtiquetas(),
     listarUsuariosActivos(),
@@ -18,6 +19,7 @@ export default async function ContactosPage() {
       where: { entidad: "contacto", activo: true },
       orderBy: { orden: "asc" },
     }),
+    moduloActivo("citas"),
   ]);
 
   return (
@@ -46,6 +48,7 @@ export default async function ContactosPage() {
         nombre: u.nombre,
       }))}
       camposPersonalizados={serializar(campos)}
+      citasActivo={citasActivo}
     />
   );
 }

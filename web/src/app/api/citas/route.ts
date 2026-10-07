@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { aBigInt } from "@/lib/ids";
 import { requireModuloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
 import { requireSesion } from "@/lib/session";
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
       inicio: { gte: desde, lt: hasta },
       contactoId: contactoId ? BigInt(contactoId) : undefined,
     },
-    include: { contacto: true, responsable: true },
+    include: { contacto: true, responsable: true, doctor: true },
     orderBy: { inicio: "asc" },
   });
   return NextResponse.json(serializar({ citas }));
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
   const apagado = await requireModuloActivo("citas");
   if (apagado) return apagado;
   const b = await req.json().catch(() => ({}));
+  const doctorId = b.doctorId ? aBigInt(String(b.doctorId)) : null;
   const inicio = new Date(b.inicio),
     fin = new Date(b.fin);
   if (
@@ -49,17 +51,30 @@ export async function POST(req: NextRequest) {
       { error: "datos de cita inválidos" },
       { status: 400 },
     );
+  if (b.doctorId && doctorId === null) {
+    return NextResponse.json({ error: "doctor inválido" }, { status: 400 });
+  }
+  if (doctorId) {
+    const doctor = await db.doctor.findFirst({
+      where: { id: doctorId, activo: true },
+      select: { id: true },
+    });
+    if (!doctor) {
+      return NextResponse.json({ error: "doctor inexistente o inactivo" }, { status: 400 });
+    }
+  }
   const cita = await db.cita.create({
     data: {
       contactoId: BigInt(b.contactoId),
       conversacionId: b.conversacionId ? BigInt(b.conversacionId) : null,
       responsableId: b.responsableId ? BigInt(b.responsableId) : s.userId,
+      doctorId,
       titulo: b.titulo.trim(),
       notas: b.notas?.trim() || null,
       inicio,
       fin,
     },
-    include: { contacto: true },
+    include: { contacto: true, responsable: true, doctor: true },
   });
   return NextResponse.json(serializar({ cita }), { status: 201 });
 }

@@ -33,7 +33,13 @@ function EtiquetaSemana({ semana }: { semana: string }) {
   return <>{inicio} – {fin}</>;
 }
 
-function EventoCalendario({ cita }: { cita: Cita }) {
+function EventoCalendario({
+  cita,
+  onSeleccionar,
+}: {
+  cita: Cita;
+  onSeleccionar: (cita: Cita) => void;
+}) {
   const partes = partesEnZona(new Date(cita.inicio));
   const minutoInicio = partes.hour * 60 + partes.minute;
   const duracion = Math.max(
@@ -52,14 +58,28 @@ function EventoCalendario({ cita }: { cita: Cita }) {
   );
 
   return (
-    <span
+    <button
+      type="button"
       className={[
         "absolute inset-x-1 z-10 overflow-hidden rounded-md border-l-4",
         "px-2 py-1 text-xs shadow-sm",
         estiloEstado(cita.estado),
       ].join(" ")}
-      style={{ top: Math.min(top, 738), height: alto }}
-      onClick={(evento) => evento.stopPropagation()}
+      style={{
+        top: Math.min(top, 738),
+        height: alto,
+        borderLeftColor: cita.doctor?.color,
+      }}
+      onClick={(evento) => {
+        evento.stopPropagation();
+        onSeleccionar(cita);
+      }}
+      onKeyDown={(evento) => {
+        if (evento.key === "Enter" || evento.key === " ") {
+          evento.stopPropagation();
+          onSeleccionar(cita);
+        }
+      }}
       title={`${cita.titulo} · ${cita.contacto.nombre}`}
     >
       <span className="block truncate font-semibold">{cita.titulo}</span>
@@ -67,7 +87,10 @@ function EventoCalendario({ cita }: { cita: Cita }) {
         {String(partes.hour).padStart(2, "0")}:
         {String(partes.minute).padStart(2, "0")} · {cita.contacto.nombre}
       </span>
-    </span>
+      {cita.doctor && (
+        <span className="block truncate opacity-75">{cita.doctor.nombre}</span>
+      )}
+    </button>
   );
 }
 
@@ -75,10 +98,12 @@ function ListaCitas({
   citas,
   cargando,
   onCambiarEstado,
+  onSeleccionar,
 }: {
   citas: Cita[];
   cargando: boolean;
   onCambiarEstado: (cita: Cita, estado: EstadoCita) => void;
+  onSeleccionar: (cita: Cita) => void;
 }) {
   return (
     <section>
@@ -123,23 +148,32 @@ function ListaCitas({
                   minute: "2-digit",
                   timeZone: ZONA_CITAS,
                 }).format(new Date(cita.inicio))}
-                {cita.responsable ? ` · ${cita.responsable.nombre}` : ""}
+                {cita.doctor ? ` · ${cita.doctor.nombre}` : ""}
               </p>
             </div>
-            <select
-              value={cita.estado}
-              onChange={(evento) =>
-                onCambiarEstado(cita, evento.target.value as EstadoCita)
-              }
-              className="shrink-0 rounded-lg border border-input bg-card p-2 text-xs"
-              aria-label={`Estado de ${cita.titulo}`}
-            >
-              {ESTADOS_CITA.map((estado) => (
-                <option key={estado.valor} value={estado.valor}>
-                  {estado.etiqueta}
-                </option>
-              ))}
-            </select>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onSeleccionar(cita)}
+                className="rounded-lg border border-border px-2 py-2 text-xs font-medium"
+              >
+                Abrir
+              </button>
+              <select
+                value={cita.estado}
+                onChange={(evento) =>
+                  onCambiarEstado(cita, evento.target.value as EstadoCita)
+                }
+                className="rounded-lg border border-input bg-card p-2 text-xs"
+                aria-label={`Estado de ${cita.titulo}`}
+              >
+                {ESTADOS_CITA.map((estado) => (
+                  <option key={estado.valor} value={estado.valor}>
+                    {estado.etiqueta}
+                  </option>
+                ))}
+              </select>
+            </div>
           </article>
         ))}
       </div>
@@ -155,6 +189,7 @@ export function CalendarioSemanal({
   onCambiarSemana,
   onNuevoHorario,
   onCambiarEstado,
+  onSeleccionar,
 }: {
   citas: Cita[];
   cargando: boolean;
@@ -163,6 +198,7 @@ export function CalendarioSemanal({
   onCambiarSemana: (semana: string) => void;
   onNuevoHorario: (fecha: string, minutos: number) => void;
   onCambiarEstado: (cita: Cita, estado: EstadoCita) => void;
+  onSeleccionar: (cita: Cita) => void;
 }) {
   const dias = Array.from({ length: 7 }, (_, indice) =>
     sumarDias(semana, indice),
@@ -315,9 +351,8 @@ export function CalendarioSemanal({
                 ].join(" ")}
               >
                 {dias.map((dia) => (
-                  <button
+                  <div
                     key={dia}
-                    type="button"
                     className={[
                       "relative border-l border-border text-left",
                       dia === hoy ? "bg-primary/[.025]" : "",
@@ -332,16 +367,20 @@ export function CalendarioSemanal({
                           30;
                       onNuevoHorario(dia, minutos);
                     }}
-                    aria-label={`Crear cita el ${dia}`}
+                    title={`Crear cita el ${dia}`}
                   >
                     {citas
                       .filter(
                         (cita) => claveFecha(new Date(cita.inicio)) === dia,
                       )
                       .map((cita) => (
-                        <EventoCalendario key={cita.id} cita={cita} />
+                        <EventoCalendario
+                          key={cita.id}
+                          cita={cita}
+                          onSeleccionar={onSeleccionar}
+                        />
                       ))}
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -353,6 +392,7 @@ export function CalendarioSemanal({
         citas={citas}
         cargando={cargando}
         onCambiarEstado={onCambiarEstado}
+        onSeleccionar={onSeleccionar}
       />
     </>
   );

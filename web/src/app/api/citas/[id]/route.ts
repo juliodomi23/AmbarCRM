@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { aBigInt } from "@/lib/ids";
 import { requireModuloActivo } from "@/lib/modulos";
 import { requireSesion } from "@/lib/session";
+
+const ESTADOS = [
+  "programada",
+  "confirmada",
+  "en_sala",
+  "completada",
+  "cancelada",
+  "no_asistio",
+] as const;
+
 export async function PATCH(
   req: NextRequest,
   props: { params: Promise<{ id: string }> },
@@ -12,9 +23,40 @@ export async function PATCH(
   if (apagado) return apagado;
   const b = await req.json().catch(() => ({}));
   const { id } = await props.params;
-  const data: any = {};
-  for (const k of ["titulo", "notas", "estado"]) if (k in b) data[k] = b[k];
-  for (const k of ["inicio", "fin"]) if (b[k]) data[k] = new Date(b[k]);
+  const data: {
+    titulo?: string;
+    notas?: string | null;
+    estado?: (typeof ESTADOS)[number];
+    inicio?: Date;
+    fin?: Date;
+    doctorId?: bigint | null;
+  } = {};
+  if ("titulo" in b) data.titulo = String(b.titulo).trim();
+  if ("notas" in b) data.notas = String(b.notas).trim() || null;
+  if ("estado" in b) {
+    if (!ESTADOS.includes(b.estado)) {
+      return NextResponse.json({ error: "estado inválido" }, { status: 400 });
+    }
+    data.estado = b.estado;
+  }
+  if ("doctorId" in b) {
+    const doctorId = b.doctorId ? aBigInt(String(b.doctorId)) : null;
+    if (b.doctorId && doctorId === null) {
+      return NextResponse.json({ error: "doctor inválido" }, { status: 400 });
+    }
+    if (doctorId) {
+      const doctor = await db.doctor.findFirst({ where: { id: doctorId, activo: true } });
+      if (!doctor) {
+        return NextResponse.json(
+          { error: "doctor inexistente o inactivo" },
+          { status: 400 },
+        );
+      }
+    }
+    data.doctorId = doctorId;
+  }
+  if (b.inicio) data.inicio = new Date(b.inicio);
+  if (b.fin) data.fin = new Date(b.fin);
   if (data.inicio && data.fin && data.fin <= data.inicio)
     return NextResponse.json(
       { error: "el fin debe ser posterior al inicio" },

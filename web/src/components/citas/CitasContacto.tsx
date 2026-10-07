@@ -31,12 +31,20 @@ export function CitasContacto({
         <span className="text-xs font-medium uppercase text-muted-foreground">
           Próximas citas
         </span>
-        <Link
-          href={`/citas?${query}`}
-          className="text-xs font-medium text-primary"
-        >
-          + Crear cita
-        </Link>
+        <div className="flex gap-3">
+          <Link
+            href={`/contactos/${contactoId}/expediente`}
+            className="text-xs font-medium text-primary"
+          >
+            Expediente
+          </Link>
+          <Link
+            href={`/citas?${query}`}
+            className="text-xs font-medium text-primary"
+          >
+            + Crear cita
+          </Link>
+        </div>
       </div>
       {citas.length === 0 && (
         <p className="text-xs text-muted-foreground">Sin próximas citas.</p>

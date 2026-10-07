@@ -88,6 +88,7 @@ EXCEPTION WHEN duplicate_object THEN
   NULL;
 END
 $$;
+ALTER TYPE estado_cita ADD VALUE IF NOT EXISTS 'en_sala';
 CREATE TABLE IF NOT EXISTS campos_personalizados (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
@@ -110,8 +111,62 @@ CREATE TABLE IF NOT EXISTS citas (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS citas_org_inicio_idx ON citas(org_id, inicio);
+
+CREATE TABLE IF NOT EXISTS doctores (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  nombre TEXT NOT NULL,
+  especialidad TEXT,
+  cedula TEXT,
+  color TEXT NOT NULL DEFAULT '#0EA5E9',
+  activo BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, nombre)
+);
+CREATE INDEX IF NOT EXISTS doctores_org_activo_idx ON doctores(org_id, activo);
+
+ALTER TABLE citas ADD COLUMN IF NOT EXISTS doctor_id BIGINT REFERENCES doctores(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS citas_doctor_id_idx ON citas(doctor_id);
+
+CREATE TABLE IF NOT EXISTS expedientes_paciente (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  contacto_id BIGINT NOT NULL UNIQUE REFERENCES contactos(id) ON DELETE CASCADE,
+  fecha_nacimiento DATE,
+  sexo TEXT,
+  alergias TEXT,
+  antecedentes TEXT,
+  medicamentos TEXT,
+  observaciones TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS expedientes_paciente_org_idx ON expedientes_paciente(org_id);
+
+CREATE TABLE IF NOT EXISTS evoluciones_clinicas (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  expediente_id BIGINT NOT NULL REFERENCES expedientes_paciente(id) ON DELETE CASCADE,
+  cita_id BIGINT REFERENCES citas(id) ON DELETE SET NULL,
+  doctor_id BIGINT REFERENCES doctores(id) ON DELETE SET NULL,
+  registrado_por_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  contenido TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS evoluciones_expediente_created_idx
+  ON evoluciones_clinicas(expediente_id, created_at);
+CREATE INDEX IF NOT EXISTS evoluciones_clinicas_org_idx ON evoluciones_clinicas(org_id);
+
 DO $$ DECLARE t TEXT; BEGIN
-  FOREACH t IN ARRAY ARRAY['modulos_org','campos_personalizados','citas'] LOOP
+  FOREACH t IN ARRAY ARRAY[
+    'modulos_org',
+    'campos_personalizados',
+    'citas',
+    'doctores',
+    'expedientes_paciente',
+    'evoluciones_clinicas'
+  ] LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
     EXECUTE format(
@@ -128,5 +183,12 @@ DO $$ DECLARE t TEXT; BEGIN
     );
   END LOOP;
 END $$;
-GRANT SELECT, INSERT, UPDATE, DELETE ON modulos_org, campos_personalizados, citas TO crm_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON
+  modulos_org,
+  campos_personalizados,
+  citas,
+  doctores,
+  expedientes_paciente,
+  evoluciones_clinicas
+TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;

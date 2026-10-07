@@ -42,11 +42,13 @@ export function ContactosCliente({
   etiquetas,
   usuarios,
   camposPersonalizados,
+  citasActivo,
 }: {
   contactos: Contacto[];
   etiquetas: Etiqueta[];
   usuarios: { id: string; nombre: string }[];
   camposPersonalizados: { clave: string; etiqueta: string }[];
+  citasActivo: boolean;
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -375,12 +377,22 @@ export function ContactosCliente({
                   >
                     Editar
                   </button>
-                  <Link
-                    href={`/citas?contactoId=${c.id}`}
-                    className="mr-3 text-primary hover:underline"
-                  >
-                    Cita
-                  </Link>
+                  {citasActivo && (
+                    <>
+                      <Link
+                        href={`/citas?contactoId=${c.id}`}
+                        className="mr-3 text-primary hover:underline"
+                      >
+                        Cita
+                      </Link>
+                      <Link
+                        href={`/contactos/${c.id}/expediente`}
+                        className="mr-3 text-primary hover:underline"
+                      >
+                        Expediente
+                      </Link>
+                    </>
+                  )}
                   <button
                     onClick={() => borrar(c)}
                     className="text-red-600 hover:underline"
@@ -459,12 +471,22 @@ export function ContactosCliente({
               >
                 Editar
               </button>
-              <Link
-                href={`/citas?contactoId=${c.id}`}
-                className="font-medium text-primary"
-              >
-                Cita
-              </Link>
+              {citasActivo && (
+                <>
+                  <Link
+                    href={`/citas?contactoId=${c.id}`}
+                    className="font-medium text-primary"
+                  >
+                    Cita
+                  </Link>
+                  <Link
+                    href={`/contactos/${c.id}/expediente`}
+                    className="font-medium text-primary"
+                  >
+                    Expediente
+                  </Link>
+                </>
+              )}
               <button
                 onClick={() => borrar(c)}
                 className="font-medium text-red-600"

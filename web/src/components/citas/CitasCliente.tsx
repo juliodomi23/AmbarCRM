@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CalendarioSemanal } from "@/components/citas/CalendarioSemanal";
+import { DetalleCitaModal } from "@/components/citas/DetalleCitaModal";
+import { DoctoresModal } from "@/components/citas/DoctoresModal";
 import {
   claveFecha,
   convertirFormularioAISO,
@@ -19,6 +21,7 @@ import { FormularioCitaModal } from "@/components/citas/FormularioCitaModal";
 import type {
   Cita,
   ContactoCita,
+  DoctorCita,
   EstadoCita,
   FormularioCita,
   UsuarioCita,
@@ -41,15 +44,20 @@ function mensajeError(payload: unknown, respaldo: string) {
 export function CitasCliente({
   contactos,
   usuarios,
+  doctores: doctoresIniciales,
 }: {
   contactos: ContactoCita[];
   usuarios: UsuarioCita[];
+  doctores: DoctorCita[];
 }) {
   const params = useSearchParams();
   const contactoInicial = params.get("contactoId") ?? "";
   const [citas, setCitas] = useState<Cita[]>([]);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [citaSeleccionada, setCitaSeleccionada] = useState<Cita | null>(null);
+  const [doctores, setDoctores] = useState(doctoresIniciales);
+  const [modalDoctores, setModalDoctores] = useState(false);
   const [modalAbierto, setModalAbierto] = useState(Boolean(contactoInicial));
   const [semana, setSemana] = useState(() =>
     inicioDeSemana(claveFecha(new Date())),
@@ -62,6 +70,7 @@ export function CitasCliente({
     inicio: valorInicial(),
     fin: valorInicial(60),
     responsableId: "",
+    doctorId: "",
   });
   const hoy = claveFecha(new Date());
 
@@ -124,12 +133,14 @@ export function CitasCliente({
   }
 
   async function cambiarEstado(cita: Cita, estado: EstadoCita) {
+    setGuardando(true);
     const respuesta = await fetch(`/api/citas/${cita.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado }),
     });
     const payload = await respuesta.json().catch(() => null);
+    setGuardando(false);
     if (!respuesta.ok) {
       toast(mensajeError(payload, "No se pudo actualizar la cita"), "error");
       return;
@@ -137,6 +148,52 @@ export function CitasCliente({
     setCitas((actuales) =>
       actuales.map((actual) =>
         actual.id === cita.id ? { ...actual, estado } : actual,
+      ),
+    );
+    setCitaSeleccionada((actual) =>
+      actual?.id === cita.id ? { ...actual, estado } : actual,
+    );
+    toast("Estado de la cita actualizado");
+  }
+
+  async function crearDoctor(datos: {
+    nombre: string;
+    especialidad: string;
+    cedula: string;
+    color: string;
+  }) {
+    setGuardando(true);
+    const respuesta = await fetch("/api/doctores", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(datos),
+    });
+    const payload = await respuesta.json().catch(() => null);
+    setGuardando(false);
+    if (!respuesta.ok) {
+      toast(mensajeError(payload, "No se pudo agregar el doctor"), "error");
+      return;
+    }
+    setDoctores((actuales) => [...actuales, payload.doctor]);
+    toast("Doctor agregado");
+  }
+
+  async function alternarDoctor(doctor: DoctorCita) {
+    setGuardando(true);
+    const respuesta = await fetch(`/api/doctores/${doctor.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ activo: !doctor.activo }),
+    });
+    const payload = await respuesta.json().catch(() => null);
+    setGuardando(false);
+    if (!respuesta.ok) {
+      toast(mensajeError(payload, "No se pudo actualizar el doctor"), "error");
+      return;
+    }
+    setDoctores((actuales) =>
+      actuales.map((actual) =>
+        actual.id === doctor.id ? { ...actual, activo: !actual.activo } : actual,
       ),
     );
   }
@@ -171,7 +228,12 @@ export function CitasCliente({
             Calendario en zona horaria {ZONA_CITAS}.
           </p>
         </div>
-        <Boton onClick={() => setModalAbierto(true)}>+ Nueva cita</Boton>
+        <div className="flex gap-2">
+          <Boton variante="ghost" onClick={() => setModalDoctores(true)}>
+            Doctores
+          </Boton>
+          <Boton onClick={() => setModalAbierto(true)}>+ Nueva cita</Boton>
+        </div>
       </div>
 
       <CalendarioSemanal
@@ -184,6 +246,7 @@ export function CitasCliente({
         onCambiarEstado={(cita, estado) =>
           void cambiarEstado(cita, estado)
         }
+        onSeleccionar={setCitaSeleccionada}
       />
 
       <FormularioCitaModal
@@ -192,9 +255,26 @@ export function CitasCliente({
         formulario={formulario}
         contactos={contactos}
         usuarios={usuarios}
+        doctores={doctores}
         onChange={setFormulario}
         onClose={() => setModalAbierto(false)}
         onSubmit={(evento) => void crear(evento)}
+      />
+      <DetalleCitaModal
+        cita={citaSeleccionada}
+        guardando={guardando}
+        onClose={() => setCitaSeleccionada(null)}
+        onCambiarEstado={(estado) => {
+          if (citaSeleccionada) void cambiarEstado(citaSeleccionada, estado);
+        }}
+      />
+      <DoctoresModal
+        abierto={modalDoctores}
+        doctores={doctores}
+        guardando={guardando}
+        onClose={() => setModalDoctores(false)}
+        onCrear={(datos) => void crearDoctor(datos)}
+        onAlternar={(doctor) => void alternarDoctor(doctor)}
       />
     </div>
   );

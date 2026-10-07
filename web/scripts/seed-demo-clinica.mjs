@@ -70,6 +70,30 @@ await prisma.$transaction(async (tx) => {
     create: { clave: "citas", activo: true, config: { anticipacionHoras: 24 } },
   });
 
+  const doctores = [];
+  for (const datos of [
+    {
+      nombre: "Dra. Elena Torres",
+      especialidad: "Odontología general",
+      cedula: "PROF-102938",
+      color: "#0EA5E9",
+    },
+    {
+      nombre: "Dr. Mateo Salas",
+      especialidad: "Ortodoncia",
+      cedula: "PROF-564738",
+      color: "#8B5CF6",
+    },
+  ]) {
+    doctores.push(
+      await tx.doctor.upsert({
+        where: { orgId_nombre: { orgId: org.id, nombre: datos.nombre } },
+        update: { ...datos, activo: true },
+        create: datos,
+      }),
+    );
+  }
+
   const definiciones = [
     [
       "tipo_tratamiento",
@@ -176,11 +200,27 @@ await prisma.$transaction(async (tx) => {
   const dias = [diaHoy, diaHoy, 0, 1, 2, 3, 4, 5];
   const horas = [9, 11, 10, 14, 16, 12, 15, 17];
   for (let i = 0; i < contactos.length; i++) {
+    const expediente = await tx.expedientePaciente.upsert({
+      where: { contactoId: contactos[i].id },
+      update: {
+        alergias: String(pacientes[i][3]),
+      },
+      create: {
+        contactoId: contactos[i].id,
+        fechaNacimiento: new Date(`${1988 + i}-05-12T00:00:00.000Z`),
+        sexo: i % 2 === 0 ? "Femenino" : "Masculino",
+        alergias: String(pacientes[i][3]),
+        antecedentes: i % 3 === 0 ? "Sin enfermedades crónicas conocidas" : "Sin antecedentes relevantes",
+        medicamentos: "Ninguno reportado",
+        observaciones: "Expediente inicial de demostración.",
+      },
+    });
     const titulo = `${pacientes[i][2]} de ${pacientes[i][0]}`;
     const inicio = fechaEstaSemana(dias[i], horas[i]);
     const data = {
       contactoId: contactos[i].id,
       responsableId: admin.id,
+      doctorId: doctores[i % doctores.length].id,
       titulo,
       inicio,
       fin: new Date(inicio.getTime() + 45 * 60_000),
@@ -190,6 +230,23 @@ await prisma.$transaction(async (tx) => {
     });
     if (existente) await tx.cita.update({ where: { id: existente.id }, data });
     else await tx.cita.create({ data });
+
+    if (i < 3) {
+      const contenido = "Valoración inicial: paciente estable y apto para continuar el tratamiento.";
+      const evolucion = await tx.evolucionClinica.findFirst({
+        where: { expedienteId: expediente.id, contenido },
+      });
+      if (!evolucion) {
+        await tx.evolucionClinica.create({
+          data: {
+            expedienteId: expediente.id,
+            doctorId: doctores[i % doctores.length].id,
+            registradoPorId: admin.id,
+            contenido,
+          },
+        });
+      }
+    }
   }
 
   const historiales = [

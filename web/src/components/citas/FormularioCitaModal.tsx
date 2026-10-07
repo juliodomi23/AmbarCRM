@@ -3,6 +3,7 @@
 import { Boton, Campo, Modal } from "@/components/ui";
 import type {
   ContactoCita,
+  DoctorCita,
   FormularioCita,
   UsuarioCita,
 } from "@/components/citas/tipos";
@@ -13,6 +14,7 @@ export function FormularioCitaModal({
   formulario,
   contactos,
   usuarios,
+  doctores,
   onChange,
   onClose,
   onSubmit,
@@ -22,6 +24,7 @@ export function FormularioCitaModal({
   formulario: FormularioCita;
   contactos: ContactoCita[];
   usuarios: UsuarioCita[];
+  doctores: DoctorCita[];
   onChange: (formulario: FormularioCita) => void;
   onClose: () => void;
   onSubmit: (evento: React.FormEvent) => void;
@@ -29,6 +32,28 @@ export function FormularioCitaModal({
   return (
     <Modal abierto={abierto} onClose={onClose} titulo="Nueva cita">
       <form onSubmit={onSubmit} className="space-y-3">
+        <label className="block space-y-1">
+          <span className="text-sm font-medium text-muted-foreground">
+            Doctor
+          </span>
+          <select
+            value={formulario.doctorId}
+            onChange={(evento) =>
+              onChange({ ...formulario, doctorId: evento.target.value })
+            }
+            className="w-full rounded-lg border border-input px-3 py-2 text-sm"
+          >
+            <option value="">Sin asignar</option>
+            {doctores
+              .filter((doctor) => doctor.activo)
+              .map((doctor) => (
+                <option key={doctor.id} value={doctor.id}>
+                  {doctor.nombre}
+                  {doctor.especialidad ? ` · ${doctor.especialidad}` : ""}
+                </option>
+              ))}
+          </select>
+        </label>
         <label className="block space-y-1">
           <span className="text-sm font-medium text-muted-foreground">
             Contacto

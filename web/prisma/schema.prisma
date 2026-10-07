@@ -115,6 +115,7 @@ enum TipoEvento {
 enum EntidadCampoPersonalizado {
   contacto
   oportunidad
+
   @@map("entidad_campo_personalizado")
 }
 
@@ -124,15 +125,18 @@ enum TipoCampoPersonalizado {
   fecha
   opcion
   si_no
+
   @@map("tipo_campo_personalizado")
 }
 
 enum EstadoCita {
   programada
   confirmada
+  en_sala
   completada
   cancelada
   no_asistio
+
   @@map("estado_cita")
 }
 
@@ -148,15 +152,15 @@ model Org {
 }
 
 model Usuario {
-  id           BigInt      @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  id           BigInt     @id @default(autoincrement())
+  orgId        BigInt     @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre       String
   email        String
-  passwordHash String      @map("password_hash")
-  rol          RolUsuario  @default(agente)
-  avatarUrl    String?     @map("avatar_url")
-  activo       Boolean     @default(true)
-  createdAt    DateTime    @default(now()) @map("created_at")
+  passwordHash String     @map("password_hash")
+  rol          RolUsuario @default(agente)
+  avatarUrl    String?    @map("avatar_url")
+  activo       Boolean    @default(true)
+  createdAt    DateTime   @default(now()) @map("created_at")
 
   contactos      Contacto[]
   oportunidades  Oportunidad[]
@@ -166,6 +170,7 @@ model Usuario {
   tareas         Tarea[]
   eventos        Evento[]
   citas          Cita[]
+  evoluciones    EvolucionClinica[]
 
   @@unique([orgId, email])
   @@index([orgId])
@@ -174,7 +179,7 @@ model Usuario {
 
 model Embudo {
   id          BigInt   @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId       BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre      String
   descripcion String?
   color       String   @default("#1E3A5F")
@@ -191,7 +196,7 @@ model Embudo {
 
 model Etapa {
   id        BigInt    @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId     BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   embudoId  BigInt    @map("embudo_id")
   nombre    String
   color     String    @default("#94A3B8")
@@ -209,7 +214,7 @@ model Etapa {
 
 model Contacto {
   id            BigInt         @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId         BigInt         @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre        String
   telefono      String?
   email         String?
@@ -221,15 +226,16 @@ model Contacto {
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at")
 
-  esPersonal     Boolean        @default(false) @map("es_personal")
-  optOutDifusion Boolean        @default(false) @map("opt_out_difusion") // excluido de difusiones masivas
-  campos         Json           @default("{}")
+  esPersonal     Boolean @default(false) @map("es_personal")
+  optOutDifusion Boolean @default(false) @map("opt_out_difusion") // excluido de difusiones masivas
+  campos         Json    @default("{}")
 
-  responsable    Usuario?           @relation(fields: [responsableId], references: [id], onDelete: SetNull)
+  responsable    Usuario?            @relation(fields: [responsableId], references: [id], onDelete: SetNull)
   etiquetas      ContactoEtiqueta[]
   oportunidades  Oportunidad[]
   conversaciones Conversacion[]
   citas          Cita[]
+  expediente     ExpedientePaciente?
 
   @@unique([orgId, telefono])
   @@index([responsableId])
@@ -239,7 +245,7 @@ model Contacto {
 
 model Etiqueta {
   id     BigInt @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId  BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre String
   color  String @default("#B45309")
 
@@ -251,7 +257,7 @@ model Etiqueta {
 }
 
 model ContactoEtiqueta {
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId      BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   contactoId BigInt @map("contacto_id")
   etiquetaId BigInt @map("etiqueta_id")
 
@@ -264,23 +270,23 @@ model ContactoEtiqueta {
 }
 
 model Oportunidad {
-  id                  BigInt       @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  contactoId          BigInt       @map("contacto_id")
-  embudoId            BigInt       @map("embudo_id")
-  etapaId             BigInt       @map("etapa_id")
+  id                  BigInt      @id @default(autoincrement())
+  orgId               BigInt      @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contactoId          BigInt      @map("contacto_id")
+  embudoId            BigInt      @map("embudo_id")
+  etapaId             BigInt      @map("etapa_id")
   titulo              String
-  valor               Decimal      @default(0) @db.Decimal(12, 2)
-  moneda              String       @default("MXN")
-  responsableId       BigInt?      @map("responsable_id")
-  orden               Int          @default(0)
-  estado              EstadoOport  @default(abierto)
-  motivoPerdida       String?      @map("motivo_perdida")
-  fechaCierreEstimada DateTime?    @map("fecha_cierre_estimada") @db.Date
-  createdAt           DateTime     @default(now()) @map("created_at")
-  updatedAt           DateTime     @default(now()) @updatedAt @map("updated_at")
-  closedAt            DateTime?    @map("closed_at")
-  campos              Json         @default("{}")
+  valor               Decimal     @default(0) @db.Decimal(12, 2)
+  moneda              String      @default("MXN")
+  responsableId       BigInt?     @map("responsable_id")
+  orden               Int         @default(0)
+  estado              EstadoOport @default(abierto)
+  motivoPerdida       String?     @map("motivo_perdida")
+  fechaCierreEstimada DateTime?   @map("fecha_cierre_estimada") @db.Date
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @default(now()) @updatedAt @map("updated_at")
+  closedAt            DateTime?   @map("closed_at")
+  campos              Json        @default("{}")
 
   contacto    Contacto @relation(fields: [contactoId], references: [id], onDelete: Cascade)
   embudo      Embudo   @relation(fields: [embudoId], references: [id], onDelete: Cascade)
@@ -299,7 +305,7 @@ model Oportunidad {
 
 model CanalWhatsapp {
   id        BigInt         @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId     BigInt         @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre    String
   proveedor ProveedorCanal @default(cloud_api)
   telefono  String?
@@ -320,7 +326,7 @@ model CanalWhatsapp {
 // Grupos de WhatsApp: bandeja aparte, NO son leads (no entran al embudo/CSAT/contactos).
 model Grupo {
   id              BigInt    @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId           BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   canalId         BigInt?   @map("canal_id")
   jid             String
   nombre          String
@@ -338,14 +344,14 @@ model Grupo {
 
 model MensajeGrupo {
   id           BigInt       @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId        BigInt       @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   grupoId      BigInt       @map("grupo_id")
   direccion    DireccionMsg
   tipo         TipoMsg      @default(texto)
   contenido    String?
   mediaUrl     String?      @map("media_url")
   mediaMime    String?      @map("media_mime")
-  remitente    String?      // nombre de quien escribió en el grupo
+  remitente    String? // nombre de quien escribió en el grupo
   remitenteTel String?      @map("remitente_tel")
   status       StatusMsg    @default(enviado)
   waMessageId  String?      @unique @map("wa_message_id")
@@ -363,11 +369,11 @@ model MensajeGrupo {
 // Bot nativo: webhook saliente (CRM->n8n) + token para responder (n8n->CRM).
 model Bot {
   id         BigInt   @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId      BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre     String
-  webhookUrl String   @map("webhook_url")     // n8n: el CRM le manda los mensajes entrantes
+  webhookUrl String   @map("webhook_url") // n8n: el CRM le manda los mensajes entrantes
   apiToken   String   @unique @map("api_token") // n8n: autentica de vuelta con header api_access_token
-  canalId    BigInt?  @map("canal_id")          // null = aplica a todos los canales
+  canalId    BigInt?  @map("canal_id") // null = aplica a todos los canales
   activo     Boolean  @default(true)
   createdAt  DateTime @default(now()) @map("created_at")
 
@@ -378,26 +384,26 @@ model Bot {
 }
 
 model Conversacion {
-  id              BigInt      @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  contactoId      BigInt      @map("contacto_id")
-  canalId         BigInt?     @map("canal_id")
-  estado          EstadoConv  @default(abierta)
-  responsableId   BigInt?     @map("responsable_id")
-  noLeidos        Int         @default(0) @map("no_leidos")
-  botActivo       Boolean     @default(true) @map("bot_activo")
-  etiquetas       String[]    @default([])
-  csatScore       Int?        @map("csat_score")
-  csatEnviadoAt   DateTime?   @map("csat_enviado_at")
-  avisoFueraAt    DateTime?   @map("aviso_fuera_at")
-  ultimoMensajeAt DateTime?   @map("ultimo_mensaje_at")
+  id              BigInt     @id @default(autoincrement())
+  orgId           BigInt     @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contactoId      BigInt     @map("contacto_id")
+  canalId         BigInt?    @map("canal_id")
+  estado          EstadoConv @default(abierta)
+  responsableId   BigInt?    @map("responsable_id")
+  noLeidos        Int        @default(0) @map("no_leidos")
+  botActivo       Boolean    @default(true) @map("bot_activo")
+  etiquetas       String[]   @default([])
+  csatScore       Int?       @map("csat_score")
+  csatEnviadoAt   DateTime?  @map("csat_enviado_at")
+  avisoFueraAt    DateTime?  @map("aviso_fuera_at")
+  ultimoMensajeAt DateTime?  @map("ultimo_mensaje_at")
   /// Chat fijado (va primero en la bandeja). Null = no fijado.
-  fijadoAt        DateTime?   @map("fijado_at")
-  createdAt       DateTime    @default(now()) @map("created_at")
+  fijadoAt        DateTime?  @map("fijado_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
 
-  contacto    Contacto       @relation(fields: [contactoId], references: [id], onDelete: Cascade)
-  canal       CanalWhatsapp? @relation(fields: [canalId], references: [id], onDelete: SetNull)
-  responsable Usuario?       @relation(fields: [responsableId], references: [id], onDelete: SetNull)
+  contacto    Contacto            @relation(fields: [contactoId], references: [id], onDelete: Cascade)
+  canal       CanalWhatsapp?      @relation(fields: [canalId], references: [id], onDelete: SetNull)
+  responsable Usuario?            @relation(fields: [responsableId], references: [id], onDelete: SetNull)
   mensajes    Mensaje[]
   programados MensajeProgramado[]
   citas       Cita[]
@@ -411,7 +417,7 @@ model Conversacion {
 /// Mensajes de WhatsApp programados para enviarse después (los dispara el cron).
 model MensajeProgramado {
   id             BigInt   @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   conversacionId BigInt   @map("conversacion_id")
   contenido      String
   enviarAt       DateTime @map("enviar_at")
@@ -429,7 +435,7 @@ model MensajeProgramado {
 /// Suscripciones Web Push (una por navegador/dispositivo de cada usuario).
 model PushSuscripcion {
   id        BigInt   @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   usuarioId BigInt?  @map("usuario_id")
   endpoint  String   @unique
   p256dh    String
@@ -441,22 +447,22 @@ model PushSuscripcion {
 }
 
 model Mensaje {
-  id             BigInt        @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  conversacionId BigInt        @map("conversacion_id")
+  id             BigInt       @id @default(autoincrement())
+  orgId          BigInt       @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  conversacionId BigInt       @map("conversacion_id")
   direccion      DireccionMsg
-  tipo           TipoMsg       @default(texto)
+  tipo           TipoMsg      @default(texto)
   contenido      String?
-  mediaUrl       String?       @map("media_url")
-  mediaMime      String?       @map("media_mime")
-  interna        Boolean       @default(false)
-  esDifusion     Boolean       @default(false) @map("es_difusion")
-  status         StatusMsg     @default(enviado)
-  errorDetalle   String?       @map("error_detalle")
-  waMessageId    String?       @unique @map("wa_message_id")
-  enviadoPor     BigInt?       @map("enviado_por")
-  timestamp      DateTime      @default(now())
-  createdAt      DateTime      @default(now()) @map("created_at")
+  mediaUrl       String?      @map("media_url")
+  mediaMime      String?      @map("media_mime")
+  interna        Boolean      @default(false)
+  esDifusion     Boolean      @default(false) @map("es_difusion")
+  status         StatusMsg    @default(enviado)
+  errorDetalle   String?      @map("error_detalle")
+  waMessageId    String?      @unique @map("wa_message_id")
+  enviadoPor     BigInt?      @map("enviado_por")
+  timestamp      DateTime     @default(now())
+  createdAt      DateTime     @default(now()) @map("created_at")
 
   conversacion Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
   usuario      Usuario?     @relation(fields: [enviadoPor], references: [id], onDelete: SetNull)
@@ -468,7 +474,7 @@ model Mensaje {
 
 model PlantillaMensaje {
   id        BigInt   @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre    String
   contenido String
   categoria String?
@@ -480,7 +486,7 @@ model PlantillaMensaje {
 
 model Nota {
   id            BigInt   @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId         BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   oportunidadId BigInt   @map("oportunidad_id")
   usuarioId     BigInt?  @map("usuario_id")
   contenido     String
@@ -495,7 +501,7 @@ model Nota {
 
 model Tarea {
   id            BigInt    @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId         BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   oportunidadId BigInt?   @map("oportunidad_id")
   responsableId BigInt?   @map("responsable_id")
   titulo        String
@@ -515,33 +521,33 @@ model Tarea {
 
 // Una fila de ajustes POR org (ya no es única global).
 model Ajustes {
-  id               BigInt   @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  autoAsignar      Boolean  @default(false) @map("auto_asignar")
-  bienvenidaActiva Boolean  @default(false) @map("bienvenida_activa")
-  bienvenidaTexto  String?  @map("bienvenida_texto")
-  crearLeadAuto    Boolean  @default(true) @map("crear_lead_auto")
+  id                 BigInt   @id @default(autoincrement())
+  orgId              BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  autoAsignar        Boolean  @default(false) @map("auto_asignar")
+  bienvenidaActiva   Boolean  @default(false) @map("bienvenida_activa")
+  bienvenidaTexto    String?  @map("bienvenida_texto")
+  crearLeadAuto      Boolean  @default(true) @map("crear_lead_auto")
   // CSAT
-  csatActivo       Boolean  @default(false) @map("csat_activo")
-  csatTexto        String?  @map("csat_texto")
+  csatActivo         Boolean  @default(false) @map("csat_activo")
+  csatTexto          String?  @map("csat_texto")
   // Horario de atención
-  horarioActivo    Boolean  @default(false) @map("horario_activo")
-  horarioInicio    String?  @map("horario_inicio")  // "09:00"
-  horarioFin       String?  @map("horario_fin")     // "18:00"
-  horarioDias      String?  @map("horario_dias")    // "1,2,3,4,5" (1=lunes)
-  fueraHorarioTexto String? @map("fuera_horario_texto")
+  horarioActivo      Boolean  @default(false) @map("horario_activo")
+  horarioInicio      String?  @map("horario_inicio") // "09:00"
+  horarioFin         String?  @map("horario_fin") // "18:00"
+  horarioDias        String?  @map("horario_dias") // "1,2,3,4,5" (1=lunes)
+  fueraHorarioTexto  String?  @map("fuera_horario_texto")
   // Auto-resolver
-  autoResolverActivo Boolean @default(false) @map("auto_resolver_activo")
-  autoResolverHoras  Int     @default(24) @map("auto_resolver_horas")
+  autoResolverActivo Boolean  @default(false) @map("auto_resolver_activo")
+  autoResolverHoras  Int      @default(24) @map("auto_resolver_horas")
   // IA
-  nombreNegocio    String?  @map("nombre_negocio")
-  iaPromptSistema  String?  @map("ia_prompt_sistema")
-  marcaNombre       String?  @map("marca_nombre")
-  marcaLogo         String?  @map("marca_logo")
-  marcaColorPrimario String? @map("marca_color_primario")
-  marcaColorAcento  String?  @map("marca_color_acento")
-  marcaPreset       String?  @map("marca_preset")
-  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
+  nombreNegocio      String?  @map("nombre_negocio")
+  iaPromptSistema    String?  @map("ia_prompt_sistema")
+  marcaNombre        String?  @map("marca_nombre")
+  marcaLogo          String?  @map("marca_logo")
+  marcaColorPrimario String?  @map("marca_color_primario")
+  marcaColorAcento   String?  @map("marca_color_acento")
+  marcaPreset        String?  @map("marca_preset")
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@unique([orgId])
   @@map("ajustes")
@@ -549,7 +555,7 @@ model Ajustes {
 
 model ModuloOrg {
   id        BigInt   @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   clave     String
   activo    Boolean  @default(false)
   config    Json     @default("{}")
@@ -561,16 +567,16 @@ model ModuloOrg {
 }
 
 model CampoPersonalizado {
-  id          BigInt                     @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  id          BigInt                    @id @default(autoincrement())
+  orgId       BigInt                    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   entidad     EntidadCampoPersonalizado
   clave       String
   etiqueta    String
   tipo        TipoCampoPersonalizado
-  opciones    Json                       @default("[]")
-  obligatorio Boolean                    @default(false)
-  orden       Int                        @default(0)
-  activo      Boolean                    @default(true)
+  opciones    Json                      @default("[]")
+  obligatorio Boolean                   @default(false)
+  orden       Int                       @default(0)
+  activo      Boolean                   @default(true)
 
   @@unique([orgId, entidad, clave])
   @@index([orgId, entidad, orden])
@@ -579,10 +585,11 @@ model CampoPersonalizado {
 
 model Cita {
   id                    BigInt     @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId                 BigInt     @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   contactoId            BigInt     @map("contacto_id")
   conversacionId        BigInt?    @map("conversacion_id")
   responsableId         BigInt?    @map("responsable_id")
+  doctorId              BigInt?    @map("doctor_id")
   inicio                DateTime
   fin                   DateTime
   titulo                String
@@ -592,18 +599,80 @@ model Cita {
   createdAt             DateTime   @default(now()) @map("created_at")
   updatedAt             DateTime   @default(now()) @updatedAt @map("updated_at")
 
-  contacto     Contacto      @relation(fields: [contactoId], references: [id], onDelete: Cascade)
-  conversacion Conversacion? @relation(fields: [conversacionId], references: [id], onDelete: SetNull)
-  responsable  Usuario?      @relation(fields: [responsableId], references: [id], onDelete: SetNull)
+  contacto     Contacto           @relation(fields: [contactoId], references: [id], onDelete: Cascade)
+  conversacion Conversacion?      @relation(fields: [conversacionId], references: [id], onDelete: SetNull)
+  responsable  Usuario?           @relation(fields: [responsableId], references: [id], onDelete: SetNull)
+  doctor       Doctor?            @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  evoluciones  EvolucionClinica[]
 
   @@index([orgId, inicio])
   @@index([contactoId])
+  @@index([doctorId])
   @@map("citas")
+}
+
+model Doctor {
+  id           BigInt   @id @default(autoincrement())
+  orgId        BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre       String
+  especialidad String?
+  cedula       String?
+  color        String   @default("#0EA5E9")
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  citas       Cita[]
+  evoluciones EvolucionClinica[]
+
+  @@unique([orgId, nombre])
+  @@index([orgId, activo])
+  @@map("doctores")
+}
+
+model ExpedientePaciente {
+  id              BigInt    @id @default(autoincrement())
+  orgId           BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contactoId      BigInt    @unique @map("contacto_id")
+  fechaNacimiento DateTime? @map("fecha_nacimiento") @db.Date
+  sexo            String?
+  alergias        String?
+  antecedentes    String?
+  medicamentos    String?
+  observaciones   String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  contacto    Contacto           @relation(fields: [contactoId], references: [id], onDelete: Cascade)
+  evoluciones EvolucionClinica[]
+
+  @@index([orgId])
+  @@map("expedientes_paciente")
+}
+
+model EvolucionClinica {
+  id              BigInt   @id @default(autoincrement())
+  orgId           BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  expedienteId    BigInt   @map("expediente_id")
+  citaId          BigInt?  @map("cita_id")
+  doctorId        BigInt?  @map("doctor_id")
+  registradoPorId BigInt?  @map("registrado_por_id")
+  contenido       String
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  expediente    ExpedientePaciente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  cita          Cita?              @relation(fields: [citaId], references: [id], onDelete: SetNull)
+  doctor        Doctor?            @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  registradoPor Usuario?           @relation(fields: [registradoPorId], references: [id], onDelete: SetNull)
+
+  @@index([expedienteId, createdAt])
+  @@index([orgId])
+  @@map("evoluciones_clinicas")
 }
 
 model Evento {
   id            BigInt     @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId         BigInt     @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   oportunidadId BigInt     @map("oportunidad_id")
   tipo          TipoEvento
   descripcion   String?
