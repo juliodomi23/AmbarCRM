@@ -7,12 +7,12 @@ import { serializar } from "@/lib/serialize";
 
 export const dynamic = "force-dynamic";
 
-export default async function ClientePage({
+export default async function PacientePage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  if (!(await moduloActivo("clientes"))) redirect("/");
+  if (!(await moduloActivo("pacientes"))) redirect("/");
   const id = aBigInt((await params).id);
   if (id === null) notFound();
   const [contacto, doctores, citas, citasActivo] = await Promise.all([
@@ -45,7 +45,8 @@ export default async function ClientePage({
       doctores={serializar(doctores)}
       citas={serializar(citas)}
       citasActivo={citasActivo}
-      modo="clientes"
+      modo="pacientes"
     />
   );
 }
+

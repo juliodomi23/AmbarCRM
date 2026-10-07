@@ -17,11 +17,11 @@ const passwordHash = await bcrypt.hash(pass, 10);
 const [, rows] = await db.$transaction([
   db.$executeRawUnsafe("SELECT set_config('app.current_org', $1, true)", orgId),
   db.$queryRawUnsafe(
-    `INSERT INTO usuarios (nombre, email, password_hash, rol)
-     VALUES ($1, $2, $3, 'admin')
+    `INSERT INTO usuarios (nombre, email, password_hash, rol, puesto)
+     VALUES ($1, $2, $3, 'admin', 'Administrador')
      ON CONFLICT (org_id, email)
      DO UPDATE SET nombre = EXCLUDED.nombre, password_hash = EXCLUDED.password_hash,
-                   rol = 'admin', activo = true
+                   rol = 'admin', puesto = 'Administrador', activo = true
      RETURNING id, email`,
     nombre, email, passwordHash
   ),

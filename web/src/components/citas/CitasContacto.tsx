@@ -12,7 +12,7 @@ export function CitasContacto({
   conversacionId?: string;
 }) {
   const [citas, setCitas] = useState<any[]>([]);
-  const [esCliente, setEsCliente] = useState(false);
+  const [tipoFicha, setTipoFicha] = useState<"clientes" | "pacientes" | null>(null);
 
   useEffect(() => {
     const desde = new Date();
@@ -22,9 +22,18 @@ export function CitasContacto({
     )
       .then((res) => (res.ok ? res.json() : { citas: [] }))
       .then((data) => setCitas(data.citas ?? []));
-    void fetch(`/api/clientes?contactoId=${contactoId}`)
-      .then((res) => (res.ok ? res.json() : { clientes: [] }))
-      .then((data) => setEsCliente((data.clientes ?? []).length > 0));
+    void fetch(`/api/pacientes?contactoId=${contactoId}`)
+      .then(async (respuesta) => {
+        if (respuesta.ok) {
+          const data = await respuesta.json();
+          if ((data.pacientes ?? []).length > 0) setTipoFicha("pacientes");
+          return;
+        }
+        const clientes = await fetch(`/api/clientes?contactoId=${contactoId}`);
+        if (!clientes.ok) return;
+        const data = await clientes.json();
+        if ((data.clientes ?? []).length > 0) setTipoFicha("clientes");
+      });
   }, [contactoId]);
 
   const query = new URLSearchParams({ contactoId });
@@ -36,12 +45,12 @@ export function CitasContacto({
           Próximas citas
         </span>
         <div className="flex gap-3">
-          {esCliente && (
+          {tipoFicha && (
             <Link
-              href={`/clientes/${contactoId}`}
+              href={`/${tipoFicha}/${contactoId}`}
               className="text-xs font-medium text-primary"
             >
-              Cliente
+              {tipoFicha === "pacientes" ? "Paciente" : "Cliente"}
             </Link>
           )}
           <Link

@@ -10,6 +10,14 @@ export const MODULOS = [
     ruta: "/clientes",
   },
   {
+    clave: "pacientes",
+    nombre: "Pacientes",
+    descripcion: "Expediente clínico, alergias y seguimiento de pacientes.",
+    icono:
+      "M12 21s-7-4.35-7-10A4 4 0 0 1 12 8a4 4 0 0 1 7 3c0 5.65-7 10-7 10zM9 12h6m-3-3v6",
+    ruta: "/pacientes",
+  },
+  {
     clave: "citas",
     nombre: "Citas",
     descripcion: "Agenda, seguimiento y recordatorios de citas.",
@@ -24,6 +32,13 @@ export const MODULOS = [
     icono:
       "M3 17h18M5 17l1-6h12l1 6M8 17v2m8-2v2M7 11l2-4h6l2 4M7 14h.01M17 14h.01",
     ruta: "/automotriz",
+  },
+  {
+    clave: "inmobiliaria",
+    nombre: "Inmobiliaria",
+    descripcion: "Catálogo de propiedades, disponibilidad y citas de visita.",
+    icono: "M3 11l9-8 9 8M5 10v10h14V10M9 20v-6h6v6",
+    ruta: "/inmobiliaria",
   },
 ] as const;
 

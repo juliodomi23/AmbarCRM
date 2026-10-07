@@ -18,6 +18,7 @@ export default async function ContactosPage() {
     campos,
     citasActivo,
     clientesActivo,
+    pacientesActivo,
   ] = await Promise.all([
     listarContactos(),
     listarEtiquetas(),
@@ -28,6 +29,7 @@ export default async function ContactosPage() {
     }),
     moduloActivo("citas"),
     moduloActivo("clientes"),
+    moduloActivo("pacientes"),
   ]);
 
   return (
@@ -58,7 +60,7 @@ export default async function ContactosPage() {
       }))}
       camposPersonalizados={serializar(campos)}
       citasActivo={citasActivo}
-      clientesActivo={clientesActivo}
+      tipoFicha={pacientesActivo ? "pacientes" : clientesActivo ? "clientes" : null}
     />
   );
 }

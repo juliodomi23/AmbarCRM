@@ -49,7 +49,8 @@ export async function POST(req: NextRequest) {
         nombre: adminNombre || "Admin",
         email: adminEmail,
         passwordHash: await bcrypt.hash(adminPassword, 10),
-        rol: "admin"
+        rol: "admin",
+        puesto: "Administrador",
       }
     });
     await db.ajustes.create({ data: {} });

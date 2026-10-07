@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
-import { requireModuloActivo } from "@/lib/modulos";
+import { moduloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
 import { requireSesion } from "@/lib/session";
 
@@ -16,8 +16,15 @@ const CAMPOS_TEXTO = [
 async function validarAcceso(id: string) {
   const sesion = await requireSesion();
   if ("error" in sesion) return { respuesta: sesion.error };
-  const apagado = await requireModuloActivo("clientes");
-  if (apagado) return { respuesta: apagado };
+  const [clientesActivo, pacientesActivo] = await Promise.all([
+    moduloActivo("clientes"),
+    moduloActivo("pacientes"),
+  ]);
+  if (!clientesActivo && !pacientesActivo) {
+    return {
+      respuesta: NextResponse.json({ error: "módulo no activo" }, { status: 404 }),
+    };
+  }
   const contactoId = aBigInt(id);
   if (contactoId === null) {
     return {

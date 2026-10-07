@@ -9,6 +9,7 @@ ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS marca_preset TEXT;
 
 -- Motivo legible cuando Meta rechaza un mensaje (se muestra en el chat).
 ALTER TABLE mensajes ADD COLUMN IF NOT EXISTS error_detalle TEXT;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS puesto TEXT NOT NULL DEFAULT 'Agente';
 
 -- Solo WhatsApp Cloud API oficial de Meta.
 DO $$
@@ -53,16 +54,6 @@ CREATE TABLE IF NOT EXISTS modulos_org (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE (org_id, clave)
 );
 CREATE INDEX IF NOT EXISTS modulos_org_org_idx ON modulos_org(org_id);
-
-INSERT INTO modulos_org (org_id, clave, activo, config)
-SELECT org_id, 'clientes', activo, config
-FROM modulos_org
-WHERE clave = 'pacientes'
-ON CONFLICT (org_id, clave) DO UPDATE
-SET activo = EXCLUDED.activo,
-    config = EXCLUDED.config,
-    updated_at = now();
-DELETE FROM modulos_org WHERE clave = 'pacientes';
 
 DO $$
 BEGIN
@@ -208,6 +199,34 @@ CREATE TABLE IF NOT EXISTS vehiculos (
 CREATE INDEX IF NOT EXISTS vehiculos_org_estado_idx ON vehiculos(org_id, estado);
 CREATE INDEX IF NOT EXISTS vehiculos_org_marca_modelo_idx ON vehiculos(org_id, marca, modelo);
 
+CREATE TABLE IF NOT EXISTS propiedades (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  clave TEXT,
+  titulo TEXT NOT NULL,
+  tipo TEXT NOT NULL,
+  operacion TEXT NOT NULL,
+  direccion TEXT,
+  colonia TEXT,
+  ciudad TEXT NOT NULL,
+  recamaras INTEGER NOT NULL DEFAULT 0,
+  banos NUMERIC(4, 1) NOT NULL DEFAULT 0,
+  superficie NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  precio NUMERIC(14, 2) NOT NULL DEFAULT 0,
+  moneda TEXT NOT NULL DEFAULT 'MXN',
+  estado TEXT NOT NULL DEFAULT 'disponible',
+  foto_url TEXT,
+  notas TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, clave)
+);
+CREATE INDEX IF NOT EXISTS propiedades_org_estado_idx ON propiedades(org_id, estado);
+CREATE INDEX IF NOT EXISTS propiedades_org_ciudad_tipo_idx
+  ON propiedades(org_id, ciudad, tipo);
+
 DO $$ DECLARE t TEXT; BEGIN
   FOREACH t IN ARRAY ARRAY[
     'modulos_org',
@@ -216,7 +235,8 @@ DO $$ DECLARE t TEXT; BEGIN
     'doctores',
     'expedientes_paciente',
     'evoluciones_clinicas',
-    'vehiculos'
+    'vehiculos',
+    'propiedades'
   ] LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
@@ -241,6 +261,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   doctores,
   expedientes_paciente,
   evoluciones_clinicas,
-  vehiculos
+  vehiculos,
+  propiedades
 TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;

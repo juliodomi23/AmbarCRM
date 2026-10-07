@@ -44,14 +44,14 @@ export function ContactosCliente({
   usuarios,
   camposPersonalizados,
   citasActivo,
-  clientesActivo,
+  tipoFicha,
 }: {
   contactos: Contacto[];
   etiquetas: Etiqueta[];
   usuarios: { id: string; nombre: string }[];
   camposPersonalizados: { clave: string; etiqueta: string }[];
   citasActivo: boolean;
-  clientesActivo: boolean;
+  tipoFicha: "clientes" | "pacientes" | null;
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -181,9 +181,10 @@ export function ContactosCliente({
     if (res.ok) router.refresh();
   }
 
-  async function convertirCliente(contacto: Contacto) {
+  async function crearFicha(contacto: Contacto) {
+    if (!tipoFicha) return;
     setGuardando(true);
-    const respuesta = await fetch("/api/clientes", {
+    const respuesta = await fetch(`/api/${tipoFicha}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contactoId: contacto.id }),
@@ -198,7 +199,11 @@ export function ContactosCliente({
       toast(mensaje, "error");
       return;
     }
-    toast(`${contacto.nombre} ahora tiene ficha de cliente`);
+    toast(
+      tipoFicha === "pacientes"
+        ? `${contacto.nombre} ahora es paciente`
+        : `${contacto.nombre} ahora tiene ficha de cliente`,
+    );
     router.refresh();
   }
 
@@ -401,7 +406,7 @@ export function ContactosCliente({
                   >
                     Editar
                   </button>
-                  {citasActivo && (!clientesActivo || c.esCliente) && (
+                  {citasActivo && (!tipoFicha || c.esCliente) && (
                     <Link
                       href={`/citas?contactoId=${c.id}`}
                       className="mr-3 text-primary hover:underline"
@@ -409,22 +414,22 @@ export function ContactosCliente({
                       Cita
                     </Link>
                   )}
-                  {clientesActivo &&
+                  {tipoFicha &&
                     (c.esCliente ? (
                       <Link
-                        href={`/clientes/${c.id}`}
+                        href={`/${tipoFicha}/${c.id}`}
                         className="mr-3 text-primary hover:underline"
                       >
-                        Cliente
+                        {tipoFicha === "pacientes" ? "Paciente" : "Cliente"}
                       </Link>
                     ) : (
                       <button
                         type="button"
                         disabled={guardando}
-                        onClick={() => void convertirCliente(c)}
+                        onClick={() => void crearFicha(c)}
                         className="mr-3 text-primary hover:underline disabled:opacity-50"
                       >
-                        Crear ficha
+                        {tipoFicha === "pacientes" ? "Hacer paciente" : "Crear ficha"}
                       </button>
                     ))}
                   <button
@@ -505,7 +510,7 @@ export function ContactosCliente({
               >
                 Editar
               </button>
-              {citasActivo && (!clientesActivo || c.esCliente) && (
+              {citasActivo && (!tipoFicha || c.esCliente) && (
                 <Link
                   href={`/citas?contactoId=${c.id}`}
                   className="font-medium text-primary"
@@ -513,22 +518,22 @@ export function ContactosCliente({
                   Cita
                 </Link>
               )}
-              {clientesActivo &&
+              {tipoFicha &&
                 (c.esCliente ? (
                   <Link
-                    href={`/clientes/${c.id}`}
+                    href={`/${tipoFicha}/${c.id}`}
                     className="font-medium text-primary"
                   >
-                    Cliente
+                    {tipoFicha === "pacientes" ? "Paciente" : "Cliente"}
                   </Link>
                 ) : (
                   <button
                     type="button"
                     disabled={guardando}
-                    onClick={() => void convertirCliente(c)}
+                    onClick={() => void crearFicha(c)}
                     className="font-medium text-primary disabled:opacity-50"
                   >
-                    Crear ficha
+                    {tipoFicha === "pacientes" ? "Hacer paciente" : "Crear ficha"}
                   </button>
                 ))}
               <button

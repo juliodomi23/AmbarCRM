@@ -55,10 +55,33 @@ await prisma.$transaction(async (tx) => {
       nombre: "Dra. Elena Torres",
       passwordHash,
       rol: "admin",
+      puesto: "Doctor",
       activo: true,
     },
-    create: { nombre: "Dra. Elena Torres", email, passwordHash, rol: "admin" },
+    create: {
+      nombre: "Dra. Elena Torres",
+      email,
+      passwordHash,
+      rol: "admin",
+      puesto: "Doctor",
+    },
   });
+  for (const [nombre, correo, puesto] of [
+    ["Recepción Horizonte", "recepcion@clinica-horizonte.demo", "Recepcionista"],
+    ["Dr. Mateo Salas", "mateo@clinica-horizonte.demo", "Doctor"],
+  ]) {
+    await tx.usuario.upsert({
+      where: { orgId_email: { orgId: org.id, email: correo } },
+      update: { nombre, puesto, activo: true },
+      create: {
+        nombre,
+        email: correo,
+        passwordHash,
+        rol: "agente",
+        puesto,
+      },
+    });
+  }
   await tx.ajustes.upsert({
     where: { orgId: org.id },
     update: { marcaPreset: "salud", marcaNombre: "Clínica Horizonte" },
@@ -70,9 +93,13 @@ await prisma.$transaction(async (tx) => {
     create: { clave: "citas", activo: true, config: { anticipacionHoras: 24 } },
   });
   await tx.moduloOrg.upsert({
-    where: { orgId_clave: { orgId: org.id, clave: "clientes" } },
+    where: { orgId_clave: { orgId: org.id, clave: "pacientes" } },
     update: { activo: true },
-    create: { clave: "clientes", activo: true, config: {} },
+    create: { clave: "pacientes", activo: true, config: {} },
+  });
+  await tx.moduloOrg.updateMany({
+    where: { clave: "clientes" },
+    data: { activo: false },
   });
 
   const doctores = [];

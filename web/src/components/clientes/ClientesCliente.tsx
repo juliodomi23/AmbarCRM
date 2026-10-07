@@ -80,10 +80,12 @@ export function ClientesCliente({
   clientes,
   contactosDisponibles,
   citasActivo,
+  modo = "clientes",
 }: {
   clientes: Cliente[];
   contactosDisponibles: ContactoDisponible[];
   citasActivo: boolean;
+  modo?: "clientes" | "pacientes";
 }) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState("");
@@ -112,7 +114,7 @@ export function ClientesCliente({
   async function guardar(evento: React.FormEvent) {
     evento.preventDefault();
     setGuardando(true);
-    const respuesta = await fetch("/api/clientes", {
+    const respuesta = await fetch(`/api/${modo}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(formulario),
@@ -125,7 +127,7 @@ export function ClientesCliente({
     }
     setModal(false);
     setFormulario(FORMULARIO_INICIAL);
-    toast("Cliente creado");
+    toast(modo === "pacientes" ? "Paciente creado" : "Cliente creado");
     router.refresh();
   }
 
@@ -133,12 +135,18 @@ export function ClientesCliente({
     <div className="space-y-5 p-4 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Clientes</h1>
+          <h1 className="text-2xl font-bold">
+            {modo === "pacientes" ? "Pacientes" : "Clientes"}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Personas con ficha de servicio, preferencias e historial de atención.
+            {modo === "pacientes"
+              ? "Personas con expediente clínico, alergias e historial de atención."
+              : "Personas con ficha de servicio, preferencias e historial de atención."}
           </p>
         </div>
-        <Boton onClick={() => setModal(true)}>+ Nuevo cliente</Boton>
+        <Boton onClick={() => setModal(true)}>
+          + Nuevo {modo === "pacientes" ? "paciente" : "cliente"}
+        </Boton>
       </header>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -149,7 +157,7 @@ export function ClientesCliente({
           placeholder="Buscar por nombre, teléfono o correo…"
           className="min-w-60 flex-1 rounded-lg border border-input bg-card px-3 py-2 text-sm"
         />
-        <Resumen etiqueta="Clientes" valor={clientes.length} />
+        <Resumen etiqueta={modo === "pacientes" ? "Pacientes" : "Clientes"} valor={clientes.length} />
         <Resumen etiqueta="Con alertas" valor={conAlertas} alerta={conAlertas > 0} />
       </div>
 
@@ -167,7 +175,7 @@ export function ClientesCliente({
                   <AvatarNombre nombre={cliente.nombre} className="h-11 w-11" />
                   <div className="min-w-0 flex-1">
                     <Link
-                      href={`/clientes/${cliente.id}`}
+                      href={`/${modo}/${cliente.id}`}
                       className="font-semibold text-foreground hover:text-primary"
                     >
                       {cliente.nombre}
@@ -178,7 +186,7 @@ export function ClientesCliente({
                     </p>
                     {cliente.expediente.alergias && (
                       <p className="mt-2 line-clamp-2 text-xs text-amber-700">
-                        Sensibilidades: {cliente.expediente.alergias}
+                        {modo === "pacientes" ? "Alergias" : "Sensibilidades"}: {cliente.expediente.alergias}
                       </p>
                     )}
                   </div>
@@ -206,8 +214,8 @@ export function ClientesCliente({
                       Agendar
                     </Link>
                   )}
-                  <Link href={`/clientes/${cliente.id}`} className="text-primary">
-                    Ver ficha
+                  <Link href={`/${modo}/${cliente.id}`} className="text-primary">
+                    {modo === "pacientes" ? "Ver expediente" : "Ver ficha"}
                   </Link>
                 </div>
               </article>
@@ -217,7 +225,9 @@ export function ClientesCliente({
       ) : (
         <div className="rounded-xl border border-dashed border-border p-8 text-center">
           <p className="font-semibold">
-            {busqueda ? "No encontramos clientes" : "Aún no hay clientes"}
+            {busqueda
+              ? `No encontramos ${modo}`
+              : `Aún no hay ${modo}`}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {busqueda
@@ -227,7 +237,11 @@ export function ClientesCliente({
         </div>
       )}
 
-      <Modal abierto={modal} onClose={() => setModal(false)} titulo="Nuevo cliente">
+      <Modal
+        abierto={modal}
+        onClose={() => setModal(false)}
+        titulo={`Nuevo ${modo === "pacientes" ? "paciente" : "cliente"}`}
+      >
         <form onSubmit={guardar} className="space-y-3">
           <label className="block space-y-1">
             <span className="text-sm font-medium text-muted-foreground">
@@ -298,7 +312,9 @@ export function ClientesCliente({
               Cancelar
             </Boton>
             <Boton type="submit" disabled={guardando}>
-              {guardando ? "Guardando…" : "Crear cliente"}
+              {guardando
+                ? "Guardando…"
+                : `Crear ${modo === "pacientes" ? "paciente" : "cliente"}`}
             </Boton>
           </div>
         </form>

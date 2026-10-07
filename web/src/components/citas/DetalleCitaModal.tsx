@@ -87,10 +87,10 @@ export function DetalleCitaModal({
           </Boton>
           {cita.contacto.expediente && (
             <Link
-              href={`/clientes/${cita.contacto.id}`}
+              href={`/contactos/${cita.contacto.id}/expediente`}
               className="rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground"
             >
-              Ver cliente
+              Ver ficha
             </Link>
           )}
         </div>

@@ -2,7 +2,9 @@
 
 Un módulo se registra en `web/src/lib/modulos.ts` con una clave estable, nombre,
 descripción, icono SVG y ruta. La plataforma lo activa por organización en
-Configuración → Clientes; cada organización solo configura sus módulos activos.
+Configuración → Clientes Ámbar CRM; cada organización solo configura sus
+módulos activos. La ficha de cada organización muestra métricas, equipo,
+módulos y su liga de acceso para soporte sin exponer contraseñas.
 
 Para agregar un módulo, añade su catálogo y crea sus tablas con `org_id`, DEFAULT
 de `app.current_org`, RLS `org_isolation` y GRANT en
@@ -19,12 +21,19 @@ cualquier lead, proveedor o persona que escribe por WhatsApp. Se convierte en
 La ficha extiende al contacto existente en lugar de duplicarlo. Así conserva el
 mismo teléfono, conversaciones, oportunidades y etiquetas, pero aparece además
 en `/clientes` con preferencias, sensibilidades, historial y próximas citas.
-Esto sirve para clínicas y para negocios de uñas, pestañas, cejas u otros
-servicios recurrentes.
+Esto sirve para negocios de uñas, pestañas, cejas y otros servicios recurrentes.
 
 Un cliente puede crearse desde cero o a partir de un contacto existente. Con el
 módulo activo, Contactos muestra la acción **Crear ficha** y Citas ofrece solo a
 las personas que ya tienen ficha.
+
+## Módulo Pacientes
+
+Pacientes usa `/pacientes` y el mismo contacto base, pero presenta la información
+como expediente clínico: alergias, antecedentes, medicamentos, evoluciones,
+doctores y próximas citas. Para una clínica se activan **Pacientes + Citas**;
+para un negocio de servicios se activan **Clientes + Citas**. Esta selección
+evita duplicar teléfonos, chats u oportunidades.
 
 ## Módulo Automotriz
 
@@ -35,7 +44,15 @@ rápidamente entre **Disponible**, **Reservado**, **Vendido** y **En taller**.
 
 La pantalla muestra indicadores de disponibilidad, reservados, vendidos y valor
 del inventario disponible. El seed `seed-demo-automotriz.mjs` crea la
-organización `demo-auto`, activa únicamente este módulo y carga seis vehículos.
+organización `demo-auto`, activa Automotriz y Citas, carga seis vehículos, dos
+asesores y tres pruebas de manejo.
+
+## Módulo Inmobiliaria
+
+Inmobiliaria agrega `/inmobiliaria` con propiedades para venta o renta. Registra
+tipo, ciudad, dirección, recámaras, baños, superficie, precio, fotografía y
+estado. Se combina con Citas para agendar visitas y con Usuarios para invitar
+asesores inmobiliarios.
 
 ## Módulo Citas
 
@@ -82,6 +99,15 @@ Las definiciones se administran en **Configuración → Campos personalizados**.
 Las claves desconocidas se ignoran y las activas se validan en servidor según
 su tipo. Los valores se editan en Contactos, Chat y Oportunidades; también están
 disponibles como columnas opcionales y en CSV usando la etiqueta como encabezado.
+La pantalla explica casos de uso y permite capturar las opciones separadas por
+comas cuando el tipo elegido es **Opción**.
+
+## Equipo
+
+En **Configuración → Usuarios** el admin invita integrantes y define dos cosas:
+el rol técnico (`Admin` o `Agente`) y el puesto operativo (`Recepcionista`,
+`Doctor`, `Especialista`, `Vendedor`, `Asesor inmobiliario` o
+`Asesor automotriz`). El puesto describe su función sin complicar los permisos.
 
 ## Demo clínica
 
@@ -93,8 +119,8 @@ node scripts/seed-demo-clinica.mjs admin@demo.test ClaveSegura
 El seed es idempotente y solo trabaja sobre `demo-clinica`. Crea la marca Salud,
 el módulo Citas, tres campos personalizados, un embudo de cuatro etapas, ocho
 contactos, seis oportunidades, ocho citas de esta semana y tres conversaciones.
-También crea dos doctores, asigna cada cita y prepara expedientes clínicos para
-los ocho clientes con historial de ejemplo.
+También crea recepción, dos doctores, asigna cada cita y prepara expedientes
+clínicos para los ocho pacientes con historial de ejemplo.
 
 ## Demo automotriz
 
@@ -105,3 +131,13 @@ node scripts/seed-demo-automotriz.mjs auto@local.test AutoDemo2026!
 
 El seed es idempotente y solo trabaja sobre `demo-auto`. Carga seis vehículos
 en distintos estados y crea una cuenta administradora para esa organización.
+
+## Demo inmobiliaria
+
+```bash
+cd web
+node scripts/seed-demo-inmobiliaria.mjs inmobiliaria@local.test InmoDemo2026!
+```
+
+El seed es idempotente y solo trabaja sobre `demo-inmobiliaria`. Carga cinco
+propiedades, dos asesores, tres prospectos y tres citas de visita.

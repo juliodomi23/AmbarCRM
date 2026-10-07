@@ -167,6 +167,7 @@ model Usuario {
   email        String
   passwordHash String     @map("password_hash")
   rol          RolUsuario @default(agente)
+  puesto       String     @default("Agente")
   avatarUrl    String?    @map("avatar_url")
   activo       Boolean    @default(true)
   createdAt    DateTime   @default(now()) @map("created_at")
@@ -703,6 +704,33 @@ model Vehiculo {
   @@index([orgId, estado])
   @@index([orgId, marca, modelo])
   @@map("vehiculos")
+}
+
+model Propiedad {
+  id         BigInt   @id @default(autoincrement())
+  orgId      BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  clave      String?
+  titulo     String
+  tipo       String
+  operacion  String
+  direccion  String?
+  colonia    String?
+  ciudad     String
+  recamaras  Int      @default(0)
+  banos      Decimal  @default(0) @db.Decimal(4, 1)
+  superficie Decimal  @default(0) @db.Decimal(10, 2)
+  precio     Decimal  @default(0) @db.Decimal(14, 2)
+  moneda     String   @default("MXN")
+  estado     String   @default("disponible")
+  fotoUrl    String?  @map("foto_url")
+  notas      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([orgId, clave])
+  @@index([orgId, estado])
+  @@index([orgId, ciudad, tipo])
+  @@map("propiedades")
 }
 
 model Evento {

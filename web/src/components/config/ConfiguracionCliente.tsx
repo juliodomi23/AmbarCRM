@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Boton, Campo, Modal } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import { MetaCanales } from "@/components/config/MetaCanales";
@@ -21,7 +22,7 @@ const TABS = [
   "Módulos",
   "Campos personalizados",
 ] as const;
-type Tab = (typeof TABS)[number] | "Clientes";
+type Tab = (typeof TABS)[number] | "Clientes Ámbar CRM";
 
 async function api(url: string, metodo: string, body?: unknown) {
   const res = await fetch(url, {
@@ -60,7 +61,7 @@ export function ConfiguracionCliente({
 }) {
   const [tab, setTab] = useState<Tab>("Embudos");
   // "Clientes" solo aparece para la org plataforma (orgs viene null para las demás).
-  const tabs: Tab[] = orgs ? [...TABS, "Clientes"] : [...TABS];
+  const tabs: Tab[] = orgs ? [...TABS, "Clientes Ámbar CRM"] : [...TABS];
 
   // Abrir directo en una pestaña: /configuracion?tab=canal (lo usa "Primeros pasos").
   useEffect(() => {
@@ -75,7 +76,7 @@ export function ConfiguracionCliente({
       automatizaciones: "Automatizaciones",
       bots: "Bots",
       ia: "IA",
-      clientes: "Clientes",
+      clientes: "Clientes Ámbar CRM",
     };
     if (t && mapa[t]) setTab(mapa[t]);
   }, []);
@@ -110,7 +111,7 @@ export function ConfiguracionCliente({
       {tab === "Automatizaciones" && <TabAutomatizaciones ajustes={ajustes} />}
       {tab === "Bots" && <TabBots bots={bots} canales={canales} />}
       {tab === "IA" && <TabIA ajustes={ajustes} />}
-      {tab === "Clientes" && orgs && (
+      {tab === "Clientes Ámbar CRM" && orgs && (
         <TabClientes
           orgs={orgs}
           modulosPorOrg={modulosPorOrg ?? {}}
@@ -219,6 +220,7 @@ function TabCamposPersonalizados() {
     etiqueta: "",
     tipo: "texto",
     obligatorio: false,
+    opciones: "",
   });
   const cargar = () =>
     fetch(`/api/campos-personalizados?entidad=${entidad}`)
@@ -235,15 +237,34 @@ function TabCamposPersonalizados() {
       await api("/api/campos-personalizados", "POST", {
         ...f,
         entidad,
-        opciones: [],
+        opciones: f.tipo === "opcion"
+          ? f.opciones.split(",").map((opcion) => opcion.trim()).filter(Boolean)
+          : [],
       })
     ) {
-      setF({ clave: "", etiqueta: "", tipo: "texto", obligatorio: false });
+      setF({
+        clave: "",
+        etiqueta: "",
+        tipo: "texto",
+        obligatorio: false,
+        opciones: "",
+      });
       cargar();
     }
   }
   return (
     <div className="max-w-2xl space-y-4">
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+        <p className="font-semibold">¿Para qué sirven?</p>
+        <p className="mt-1">
+          Agregan datos propios del negocio sin programar: por ejemplo tipo de
+          tratamiento, presupuesto, zona de interés o vehículo buscado. Aparecen
+          en la ficha, Chat, oportunidades, tabla de Contactos y archivos CSV.
+        </p>
+        <p className="mt-2 text-xs">
+          La clave es interna y no cambia; la etiqueta es el nombre que verá el equipo.
+        </p>
+      </div>
       <div className="flex gap-2">
         <button
           className="rounded-lg border px-3 py-2 text-sm"
@@ -290,6 +311,15 @@ function TabCamposPersonalizados() {
           <option value="opcion">Opción</option>
           <option value="si_no">Sí / no</option>
         </select>
+        {f.tipo === "opcion" && (
+          <Campo
+            label="Opciones separadas por coma"
+            value={f.opciones}
+            onChange={(e) => setF({ ...f, opciones: e.target.value })}
+            placeholder="Casa, Departamento, Terreno"
+            required
+          />
+        )}
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -387,7 +417,7 @@ function TabClientes({
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="space-y-6">
       <div className="rounded-xl border border-border bg-amber-50/60 p-3 text-xs text-muted-foreground">
         Cada cliente es una <b>organización aislada</b>: sus chats, contactos y
         usuarios no se mezclan con los de nadie más. Al crearla se genera su
@@ -399,7 +429,7 @@ function TabClientes({
         onSubmit={crear}
         className="space-y-4 rounded-xl border border-border bg-card p-4"
       >
-        <p className="font-medium text-foreground">Nuevo cliente</p>
+        <p className="font-medium text-foreground">Nuevo cliente de Ámbar CRM</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <Campo
             label="Nombre del negocio"
@@ -487,7 +517,7 @@ function TabClientes({
               <th className="px-4 py-2">Slug</th>
               <th className="px-4 py-2">Estado</th>
               <th className="px-4 py-2">Módulos</th>
-              <th className="px-4 py-2">Liga de acceso</th>
+              <th className="px-4 py-2">Soporte</th>
             </tr>
           </thead>
           <tbody>
@@ -546,18 +576,34 @@ function TabClientes({
                   </div>
                 </td>
                 <td className="px-4 py-2">
-                  <button
-                    type="button"
-                    className="text-xs text-primary underline"
-                    onClick={() => {
-                      navigator.clipboard.writeText(
-                        `${location.origin}/login?org=${o.slug}`,
-                      );
-                      toast("Liga copiada");
-                    }}
-                  >
-                    Copiar liga
-                  </button>
+                  <div className="flex flex-col items-start gap-1">
+                    <Link
+                      href={`/configuracion/clientes/${o.id}`}
+                      className="text-xs font-medium text-primary underline"
+                    >
+                      Ver detalles
+                    </Link>
+                    <a
+                      href={`/login?org=${o.slug}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-primary underline"
+                    >
+                      Abrir acceso
+                    </a>
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground underline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          `${location.origin}/login?org=${o.slug}`,
+                        );
+                        toast("Liga copiada");
+                      }}
+                    >
+                      Copiar liga
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -1197,12 +1243,19 @@ function TabUsuarios({ usuarios }: { usuarios: any[] }) {
     email: "",
     password: "",
     rol: "agente",
+    puesto: "Agente",
   });
 
   async function crear(e: React.FormEvent) {
     e.preventDefault();
     if (await api("/api/usuarios", "POST", form)) {
-      setForm({ nombre: "", email: "", password: "", rol: "agente" });
+      setForm({
+        nombre: "",
+        email: "",
+        password: "",
+        rol: "agente",
+        puesto: "Agente",
+      });
       router.refresh();
     }
   }
@@ -1213,6 +1266,11 @@ function TabUsuarios({ usuarios }: { usuarios: any[] }) {
 
   return (
     <div className="space-y-5">
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+        Invita al equipo creando su acceso. El <b>puesto</b> describe su función
+        —recepcionista, doctor o vendedor— y el <b>rol</b> define permisos:
+        Admin configura el CRM; Agente trabaja la operación diaria.
+      </div>
       <form
         onSubmit={crear}
         className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2"
@@ -1248,8 +1306,24 @@ function TabUsuarios({ usuarios }: { usuarios: any[] }) {
             <option value="admin">Admin</option>
           </select>
         </label>
+        <label className="block space-y-1">
+          <span className="text-sm font-medium text-muted-foreground">Puesto</span>
+          <select
+            value={form.puesto}
+            onChange={(e) => setForm({ ...form, puesto: e.target.value })}
+            className="w-full rounded-lg border border-input px-3 py-2 text-sm"
+          >
+            <option>Agente</option>
+            <option>Recepcionista</option>
+            <option>Doctor</option>
+            <option>Especialista</option>
+            <option>Vendedor</option>
+            <option>Asesor inmobiliario</option>
+            <option>Asesor automotriz</option>
+          </select>
+        </label>
         <div className="sm:col-span-2">
-          <Boton type="submit">+ Crear usuario</Boton>
+          <Boton type="submit">+ Invitar integrante</Boton>
         </div>
       </form>
 
@@ -1260,6 +1334,7 @@ function TabUsuarios({ usuarios }: { usuarios: any[] }) {
               <th className="px-4 py-3">Nombre</th>
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Rol</th>
+              <th className="px-4 py-3">Puesto</th>
               <th className="px-4 py-3">Estado</th>
               <th></th>
             </tr>
@@ -1274,6 +1349,7 @@ function TabUsuarios({ usuarios }: { usuarios: any[] }) {
                 <td className="px-4 py-3 capitalize text-muted-foreground">
                   {u.rol}
                 </td>
+                <td className="px-4 py-3 text-muted-foreground">{u.puesto}</td>
                 <td className="px-4 py-3">
                   {u.activo ? "Activo" : "Inactivo"}
                 </td>

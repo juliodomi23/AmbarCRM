@@ -15,6 +15,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
   const data: Record<string, unknown> = {};
   if ("nombre" in body) data.nombre = body.nombre;
   if ("rol" in body) data.rol = body.rol === "admin" ? "admin" : "agente";
+  if ("puesto" in body) data.puesto = String(body.puesto || "Agente").trim();
   if ("activo" in body) data.activo = !!body.activo;
   if (body.password) {
     if (String(body.password).length < 8) {
