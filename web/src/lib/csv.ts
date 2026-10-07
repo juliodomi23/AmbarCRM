@@ -1,7 +1,10 @@
 /** Convierte filas a CSV (con escape) y antepone BOM para que Excel lea bien los acentos. */
 export function toCSV(headers: string[], rows: (string | number | null | undefined)[][]): string {
   const esc = (v: string | number | null | undefined) => {
-    const s = v == null ? "" : String(v);
+    // Un apóstrofo evita que Excel ejecute como fórmula valores que vienen de clientes
+    // (p. ej. un nombre de perfil de WhatsApp que empieza con "=").
+    const crudo = v == null ? "" : String(v);
+    const s = /^[=+\-@\t\r]/.test(crudo) ? `'${crudo}` : crudo;
     return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const cuerpo = [headers, ...rows].map((r) => r.map(esc).join(",")).join("\n");
