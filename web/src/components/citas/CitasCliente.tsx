@@ -3,5 +3,161 @@ import { useEffect, useState } from "react";
 import { Boton, Campo } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 const zona = "America/Mexico_City";
-export function CitasCliente({ contactos, usuarios }: { contactos: any[]; usuarios: any[] }) { const [citas, setCitas] = useState<any[]>([]); const [semana, setSemana] = useState(false); const [f, setF] = useState({ contactoId: "", titulo: "Cita", inicio: "", fin: "", responsableId: "" }); const inicio = new Date(); inicio.setHours(0,0,0,0); if (semana) inicio.setDate(inicio.getDate() - inicio.getDay() + 1); const fin = new Date(inicio); fin.setDate(fin.getDate() + (semana ? 7 : 1)); const cargar = () => fetch(`/api/citas?desde=${inicio.toISOString()}&hasta=${fin.toISOString()}`).then((r) => r.ok ? r.json() : { citas: [] }).then((d) => setCitas(d.citas)); useEffect(() => { cargar(); // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [semana]); async function crear(e: React.FormEvent) { e.preventDefault(); const res = await fetch("/api/citas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) }); if (!res.ok) return toast((await res.json()).error ?? "No se pudo crear", "error"); toast("Cita creada"); cargar(); } return <div className="space-y-5 p-4 md:p-6"><div className="flex items-center justify-between"><div><h1 className="text-2xl font-bold">Citas</h1><p className="text-sm text-muted-foreground">Agenda en zona horaria {zona}.</p></div><button className="rounded-lg border px-3 py-2 text-sm" onClick={() => setSemana(!semana)}>{semana ? "Ver día" : "Ver semana"}</button></div><form onSubmit={crear} className="grid gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-3"><select required value={f.contactoId} onChange={(e) => setF({ ...f, contactoId: e.target.value })} className="rounded-lg border border-input px-3 py-2 text-sm"><option value="">Contacto…</option>{contactos.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select><Campo label="Título" value={f.titulo} onChange={(e) => setF({ ...f, titulo: e.target.value })} required /><select value={f.responsableId} onChange={(e) => setF({ ...f, responsableId: e.target.value })} className="rounded-lg border border-input px-3 py-2 text-sm"><option value="">Responsable</option>{usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}</select><input required type="datetime-local" value={f.inicio} onChange={(e) => setF({ ...f, inicio: e.target.value })} className="rounded-lg border border-input px-3 py-2 text-sm"/><input required type="datetime-local" value={f.fin} onChange={(e) => setF({ ...f, fin: e.target.value })} className="rounded-lg border border-input px-3 py-2 text-sm"/><Boton type="submit">Crear cita</Boton></form><div className="space-y-2">{citas.length === 0 && <p className="text-sm text-muted-foreground">No hay citas en este periodo.</p>}{citas.map((c) => <div key={c.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4"><div><p className="font-medium">{c.titulo} · {c.contacto.nombre}</p><p className="text-sm text-muted-foreground">{new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short", timeZone: zona }).format(new Date(c.inicio))}</p></div><select value={c.estado} onChange={async (e) => { await fetch(`/api/citas/${c.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estado: e.target.value }) }); cargar(); }} className="rounded-lg border border-input p-2 text-sm">{["programada","confirmada","completada","cancelada","no_asistio"].map((x) => <option key={x}>{x}</option>)}</select></div>)}</div></div>; }
+export function CitasCliente({
+  contactos,
+  usuarios,
+}: {
+  contactos: any[];
+  usuarios: any[];
+}) {
+  const [citas, setCitas] = useState<any[]>([]);
+  const [semana, setSemana] = useState(false);
+  const [f, setF] = useState({
+    contactoId: "",
+    titulo: "Cita",
+    inicio: "",
+    fin: "",
+    responsableId: "",
+  });
+  const inicio = new Date();
+  inicio.setHours(0, 0, 0, 0);
+  if (semana) inicio.setDate(inicio.getDate() - inicio.getDay() + 1);
+  const fin = new Date(inicio);
+  fin.setDate(fin.getDate() + (semana ? 7 : 1));
+  const cargar = () =>
+    fetch(`/api/citas?desde=${inicio.toISOString()}&hasta=${fin.toISOString()}`)
+      .then((r) => (r.ok ? r.json() : { citas: [] }))
+      .then((d) => setCitas(d.citas));
+  useEffect(() => {
+    cargar(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [semana]);
+  async function crear(e: React.FormEvent) {
+    e.preventDefault();
+    const res = await fetch("/api/citas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(f),
+    });
+    if (!res.ok)
+      return toast((await res.json()).error ?? "No se pudo crear", "error");
+    toast("Cita creada");
+    cargar();
+  }
+  return (
+    <div className="space-y-5 p-4 md:p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Citas</h1>
+          <p className="text-sm text-muted-foreground">
+            Agenda en zona horaria {zona}.
+          </p>
+        </div>
+        <button
+          className="rounded-lg border px-3 py-2 text-sm"
+          onClick={() => setSemana(!semana)}
+        >
+          {semana ? "Ver día" : "Ver semana"}
+        </button>
+      </div>
+      <form
+        onSubmit={crear}
+        className="grid gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-3"
+      >
+        <select
+          required
+          value={f.contactoId}
+          onChange={(e) => setF({ ...f, contactoId: e.target.value })}
+          className="rounded-lg border border-input px-3 py-2 text-sm"
+        >
+          <option value="">Contacto…</option>
+          {contactos.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nombre}
+            </option>
+          ))}
+        </select>
+        <Campo
+          label="Título"
+          value={f.titulo}
+          onChange={(e) => setF({ ...f, titulo: e.target.value })}
+          required
+        />
+        <select
+          value={f.responsableId}
+          onChange={(e) => setF({ ...f, responsableId: e.target.value })}
+          className="rounded-lg border border-input px-3 py-2 text-sm"
+        >
+          <option value="">Responsable</option>
+          {usuarios.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.nombre}
+            </option>
+          ))}
+        </select>
+        <input
+          required
+          type="datetime-local"
+          value={f.inicio}
+          onChange={(e) => setF({ ...f, inicio: e.target.value })}
+          className="rounded-lg border border-input px-3 py-2 text-sm"
+        />
+        <input
+          required
+          type="datetime-local"
+          value={f.fin}
+          onChange={(e) => setF({ ...f, fin: e.target.value })}
+          className="rounded-lg border border-input px-3 py-2 text-sm"
+        />
+        <Boton type="submit">Crear cita</Boton>
+      </form>
+      <div className="space-y-2">
+        {citas.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No hay citas en este periodo.
+          </p>
+        )}
+        {citas.map((c) => (
+          <div
+            key={c.id}
+            className="flex items-center justify-between rounded-xl border border-border bg-card p-4"
+          >
+            <div>
+              <p className="font-medium">
+                {c.titulo} · {c.contacto.nombre}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {new Intl.DateTimeFormat("es-MX", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                  timeZone: zona,
+                }).format(new Date(c.inicio))}
+              </p>
+            </div>
+            <select
+              value={c.estado}
+              onChange={async (e) => {
+                await fetch(`/api/citas/${c.id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ estado: e.target.value }),
+                });
+                cargar();
+              }}
+              className="rounded-lg border border-input p-2 text-sm"
+            >
+              {[
+                "programada",
+                "confirmada",
+                "completada",
+                "cancelada",
+                "no_asistio",
+              ].map((x) => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
