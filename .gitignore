@@ -21,3 +21,8 @@ Thumbs.db
 
 # Build info de TS
 *.tsbuildinfo
+
+# Archivos de revisión y capturas locales
+*.mp4
+*.mov
+/*.pdf

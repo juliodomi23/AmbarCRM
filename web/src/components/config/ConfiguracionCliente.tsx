@@ -455,7 +455,12 @@ function TabClientes({
             <b>{creado.email}</b> y su contraseña:
           </p>
           <div className="flex items-center gap-2">
-            <code className="min-w-0 flex-1 truncate rounded-lg border border-green-200 bg-card px-3 py-2 text-xs text-foreground">
+            <code
+              className={[
+                "min-w-0 flex-1 truncate rounded-lg border border-green-200",
+                "bg-card px-3 py-2 text-xs text-foreground",
+              ].join(" ")}
+            >
               {typeof window !== "undefined" ? location.origin : ""}/login?org=
               {creado.slug}
             </code>
@@ -502,7 +507,12 @@ function TabClientes({
                 <td className="px-4 py-2 text-muted-foreground">{o.slug}</td>
                 <td className="px-4 py-2">
                   <span
-                    className={`rounded-full px-2 py-0.5 text-xs ${o.activo ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}
+                    className={[
+                      "rounded-full px-2 py-0.5 text-xs",
+                      o.activo
+                        ? "bg-green-100 text-green-700"
+                        : "bg-muted text-muted-foreground",
+                    ].join(" ")}
                   >
                     {o.activo ? "Activa" : "Inactiva"}
                   </span>
@@ -590,7 +600,10 @@ function TabIA({ ajustes }: { ajustes: any }) {
             value={f.nombreNegocio}
             onChange={(e) => setF({ ...f, nombreNegocio: e.target.value })}
             placeholder="Ej: Clínica Serénica, Pie Feliz Podología…"
-            className="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            className={[
+              "w-full rounded-lg border border-input px-3 py-2 text-sm",
+              "outline-none focus:ring-2 focus:ring-primary/30",
+            ].join(" ")}
           />
           <span className="text-xs text-muted-foreground">
             Se incluye en el contexto de la IA (&quot;Trabajas para X&quot;).
@@ -610,7 +623,10 @@ function TabIA({ ajustes }: { ajustes: any }) {
               "Redacta la siguiente respuesta del agente: breve, cordial, en español neutro, lista para enviar. " +
               "Devuelve SOLO el texto, sin comillas ni explicaciones."
             }
-            className="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            className={[
+              "w-full rounded-lg border border-input px-3 py-2 text-sm",
+              "outline-none focus:ring-2 focus:ring-primary/30",
+            ].join(" ")}
           />
           <span className="text-xs text-muted-foreground">
             Si lo dejas vacío se usa el prompt por defecto. Personaliza el tono,
@@ -881,7 +897,11 @@ function TabAutomatizaciones({ ajustes }: { ajustes: any }) {
             onChange={(e) => setF({ ...f, bienvenidaTexto: e.target.value })}
             rows={3}
             disabled={!f.bienvenidaActiva}
-            className="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-muted"
+            className={[
+              "w-full rounded-lg border border-input px-3 py-2 text-sm",
+              "outline-none focus:ring-2 focus:ring-primary/30",
+              "disabled:bg-muted",
+            ].join(" ")}
           />
           <span className="text-xs text-muted-foreground">
             Variables: {"{{nombre}}"}, {"{{nombre_completo}}"}, {"{{telefono}}"}
@@ -918,7 +938,11 @@ function TabAutomatizaciones({ ajustes }: { ajustes: any }) {
             rows={2}
             disabled={!f.csatActivo}
             placeholder="¿Cómo calificarías nuestra atención del 1 al 5? Responde solo con el número 🙏"
-            className="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-muted"
+            className={[
+              "w-full rounded-lg border border-input px-3 py-2 text-sm",
+              "outline-none focus:ring-2 focus:ring-primary/30",
+              "disabled:bg-muted",
+            ].join(" ")}
           />
         </label>
       </div>
@@ -989,7 +1013,11 @@ function TabAutomatizaciones({ ajustes }: { ajustes: any }) {
             rows={2}
             disabled={!f.horarioActivo}
             placeholder="¡Gracias por escribir! Nuestro horario es de 9 a 18 h. Te respondemos en cuanto abramos 🙌"
-            className="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-muted"
+            className={[
+              "w-full rounded-lg border border-input px-3 py-2 text-sm",
+              "outline-none focus:ring-2 focus:ring-primary/30",
+              "disabled:bg-muted",
+            ].join(" ")}
           />
         </label>
       </div>
@@ -1130,7 +1158,10 @@ function TabEmbudos({ embudos }: { embudos: any[] }) {
                 }))
               }
               placeholder="Nueva etapa"
-              className="rounded-lg border border-input px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              className={[
+                "rounded-lg border border-input px-3 py-1.5 text-sm",
+                "outline-none focus:ring-2 focus:ring-primary/30",
+              ].join(" ")}
             />
             <select
               value={etapaForm[e.id]?.tipo ?? "normal"}
@@ -1301,7 +1332,10 @@ function TabPlantillas({ plantillas }: { plantillas: any[] }) {
             onChange={(e) => setF({ ...f, contenido: e.target.value })}
             rows={3}
             required
-            className="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            className={[
+              "w-full rounded-lg border border-input px-3 py-2 text-sm",
+              "outline-none focus:ring-2 focus:ring-primary/30",
+            ].join(" ")}
           />
         </label>
         <Boton type="submit">+ Crear plantilla</Boton>

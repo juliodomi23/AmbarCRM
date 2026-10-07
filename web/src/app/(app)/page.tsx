@@ -211,7 +211,12 @@ export default async function DashboardPage() {
                 className="flex items-center justify-between py-2"
               >
                 <span className="flex items-center gap-2 text-sm text-foreground">
-                  <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                  <span
+                    className={[
+                      "grid h-6 w-6 place-items-center rounded-full",
+                      "bg-primary/10 text-xs font-bold text-primary",
+                    ].join(" ")}
+                  >
                     {i + 1}
                   </span>
                   {r.nombre}
@@ -239,21 +244,30 @@ export default async function DashboardPage() {
           <a
             href={`/api/reportes/oportunidades?desde=${iniMes}&hasta=${finMes}`}
             download
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-primary hover:bg-muted/60"
+            className={[
+              "flex items-center gap-1.5 rounded-lg border border-border",
+              "px-3 py-1.5 text-primary hover:bg-muted/60",
+            ].join(" ")}
           >
             <IconoDescargar className="h-4 w-4" /> Oportunidades ({mes})
           </a>
           <a
             href="/api/reportes/oportunidades"
             download
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-primary hover:bg-muted/60"
+            className={[
+              "flex items-center gap-1.5 rounded-lg border border-border",
+              "px-3 py-1.5 text-primary hover:bg-muted/60",
+            ].join(" ")}
           >
             <IconoDescargar className="h-4 w-4" /> Oportunidades (todo)
           </a>
           <a
             href={`/api/reportes/csat?desde=${iniMes}&hasta=${finMes}`}
             download
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-primary hover:bg-muted/60"
+            className={[
+              "flex items-center gap-1.5 rounded-lg border border-border",
+              "px-3 py-1.5 text-primary hover:bg-muted/60",
+            ].join(" ")}
           >
             <IconoDescargar className="h-4 w-4" /> CSAT ({mes})
           </a>

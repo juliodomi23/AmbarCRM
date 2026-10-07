@@ -228,7 +228,11 @@ export function PanelConversacion({
               if (e.key === "Enter") guardarNombre();
               if (e.key === "Escape") setEditandoNombre(false);
             }}
-            className="w-full rounded-lg border border-primary/40 px-2 py-1 text-base font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+            className={[
+              "w-full rounded-lg border border-primary/40 px-2 py-1",
+              "text-base font-semibold text-foreground outline-none",
+              "focus:ring-2 focus:ring-primary/30",
+            ].join(" ")}
           />
         ) : (
           <button
@@ -359,11 +363,17 @@ export function PanelConversacion({
         </span>
         <button
           onClick={() => patch({ botActivo: !d.botActivo })}
-          className={`relative h-5 w-9 rounded-full transition ${d.botActivo ? "bg-green-500" : "bg-muted-foreground/40"}`}
+          className={[
+            "relative h-5 w-9 rounded-full transition",
+            d.botActivo ? "bg-green-500" : "bg-muted-foreground/40",
+          ].join(" ")}
           title={d.botActivo ? "Pausar bot (lo atiendes tu)" : "Reactivar bot"}
         >
           <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-card transition-all ${d.botActivo ? "left-[18px]" : "left-0.5"}`}
+            className={[
+              "absolute top-0.5 h-4 w-4 rounded-full bg-card transition-all",
+              d.botActivo ? "left-[18px]" : "left-0.5",
+            ].join(" ")}
           />
         </button>
       </div>
@@ -393,7 +403,12 @@ export function PanelConversacion({
             await cargar();
             onPersonal?.(nuevo);
           }}
-          className={`relative h-5 w-9 rounded-full transition ${d.contacto.esPersonal ? "bg-green-500" : "bg-muted-foreground/40"}`}
+          className={[
+            "relative h-5 w-9 rounded-full transition",
+            d.contacto.esPersonal
+              ? "bg-green-500"
+              : "bg-muted-foreground/40",
+          ].join(" ")}
           title={
             d.contacto.esPersonal
               ? "Quitar de Personal (vuelve a la bandeja principal)"
@@ -401,7 +416,10 @@ export function PanelConversacion({
           }
         >
           <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-card transition-all ${d.contacto.esPersonal ? "left-[18px]" : "left-0.5"}`}
+            className={[
+              "absolute top-0.5 h-4 w-4 rounded-full bg-card transition-all",
+              d.contacto.esPersonal ? "left-[18px]" : "left-0.5",
+            ].join(" ")}
           />
         </button>
       </div>
@@ -474,7 +492,13 @@ export function PanelConversacion({
                   </a>
                   {o.estado !== "abierto" && (
                     <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${o.estado === "ganado" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                      className={[
+                        "shrink-0 rounded-full px-2 py-0.5",
+                        "text-[10px] font-medium",
+                        o.estado === "ganado"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700",
+                      ].join(" ")}
                     >
                       {o.estado}
                     </span>
@@ -494,7 +518,11 @@ export function PanelConversacion({
                             valor: e.target.value,
                           });
                       }}
-                      className="w-full rounded-lg border border-input px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                      className={[
+                        "w-full rounded-lg border border-input px-2 py-1",
+                        "text-sm outline-none focus:ring-2",
+                        "focus:ring-primary/30",
+                      ].join(" ")}
                     />
                   </label>
                   <label className="flex-1 space-y-0.5">
@@ -551,7 +579,10 @@ export function PanelConversacion({
                   onClick={() => cancelarProgramado(p.id)}
                   title="Cancelar envío"
                   aria-label="Cancelar envío programado"
-                  className="grid h-5 w-5 shrink-0 place-items-center rounded text-muted-foreground hover:bg-red-50 hover:text-red-600"
+                  className={[
+                    "grid h-5 w-5 shrink-0 place-items-center rounded",
+                    "text-muted-foreground hover:bg-red-50 hover:text-red-600",
+                  ].join(" ")}
                 >
                   <IconoCerrar className="h-3.5 w-3.5" />
                 </button>

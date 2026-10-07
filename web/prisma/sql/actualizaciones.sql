@@ -53,9 +53,41 @@ CREATE TABLE IF NOT EXISTS modulos_org (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE (org_id, clave)
 );
 CREATE INDEX IF NOT EXISTS modulos_org_org_idx ON modulos_org(org_id);
-DO $$ BEGIN CREATE TYPE entidad_campo_personalizado AS ENUM ('contacto','oportunidad'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE tipo_campo_personalizado AS ENUM ('texto','numero','fecha','opcion','si_no'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE estado_cita AS ENUM ('programada','confirmada','completada','cancelada','no_asistio'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$
+BEGIN
+  CREATE TYPE entidad_campo_personalizado AS ENUM ('contacto', 'oportunidad');
+EXCEPTION WHEN duplicate_object THEN
+  NULL;
+END
+$$;
+
+DO $$
+BEGIN
+  CREATE TYPE tipo_campo_personalizado AS ENUM (
+    'texto',
+    'numero',
+    'fecha',
+    'opcion',
+    'si_no'
+  );
+EXCEPTION WHEN duplicate_object THEN
+  NULL;
+END
+$$;
+
+DO $$
+BEGIN
+  CREATE TYPE estado_cita AS ENUM (
+    'programada',
+    'confirmada',
+    'completada',
+    'cancelada',
+    'no_asistio'
+  );
+EXCEPTION WHEN duplicate_object THEN
+  NULL;
+END
+$$;
 CREATE TABLE IF NOT EXISTS campos_personalizados (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
@@ -82,7 +114,18 @@ DO $$ DECLARE t TEXT; BEGIN
   FOREACH t IN ARRAY ARRAY['modulos_org','campos_personalizados','citas'] LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
-    EXECUTE format($p$CREATE POLICY org_isolation ON %I USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint) WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)$p$, t);
+    EXECUTE format(
+      $policy$
+        CREATE POLICY org_isolation ON %I
+        USING (
+          org_id = NULLIF(current_setting('app.current_org', true), '')::bigint
+        )
+        WITH CHECK (
+          org_id = NULLIF(current_setting('app.current_org', true), '')::bigint
+        )
+      $policy$,
+      t
+    );
   END LOOP;
 END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON modulos_org, campos_personalizados, citas TO crm_app;

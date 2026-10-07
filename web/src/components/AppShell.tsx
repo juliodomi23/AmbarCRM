@@ -52,7 +52,10 @@ const GRUPOS: NavGrupo[] = [
       {
         href: "/personal",
         label: "Personal",
-        icon: "M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z",
+        icon:
+          "M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06" +
+          "a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78" +
+          " 1.06-1.06a5.5 5.5 0 0 0 0-7.78z",
       },
     ],
   },
@@ -83,7 +86,17 @@ const GRUPOS: NavGrupo[] = [
         soloAdmin: true,
         icon: [
           "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
-          "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z",
+          "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83" +
+            "l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21" +
+            "a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33" +
+            "l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82" +
+            " 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9" +
+            "a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06" +
+            "a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09" +
+            "a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06" +
+            "a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9" +
+            "a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09" +
+            "a1.65 1.65 0 0 0-1.51 1z",
         ],
       },
     ],
@@ -212,10 +225,17 @@ export function AppShell({
 
   const renderSidebar = (movil = false) => (
     <aside
-      className={`flex h-full flex-col bg-primary text-primary-foreground transition-[width] duration-200 ${movil ? "w-72" : colapsada ? "w-20" : "w-64"}`}
+      className={[
+        "flex h-full flex-col bg-primary text-primary-foreground",
+        "transition-[width] duration-200",
+        movil ? "w-72" : colapsada ? "w-20" : "w-64",
+      ].join(" ")}
     >
       <div
-        className={`flex h-16 items-center gap-3 border-b border-white/10 ${colapsada && !movil ? "justify-center px-2" : "px-4"}`}
+        className={[
+          "flex h-16 items-center gap-3 border-b border-white/10",
+          colapsada && !movil ? "justify-center px-2" : "px-4",
+        ].join(" ")}
       >
         {marca.logo ? (
           <Image
@@ -271,7 +291,17 @@ export function AppShell({
                   onClick={() => setDrawer(false)}
                   title={colapsada && !movil ? item.label : undefined}
                   aria-current={activo ? "page" : undefined}
-                  className={`relative flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${activo ? "bg-white/15 text-white before:absolute before:-left-3 before:h-6 before:w-1 before:rounded-r-full before:bg-white" : "text-white/75 hover:bg-white/10 hover:text-white"}`}
+                  className={[
+                    "relative flex min-h-11 items-center gap-3 rounded-xl",
+                    "px-3 text-sm font-medium transition-colors",
+                    activo
+                      ? [
+                          "bg-white/15 text-white before:absolute",
+                          "before:-left-3 before:h-6 before:w-1",
+                          "before:rounded-r-full before:bg-white",
+                        ].join(" ")
+                      : "text-white/75 hover:bg-white/10 hover:text-white",
+                  ].join(" ")}
                 >
                   <Icono d={item.icon} />
                   {(!colapsada || movil) && (
@@ -279,7 +309,13 @@ export function AppShell({
                   )}
                   {badge > 0 && (
                     <span
-                      className={`tnum grid h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[10px] font-bold text-primary ${colapsada && !movil ? "absolute right-0.5 top-0.5" : ""}`}
+                      className={[
+                        "tnum grid h-5 min-w-5 place-items-center rounded-full",
+                        "bg-white px-1 text-[10px] font-bold text-primary",
+                        colapsada && !movil
+                          ? "absolute right-0.5 top-0.5"
+                          : "",
+                      ].join(" ")}
                     >
                       {badge > 99 ? "99+" : badge}
                     </span>
@@ -293,7 +329,11 @@ export function AppShell({
       <div className="border-t border-white/10 p-3">
         <button
           onClick={() => setUsuarioAbierto(!usuarioAbierto)}
-          className={`flex min-h-11 w-full items-center gap-3 rounded-xl p-2 text-left hover:bg-white/10 ${colapsada && !movil ? "justify-center" : ""}`}
+          className={[
+            "flex min-h-11 w-full items-center gap-3 rounded-xl",
+            "p-2 text-left hover:bg-white/10",
+            colapsada && !movil ? "justify-center" : "",
+          ].join(" ")}
         >
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/15 text-xs font-bold">
             {usuario.nombre.slice(0, 2).toUpperCase()}
@@ -314,7 +354,10 @@ export function AppShell({
             <ThemeToggle />
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="flex min-h-10 w-full items-center rounded-lg px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+              className={[
+                "flex min-h-10 w-full items-center rounded-lg px-3 text-sm",
+                "text-muted-foreground hover:bg-muted hover:text-foreground",
+              ].join(" ")}
             >
               Cerrar sesión
             </button>
@@ -356,7 +399,11 @@ export function AppShell({
           </div>
           <button
             onClick={() => setPaleta(true)}
-            className="hidden h-10 min-w-56 items-center gap-2 rounded-xl border bg-background px-3 text-left text-sm text-muted-foreground shadow-soft hover:border-primary/40 md:flex"
+            className={[
+              "hidden h-10 min-w-56 items-center gap-2 rounded-xl border",
+              "bg-background px-3 text-left text-sm text-muted-foreground",
+              "shadow-soft hover:border-primary/40 md:flex",
+            ].join(" ")}
           >
             <Icono
               d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z"
@@ -369,7 +416,11 @@ export function AppShell({
           </button>
           <Link
             href="/embudos?nueva=1"
-            className="hidden min-h-10 items-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-glow hover:opacity-90 sm:flex"
+            className={[
+              "hidden min-h-10 items-center rounded-xl bg-primary px-4",
+              "text-sm font-semibold text-primary-foreground shadow-glow",
+              "hover:opacity-90 sm:flex",
+            ].join(" ")}
           >
             Nueva oportunidad
           </Link>
@@ -377,29 +428,50 @@ export function AppShell({
         <main className="flex-1 overflow-auto pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
           {children}
         </main>
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-          {[...MOVIL.slice(0, 3), ...modulos.slice(0, 1)].map((item) => {
-            const activo = esActivo(item.href, pathname);
-            const badge = item.contador ? contadores[item.contador] : 0;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-[10px] font-medium ${activo ? "text-primary" : "text-muted-foreground"}`}
-              >
-                <Icono d={item.icon} className="h-5 w-5" />
-                {item.label}
-                {badge > 0 && (
-                  <span className="tnum absolute right-1/4 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[9px] text-white">
-                    {badge > 99 ? "99+" : badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+        <nav
+          className={[
+            "fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t",
+            "bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur",
+            "md:hidden",
+          ].join(" ")}
+        >
+          {(modulos.length ? [...MOVIL.slice(0, 3), modulos[0]] : MOVIL).map(
+            (item) => {
+              const activo = esActivo(item.href, pathname);
+              const badge = item.contador ? contadores[item.contador] : 0;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={[
+                    "relative flex min-h-14 flex-col items-center",
+                    "justify-center gap-0.5 text-[10px] font-medium",
+                    activo ? "text-primary" : "text-muted-foreground",
+                  ].join(" ")}
+                >
+                  <Icono d={item.icon} className="h-5 w-5" />
+                  {item.label}
+                  {badge > 0 && (
+                    <span
+                      className={[
+                        "tnum absolute right-1/4 top-1 grid h-4 min-w-4",
+                        "place-items-center rounded-full bg-destructive",
+                        "px-1 text-[9px] text-white",
+                      ].join(" ")}
+                    >
+                      {badge > 99 ? "99+" : badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            },
+          )}
           <button
             onClick={() => setDrawer(true)}
-            className="flex min-h-14 flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-muted-foreground"
+            className={[
+              "flex min-h-14 flex-col items-center justify-center gap-0.5",
+              "text-[10px] font-medium text-muted-foreground",
+            ].join(" ")}
           >
             <Icono d="M4 6h16M4 12h16M4 18h16" className="h-5 w-5" />
             Más

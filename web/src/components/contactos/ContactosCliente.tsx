@@ -58,7 +58,22 @@ export function ContactosCliente({
   const [form, setForm] = useState(FORM_VACIO);
   const [guardando, setGuardando] = useState(false);
   const [importando, setImportando] = useState(false);
+  const [columnasCampos, setColumnasCampos] = useState(
+    camposPersonalizados.map((campo) => campo.clave),
+  );
   const csvRef = useRef<HTMLInputElement>(null);
+
+  const camposVisibles = camposPersonalizados.filter((campo) =>
+    columnasCampos.includes(campo.clave),
+  );
+
+  function cambiarColumnaCampo(clave: string) {
+    setColumnasCampos((columnas) =>
+      columnas.includes(clave)
+        ? columnas.filter((columna) => columna !== clave)
+        : [...columnas, clave],
+    );
+  }
 
   const filtrados = useMemo(() => {
     const q = busqueda.toLowerCase().trim();
@@ -228,6 +243,38 @@ export function ContactosCliente({
           >
             Exportar CSV
           </a>
+          {camposPersonalizados.length > 0 && (
+            <details className="relative">
+              <summary className="cursor-pointer rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">
+                Columnas
+              </summary>
+              <div
+                className={[
+                  "absolute right-0 z-20 mt-2 min-w-56 rounded-lg",
+                  "border border-border bg-card p-3 shadow-lg",
+                ].join(" ")}
+              >
+                <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+                  Campos personalizados
+                </p>
+                <div className="space-y-2">
+                  {camposPersonalizados.map((campo) => (
+                    <label
+                      key={campo.clave}
+                      className="flex cursor-pointer items-center gap-2 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={columnasCampos.includes(campo.clave)}
+                        onChange={() => cambiarColumnaCampo(campo.clave)}
+                      />
+                      {campo.etiqueta}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </details>
+          )}
           <EtiquetaNueva />
           <Boton onClick={abrirNuevo}>+ Nuevo</Boton>
         </div>
@@ -243,7 +290,7 @@ export function ContactosCliente({
               <th className="px-4 py-3">Etiquetas</th>
               <th className="px-4 py-3">Responsable</th>
               <th className="px-4 py-3">Oport.</th>
-              {camposPersonalizados.map((campo) => (
+              {camposVisibles.map((campo) => (
                 <th key={campo.clave} className="px-4 py-3">
                   {campo.etiqueta}
                 </th>
@@ -264,7 +311,12 @@ export function ContactosCliente({
                       <p className="truncate font-medium text-foreground">
                         {c.nombre}
                         {c.optOutDifusion && (
-                          <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          <span
+                            className={[
+                              "ml-2 rounded bg-muted px-1.5 py-0.5",
+                              "text-[10px] font-medium text-muted-foreground",
+                            ].join(" ")}
+                          >
                             Sin difusión
                           </span>
                         )}
@@ -308,7 +360,7 @@ export function ContactosCliente({
                 <td className="tnum px-4 py-1.5 text-muted-foreground">
                   {c.oportunidades}
                 </td>
-                {camposPersonalizados.map((campo) => (
+                {camposVisibles.map((campo) => (
                   <td
                     key={campo.clave}
                     className="px-4 py-1.5 text-muted-foreground"
@@ -340,7 +392,7 @@ export function ContactosCliente({
             ))}
             {filtrados.length === 0 && (
               <tr>
-                <td colSpan={6 + camposPersonalizados.length} className="p-4">
+                <td colSpan={6 + camposVisibles.length} className="p-4">
                   <EmptyState
                     titulo="Sin contactos"
                     descripcion="Agrega el primer contacto para comenzar a gestionar conversaciones y oportunidades."
@@ -363,14 +415,24 @@ export function ContactosCliente({
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex min-w-0 items-center gap-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                <span
+                  className={[
+                    "grid h-10 w-10 shrink-0 place-items-center rounded-full",
+                    "bg-primary/10 text-sm font-bold text-primary",
+                  ].join(" ")}
+                >
                   {c.nombre.slice(0, 2).toUpperCase()}
                 </span>
                 <div className="min-w-0 leading-tight">
                   <p className="truncate font-medium text-foreground">
                     {c.nombre}
                     {c.optOutDifusion && (
-                      <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      <span
+                        className={[
+                          "ml-2 rounded bg-muted px-1.5 py-0.5",
+                          "text-[10px] font-medium text-muted-foreground",
+                        ].join(" ")}
+                      >
                         Sin difusión
                       </span>
                     )}
@@ -457,7 +519,10 @@ export function ContactosCliente({
             <select
               value={form.responsableId}
               onChange={(e) => set("responsableId", e.target.value)}
-              className="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              className={[
+                "w-full rounded-lg border border-input px-3 py-2 text-sm",
+                "outline-none focus:ring-2 focus:ring-primary/30",
+              ].join(" ")}
             >
               <option value="">Sin asignar</option>
               {usuarios.map((u) => (

@@ -155,7 +155,10 @@ export function CommandPalette({
               <button
                 key={nombre}
                 onClick={() => ir(href)}
-                className="flex min-h-10 w-full items-center justify-between rounded-lg px-3 text-left text-sm hover:bg-muted"
+                className={[
+                  "flex min-h-10 w-full items-center justify-between",
+                  "rounded-lg px-3 text-left text-sm hover:bg-muted",
+                ].join(" ")}
               >
                 <span>{nombre}</span>
                 <span className="text-muted-foreground">↗</span>

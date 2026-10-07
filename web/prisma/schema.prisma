@@ -149,7 +149,7 @@ model Org {
 
 model Usuario {
   id           BigInt      @id @default(autoincrement())
-  orgId        BigInt      @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre       String
   email        String
   passwordHash String      @map("password_hash")
@@ -174,7 +174,7 @@ model Usuario {
 
 model Embudo {
   id          BigInt   @id @default(autoincrement())
-  orgId       BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre      String
   descripcion String?
   color       String   @default("#1E3A5F")
@@ -191,7 +191,7 @@ model Embudo {
 
 model Etapa {
   id        BigInt    @id @default(autoincrement())
-  orgId     BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   embudoId  BigInt    @map("embudo_id")
   nombre    String
   color     String    @default("#94A3B8")
@@ -209,7 +209,7 @@ model Etapa {
 
 model Contacto {
   id            BigInt         @id @default(autoincrement())
-  orgId         BigInt         @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre        String
   telefono      String?
   email         String?
@@ -239,7 +239,7 @@ model Contacto {
 
 model Etiqueta {
   id     BigInt @id @default(autoincrement())
-  orgId  BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre String
   color  String @default("#B45309")
 
@@ -251,7 +251,7 @@ model Etiqueta {
 }
 
 model ContactoEtiqueta {
-  orgId      BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   contactoId BigInt @map("contacto_id")
   etiquetaId BigInt @map("etiqueta_id")
 
@@ -265,7 +265,7 @@ model ContactoEtiqueta {
 
 model Oportunidad {
   id                  BigInt       @id @default(autoincrement())
-  orgId               BigInt       @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   contactoId          BigInt       @map("contacto_id")
   embudoId            BigInt       @map("embudo_id")
   etapaId             BigInt       @map("etapa_id")
@@ -299,7 +299,7 @@ model Oportunidad {
 
 model CanalWhatsapp {
   id        BigInt         @id @default(autoincrement())
-  orgId     BigInt         @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre    String
   proveedor ProveedorCanal @default(cloud_api)
   telefono  String?
@@ -320,7 +320,7 @@ model CanalWhatsapp {
 // Grupos de WhatsApp: bandeja aparte, NO son leads (no entran al embudo/CSAT/contactos).
 model Grupo {
   id              BigInt    @id @default(autoincrement())
-  orgId           BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   canalId         BigInt?   @map("canal_id")
   jid             String
   nombre          String
@@ -338,7 +338,7 @@ model Grupo {
 
 model MensajeGrupo {
   id           BigInt       @id @default(autoincrement())
-  orgId        BigInt       @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   grupoId      BigInt       @map("grupo_id")
   direccion    DireccionMsg
   tipo         TipoMsg      @default(texto)
@@ -363,7 +363,7 @@ model MensajeGrupo {
 // Bot nativo: webhook saliente (CRM->n8n) + token para responder (n8n->CRM).
 model Bot {
   id         BigInt   @id @default(autoincrement())
-  orgId      BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre     String
   webhookUrl String   @map("webhook_url")     // n8n: el CRM le manda los mensajes entrantes
   apiToken   String   @unique @map("api_token") // n8n: autentica de vuelta con header api_access_token
@@ -379,7 +379,7 @@ model Bot {
 
 model Conversacion {
   id              BigInt      @id @default(autoincrement())
-  orgId           BigInt      @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   contactoId      BigInt      @map("contacto_id")
   canalId         BigInt?     @map("canal_id")
   estado          EstadoConv  @default(abierta)
@@ -411,7 +411,7 @@ model Conversacion {
 /// Mensajes de WhatsApp programados para enviarse después (los dispara el cron).
 model MensajeProgramado {
   id             BigInt   @id @default(autoincrement())
-  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   conversacionId BigInt   @map("conversacion_id")
   contenido      String
   enviarAt       DateTime @map("enviar_at")
@@ -429,7 +429,7 @@ model MensajeProgramado {
 /// Suscripciones Web Push (una por navegador/dispositivo de cada usuario).
 model PushSuscripcion {
   id        BigInt   @id @default(autoincrement())
-  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   usuarioId BigInt?  @map("usuario_id")
   endpoint  String   @unique
   p256dh    String
@@ -442,7 +442,7 @@ model PushSuscripcion {
 
 model Mensaje {
   id             BigInt        @id @default(autoincrement())
-  orgId          BigInt        @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   conversacionId BigInt        @map("conversacion_id")
   direccion      DireccionMsg
   tipo           TipoMsg       @default(texto)
@@ -468,7 +468,7 @@ model Mensaje {
 
 model PlantillaMensaje {
   id        BigInt   @id @default(autoincrement())
-  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   nombre    String
   contenido String
   categoria String?
@@ -480,7 +480,7 @@ model PlantillaMensaje {
 
 model Nota {
   id            BigInt   @id @default(autoincrement())
-  orgId         BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   oportunidadId BigInt   @map("oportunidad_id")
   usuarioId     BigInt?  @map("usuario_id")
   contenido     String
@@ -495,7 +495,7 @@ model Nota {
 
 model Tarea {
   id            BigInt    @id @default(autoincrement())
-  orgId         BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   oportunidadId BigInt?   @map("oportunidad_id")
   responsableId BigInt?   @map("responsable_id")
   titulo        String
@@ -516,7 +516,7 @@ model Tarea {
 // Una fila de ajustes POR org (ya no es única global).
 model Ajustes {
   id               BigInt   @id @default(autoincrement())
-  orgId            BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   autoAsignar      Boolean  @default(false) @map("auto_asignar")
   bienvenidaActiva Boolean  @default(false) @map("bienvenida_activa")
   bienvenidaTexto  String?  @map("bienvenida_texto")
@@ -549,7 +549,7 @@ model Ajustes {
 
 model ModuloOrg {
   id        BigInt   @id @default(autoincrement())
-  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   clave     String
   activo    Boolean  @default(false)
   config    Json     @default("{}")
@@ -562,7 +562,7 @@ model ModuloOrg {
 
 model CampoPersonalizado {
   id          BigInt                     @id @default(autoincrement())
-  orgId       BigInt                     @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   entidad     EntidadCampoPersonalizado
   clave       String
   etiqueta    String
@@ -579,7 +579,7 @@ model CampoPersonalizado {
 
 model Cita {
   id                    BigInt     @id @default(autoincrement())
-  orgId                 BigInt     @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   contactoId            BigInt     @map("contacto_id")
   conversacionId        BigInt?    @map("conversacion_id")
   responsableId         BigInt?    @map("responsable_id")
@@ -603,7 +603,7 @@ model Cita {
 
 model Evento {
   id            BigInt     @id @default(autoincrement())
-  orgId         BigInt     @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   oportunidadId BigInt     @map("oportunidad_id")
   tipo          TipoEvento
   descripcion   String?

@@ -174,7 +174,10 @@ export function OportunidadCliente({ op }: { op: any }) {
               value={nota}
               onChange={(e) => setNota(e.target.value)}
               placeholder="Escribe una nota…"
-              className="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              className={[
+                "w-full rounded-lg border border-input px-3 py-2 text-sm",
+                "outline-none focus:ring-2 focus:ring-primary/30",
+              ].join(" ")}
               rows={2}
             />
             <Boton type="submit" disabled={guardando} className="w-full">
@@ -209,7 +212,10 @@ export function OportunidadCliente({ op }: { op: any }) {
               value={tarea}
               onChange={(e) => setTarea(e.target.value)}
               placeholder="Nueva tarea…"
-              className="flex-1 rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              className={[
+                "flex-1 rounded-lg border border-input px-3 py-2 text-sm",
+                "outline-none focus:ring-2 focus:ring-primary/30",
+              ].join(" ")}
             />
             <Boton type="submit">+</Boton>
           </form>
