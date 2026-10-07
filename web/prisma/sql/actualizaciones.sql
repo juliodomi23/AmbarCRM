@@ -44,3 +44,46 @@ CREATE OR REPLACE FUNCTION resolve_org_by_phone(p_phone text)
       AND (config->>'phoneNumberId' = p_phone OR instancia = p_phone)
     ORDER BY id DESC LIMIT 1
 $$;
+
+-- Módulos configurables, campos personalizados y citas. Idempotente para producción.
+CREATE TABLE IF NOT EXISTS modulos_org (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  clave TEXT NOT NULL, activo BOOLEAN NOT NULL DEFAULT false, config JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE (org_id, clave)
+);
+CREATE INDEX IF NOT EXISTS modulos_org_org_idx ON modulos_org(org_id);
+DO $$ BEGIN CREATE TYPE entidad_campo_personalizado AS ENUM ('contacto','oportunidad'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE tipo_campo_personalizado AS ENUM ('texto','numero','fecha','opcion','si_no'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE estado_cita AS ENUM ('programada','confirmada','completada','cancelada','no_asistio'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+CREATE TABLE IF NOT EXISTS campos_personalizados (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  entidad entidad_campo_personalizado NOT NULL, clave TEXT NOT NULL, etiqueta TEXT NOT NULL,
+  tipo tipo_campo_personalizado NOT NULL, opciones JSONB NOT NULL DEFAULT '[]'::jsonb,
+  obligatorio BOOLEAN NOT NULL DEFAULT false, orden INTEGER NOT NULL DEFAULT 0, activo BOOLEAN NOT NULL DEFAULT true,
+  UNIQUE (org_id, entidad, clave)
+);
+CREATE INDEX IF NOT EXISTS campos_personalizados_org_entidad_orden_idx ON campos_personalizados(org_id, entidad, orden);
+ALTER TABLE contactos ADD COLUMN IF NOT EXISTS campos JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE oportunidades ADD COLUMN IF NOT EXISTS campos JSONB NOT NULL DEFAULT '{}'::jsonb;
+CREATE TABLE IF NOT EXISTS citas (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  contacto_id BIGINT NOT NULL REFERENCES contactos(id) ON DELETE CASCADE,
+  conversacion_id BIGINT REFERENCES conversaciones(id) ON DELETE SET NULL,
+  responsable_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  inicio TIMESTAMPTZ NOT NULL, fin TIMESTAMPTZ NOT NULL, titulo TEXT NOT NULL, notas TEXT,
+  estado estado_cita NOT NULL DEFAULT 'programada', recordatorio_enviado_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS citas_org_inicio_idx ON citas(org_id, inicio);
+DO $$ DECLARE t TEXT; BEGIN
+  FOREACH t IN ARRAY ARRAY['modulos_org','campos_personalizados','citas'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format($p$CREATE POLICY org_isolation ON %I USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint) WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)$p$, t);
+  END LOOP;
+END $$;
+GRANT SELECT, INSERT, UPDATE, DELETE ON modulos_org, campos_personalizados, citas TO crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;

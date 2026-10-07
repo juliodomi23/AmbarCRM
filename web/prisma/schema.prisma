@@ -112,6 +112,30 @@ enum TipoEvento {
   @@map("tipo_evento")
 }
 
+enum EntidadCampoPersonalizado {
+  contacto
+  oportunidad
+  @@map("entidad_campo_personalizado")
+}
+
+enum TipoCampoPersonalizado {
+  texto
+  numero
+  fecha
+  opcion
+  si_no
+  @@map("tipo_campo_personalizado")
+}
+
+enum EstadoCita {
+  programada
+  confirmada
+  completada
+  cancelada
+  no_asistio
+  @@map("estado_cita")
+}
+
 /// Tenant. NO lleva orgId ni RLS: es la tabla raíz del multi-tenant.
 model Org {
   id        BigInt   @id @default(autoincrement())
@@ -141,6 +165,7 @@ model Usuario {
   notas          Nota[]
   tareas         Tarea[]
   eventos        Evento[]
+  citas          Cita[]
 
   @@unique([orgId, email])
   @@index([orgId])
@@ -198,11 +223,13 @@ model Contacto {
 
   esPersonal     Boolean        @default(false) @map("es_personal")
   optOutDifusion Boolean        @default(false) @map("opt_out_difusion") // excluido de difusiones masivas
+  campos         Json           @default("{}")
 
   responsable    Usuario?           @relation(fields: [responsableId], references: [id], onDelete: SetNull)
   etiquetas      ContactoEtiqueta[]
   oportunidades  Oportunidad[]
   conversaciones Conversacion[]
+  citas          Cita[]
 
   @@unique([orgId, telefono])
   @@index([responsableId])
@@ -253,6 +280,7 @@ model Oportunidad {
   createdAt           DateTime     @default(now()) @map("created_at")
   updatedAt           DateTime     @default(now()) @updatedAt @map("updated_at")
   closedAt            DateTime?    @map("closed_at")
+  campos              Json         @default("{}")
 
   contacto    Contacto @relation(fields: [contactoId], references: [id], onDelete: Cascade)
   embudo      Embudo   @relation(fields: [embudoId], references: [id], onDelete: Cascade)
@@ -372,6 +400,7 @@ model Conversacion {
   responsable Usuario?       @relation(fields: [responsableId], references: [id], onDelete: SetNull)
   mensajes    Mensaje[]
   programados MensajeProgramado[]
+  citas       Cita[]
 
   @@unique([contactoId, canalId])
   @@index([ultimoMensajeAt])
@@ -516,6 +545,60 @@ model Ajustes {
 
   @@unique([orgId])
   @@map("ajustes")
+}
+
+model ModuloOrg {
+  id        BigInt   @id @default(autoincrement())
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  clave     String
+  activo    Boolean  @default(false)
+  config    Json     @default("{}")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([orgId, clave])
+  @@index([orgId])
+  @@map("modulos_org")
+}
+
+model CampoPersonalizado {
+  id          BigInt                     @id @default(autoincrement())
+  orgId       BigInt                     @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  entidad     EntidadCampoPersonalizado
+  clave       String
+  etiqueta    String
+  tipo        TipoCampoPersonalizado
+  opciones    Json                       @default("[]")
+  obligatorio Boolean                    @default(false)
+  orden       Int                        @default(0)
+  activo      Boolean                    @default(true)
+
+  @@unique([orgId, entidad, clave])
+  @@index([orgId, entidad, orden])
+  @@map("campos_personalizados")
+}
+
+model Cita {
+  id                    BigInt     @id @default(autoincrement())
+  orgId                 BigInt     @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contactoId            BigInt     @map("contacto_id")
+  conversacionId        BigInt?    @map("conversacion_id")
+  responsableId         BigInt?    @map("responsable_id")
+  inicio                DateTime
+  fin                   DateTime
+  titulo                String
+  notas                 String?
+  estado                EstadoCita @default(programada)
+  recordatorioEnviadoAt DateTime?  @map("recordatorio_enviado_at")
+  createdAt             DateTime   @default(now()) @map("created_at")
+  updatedAt             DateTime   @default(now()) @updatedAt @map("updated_at")
+
+  contacto     Contacto      @relation(fields: [contactoId], references: [id], onDelete: Cascade)
+  conversacion Conversacion? @relation(fields: [conversacionId], references: [id], onDelete: SetNull)
+  responsable  Usuario?      @relation(fields: [responsableId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, inicio])
+  @@index([contactoId])
+  @@map("citas")
 }
 
 model Evento {

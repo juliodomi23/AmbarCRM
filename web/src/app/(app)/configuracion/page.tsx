@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
+import { db, runWithOrg } from "@/lib/db";
+import { MODULOS } from "@/lib/modulos";
 import { getSesion } from "@/lib/session";
 import { getEmbudosConEtapas, listarUsuarios, listarCanales, listarPlantillas, getAjustes } from "@/lib/services/config";
 import { listarBots } from "@/lib/services/bots";
@@ -24,6 +25,7 @@ export default async function ConfiguracionPage() {
     listarBots(),
     esPlataforma ? db.org.findMany({ orderBy: { id: "asc" } }) : Promise.resolve(null)
   ]);
+  const modulosPorOrg = orgs ? Object.fromEntries(await Promise.all(orgs.map(async (org) => [String(org.id), await runWithOrg(org.id, () => db.moduloOrg.findMany({ select: { clave: true, activo: true } }))]))) : null;
 
   return (
     <ConfiguracionCliente
@@ -34,6 +36,8 @@ export default async function ConfiguracionPage() {
       ajustes={serializar(ajustes)}
       bots={serializar(bots)}
       orgs={orgs ? serializar(orgs) : null}
+      modulosPorOrg={modulosPorOrg ? serializar(modulosPorOrg) : null}
+      modulos={MODULOS}
     />
   );
 }

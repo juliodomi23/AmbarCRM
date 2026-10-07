@@ -15,6 +15,8 @@ export function CommandPalette({ abierto, onClose }: { abierto: boolean; onClose
   const [q, setQ] = useState("");
   const [resultados, setResultados] = useState<Resultado[]>([]);
   const [cargando, setCargando] = useState(false);
+  const [modulos, setModulos] = useState<[string, string][]>([]);
+  useEffect(() => { if (abierto) fetch("/api/modulos").then((r) => r.json()).then((d) => setModulos((d.modulos ?? []).filter((m: any) => m.activo).map((m: any) => [m.nombre, m.ruta]))); }, [abierto]);
 
   useEffect(() => {
     if (!abierto) { setQ(""); setResultados([]); return; }
@@ -37,7 +39,7 @@ export function CommandPalette({ abierto, onClose }: { abierto: boolean; onClose
 
   if (!abierto) return null;
   const ir = (href: string) => { onClose(); router.push(href); };
-  const filtrados = accesos.filter(([nombre]) => !q || nombre.toLowerCase().includes(q.toLowerCase()));
+  const filtrados = [...accesos, ...modulos].filter(([nombre]) => !q || nombre.toLowerCase().includes(q.toLowerCase()));
 
   return (
     <div className="fixed inset-0 z-[70] flex items-start justify-center bg-foreground/35 px-4 pt-[12vh] backdrop-blur-sm" onMouseDown={onClose}>

@@ -7,7 +7,7 @@ import { toast } from "@/components/Toaster";
 import { MetaCanales } from "@/components/config/MetaCanales";
 import { MarcaConfig } from "@/components/config/MarcaConfig";
 
-const TABS = ["Marca", "Embudos", "Usuarios", "Canal WhatsApp", "Plantillas", "Plantillas de Meta", "Automatizaciones", "Bots", "IA"] as const;
+const TABS = ["Marca", "Embudos", "Usuarios", "Canal WhatsApp", "Plantillas", "Plantillas de Meta", "Automatizaciones", "Bots", "IA", "Módulos", "Campos personalizados"] as const;
 type Tab = (typeof TABS)[number] | "Clientes";
 
 async function api(url: string, metodo: string, body?: unknown) {
@@ -31,7 +31,9 @@ export function ConfiguracionCliente({
   plantillas,
   ajustes,
   bots,
-  orgs = null
+  orgs = null,
+  modulosPorOrg = null,
+  modulos = []
 }: {
   embudos: any[];
   usuarios: any[];
@@ -40,6 +42,8 @@ export function ConfiguracionCliente({
   ajustes: any;
   bots: any[];
   orgs?: any[] | null;
+  modulosPorOrg?: Record<string, any[]> | null;
+  modulos?: any[];
 }) {
   const [tab, setTab] = useState<Tab>("Embudos");
   // "Clientes" solo aparece para la org plataforma (orgs viene null para las demás).
@@ -89,7 +93,9 @@ export function ConfiguracionCliente({
       {tab === "Automatizaciones" && <TabAutomatizaciones ajustes={ajustes} />}
       {tab === "Bots" && <TabBots bots={bots} canales={canales} />}
       {tab === "IA" && <TabIA ajustes={ajustes} />}
-      {tab === "Clientes" && orgs && <TabClientes orgs={orgs} />}
+      {tab === "Clientes" && orgs && <TabClientes orgs={orgs} modulosPorOrg={modulosPorOrg ?? {}} modulos={modulos} />}
+      {tab === "Módulos" && <TabModulos modulos={modulos} />}
+      {tab === "Campos personalizados" && <TabCamposPersonalizados />}
     </div>
   );
 }
@@ -104,16 +110,41 @@ function slugificar(s: string) {
     .slice(0, 40);
 }
 
-function TabClientes({ orgs }: { orgs: any[] }) {
+function TabModulos({ modulos }: { modulos: any[] }) {
+  const router = useRouter();
+  const [items, setItems] = useState<any[]>([]);
+  const [config, setConfig] = useState<Record<string, string>>({});
+  useEffect(() => { fetch("/api/modulos").then((r) => r.json()).then((d) => { setItems(d.modulos ?? []); setConfig(Object.fromEntries((d.modulos ?? []).map((m: any) => [m.clave, JSON.stringify(m.config ?? {}, null, 2)]))); }); }, []);
+  async function guardar(clave: string) {
+    try { const body = JSON.parse(config[clave] || "{}"); if (await api("/api/modulos", "PATCH", { clave, config: body })) router.refresh(); }
+    catch { toast("La configuración debe ser JSON válido", "error"); }
+  }
+  return <div className="max-w-2xl space-y-3">{items.map((m) => <div key={m.clave} className="rounded-xl border border-border bg-card p-4"><div className="flex items-center justify-between"><div><p className="font-medium">{m.nombre}</p><p className="text-xs text-muted-foreground">{m.descripcion}</p></div><span className={m.activo ? "text-xs text-success" : "text-xs text-muted-foreground"}>{m.activo ? "Activo" : "No activado"}</span></div>{m.activo && <><textarea value={config[m.clave] ?? "{}"} onChange={(e) => setConfig({ ...config, [m.clave]: e.target.value })} rows={5} className="mt-3 w-full rounded-lg border border-input p-2 font-mono text-xs" /><Boton className="mt-2" onClick={() => guardar(m.clave)}>Guardar configuración</Boton></>}</div>)}</div>;
+}
+
+function TabCamposPersonalizados() {
+  const [campos, setCampos] = useState<any[]>([]); const [entidad, setEntidad] = useState("contacto"); const [f, setF] = useState({ clave: "", etiqueta: "", tipo: "texto", obligatorio: false });
+  const cargar = () => fetch(`/api/campos-personalizados?entidad=${entidad}`).then((r) => r.json()).then((d) => setCampos(d.campos ?? []));
+  useEffect(cargar, [entidad]);
+  async function crear(e: React.FormEvent) { e.preventDefault(); if (await api("/api/campos-personalizados", "POST", { ...f, entidad, opciones: [] })) { setF({ clave: "", etiqueta: "", tipo: "texto", obligatorio: false }); cargar(); } }
+  return <div className="max-w-2xl space-y-4"><div className="flex gap-2"><button className="rounded-lg border px-3 py-2 text-sm" onClick={() => setEntidad("contacto")}>Contactos</button><button className="rounded-lg border px-3 py-2 text-sm" onClick={() => setEntidad("oportunidad")}>Oportunidades</button></div><form onSubmit={crear} className="grid gap-2 rounded-xl border border-border bg-card p-4 sm:grid-cols-2"><Campo label="Clave" value={f.clave} onChange={(e) => setF({ ...f, clave: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "") })} required /><Campo label="Etiqueta" value={f.etiqueta} onChange={(e) => setF({ ...f, etiqueta: e.target.value })} required /><select value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })} className="rounded-lg border border-input px-3 py-2 text-sm"><option value="texto">Texto</option><option value="numero">Número</option><option value="fecha">Fecha</option><option value="opcion">Opción</option><option value="si_no">Sí / no</option></select><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.obligatorio} onChange={(e) => setF({ ...f, obligatorio: e.target.checked })} /> Obligatorio</label><Boton type="submit">Crear campo</Boton></form><div className="space-y-2">{campos.map((c) => <div key={c.id} className="flex items-center justify-between rounded-lg border border-border p-3 text-sm"><span>{c.etiqueta} <span className="text-xs text-muted-foreground">({c.tipo})</span></span><button className="text-xs text-primary" onClick={async () => { await api(`/api/campos-personalizados/${c.id}`, "PATCH", { activo: !c.activo }); cargar(); }}>{c.activo ? "Desactivar" : "Activar"}</button></div>)}</div></div>;
+}
+
+function TabClientes({ orgs, modulosPorOrg, modulos }: { orgs: any[]; modulosPorOrg: Record<string, any[]>; modulos: any[] }) {
   const router = useRouter();
   const vacio = { nombre: "", slug: "", adminNombre: "", adminEmail: "", adminPassword: "" };
   const [f, setF] = useState(vacio);
   const [slugTocado, setSlugTocado] = useState(false);
   const [creando, setCreando] = useState(false);
   const [creado, setCreado] = useState<{ slug: string; email: string } | null>(null);
+  const [modulosActivos, setModulosActivos] = useState(modulosPorOrg);
 
   function setNombre(nombre: string) {
     setF((prev) => ({ ...prev, nombre, slug: slugTocado ? prev.slug : slugificar(nombre) }));
+  }
+  async function toggleModulo(orgId: string, clave: string, activo: boolean) {
+    const ok = await api("/api/modulos", "POST", { orgId, clave, activo });
+    if (ok) setModulosActivos((prev) => ({ ...prev, [orgId]: [...(prev[orgId] ?? []).filter((m) => m.clave !== clave), { clave, activo }] }));
   }
 
   async function crear(e: React.FormEvent) {
@@ -207,6 +238,7 @@ function TabClientes({ orgs }: { orgs: any[] }) {
               <th className="px-4 py-2">Cliente</th>
               <th className="px-4 py-2">Slug</th>
               <th className="px-4 py-2">Estado</th>
+              <th className="px-4 py-2">Módulos</th>
               <th className="px-4 py-2">Liga de acceso</th>
             </tr>
           </thead>
@@ -223,6 +255,7 @@ function TabClientes({ orgs }: { orgs: any[] }) {
                     {o.activo ? "Activa" : "Inactiva"}
                   </span>
                 </td>
+                <td className="px-4 py-2"><div className="flex flex-wrap gap-2">{modulos.map((m) => { const activo = (modulosActivos[String(o.id)] ?? []).some((x) => x.clave === m.clave && x.activo); return <label key={m.clave} className="flex items-center gap-1 text-xs"><input type="checkbox" checked={activo} onChange={(e) => toggleModulo(String(o.id), m.clave, e.target.checked)} /> {m.nombre}</label>; })}</div></td>
                 <td className="px-4 py-2">
                   <button
                     type="button"

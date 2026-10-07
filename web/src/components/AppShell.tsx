@@ -47,6 +47,7 @@ export function AppShell({ children, usuario, marca, contadoresIniciales }: {
   const [usuarioAbierto, setUsuarioAbierto] = useState(false);
   const [paleta, setPaleta] = useState(false);
   const [contadores, setContadores] = useState(contadoresIniciales);
+  const [modulos, setModulos] = useState<NavItem[]>([]);
   const visible = (item: NavItem) => !item.soloAdmin || usuario.rol === "admin";
   // Zona fija: el servidor corre en UTC y el navegador en hora local; si no coinciden,
   // React marca error de hidratación (#418) y el saludo sale mal.
@@ -62,6 +63,8 @@ export function AppShell({ children, usuario, marca, contadoresIniciales }: {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => { fetch("/api/modulos").then((r) => r.ok ? r.json() : null).then((d) => setModulos((d?.modulos ?? []).filter((m: any) => m.activo).map((m: any) => ({ href: m.ruta, label: m.nombre, icon: m.icono })))); }, []);
 
   useEffect(() => {
     let activo = true;
@@ -85,7 +88,7 @@ export function AppShell({ children, usuario, marca, contadoresIniciales }: {
         {!movil && <button onClick={alternarSidebar} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg hover:bg-white/10" aria-label={colapsada ? "Expandir menú" : "Contraer menú"}><span className={`transition-transform ${colapsada ? "rotate-180" : ""}`}>‹</span></button>}
       </div>
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
-        {GRUPOS.map((grupo, gi) => <div key={gi} className="space-y-1">
+        {[...GRUPOS, ...(modulos.length ? [{ titulo: "Módulos", items: modulos }] : [])].map((grupo, gi) => <div key={gi} className="space-y-1">
           {grupo.titulo && (!colapsada || movil) && <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[.14em] text-white/50">{grupo.titulo}</p>}
           {grupo.items.filter(visible).map((item) => {
             const activo = esActivo(item.href, pathname);
@@ -118,7 +121,7 @@ export function AppShell({ children, usuario, marca, contadoresIniciales }: {
       </header>
       <main className="flex-1 overflow-auto pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-        {MOVIL.map((item) => { const activo = esActivo(item.href, pathname); const badge = item.contador ? contadores[item.contador] : 0; return <Link key={item.href} href={item.href} className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-[10px] font-medium ${activo ? "text-primary" : "text-muted-foreground"}`}><Icono d={item.icon} className="h-5 w-5"/>{item.label}{badge > 0 && <span className="tnum absolute right-1/4 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[9px] text-white">{badge > 99 ? "99+" : badge}</span>}</Link>; })}
+        {[...MOVIL.slice(0, 3), ...modulos.slice(0, 1)].map((item) => { const activo = esActivo(item.href, pathname); const badge = item.contador ? contadores[item.contador] : 0; return <Link key={item.href} href={item.href} className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-[10px] font-medium ${activo ? "text-primary" : "text-muted-foreground"}`}><Icono d={item.icon} className="h-5 w-5"/>{item.label}{badge > 0 && <span className="tnum absolute right-1/4 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[9px] text-white">{badge > 99 ? "99+" : badge}</span>}</Link>; })}
         <button onClick={() => setDrawer(true)} className="flex min-h-14 flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-muted-foreground"><Icono d="M4 6h16M4 12h16M4 18h16" className="h-5 w-5"/>Más</button>
       </nav>
     </div>
