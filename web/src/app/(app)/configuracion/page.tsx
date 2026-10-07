@@ -37,7 +37,7 @@ export default async function ConfiguracionPage() {
       bots={serializar(bots)}
       orgs={orgs ? serializar(orgs) : null}
       modulosPorOrg={modulosPorOrg ? serializar(modulosPorOrg) : null}
-      modulos={MODULOS}
+      modulos={[...MODULOS]}
     />
   );
 }
