@@ -12,6 +12,7 @@ import {
 import { EtiquetaNueva } from "@/components/EtiquetaNueva";
 import { toast } from "@/components/Toaster";
 import { CamposPersonalizadosForm } from "@/components/CamposPersonalizadosForm";
+import { CitasContacto } from "@/components/citas/CitasContacto";
 
 type Embudo = {
   id: string;
@@ -211,6 +212,11 @@ export function PanelConversacion({
 
   return (
     <div className="space-y-5 p-4">
+      <CitasContacto
+        contactoId={d.contacto.id}
+        conversacionId={conversacionId}
+      />
+
       <div>
         {editandoNombre ? (
           <input

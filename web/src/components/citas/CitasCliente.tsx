@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Boton, Campo } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 const zona = "America/Mexico_City";
@@ -10,10 +11,12 @@ export function CitasCliente({
   contactos: any[];
   usuarios: any[];
 }) {
+  const params = useSearchParams();
   const [citas, setCitas] = useState<any[]>([]);
   const [semana, setSemana] = useState(false);
   const [f, setF] = useState({
-    contactoId: "",
+    contactoId: params.get("contactoId") ?? "",
+    conversacionId: params.get("conversacionId") ?? "",
     titulo: "Cita",
     inicio: "",
     fin: "",

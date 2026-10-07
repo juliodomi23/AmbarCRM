@@ -6,6 +6,7 @@ import { Boton, Campo, Modal } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import { MetaCanales } from "@/components/config/MetaCanales";
 import { MarcaConfig } from "@/components/config/MarcaConfig";
+import { CitasConfig } from "@/components/config/CitasConfig";
 
 const TABS = [
   "Marca",
@@ -116,7 +117,7 @@ export function ConfiguracionCliente({
           modulos={modulos}
         />
       )}
-      {tab === "Módulos" && <TabModulos modulos={modulos} />}
+      {tab === "Módulos" && <TabModulos modulos={modulos} canales={canales} />}
       {tab === "Campos personalizados" && <TabCamposPersonalizados />}
     </div>
   );
@@ -132,7 +133,7 @@ function slugificar(s: string) {
     .slice(0, 40);
 }
 
-function TabModulos({ modulos }: { modulos: any[] }) {
+function TabModulos({ modulos, canales }: { modulos: any[]; canales: any[] }) {
   const router = useRouter();
   const [items, setItems] = useState<any[]>([]);
   const [config, setConfig] = useState<Record<string, string>>({});
@@ -184,17 +185,24 @@ function TabModulos({ modulos }: { modulos: any[] }) {
           </div>
           {m.activo && (
             <>
-              <textarea
-                value={config[m.clave] ?? "{}"}
-                onChange={(e) =>
-                  setConfig({ ...config, [m.clave]: e.target.value })
-                }
-                rows={5}
-                className="mt-3 w-full rounded-lg border border-input p-2 font-mono text-xs"
-              />
-              <Boton className="mt-2" onClick={() => guardar(m.clave)}>
-                Guardar configuración
-              </Boton>
+              {m.clave === "citas" && (
+                <CitasConfig modulo={m} canales={canales} />
+              )}
+              {m.clave !== "citas" && (
+                <textarea
+                  value={config[m.clave] ?? "{}"}
+                  onChange={(e) =>
+                    setConfig({ ...config, [m.clave]: e.target.value })
+                  }
+                  rows={5}
+                  className="mt-3 w-full rounded-lg border border-input p-2 font-mono text-xs"
+                />
+              )}
+              {m.clave !== "citas" && (
+                <Boton className="mt-2" onClick={() => guardar(m.clave)}>
+                  Guardar configuración
+                </Boton>
+              )}
             </>
           )}
         </div>

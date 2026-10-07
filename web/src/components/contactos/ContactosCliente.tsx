@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Boton, Campo, Modal } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import { EtiquetaNueva } from "@/components/EtiquetaNueva";
@@ -322,6 +323,12 @@ export function ContactosCliente({
                   >
                     Editar
                   </button>
+                  <Link
+                    href={`/citas?contactoId=${c.id}`}
+                    className="mr-3 text-primary hover:underline"
+                  >
+                    Cita
+                  </Link>
                   <button
                     onClick={() => borrar(c)}
                     className="text-red-600 hover:underline"
@@ -390,6 +397,12 @@ export function ContactosCliente({
               >
                 Editar
               </button>
+              <Link
+                href={`/citas?contactoId=${c.id}`}
+                className="font-medium text-primary"
+              >
+                Cita
+              </Link>
               <button
                 onClick={() => borrar(c)}
                 className="font-medium text-red-600"

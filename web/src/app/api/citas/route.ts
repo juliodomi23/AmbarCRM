@@ -15,9 +15,13 @@ export async function GET(req: NextRequest) {
     req.nextUrl.searchParams.get("hasta") ??
       new Date(desde.getTime() + 7 * 86400000).toISOString(),
   );
+  const contactoId = req.nextUrl.searchParams.get("contactoId");
   return NextResponse.json({
     citas: await db.cita.findMany({
-      where: { inicio: { gte: desde, lt: hasta } },
+      where: {
+        inicio: { gte: desde, lt: hasta },
+        contactoId: contactoId ? BigInt(contactoId) : undefined,
+      },
       include: { contacto: true, responsable: true },
       orderBy: { inicio: "asc" },
     }),

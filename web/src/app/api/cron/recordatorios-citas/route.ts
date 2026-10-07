@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, dbRaw, runWithOrg } from "@/lib/db";
 import { requireApiKey } from "@/lib/api-auth";
 import { getProvider } from "@/lib/channel";
-import { fechaHoraCita, recordatorioDebeEnviarse } from "@/lib/citas";
+import {
+  recordatorioDebeEnviarse,
+  valoresRecordatorio,
+  type VariableRecordatorio,
+} from "@/lib/citas";
 export const dynamic = "force-dynamic";
 type Config = {
   anticipacionHoras?: number;
+  canalId?: string;
   plantilla?: { name: string; language: string };
+  mapeoVariables?: VariableRecordatorio[];
 };
 export async function POST(req: NextRequest) {
   const noAuth = requireApiKey(req);
@@ -23,6 +29,7 @@ export async function POST(req: NextRequest) {
       });
       const config = modulo?.config as Config | undefined;
       if (!config?.plantilla?.name) return;
+      const ajustes = await db.ajustes.findFirst();
       const citas = await db.cita.findMany({
         where: {
           recordatorioEnviadoAt: null,
@@ -47,19 +54,29 @@ export async function POST(req: NextRequest) {
             include: { canal: true },
             orderBy: { ultimoMensajeAt: "desc" },
           }));
-        if (!conv?.canal) {
+        const canal = config.canalId
+          ? await db.canalWhatsapp.findFirst({
+              where: { id: BigInt(config.canalId), activo: true },
+            })
+          : conv?.canal;
+        if (!conv || !canal) {
           fallidos++;
           continue;
         }
         const provider = getProvider(
           "cloud_api",
-          conv.canal.config,
-          conv.canal.instancia,
+          canal.config,
+          canal.instancia,
         );
         const envio = (await provider.enviarPlantilla?.(
           cita.contacto.telefono,
           config.plantilla,
-          [cita.contacto.nombre, fechaHoraCita(cita.inicio)],
+          valoresRecordatorio(config.mapeoVariables ?? [], {
+            nombreContacto: cita.contacto.nombre,
+            inicio: cita.inicio,
+            titulo: cita.titulo,
+            nombreNegocio: ajustes?.marcaNombre ?? ajustes?.nombreNegocio ?? "",
+          }),
         )) ?? { ok: false, error: "proveedor no soporta plantillas" };
         await db.mensaje.create({
           data: {
