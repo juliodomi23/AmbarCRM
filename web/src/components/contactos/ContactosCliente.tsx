@@ -22,6 +22,7 @@ type Contacto = {
   responsable: string | null;
   optOutDifusion: boolean;
   oportunidades: number;
+  esCliente: boolean;
   etiquetas: Etiqueta[];
   campos: Record<string, unknown>;
 };
@@ -43,12 +44,14 @@ export function ContactosCliente({
   usuarios,
   camposPersonalizados,
   citasActivo,
+  clientesActivo,
 }: {
   contactos: Contacto[];
   etiquetas: Etiqueta[];
   usuarios: { id: string; nombre: string }[];
   camposPersonalizados: { clave: string; etiqueta: string }[];
   citasActivo: boolean;
+  clientesActivo: boolean;
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -176,6 +179,27 @@ export function ContactosCliente({
       return;
     const res = await fetch(`/api/contactos/${c.id}`, { method: "DELETE" });
     if (res.ok) router.refresh();
+  }
+
+  async function convertirCliente(contacto: Contacto) {
+    setGuardando(true);
+    const respuesta = await fetch("/api/clientes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactoId: contacto.id }),
+    });
+    const payload = await respuesta.json().catch(() => null);
+    setGuardando(false);
+    if (!respuesta.ok) {
+      const mensaje =
+        payload && typeof payload.error === "string"
+          ? payload.error
+          : "No se pudo convertir el contacto";
+      toast(mensaje, "error");
+      return;
+    }
+    toast(`${contacto.nombre} ahora tiene ficha de cliente`);
+    router.refresh();
   }
 
   async function toggleEtiqueta(c: Contacto, et: Etiqueta) {
@@ -377,22 +401,32 @@ export function ContactosCliente({
                   >
                     Editar
                   </button>
-                  {citasActivo && (
-                    <>
-                      <Link
-                        href={`/citas?contactoId=${c.id}`}
-                        className="mr-3 text-primary hover:underline"
-                      >
-                        Cita
-                      </Link>
-                      <Link
-                        href={`/contactos/${c.id}/expediente`}
-                        className="mr-3 text-primary hover:underline"
-                      >
-                        Expediente
-                      </Link>
-                    </>
+                  {citasActivo && (!clientesActivo || c.esCliente) && (
+                    <Link
+                      href={`/citas?contactoId=${c.id}`}
+                      className="mr-3 text-primary hover:underline"
+                    >
+                      Cita
+                    </Link>
                   )}
+                  {clientesActivo &&
+                    (c.esCliente ? (
+                      <Link
+                        href={`/clientes/${c.id}`}
+                        className="mr-3 text-primary hover:underline"
+                      >
+                        Cliente
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={guardando}
+                        onClick={() => void convertirCliente(c)}
+                        className="mr-3 text-primary hover:underline disabled:opacity-50"
+                      >
+                        Crear ficha
+                      </button>
+                    ))}
                   <button
                     onClick={() => borrar(c)}
                     className="text-red-600 hover:underline"
@@ -471,22 +505,32 @@ export function ContactosCliente({
               >
                 Editar
               </button>
-              {citasActivo && (
-                <>
-                  <Link
-                    href={`/citas?contactoId=${c.id}`}
-                    className="font-medium text-primary"
-                  >
-                    Cita
-                  </Link>
-                  <Link
-                    href={`/contactos/${c.id}/expediente`}
-                    className="font-medium text-primary"
-                  >
-                    Expediente
-                  </Link>
-                </>
+              {citasActivo && (!clientesActivo || c.esCliente) && (
+                <Link
+                  href={`/citas?contactoId=${c.id}`}
+                  className="font-medium text-primary"
+                >
+                  Cita
+                </Link>
               )}
+              {clientesActivo &&
+                (c.esCliente ? (
+                  <Link
+                    href={`/clientes/${c.id}`}
+                    className="font-medium text-primary"
+                  >
+                    Cliente
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={guardando}
+                    onClick={() => void convertirCliente(c)}
+                    className="font-medium text-primary disabled:opacity-50"
+                  >
+                    Crear ficha
+                  </button>
+                ))}
               <button
                 onClick={() => borrar(c)}
                 className="font-medium text-red-600"

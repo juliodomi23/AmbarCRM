@@ -69,6 +69,11 @@ await prisma.$transaction(async (tx) => {
     update: { activo: true },
     create: { clave: "citas", activo: true, config: { anticipacionHoras: 24 } },
   });
+  await tx.moduloOrg.upsert({
+    where: { orgId_clave: { orgId: org.id, clave: "clientes" } },
+    update: { activo: true },
+    create: { clave: "clientes", activo: true, config: {} },
+  });
 
   const doctores = [];
   for (const datos of [

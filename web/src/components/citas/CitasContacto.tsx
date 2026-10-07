@@ -12,6 +12,7 @@ export function CitasContacto({
   conversacionId?: string;
 }) {
   const [citas, setCitas] = useState<any[]>([]);
+  const [esCliente, setEsCliente] = useState(false);
 
   useEffect(() => {
     const desde = new Date();
@@ -21,6 +22,9 @@ export function CitasContacto({
     )
       .then((res) => (res.ok ? res.json() : { citas: [] }))
       .then((data) => setCitas(data.citas ?? []));
+    void fetch(`/api/clientes?contactoId=${contactoId}`)
+      .then((res) => (res.ok ? res.json() : { clientes: [] }))
+      .then((data) => setEsCliente((data.clientes ?? []).length > 0));
   }, [contactoId]);
 
   const query = new URLSearchParams({ contactoId });
@@ -32,12 +36,14 @@ export function CitasContacto({
           Próximas citas
         </span>
         <div className="flex gap-3">
-          <Link
-            href={`/contactos/${contactoId}/expediente`}
-            className="text-xs font-medium text-primary"
-          >
-            Expediente
-          </Link>
+          {esCliente && (
+            <Link
+              href={`/clientes/${contactoId}`}
+              className="text-xs font-medium text-primary"
+            >
+              Cliente
+            </Link>
+          )}
           <Link
             href={`/citas?${query}`}
             className="text-xs font-medium text-primary"

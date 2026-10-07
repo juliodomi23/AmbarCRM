@@ -85,12 +85,14 @@ export function DetalleCitaModal({
           <Boton type="button" variante="ghost" onClick={onClose}>
             Cerrar
           </Boton>
-          <Link
-            href={`/contactos/${cita.contacto.id}/expediente`}
-            className="rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground"
-          >
-            Ver expediente
-          </Link>
+          {cita.contacto.expediente && (
+            <Link
+              href={`/clientes/${cita.contacto.id}`}
+              className="rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground"
+            >
+              Ver cliente
+            </Link>
+          )}
         </div>
       </div>
     </Modal>

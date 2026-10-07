@@ -5,6 +5,7 @@ export function listarContactos() {
     orderBy: { createdAt: "desc" },
     include: {
       responsable: true,
+      expediente: { select: { id: true } },
       etiquetas: { include: { etiqueta: true } },
       _count: { select: { oportunidades: true } }
     }

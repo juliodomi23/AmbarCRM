@@ -140,6 +140,15 @@ enum EstadoCita {
   @@map("estado_cita")
 }
 
+enum EstadoVehiculo {
+  disponible
+  reservado
+  vendido
+  taller
+
+  @@map("estado_vehiculo")
+}
+
 /// Tenant. NO lleva orgId ni RLS: es la tabla raíz del multi-tenant.
 model Org {
   id        BigInt   @id @default(autoincrement())
@@ -668,6 +677,32 @@ model EvolucionClinica {
   @@index([expedienteId, createdAt])
   @@index([orgId])
   @@map("evoluciones_clinicas")
+}
+
+model Vehiculo {
+  id          BigInt         @id @default(autoincrement())
+  orgId       BigInt         @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  numeroStock String?        @map("numero_stock")
+  vin         String?
+  marca       String
+  modelo      String
+  anio        Int
+  version     String?
+  color       String?
+  kilometraje Int            @default(0)
+  precio      Decimal        @default(0) @db.Decimal(12, 2)
+  moneda      String         @default("MXN")
+  estado      EstadoVehiculo @default(disponible)
+  fotoUrl     String?        @map("foto_url")
+  notas       String?
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([orgId, numeroStock])
+  @@unique([orgId, vin])
+  @@index([orgId, estado])
+  @@index([orgId, marca, modelo])
+  @@map("vehiculos")
 }
 
 model Evento {

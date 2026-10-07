@@ -1,4 +1,8 @@
-export type ContactoCita = { id: string; nombre: string };
+export type ContactoCita = {
+  id: string;
+  nombre: string;
+  expediente?: { id: string } | null;
+};
 export type UsuarioCita = { id: string; nombre: string };
 export type DoctorCita = {
   id: string;

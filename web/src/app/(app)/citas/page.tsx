@@ -6,8 +6,14 @@ import { CitasCliente } from "@/components/citas/CitasCliente";
 export const dynamic = "force-dynamic";
 export default async function CitasPage() {
   if (!(await moduloActivo("citas"))) redirect("/");
+  const clientesActivo = await moduloActivo("clientes");
   const [contactos, usuarios, doctores] = await Promise.all([
-    db.contacto.findMany({ orderBy: { nombre: "asc" }, take: 500 }),
+    db.contacto.findMany({
+      where: clientesActivo ? { expediente: { isNot: null } } : undefined,
+      include: { expediente: { select: { id: true } } },
+      orderBy: { nombre: "asc" },
+      take: 500,
+    }),
     db.usuario.findMany({ where: { activo: true } }),
     db.doctor.findMany({ orderBy: [{ activo: "desc" }, { nombre: "asc" }] }),
   ]);

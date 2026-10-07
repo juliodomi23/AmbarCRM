@@ -2,12 +2,28 @@ import { db } from "@/lib/db";
 
 export const MODULOS = [
   {
+    clave: "clientes",
+    nombre: "Clientes",
+    descripcion: "Ficha de servicio, preferencias e historial de cada cliente.",
+    icono:
+      "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6m3-3h-6",
+    ruta: "/clientes",
+  },
+  {
     clave: "citas",
     nombre: "Citas",
     descripcion: "Agenda, seguimiento y recordatorios de citas.",
     icono:
       "M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z",
     ruta: "/citas",
+  },
+  {
+    clave: "automotriz",
+    nombre: "Automotriz",
+    descripcion: "Inventario de vehículos, disponibilidad y seguimiento comercial.",
+    icono:
+      "M3 17h18M5 17l1-6h12l1 6M8 17v2m8-2v2M7 11l2-4h6l2 4M7 14h.01M17 14h.01",
+    ruta: "/automotriz",
   },
 ] as const;
 

@@ -53,6 +53,17 @@ CREATE TABLE IF NOT EXISTS modulos_org (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE (org_id, clave)
 );
 CREATE INDEX IF NOT EXISTS modulos_org_org_idx ON modulos_org(org_id);
+
+INSERT INTO modulos_org (org_id, clave, activo, config)
+SELECT org_id, 'clientes', activo, config
+FROM modulos_org
+WHERE clave = 'pacientes'
+ON CONFLICT (org_id, clave) DO UPDATE
+SET activo = EXCLUDED.activo,
+    config = EXCLUDED.config,
+    updated_at = now();
+DELETE FROM modulos_org WHERE clave = 'pacientes';
+
 DO $$
 BEGIN
   CREATE TYPE entidad_campo_personalizado AS ENUM ('contacto', 'oportunidad');
@@ -91,7 +102,9 @@ $$;
 ALTER TYPE estado_cita ADD VALUE IF NOT EXISTS 'en_sala';
 CREATE TABLE IF NOT EXISTS campos_personalizados (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
   entidad entidad_campo_personalizado NOT NULL, clave TEXT NOT NULL, etiqueta TEXT NOT NULL,
   tipo tipo_campo_personalizado NOT NULL, opciones JSONB NOT NULL DEFAULT '[]'::jsonb,
   obligatorio BOOLEAN NOT NULL DEFAULT false, orden INTEGER NOT NULL DEFAULT 0, activo BOOLEAN NOT NULL DEFAULT true,
@@ -158,6 +171,43 @@ CREATE INDEX IF NOT EXISTS evoluciones_expediente_created_idx
   ON evoluciones_clinicas(expediente_id, created_at);
 CREATE INDEX IF NOT EXISTS evoluciones_clinicas_org_idx ON evoluciones_clinicas(org_id);
 
+DO $$
+BEGIN
+  CREATE TYPE estado_vehiculo AS ENUM (
+    'disponible',
+    'reservado',
+    'vendido',
+    'taller'
+  );
+EXCEPTION WHEN duplicate_object THEN
+  NULL;
+END
+$$;
+
+CREATE TABLE IF NOT EXISTS vehiculos (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  numero_stock TEXT,
+  vin TEXT,
+  marca TEXT NOT NULL,
+  modelo TEXT NOT NULL,
+  anio INTEGER NOT NULL,
+  version TEXT,
+  color TEXT,
+  kilometraje INTEGER NOT NULL DEFAULT 0,
+  precio NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  moneda TEXT NOT NULL DEFAULT 'MXN',
+  estado estado_vehiculo NOT NULL DEFAULT 'disponible',
+  foto_url TEXT,
+  notas TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, numero_stock),
+  UNIQUE (org_id, vin)
+);
+CREATE INDEX IF NOT EXISTS vehiculos_org_estado_idx ON vehiculos(org_id, estado);
+CREATE INDEX IF NOT EXISTS vehiculos_org_marca_modelo_idx ON vehiculos(org_id, marca, modelo);
+
 DO $$ DECLARE t TEXT; BEGIN
   FOREACH t IN ARRAY ARRAY[
     'modulos_org',
@@ -165,7 +215,8 @@ DO $$ DECLARE t TEXT; BEGIN
     'citas',
     'doctores',
     'expedientes_paciente',
-    'evoluciones_clinicas'
+    'evoluciones_clinicas',
+    'vehiculos'
   ] LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
@@ -189,6 +240,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   citas,
   doctores,
   expedientes_paciente,
-  evoluciones_clinicas
+  evoluciones_clinicas,
+  vehiculos
 TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;

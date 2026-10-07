@@ -16,7 +16,7 @@ const CAMPOS_TEXTO = [
 async function validarAcceso(id: string) {
   const sesion = await requireSesion();
   if ("error" in sesion) return { respuesta: sesion.error };
-  const apagado = await requireModuloActivo("citas");
+  const apagado = await requireModuloActivo("clientes");
   if (apagado) return { respuesta: apagado };
   const contactoId = aBigInt(id);
   if (contactoId === null) {

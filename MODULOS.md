@@ -10,6 +10,33 @@ de `app.current_org`, RLS `org_isolation` y GRANT en
 `requireModuloActivo("clave")` y añade su página. AppShell y Ctrl+K consumen el
 catálogo activo automáticamente.
 
+## Módulo Clientes
+
+Clientes es independiente de Contactos. Un **contacto** sigue representando a
+cualquier lead, proveedor o persona que escribe por WhatsApp. Se convierte en
+**cliente de servicio** cuando se crea su ficha.
+
+La ficha extiende al contacto existente en lugar de duplicarlo. Así conserva el
+mismo teléfono, conversaciones, oportunidades y etiquetas, pero aparece además
+en `/clientes` con preferencias, sensibilidades, historial y próximas citas.
+Esto sirve para clínicas y para negocios de uñas, pestañas, cejas u otros
+servicios recurrentes.
+
+Un cliente puede crearse desde cero o a partir de un contacto existente. Con el
+módulo activo, Contactos muestra la acción **Crear ficha** y Citas ofrece solo a
+las personas que ya tienen ficha.
+
+## Módulo Automotriz
+
+Automotriz agrega un inventario aislado por organización en `/automotriz`. La
+primera versión permite registrar marca, modelo, año, versión, color, stock,
+VIN, kilometraje, precio, fotografía y notas. Cada vehículo puede cambiarse
+rápidamente entre **Disponible**, **Reservado**, **Vendido** y **En taller**.
+
+La pantalla muestra indicadores de disponibilidad, reservados, vendidos y valor
+del inventario disponible. El seed `seed-demo-automotriz.mjs` crea la
+organización `demo-auto`, activa únicamente este módulo y carga seis vehículos.
+
 ## Módulo Citas
 
 Cuando Citas está activo aparece en el menú lateral, la barra móvil y Ctrl+K. Su
@@ -32,16 +59,16 @@ variables en ese orden, registra el resultado y marca la cita para no repetirlo.
 
 Al hacer clic en una cita del calendario se abre su detalle con acciones rápidas:
 **Confirmó**, **Ya llegó**, **Atendido**, **No llegó** y **Cancelar cita**. El
-estado `en_sala` representa que el paciente ya llegó y está esperando atención.
+estado `en_sala` representa que el cliente ya llegó y está esperando atención.
 
 La agenda incluye un catálogo de doctores con especialidad, cédula, color y
 estado activo. Cada cita puede asignarse a un doctor y utiliza su color como
 referencia visual en el calendario.
 
-Cada contacto tiene un expediente clínico con fecha de nacimiento, sexo,
-alergias, antecedentes, medicamentos, observaciones e historial de evoluciones.
-Las evoluciones pueden relacionarse con una cita y un doctor, y registran al
-usuario que las capturó.
+Cada cliente puede tener una ficha con fecha de nacimiento, sensibilidades,
+preferencias, productos a evitar, observaciones e historial de servicios. Los
+servicios pueden relacionarse con una cita y un especialista, y registran al
+usuario que los capturó.
 
 El payload que recibe el bot incluye `ambarcrm.citas_url`. Con el mismo header
 `api_access_token`, el bot puede consultar próximas citas mediante `GET` y
@@ -67,4 +94,14 @@ El seed es idempotente y solo trabaja sobre `demo-clinica`. Crea la marca Salud,
 el módulo Citas, tres campos personalizados, un embudo de cuatro etapas, ocho
 contactos, seis oportunidades, ocho citas de esta semana y tres conversaciones.
 También crea dos doctores, asigna cada cita y prepara expedientes clínicos para
-los ocho pacientes con evoluciones de ejemplo.
+los ocho clientes con historial de ejemplo.
+
+## Demo automotriz
+
+```bash
+cd web
+node scripts/seed-demo-automotriz.mjs auto@local.test AutoDemo2026!
+```
+
+El seed es idempotente y solo trabaja sobre `demo-auto`. Carga seis vehículos
+en distintos estados y crea una cuenta administradora para esa organización.

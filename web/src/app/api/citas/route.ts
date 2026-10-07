@@ -25,7 +25,11 @@ export async function GET(req: NextRequest) {
       inicio: { gte: desde, lt: hasta },
       contactoId: contactoId ? BigInt(contactoId) : undefined,
     },
-    include: { contacto: true, responsable: true, doctor: true },
+    include: {
+      contacto: { include: { expediente: { select: { id: true } } } },
+      responsable: true,
+      doctor: true,
+    },
     orderBy: { inicio: "asc" },
   });
   return NextResponse.json(serializar({ citas }));
@@ -74,7 +78,11 @@ export async function POST(req: NextRequest) {
       inicio,
       fin,
     },
-    include: { contacto: true, responsable: true, doctor: true },
+    include: {
+      contacto: { include: { expediente: { select: { id: true } } } },
+      responsable: true,
+      doctor: true,
+    },
   });
   return NextResponse.json(serializar({ cita }), { status: 201 });
 }

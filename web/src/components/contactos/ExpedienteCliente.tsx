@@ -48,6 +48,7 @@ export function ExpedienteCliente({
   contacto,
   doctores,
   citas,
+  citasActivo,
 }: {
   contacto: {
     id: string;
@@ -58,6 +59,7 @@ export function ExpedienteCliente({
   };
   doctores: DoctorCita[];
   citas: CitaExpediente[];
+  citasActivo: boolean;
 }) {
   const expedienteInicial = contacto.expediente;
   const [formulario, setFormulario] = useState({
@@ -89,10 +91,10 @@ export function ExpedienteCliente({
     const payload = await respuesta.json().catch(() => null);
     setGuardando(false);
     if (!respuesta.ok) {
-      toast(errorApi(payload, "No se pudo guardar el expediente"), "error");
+      toast(errorApi(payload, "No se pudo guardar la ficha"), "error");
       return;
     }
-    toast("Expediente guardado");
+    toast("Ficha guardada");
   }
 
   async function agregarEvolucion(evento: React.FormEvent) {
@@ -106,33 +108,35 @@ export function ExpedienteCliente({
     const payload = await respuesta.json().catch(() => null);
     setGuardando(false);
     if (!respuesta.ok) {
-      toast(errorApi(payload, "No se pudo registrar la evolución"), "error");
+      toast(errorApi(payload, "No se pudo registrar el servicio"), "error");
       return;
     }
     setEvoluciones((actuales) => [payload.evolucion, ...actuales]);
     setNota("");
-    toast("Evolución registrada");
+    toast("Servicio registrado");
   }
 
   return (
     <div className="space-y-5 p-4 md:p-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href="/contactos" className="text-sm text-primary hover:underline">
-            ← Contactos
+          <Link href="/clientes" className="text-sm text-primary hover:underline">
+            ← Clientes
           </Link>
-          <h1 className="mt-1 text-2xl font-bold">Expediente de {contacto.nombre}</h1>
+          <h1 className="mt-1 text-2xl font-bold">Ficha de {contacto.nombre}</h1>
           <p className="text-sm text-muted-foreground">
             {contacto.telefono ? `+${contacto.telefono}` : "Sin teléfono"}
             {contacto.email ? ` · ${contacto.email}` : ""}
           </p>
         </div>
-        <Link
-          href={`/citas?contactoId=${contacto.id}`}
-          className="rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground"
-        >
-          Nueva cita
-        </Link>
+        {citasActivo && (
+          <Link
+            href={`/citas?contactoId=${contacto.id}`}
+            className="rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground"
+          >
+            Nueva cita
+          </Link>
+        )}
       </header>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
@@ -140,7 +144,7 @@ export function ExpedienteCliente({
           onSubmit={guardar}
           className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-soft"
         >
-          <h2 className="font-semibold">Datos clínicos</h2>
+          <h2 className="font-semibold">Perfil del cliente</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Campo
               label="Fecha de nacimiento"
@@ -150,14 +154,18 @@ export function ExpedienteCliente({
             />
             <Campo label="Sexo" value={formulario.sexo} onChange={(e) => set("sexo", e.target.value)} />
           </div>
-          <AreaTexto label="Alergias" value={formulario.alergias} onChange={(v) => set("alergias", v)} />
           <AreaTexto
-            label="Antecedentes y enfermedades crónicas"
+            label="Alergias o sensibilidades"
+            value={formulario.alergias}
+            onChange={(v) => set("alergias", v)}
+          />
+          <AreaTexto
+            label="Preferencias y antecedentes"
             value={formulario.antecedentes}
             onChange={(v) => set("antecedentes", v)}
           />
           <AreaTexto
-            label="Medicamentos actuales"
+            label="Productos o tratamientos a evitar"
             value={formulario.medicamentos}
             onChange={(v) => set("medicamentos", v)}
           />
@@ -168,7 +176,7 @@ export function ExpedienteCliente({
           />
           <div className="flex justify-end">
             <Boton type="submit" disabled={guardando}>
-              Guardar expediente
+              Guardar ficha
             </Boton>
           </div>
         </form>
@@ -178,11 +186,11 @@ export function ExpedienteCliente({
             onSubmit={agregarEvolucion}
             className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-soft"
           >
-            <h2 className="font-semibold">Nueva evolución</h2>
-            <AreaTexto label="Nota clínica" value={nota} onChange={setNota} required />
+            <h2 className="font-semibold">Nuevo servicio</h2>
+            <AreaTexto label="Notas del servicio" value={nota} onChange={setNota} required />
             <div className="grid gap-3 sm:grid-cols-2">
               <Selector
-                label="Doctor"
+                label="Especialista"
                 value={doctorId}
                 onChange={setDoctorId}
                 opciones={doctores.map((doctor) => ({
@@ -190,23 +198,25 @@ export function ExpedienteCliente({
                   etiqueta: doctor.nombre,
                 }))}
               />
-              <Selector
-                label="Cita relacionada"
-                value={citaId}
-                onChange={setCitaId}
-                opciones={citas.map((cita) => ({
-                  valor: cita.id,
-                  etiqueta: cita.titulo,
-                }))}
-              />
+              {citasActivo && (
+                <Selector
+                  label="Cita relacionada"
+                  value={citaId}
+                  onChange={setCitaId}
+                  opciones={citas.map((cita) => ({
+                    valor: cita.id,
+                    etiqueta: cita.titulo,
+                  }))}
+                />
+              )}
             </div>
             <Boton type="submit" disabled={guardando}>
-              Registrar evolución
+              Registrar servicio
             </Boton>
           </form>
 
           <div className="space-y-2">
-            <h2 className="font-semibold">Historial clínico</h2>
+            <h2 className="font-semibold">Historial de servicios</h2>
             {evoluciones.map((evolucion) => (
               <article key={evolucion.id} className="rounded-xl border border-border bg-card p-4">
                 <p className="whitespace-pre-wrap text-sm">{evolucion.contenido}</p>
@@ -223,7 +233,7 @@ export function ExpedienteCliente({
             ))}
             {evoluciones.length === 0 && (
               <p className="rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">
-                Aún no hay evoluciones clínicas.
+                Aún no hay servicios registrados.
               </p>
             )}
           </div>

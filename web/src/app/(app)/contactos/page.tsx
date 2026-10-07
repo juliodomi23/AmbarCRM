@@ -11,7 +11,14 @@ import { moduloActivo } from "@/lib/modulos";
 export const dynamic = "force-dynamic";
 
 export default async function ContactosPage() {
-  const [contactos, etiquetas, usuarios, campos, citasActivo] = await Promise.all([
+  const [
+    contactos,
+    etiquetas,
+    usuarios,
+    campos,
+    citasActivo,
+    clientesActivo,
+  ] = await Promise.all([
     listarContactos(),
     listarEtiquetas(),
     listarUsuariosActivos(),
@@ -20,6 +27,7 @@ export default async function ContactosPage() {
       orderBy: { orden: "asc" },
     }),
     moduloActivo("citas"),
+    moduloActivo("clientes"),
   ]);
 
   return (
@@ -35,6 +43,7 @@ export default async function ContactosPage() {
         responsable: c.responsable?.nombre ?? null,
         optOutDifusion: c.optOutDifusion,
         oportunidades: c._count.oportunidades,
+        esCliente: Boolean(c.expediente),
         campos: c.campos,
         etiquetas: c.etiquetas.map((e: any) => ({
           id: e.etiqueta.id,
@@ -49,6 +58,7 @@ export default async function ContactosPage() {
       }))}
       camposPersonalizados={serializar(campos)}
       citasActivo={citasActivo}
+      clientesActivo={clientesActivo}
     />
   );
 }
