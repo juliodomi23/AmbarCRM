@@ -7,6 +7,7 @@ import { toast } from "@/components/Toaster";
 import { EtiquetaNueva } from "@/components/EtiquetaNueva";
 import { AvatarNombre } from "@/components/AvatarNombre";
 import { EmptyState } from "@/components/EmptyState";
+import { CamposPersonalizadosForm } from "@/components/CamposPersonalizadosForm";
 
 type Etiqueta = { id: string; nombre: string; color: string };
 type Contacto = {
@@ -21,18 +22,30 @@ type Contacto = {
   optOutDifusion: boolean;
   oportunidades: number;
   etiquetas: Etiqueta[];
+  campos: Record<string, unknown>;
 };
 
-const FORM_VACIO = { nombre: "", telefono: "", email: "", empresa: "", fuente: "manual", responsableId: "", optOutDifusion: false };
+const FORM_VACIO = {
+  nombre: "",
+  telefono: "",
+  email: "",
+  empresa: "",
+  fuente: "manual",
+  responsableId: "",
+  optOutDifusion: false,
+  campos: {} as Record<string, unknown>,
+};
 
 export function ContactosCliente({
   contactos,
   etiquetas,
-  usuarios
+  usuarios,
+  camposPersonalizados,
 }: {
   contactos: Contacto[];
   etiquetas: Etiqueta[];
   usuarios: { id: string; nombre: string }[];
+  camposPersonalizados: { clave: string; etiqueta: string }[];
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -49,14 +62,24 @@ export function ContactosCliente({
   const filtrados = useMemo(() => {
     const q = busqueda.toLowerCase().trim();
     return contactos.filter((c) => {
-      if (q && !(
-        c.nombre.toLowerCase().includes(q) ||
-        (c.telefono ?? "").includes(q) ||
-        (c.empresa ?? "").toLowerCase().includes(q)
-      )) return false;
-      if (filtroEtiqueta && !c.etiquetas.some((e) => e.id === filtroEtiqueta)) return false;
+      if (
+        q &&
+        !(
+          c.nombre.toLowerCase().includes(q) ||
+          (c.telefono ?? "").includes(q) ||
+          (c.empresa ?? "").toLowerCase().includes(q)
+        )
+      )
+        return false;
+      if (filtroEtiqueta && !c.etiquetas.some((e) => e.id === filtroEtiqueta))
+        return false;
       if (filtroResponsable === "sin" && c.responsableId) return false;
-      if (filtroResponsable && filtroResponsable !== "sin" && c.responsableId !== filtroResponsable) return false;
+      if (
+        filtroResponsable &&
+        filtroResponsable !== "sin" &&
+        c.responsableId !== filtroResponsable
+      )
+        return false;
       return true;
     });
   }, [contactos, busqueda, filtroEtiqueta, filtroResponsable]);
@@ -70,12 +93,14 @@ export function ContactosCliente({
     const res = await fetch("/api/contactos/importar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ csv })
+      body: JSON.stringify({ csv }),
     });
     setImportando(false);
     const d = await res.json().catch(() => ({}));
     if (res.ok) {
-      toast(`Importación lista: ${d.creados} nuevos · ${d.actualizados} actualizados · ${d.omitidos} omitidos`);
+      toast(
+        `Importación lista: ${d.creados} nuevos · ${d.actualizados} actualizados · ${d.omitidos} omitidos`,
+      );
       router.refresh();
     } else {
       toast(d.error ?? "No se pudo importar", "error");
@@ -96,11 +121,14 @@ export function ContactosCliente({
       empresa: c.empresa ?? "",
       fuente: c.fuente,
       responsableId: c.responsableId ?? "",
-      optOutDifusion: c.optOutDifusion
+      optOutDifusion: c.optOutDifusion,
+      campos: c.campos ?? {},
     });
     setModal(true);
   }
-  function set(k: string, v: string | boolean) { setForm((f) => ({ ...f, [k]: v })); }
+  function set(k: string, v: string | boolean) {
+    setForm((f) => ({ ...f, [k]: v }));
+  }
 
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
@@ -109,14 +137,25 @@ export function ContactosCliente({
     const res = await fetch(url, {
       method: editando ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, responsableId: form.responsableId || null })
+      body: JSON.stringify({
+        ...form,
+        responsableId: form.responsableId || null,
+      }),
     });
     setGuardando(false);
-    if (res.ok) { setModal(false); router.refresh(); }
+    if (res.ok) {
+      setModal(false);
+      router.refresh();
+    }
   }
 
   async function borrar(c: Contacto) {
-    if (!confirm(`¿Borrar a ${c.nombre}? Se eliminarán sus oportunidades y conversaciones.`)) return;
+    if (
+      !confirm(
+        `¿Borrar a ${c.nombre}? Se eliminarán sus oportunidades y conversaciones.`,
+      )
+    )
+      return;
     const res = await fetch(`/api/contactos/${c.id}`, { method: "DELETE" });
     if (res.ok) router.refresh();
   }
@@ -126,7 +165,7 @@ export function ContactosCliente({
     await fetch(`/api/contactos/${c.id}/etiquetas`, {
       method: tiene ? "DELETE" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ etiquetaId: et.id })
+      body: JSON.stringify({ etiquetaId: et.id }),
     });
     router.refresh();
   }
@@ -148,7 +187,11 @@ export function ContactosCliente({
             className="rounded-lg border border-input px-2 py-2 text-sm"
           >
             <option value="">Todas las etiquetas</option>
-            {etiquetas.map((et) => <option key={et.id} value={et.id}>{et.nombre}</option>)}
+            {etiquetas.map((et) => (
+              <option key={et.id} value={et.id}>
+                {et.nombre}
+              </option>
+            ))}
           </select>
           <select
             value={filtroResponsable}
@@ -157,10 +200,24 @@ export function ContactosCliente({
           >
             <option value="">Todos los responsables</option>
             <option value="sin">Sin asignar</option>
-            {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
+            {usuarios.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.nombre}
+              </option>
+            ))}
           </select>
-          <input ref={csvRef} type="file" accept=".csv,text/csv" className="hidden" onChange={importarCSV} />
-          <Boton variante="ghost" onClick={() => csvRef.current?.click()} disabled={importando}>
+          <input
+            ref={csvRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={importarCSV}
+          />
+          <Boton
+            variante="ghost"
+            onClick={() => csvRef.current?.click()}
+            disabled={importando}
+          >
             {importando ? "Importando…" : "Importar CSV"}
           </Boton>
           <a
@@ -185,25 +242,41 @@ export function ContactosCliente({
               <th className="px-4 py-3">Etiquetas</th>
               <th className="px-4 py-3">Responsable</th>
               <th className="px-4 py-3">Oport.</th>
+              {camposPersonalizados.map((campo) => (
+                <th key={campo.clave} className="px-4 py-3">
+                  {campo.etiqueta}
+                </th>
+              ))}
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody>
             {filtrados.map((c) => (
-              <tr key={c.id} className="h-10 border-t border-border/60 hover:bg-muted/60">
+              <tr
+                key={c.id}
+                className="h-10 border-t border-border/60 hover:bg-muted/60"
+              >
                 <td className="px-4 py-1.5">
                   <div className="flex items-center gap-3">
                     <AvatarNombre nombre={c.nombre} className="h-8 w-8" />
                     <div className="min-w-0 leading-tight">
                       <p className="truncate font-medium text-foreground">
                         {c.nombre}
-                        {c.optOutDifusion && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Sin difusión</span>}
+                        {c.optOutDifusion && (
+                          <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            Sin difusión
+                          </span>
+                        )}
                       </p>
-                      <p className="truncate text-xs text-muted-foreground">{c.telefono ? `+${c.telefono}` : "Sin teléfono"}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {c.telefono ? `+${c.telefono}` : "Sin teléfono"}
+                      </p>
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-1.5 text-muted-foreground">{c.empresa ?? "—"}</td>
+                <td className="px-4 py-1.5 text-muted-foreground">
+                  {c.empresa ?? "—"}
+                </td>
                 <td className="px-4 py-1.5">
                   <div className="flex flex-wrap gap-1">
                     {etiquetas.map((et) => {
@@ -216,7 +289,10 @@ export function ContactosCliente({
                           style={
                             activa
                               ? { background: et.color, color: "white" }
-                              : { background: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }
+                              : {
+                                  background: "hsl(var(--muted))",
+                                  color: "hsl(var(--muted-foreground))",
+                                }
                           }
                         >
                           {et.nombre}
@@ -225,16 +301,47 @@ export function ContactosCliente({
                     })}
                   </div>
                 </td>
-                <td className="px-4 py-1.5 text-muted-foreground">{c.responsable ?? "—"}</td>
-                <td className="tnum px-4 py-1.5 text-muted-foreground">{c.oportunidades}</td>
+                <td className="px-4 py-1.5 text-muted-foreground">
+                  {c.responsable ?? "—"}
+                </td>
+                <td className="tnum px-4 py-1.5 text-muted-foreground">
+                  {c.oportunidades}
+                </td>
+                {camposPersonalizados.map((campo) => (
+                  <td
+                    key={campo.clave}
+                    className="px-4 py-1.5 text-muted-foreground"
+                  >
+                    {String(c.campos?.[campo.clave] ?? "—")}
+                  </td>
+                ))}
                 <td className="px-4 py-1.5 text-right">
-                  <button onClick={() => abrirEditar(c)} className="mr-3 text-primary hover:underline">Editar</button>
-                  <button onClick={() => borrar(c)} className="text-red-600 hover:underline">Borrar</button>
+                  <button
+                    onClick={() => abrirEditar(c)}
+                    className="mr-3 text-primary hover:underline"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => borrar(c)}
+                    className="text-red-600 hover:underline"
+                  >
+                    Borrar
+                  </button>
                 </td>
               </tr>
             ))}
             {filtrados.length === 0 && (
-              <tr><td colSpan={6} className="p-4"><EmptyState titulo="Sin contactos" descripcion="Agrega el primer contacto para comenzar a gestionar conversaciones y oportunidades." accion="Nuevo contacto" href="/contactos?nuevo=1" /></td></tr>
+              <tr>
+                <td colSpan={6 + camposPersonalizados.length} className="p-4">
+                  <EmptyState
+                    titulo="Sin contactos"
+                    descripcion="Agrega el primer contacto para comenzar a gestionar conversaciones y oportunidades."
+                    accion="Nuevo contacto"
+                    href="/contactos?nuevo=1"
+                  />
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -243,7 +350,10 @@ export function ContactosCliente({
       {/* Tarjetas (móvil) */}
       <div className="space-y-2 md:hidden">
         {filtrados.map((c) => (
-          <div key={c.id} className="rounded-xl border border-border bg-card p-4">
+          <div
+            key={c.id}
+            className="rounded-xl border border-border bg-card p-4"
+          >
             <div className="flex items-start justify-between gap-2">
               <div className="flex min-w-0 items-center gap-3">
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">
@@ -252,10 +362,20 @@ export function ContactosCliente({
                 <div className="min-w-0 leading-tight">
                   <p className="truncate font-medium text-foreground">
                     {c.nombre}
-                    {c.optOutDifusion && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Sin difusión</span>}
+                    {c.optOutDifusion && (
+                      <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        Sin difusión
+                      </span>
+                    )}
                   </p>
-                  <p className="truncate text-xs text-muted-foreground">{c.telefono ? `+${c.telefono}` : "Sin teléfono"}</p>
-                  {c.empresa && <p className="truncate text-xs text-muted-foreground">{c.empresa}</p>}
+                  <p className="truncate text-xs text-muted-foreground">
+                    {c.telefono ? `+${c.telefono}` : "Sin teléfono"}
+                  </p>
+                  {c.empresa && (
+                    <p className="truncate text-xs text-muted-foreground">
+                      {c.empresa}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="shrink-0 text-right text-xs text-muted-foreground">
@@ -264,28 +384,74 @@ export function ContactosCliente({
               </div>
             </div>
             <div className="mt-3 flex justify-end gap-4 border-t border-border/60 pt-2 text-sm">
-              <button onClick={() => abrirEditar(c)} className="font-medium text-primary">Editar</button>
-              <button onClick={() => borrar(c)} className="font-medium text-red-600">Borrar</button>
+              <button
+                onClick={() => abrirEditar(c)}
+                className="font-medium text-primary"
+              >
+                Editar
+              </button>
+              <button
+                onClick={() => borrar(c)}
+                className="font-medium text-red-600"
+              >
+                Borrar
+              </button>
             </div>
           </div>
         ))}
         {filtrados.length === 0 && (
-          <p className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">Sin contactos.</p>
+          <p className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+            Sin contactos.
+          </p>
         )}
       </div>
 
-      <Modal abierto={modal} onClose={() => setModal(false)} titulo={editando ? "Editar contacto" : "Nuevo contacto"}>
+      <Modal
+        abierto={modal}
+        onClose={() => setModal(false)}
+        titulo={editando ? "Editar contacto" : "Nuevo contacto"}
+      >
         <form onSubmit={guardar} className="space-y-3">
-          <Campo label="Nombre" value={form.nombre} onChange={(e) => set("nombre", e.target.value)} required />
-          <Campo label="Teléfono (WhatsApp)" type="tel" inputMode="numeric" value={form.telefono} onChange={(e) => set("telefono", e.target.value)} placeholder="5219611234567" />
-          <Campo label="Email" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
-          <Campo label="Empresa" value={form.empresa} onChange={(e) => set("empresa", e.target.value)} />
+          <Campo
+            label="Nombre"
+            value={form.nombre}
+            onChange={(e) => set("nombre", e.target.value)}
+            required
+          />
+          <Campo
+            label="Teléfono (WhatsApp)"
+            type="tel"
+            inputMode="numeric"
+            value={form.telefono}
+            onChange={(e) => set("telefono", e.target.value)}
+            placeholder="5219611234567"
+          />
+          <Campo
+            label="Email"
+            type="email"
+            value={form.email}
+            onChange={(e) => set("email", e.target.value)}
+          />
+          <Campo
+            label="Empresa"
+            value={form.empresa}
+            onChange={(e) => set("empresa", e.target.value)}
+          />
           <label className="block space-y-1">
-            <span className="text-sm font-medium text-muted-foreground">Responsable</span>
-            <select value={form.responsableId} onChange={(e) => set("responsableId", e.target.value)}
-              className="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30">
+            <span className="text-sm font-medium text-muted-foreground">
+              Responsable
+            </span>
+            <select
+              value={form.responsableId}
+              onChange={(e) => set("responsableId", e.target.value)}
+              className="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            >
               <option value="">Sin asignar</option>
-              {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
+              {usuarios.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre}
+                </option>
+              ))}
             </select>
           </label>
           <label className="flex items-center gap-2 text-sm text-foreground">
@@ -297,9 +463,22 @@ export function ContactosCliente({
             />
             No incluir en difusiones masivas
           </label>
+          <CamposPersonalizadosForm
+            entidad="contacto"
+            valores={form.campos}
+            onChange={(campos) => setForm({ ...form, campos })}
+          />
           <div className="flex justify-end gap-2 pt-2">
-            <Boton type="button" variante="ghost" onClick={() => setModal(false)}>Cancelar</Boton>
-            <Boton type="submit" disabled={guardando}>{guardando ? "Guardando…" : "Guardar"}</Boton>
+            <Boton
+              type="button"
+              variante="ghost"
+              onClick={() => setModal(false)}
+            >
+              Cancelar
+            </Boton>
+            <Boton type="submit" disabled={guardando}>
+              {guardando ? "Guardando…" : "Guardar"}
+            </Boton>
           </div>
         </form>
       </Modal>

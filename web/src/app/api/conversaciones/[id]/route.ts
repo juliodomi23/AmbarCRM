@@ -7,7 +7,10 @@ import { enviarCsat } from "@/lib/services/csat";
 export const dynamic = "force-dynamic";
 
 /** Detalle de la conversación: contacto, responsable y oportunidades del contacto. */
-export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+export async function GET(
+  _req: NextRequest,
+  props: { params: Promise<{ id: string }> },
+) {
   const params = await props.params;
   const s = await requireSesion();
   if ("error" in s) return s.error;
@@ -19,14 +22,15 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ id: stri
         include: {
           oportunidades: {
             orderBy: { createdAt: "desc" },
-            include: { etapa: true, embudo: true }
-          }
-        }
+            include: { etapa: true, embudo: true },
+          },
+        },
       },
-      responsable: true
-    }
+      responsable: true,
+    },
   });
-  if (!conv) return NextResponse.json({ error: "no encontrada" }, { status: 404 });
+  if (!conv)
+    return NextResponse.json({ error: "no encontrada" }, { status: 404 });
 
   return NextResponse.json({
     id: conv.id.toString(),
@@ -41,7 +45,8 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ id: stri
       email: conv.contacto.email,
       empresa: conv.contacto.empresa,
       notas: conv.contacto.notas,
-      esPersonal: conv.contacto.esPersonal
+      campos: conv.contacto.campos,
+      esPersonal: conv.contacto.esPersonal,
     },
     oportunidades: serializar(conv.contacto.oportunidades).map((o: any) => ({
       id: o.id,
@@ -51,27 +56,38 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ id: stri
       etapaId: o.etapaId,
       embudoId: o.embudoId,
       etapa: o.etapa?.nombre ?? null,
-      embudo: o.embudo?.nombre ?? null
-    }))
+      embudo: o.embudo?.nombre ?? null,
+    })),
   });
 }
 
 /** Actualiza la conversación. Body: { responsableId?, estado? } */
-export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+export async function PATCH(
+  req: NextRequest,
+  props: { params: Promise<{ id: string }> },
+) {
   const params = await props.params;
   const s = await requireSesion();
   if ("error" in s) return s.error;
 
   const body = await req.json().catch(() => ({}));
   const data: Record<string, unknown> = {};
-  if ("responsableId" in body) data.responsableId = body.responsableId ? BigInt(body.responsableId) : null;
-  if (body.estado === "abierta" || body.estado === "pendiente" || body.estado === "cerrada") {
+  if ("responsableId" in body)
+    data.responsableId = body.responsableId ? BigInt(body.responsableId) : null;
+  if (
+    body.estado === "abierta" ||
+    body.estado === "pendiente" ||
+    body.estado === "cerrada"
+  ) {
     data.estado = body.estado;
   }
   if (typeof body.botActivo === "boolean") data.botActivo = body.botActivo;
-  if (typeof body.fijado === "boolean") data.fijadoAt = body.fijado ? new Date() : null;
-  if (Array.isArray(body.etiquetas)) data.etiquetas = body.etiquetas.map(String);
-  if (Object.keys(data).length === 0) return NextResponse.json({ error: "nada que actualizar" }, { status: 400 });
+  if (typeof body.fijado === "boolean")
+    data.fijadoAt = body.fijado ? new Date() : null;
+  if (Array.isArray(body.etiquetas))
+    data.etiquetas = body.etiquetas.map(String);
+  if (Object.keys(data).length === 0)
+    return NextResponse.json({ error: "nada que actualizar" }, { status: 400 });
 
   await db.conversacion.update({ where: { id: BigInt(params.id) }, data });
 
@@ -82,12 +98,21 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 }
 
 /** Borra la conversación y sus mensajes (cascada en BD). El contacto se conserva. Solo admin. */
-export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+  _req: NextRequest,
+  props: { params: Promise<{ id: string }> },
+) {
   const params = await props.params;
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
 
-  const borradas = await db.conversacion.deleteMany({ where: { id: BigInt(params.id) } });
-  if (borradas.count === 0) return NextResponse.json({ error: "conversación inexistente" }, { status: 404 });
+  const borradas = await db.conversacion.deleteMany({
+    where: { id: BigInt(params.id) },
+  });
+  if (borradas.count === 0)
+    return NextResponse.json(
+      { error: "conversación inexistente" },
+      { status: 404 },
+    );
   return NextResponse.json({ ok: true });
 }

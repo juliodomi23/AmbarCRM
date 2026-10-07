@@ -11,11 +11,26 @@ export async function GET() {
 
   const contactos = await db.contacto.findMany({
     orderBy: { nombre: "asc" },
-    include: { etiquetas: { include: { etiqueta: true } }, responsable: true }
+    include: { etiquetas: { include: { etiqueta: true } }, responsable: true },
+  });
+  const campos = await db.campoPersonalizado.findMany({
+    where: { entidad: "contacto", activo: true },
+    orderBy: { orden: "asc" },
   });
 
   const csv = toCSV(
-    ["nombre", "telefono", "email", "empresa", "fuente", "etiquetas", "responsable", "notas", "creado"],
+    [
+      "nombre",
+      "telefono",
+      "email",
+      "empresa",
+      "fuente",
+      "etiquetas",
+      "responsable",
+      "notas",
+      "creado",
+      ...campos.map((campo) => campo.etiqueta),
+    ],
     contactos.map((c) => [
       c.nombre,
       c.telefono,
@@ -25,8 +40,14 @@ export async function GET() {
       c.etiquetas.map((e) => e.etiqueta.nombre).join(" | "),
       c.responsable?.nombre ?? "",
       c.notas,
-      c.createdAt.toISOString().slice(0, 10)
-    ])
+      c.createdAt.toISOString().slice(0, 10),
+      ...campos.map((campo) =>
+        String((c.campos as Record<string, unknown>)[campo.clave] ?? ""),
+      ),
+    ]),
   );
-  return respuestaCSV(csv, `contactos_${new Date().toISOString().slice(0, 10)}.csv`);
+  return respuestaCSV(
+    csv,
+    `contactos_${new Date().toISOString().slice(0, 10)}.csv`,
+  );
 }
