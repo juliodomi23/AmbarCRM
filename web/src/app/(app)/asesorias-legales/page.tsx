@@ -5,6 +5,8 @@ import { esPasante } from "@/lib/legal";
 import { moduloActivo } from "@/lib/modulos";
 import { LIMITE_PANEL } from "@/lib/paginacion";
 import { getSesion } from "@/lib/session";
+import { FormularioModulo } from "@/components/modulos/FormularioModulo";
+import { hoyMexico, LIMITE_OPCIONES, OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +28,23 @@ export default async function AsesoriasLegalesPage() {
     db.asesoriaLegal.count({ where: { ...filtro, estado: "pendiente" } }),
     db.asesoriaLegal.count({ where: { ...filtro, estado: "contrato_firmado" } }),
   ]);
+  const equipo = await db.usuario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } });
+  const expedientesOpciones = await db.expedienteLegal.findMany({
+    where: { estado: { in: ["activo", "suspendido"] } }, include: { contacto: true },
+    orderBy: { updatedAt: "desc" }, take: LIMITE_OPCIONES,
+  });
   return <PanelLegal titulo="Asesorías legales" descripcion="Consultas y conversión a nuevos asuntos."
+    acciones={<FormularioModulo boton="+ Nueva asesoría" titulo="Nueva asesoría" endpoint="/api/legal/asesorias"
+      campos={[
+        { nombre: "tema", etiqueta: "Tema", tipo: "texto", requerido: true },
+        { nombre: "contactoId", etiqueta: "Cliente (contacto)", tipo: "contacto" },
+        { nombre: "abogadoId", etiqueta: "Abogado", tipo: "seleccion", opciones: opcionesDe(equipo, (u) => u.nombre, "Yo") },
+        { nombre: "expedienteId", etiqueta: "Expediente", tipo: "seleccion", opciones: opcionesDe(expedientesOpciones, (e) => [e.numeroInterno, e.materia, e.contacto?.nombre].filter(Boolean).join(" · "), "Sin expediente") },
+        { nombre: "fecha", etiqueta: "Fecha", tipo: "fecha", valorInicial: hoyMexico() },
+        { nombre: "origen", etiqueta: "Origen", tipo: "texto", ayuda: "Ej. WhatsApp, recomendación, página web" },
+        { nombre: "estado", etiqueta: "Estado", tipo: "seleccion", opciones: OPCIONES.estadoAsesoria },
+        { nombre: "resumen", etiqueta: "Resumen", tipo: "textarea" },
+      ]} />}
     metricas={[
       { etiqueta: "Asesorías", valor: String(total) },
       { etiqueta: "Pendientes", valor: String(pendientes) },

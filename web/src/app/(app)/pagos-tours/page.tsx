@@ -3,6 +3,8 @@ import { PanelListado } from "@/components/modulos/PanelListado";
 import { db } from "@/lib/db";
 import { moduloActivo } from "@/lib/modulos";
 import { LIMITE_PANEL } from "@/lib/paginacion";
+import { FormularioModulo } from "@/components/modulos/FormularioModulo";
+import { hoyMexico, LIMITE_OPCIONES, OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +21,19 @@ export default async function PagosToursPage() {
     db.pagoTour.groupBy({ by: ["metodo"], where: { metodo: { not: null } } }),
   ]);
   const moneda = (valor: number) => valor.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
+  const conSaldo = await db.reservaTour.findMany({
+    where: { saldo: { gt: 0 } }, include: { contacto: true }, orderBy: { createdAt: "desc" }, take: LIMITE_OPCIONES,
+  });
   return <PanelListado titulo="Cobranza de viajes" descripcion="Anticipos y liquidaciones de las reservas."
+    acciones={<FormularioModulo boton="+ Registrar pago" titulo="Registrar pago" endpoint="/api/viajes/pagos"
+      campos={[
+        { nombre: "reservaId", etiqueta: "Reserva", tipo: "seleccion", requerido: true, opciones: opcionesDe(conSaldo, (r) => `${r.codigo} · ${r.contacto.nombre} · saldo ${Number(r.saldo).toLocaleString("es-MX", { style: "currency", currency: "MXN" })}`, "Elige una reserva con saldo") },
+        { nombre: "monto", etiqueta: "Monto", tipo: "dinero", requerido: true },
+        { nombre: "metodo", etiqueta: "Método", tipo: "seleccion", opciones: OPCIONES.metodoPago },
+        { nombre: "referencia", etiqueta: "Referencia", tipo: "texto" },
+        { nombre: "concepto", etiqueta: "Concepto", tipo: "texto", valorInicial: "Pago de reservación" },
+        { nombre: "fecha", etiqueta: "Fecha", tipo: "fecha", valorInicial: hoyMexico() },
+      ]} />}
     metricas={[
       { etiqueta: "Movimientos", valor: String(totales._count._all) },
       { etiqueta: "Cobrado", valor: moneda(Number(totales._sum.monto ?? 0)) },

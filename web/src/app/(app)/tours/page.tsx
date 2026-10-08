@@ -3,6 +3,8 @@ import { PanelListado } from "@/components/modulos/PanelListado";
 import { db } from "@/lib/db";
 import { moduloActivo } from "@/lib/modulos";
 import { LIMITE_PANEL } from "@/lib/paginacion";
+import { FormularioModulo } from "@/components/modulos/FormularioModulo";
+import { hoyMexico, LIMITE_OPCIONES, OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,20 @@ export default async function ToursPage() {
     db.tour.aggregate({ _sum: { capacidad: true } }),
   ]);
   return <PanelListado titulo="Tours y salidas" descripcion="Experiencias, itinerarios, fechas, precios y cupo."
+    acciones={<FormularioModulo boton="+ Nuevo tour" titulo="Nuevo tour" endpoint="/api/viajes/tours"
+      campos={[
+        { nombre: "nombre", etiqueta: "Nombre", tipo: "texto", requerido: true },
+        { nombre: "destino", etiqueta: "Destino", tipo: "texto", requerido: true },
+        { nombre: "pais", etiqueta: "País", tipo: "texto" },
+        { nombre: "fechaSalida", etiqueta: "Fecha de salida", tipo: "fecha" },
+        { nombre: "fechaRegreso", etiqueta: "Fecha de regreso", tipo: "fecha" },
+        { nombre: "duracionDias", etiqueta: "Duración (días)", tipo: "numero", valorInicial: "1" },
+        { nombre: "capacidad", etiqueta: "Cupo (personas)", tipo: "numero", requerido: true },
+        { nombre: "precio", etiqueta: "Precio por persona", tipo: "dinero", requerido: true },
+        { nombre: "puntoEncuentro", etiqueta: "Punto de encuentro", tipo: "texto" },
+        { nombre: "incluye", etiqueta: "Incluye", tipo: "textarea" },
+        { nombre: "estado", etiqueta: "Estado", tipo: "seleccion", opciones: OPCIONES.estadoTour },
+      ]} />}
     metricas={[
       { etiqueta: "Experiencias", valor: String(total) },
       { etiqueta: "Publicadas", valor: String(publicadas) },

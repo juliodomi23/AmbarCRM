@@ -34,10 +34,10 @@ export function validarAlumno(body: Record<string, unknown>) {
 export function validarCurso(body: Record<string, unknown>) {
   const nombre = texto(body.nombre, 200);
   const capacidad = Number(body.capacidad);
-  const mensualidad = Number(body.mensualidad);
+  const mensualidad = dinero(body.mensualidad ?? 0);
   if (!nombre) return { error: "El nombre es obligatorio" } as const;
   if (!Number.isInteger(capacidad) || capacidad <= 0) return { error: "Capacidad inválida" } as const;
-  if (!Number.isFinite(mensualidad) || mensualidad < 0) return { error: "Mensualidad inválida" } as const;
+  if (mensualidad === null) return { error: "Mensualidad inválida (máximo 2 decimales)" } as const;
   return {
     data: {
       clave: texto(body.clave, 80),

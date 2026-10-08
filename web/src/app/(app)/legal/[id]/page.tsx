@@ -5,6 +5,8 @@ import { aBigInt } from "@/lib/ids";
 import { esPasante } from "@/lib/legal";
 import { moduloActivo } from "@/lib/modulos";
 import { getSesion } from "@/lib/session";
+import { FormularioModulo } from "@/components/modulos/FormularioModulo";
+import { hoyMexico, OPCIONES } from "@/lib/opciones-formularios";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +63,19 @@ export default async function DetalleExpedientePage({ params }: { params: Promis
         </article>
       </section>
       <section className="rounded-xl border bg-card">
-        <h2 className="border-b p-4 font-semibold">Historial del expediente</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b p-4">
+          <h2 className="font-semibold">Historial del expediente</h2>
+          <FormularioModulo boton="+ Agregar registro" titulo="Nuevo registro del expediente"
+            endpoint={`/api/legal/expedientes/${expediente.id}/registros`}
+            campos={[
+              { nombre: "tipo", etiqueta: "Tipo", tipo: "seleccion", requerido: true, opciones: OPCIONES.tipoRegistroLegal },
+              { nombre: "titulo", etiqueta: "Título", tipo: "texto", requerido: true },
+              { nombre: "descripcion", etiqueta: "Descripción", tipo: "textarea" },
+              { nombre: "fechaInicio", etiqueta: "Fecha", tipo: "fecha", valorInicial: hoyMexico() },
+              { nombre: "fechaFin", etiqueta: "Vence (términos)", tipo: "fecha" },
+              { nombre: "estado", etiqueta: "Estado", tipo: "texto" },
+            ]} />
+        </div>
         {expediente.registros.map((registro) => (
           <article key={String(registro.id)} className="border-b p-4 last:border-0">
             <div className="flex flex-wrap justify-between gap-2">

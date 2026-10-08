@@ -3,6 +3,8 @@ import { PanelListado } from "@/components/modulos/PanelListado";
 import { db } from "@/lib/db";
 import { moduloActivo } from "@/lib/modulos";
 import { LIMITE_PANEL } from "@/lib/paginacion";
+import { FormularioModulo } from "@/components/modulos/FormularioModulo";
+import { hoyMexico, LIMITE_OPCIONES, OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +20,19 @@ export default async function InscripcionesAcademiaPage() {
     db.inscripcionAcademia.count({ where: { estado: "activa" } }),
     db.inscripcionAcademia.groupBy({ by: ["cursoId"] }),
   ]);
+  const alumnosActivos = await db.alumnoAcademia.findMany({
+    where: { estado: "activo" }, include: { contacto: true }, orderBy: { contacto: { nombre: "asc" } }, take: LIMITE_OPCIONES,
+  });
+  const cursosAbiertos = await db.cursoAcademia.findMany({
+    where: { estado: "abierto" }, orderBy: { nombre: "asc" }, take: LIMITE_OPCIONES,
+  });
   return <PanelListado titulo="Inscripciones" descripcion="Altas, bajas y avance por alumno y curso."
+    acciones={<FormularioModulo boton="+ Inscribir" titulo="Inscribir alumno" endpoint="/api/academia/inscripciones"
+      campos={[
+        { nombre: "alumnoId", etiqueta: "Alumno", tipo: "seleccion", requerido: true, opciones: opcionesDe(alumnosActivos, (a) => `${a.contacto.nombre}${a.matricula ? ` · ${a.matricula}` : ""}`, "Elige un alumno") },
+        { nombre: "cursoId", etiqueta: "Curso", tipo: "seleccion", requerido: true, opciones: opcionesDe(cursosAbiertos, (c) => c.nombre, "Elige un curso") },
+        { nombre: "descuento", etiqueta: "Descuento (%)", tipo: "numero", valorInicial: "0" },
+      ]} />}
     metricas={[
       { etiqueta: "Inscripciones", valor: String(totales._count._all) },
       { etiqueta: "Activas", valor: String(activas) },

@@ -5,6 +5,8 @@ import { esPasante } from "@/lib/legal";
 import { moduloActivo } from "@/lib/modulos";
 import { LIMITE_PANEL } from "@/lib/paginacion";
 import { getSesion } from "@/lib/session";
+import { FormularioModulo } from "@/components/modulos/FormularioModulo";
+import { hoyMexico, LIMITE_OPCIONES, OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +28,25 @@ export default async function OperacionLegalPage() {
     db.registroOperacionLegal.count({ where: filtro }),
     db.registroOperacionLegal.count({ where: { ...filtro, tipo: "checada" } }),
   ]);
+  const listaSucursales = await db.sucursalLegal.findMany({ where: { activa: true }, orderBy: { nombre: "asc" } });
   return <PanelLegal titulo="Operación del despacho" descripcion="Sucursales, asistencia y productividad del equipo."
+    acciones={<>
+      <FormularioModulo boton="+ Registrar" titulo="Registrar actividad" endpoint="/api/legal/operacion"
+      campos={[
+        { nombre: "tipo", etiqueta: "Tipo", tipo: "seleccion", requerido: true, opciones: OPCIONES.tipoOperacion },
+        { nombre: "sucursalId", etiqueta: "Sucursal", tipo: "seleccion", opciones: opcionesDe(listaSucursales, (s) => s.nombre, "Sin sucursal") },
+        { nombre: "fecha", etiqueta: "Fecha", tipo: "fecha", valorInicial: hoyMexico() },
+        { nombre: "descripcion", etiqueta: "Descripción", tipo: "textarea" },
+      ]} />
+      {sesion.user.rol === "admin" && (
+        <FormularioModulo boton="+ Sucursal" titulo="Nueva sucursal" endpoint="/api/legal/sucursales"
+        campos={[
+          { nombre: "nombre", etiqueta: "Nombre", tipo: "texto", requerido: true },
+          { nombre: "direccion", etiqueta: "Dirección", tipo: "texto" },
+          { nombre: "telefono", etiqueta: "Teléfono", tipo: "texto" },
+        ]} />
+      )}
+    </>}
     metricas={[
       { etiqueta: "Sucursales", valor: String(sucursales) },
       { etiqueta: "Equipo activo", valor: String(usuarios) },

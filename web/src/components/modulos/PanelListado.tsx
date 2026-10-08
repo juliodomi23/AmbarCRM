@@ -17,11 +17,13 @@ export function PanelListado({
   descripcion,
   items,
   metricas,
+  acciones,
 }: {
   titulo: string;
   descripcion: string;
   items: ItemListado[];
   metricas: { etiqueta: string; valor: string }[];
+  acciones?: React.ReactNode;
 }) {
   const [busqueda, setBusqueda] = useState("");
   const visibles = useMemo(() => {
@@ -32,9 +34,12 @@ export function PanelListado({
   }, [busqueda, items]);
   return (
     <div className="space-y-5 p-4 md:p-6">
-      <header>
-        <h1 className="text-2xl font-bold">{titulo}</h1>
-        <p className="text-sm text-muted-foreground">{descripcion}</p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">{titulo}</h1>
+          <p className="text-sm text-muted-foreground">{descripcion}</p>
+        </div>
+        {acciones && <div className="flex flex-wrap gap-2">{acciones}</div>}
       </header>
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {metricas.map((metrica) => (
