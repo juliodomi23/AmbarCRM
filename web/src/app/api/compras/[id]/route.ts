@@ -6,7 +6,12 @@ import {
   ESTADOS_COMPRA,
   type EstadoCompra,
 } from "@/lib/retail";
-import { ErrorRetail, transaccionTenant } from "@/lib/retail-db";
+import {
+  bloquearCompra,
+  bloquearProductos,
+  ErrorRetail,
+  transaccionTenant,
+} from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
 import { requireSesion } from "@/lib/session";
 
@@ -30,6 +35,7 @@ export async function PATCH(
 
   try {
     const compra = await transaccionTenant(sesion.orgId, async (tx) => {
+      await bloquearCompra(tx, id);
       const actual = await tx.compra.findUnique({
         where: { id },
         include: { partidas: { include: { producto: true } } },
@@ -37,6 +43,10 @@ export async function PATCH(
       if (!actual) throw new ErrorRetail("Compra no encontrada", 404);
       const debeAplicar = compraUsaInventario(estado);
       if (debeAplicar !== actual.stockAplicado) {
+        await bloquearProductos(
+          tx,
+          actual.partidas.map((partida) => partida.productoId),
+        );
         for (const partida of actual.partidas) {
           const producto = await tx.producto.findUnique({ where: { id: partida.productoId } });
           if (!producto) throw new ErrorRetail("Uno de los productos ya no existe");

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireModuloActivo } from "@/lib/modulos";
 import { compraUsaInventario, folioCompra, validarCompra } from "@/lib/retail";
-import { ErrorRetail, transaccionTenant } from "@/lib/retail-db";
+import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
 import { requireSesion } from "@/lib/session";
 
@@ -43,6 +43,10 @@ export async function POST(req: NextRequest) {
       const { proveedorId, partidas, ...cabecera } = validacion.data;
       const proveedor = await tx.proveedor.findUnique({ where: { id: proveedorId } });
       if (!proveedor?.activo) throw new ErrorRetail("El proveedor no existe o está inactivo");
+      await bloquearProductos(
+        tx,
+        partidas.map((partida) => partida.productoId),
+      );
       const productos = await tx.producto.findMany({
         where: { id: { in: partidas.map((partida) => partida.productoId) }, activo: true },
       });

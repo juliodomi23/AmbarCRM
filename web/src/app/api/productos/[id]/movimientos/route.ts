@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { aBigInt } from "@/lib/ids";
 import { requireModuloActivo } from "@/lib/modulos";
 import { validarMovimiento } from "@/lib/retail";
-import { ErrorRetail, transaccionTenant } from "@/lib/retail-db";
+import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
 import { requireSesion } from "@/lib/session";
 
@@ -26,6 +26,7 @@ export async function POST(
 
   try {
     const resultado = await transaccionTenant(sesion.orgId, async (tx) => {
+      await bloquearProductos(tx, [id]);
       const producto = await tx.producto.findUnique({ where: { id } });
       if (!producto) throw new ErrorRetail("Producto no encontrado", 404);
       const cambio = validacion.tipo === "entrada" ? validacion.cantidad : -validacion.cantidad;

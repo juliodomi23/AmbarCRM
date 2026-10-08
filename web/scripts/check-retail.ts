@@ -15,6 +15,7 @@ const sql = await readFile(
   new URL("../prisma/sql/actualizaciones.sql", import.meta.url),
   "utf8",
 );
+const retailDb = await readFile(new URL("../src/lib/retail-db.ts", import.meta.url), "utf8");
 
 assert.match(catalogo, /clave: "productos"[\s\S]*?ruta: "\/productos"/);
 assert.match(catalogo, /clave: "compras"[\s\S]*?ruta: "\/compras"/);
@@ -62,5 +63,8 @@ assert.equal(estadoUsaInventario("cancelada"), false);
 assert.equal(estadoUsaInventario("borrador"), false);
 assert.equal(compraUsaInventario("recibida"), true);
 assert.equal(compraUsaInventario("ordenada"), false);
+assert.match(retailDb, /FROM productos[\s\S]*?FOR UPDATE/);
+assert.match(retailDb, /FROM ventas[\s\S]*?FOR UPDATE/);
+assert.match(retailDb, /FROM compras[\s\S]*?FOR UPDATE/);
 
 console.log("retail: productos, inventario, compras, proveedores, ventas y pedidos OK");

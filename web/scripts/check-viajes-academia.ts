@@ -11,6 +11,7 @@ import { validarPagoTour, validarReservaTour, validarTour } from "../src/lib/via
 
 const catalogo = await readFile(new URL("../src/lib/modulos.ts", import.meta.url), "utf8");
 const sql = await readFile(new URL("../prisma/sql/actualizaciones.sql", import.meta.url), "utf8");
+const cuposDb = await readFile(new URL("../src/lib/cupos-db.ts", import.meta.url), "utf8");
 
 for (const clave of [
   "tours",
@@ -46,5 +47,10 @@ assert.ok("data" in validarCurso({ nombre: "Inglés", capacidad: 10, mensualidad
 assert.ok("data" in validarInscripcion({ alumnoId: 1, cursoId: 1 }));
 assert.ok("data" in validarColegiatura({ alumnoId: 1, monto: 1200, vencimiento: "2026-10-10" }));
 assert.ok("data" in validarAsistencia({ alumnoId: 1, cursoId: 1, fecha: "2026-10-07" }));
+assert.match(cuposDb, /FROM tours[\s\S]*?FOR UPDATE/);
+assert.match(cuposDb, /reservaTour\.aggregate/);
+assert.match(cuposDb, /FROM cursos_academia[\s\S]*?FOR UPDATE/);
+assert.match(cuposDb, /inscripcionAcademia\.count/);
+assert.match(cuposDb, /FROM reservas_tour[\s\S]*?FOR UPDATE/);
 
 console.log("viajes y academia: catálogo, reservas, cobros, alumnos, cursos y asistencia OK");

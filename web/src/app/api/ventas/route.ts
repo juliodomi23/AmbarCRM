@@ -7,7 +7,7 @@ import {
   folioVenta,
   validarVenta,
 } from "@/lib/retail";
-import { ErrorRetail, transaccionTenant } from "@/lib/retail-db";
+import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
 import { requireSesion } from "@/lib/session";
 
@@ -49,6 +49,10 @@ export async function POST(req: NextRequest) {
         const contacto = await tx.contacto.findUnique({ where: { id: contactoId } });
         if (!contacto) throw new ErrorRetail("El cliente no existe");
       }
+      await bloquearProductos(
+        tx,
+        partidas.map((partida) => partida.productoId),
+      );
       const productos = await tx.producto.findMany({
         where: { id: { in: partidas.map((partida) => partida.productoId) }, activo: true },
       });
