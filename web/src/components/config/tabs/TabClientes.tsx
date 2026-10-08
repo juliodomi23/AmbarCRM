@@ -240,19 +240,27 @@ export function TabClientes({
                           ),
                         ).length;
                         return (
-                          <section
+                          <details
                             key={grupo.area}
-                            className="rounded-xl border border-border/80 bg-muted/20 p-2.5"
+                            open={grupo.area === "CRM y agenda"}
+                            className="group rounded-xl border border-border/80 bg-muted/20 p-2.5"
                           >
-                            <div className="mb-2 flex items-center justify-between px-1">
-                              <h4 className="text-xs font-semibold text-foreground">
+                            <summary className="flex cursor-pointer list-none items-center justify-between px-1">
+                              <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                                <span
+                                  aria-hidden="true"
+                                  className="text-muted-foreground transition-transform
+                                    group-open:rotate-90"
+                                >
+                                  ›
+                                </span>
                                 {grupo.area}
-                              </h4>
+                              </span>
                               <span className="text-[10px] text-muted-foreground">
                                 {activos}/{grupo.modulos.length}
                               </span>
-                            </div>
-                            <div className="space-y-1.5">
+                            </summary>
+                            <div className="mt-2 space-y-1.5">
                               {grupo.modulos.map((modulo) => {
                                 const activo = (
                                   modulosActivos[String(o.id)] ?? []
@@ -302,7 +310,7 @@ export function TabClientes({
                                 );
                               })}
                             </div>
-                          </section>
+                          </details>
                         );
                       })}
                     </div>
