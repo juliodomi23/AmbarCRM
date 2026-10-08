@@ -38,3 +38,16 @@ No aparecieron `Application error`, `Unhandled`, `404`, `Internal Server Error`,
 - El kanban de Embudos conserva desplazamiento horizontal intencional en escritorio.
 - El navegador embebido permitió revisar capturas en línea, pero no exportar archivos PNG desde la
   API disponible. `docs/capturas/README.md` conserva el alcance y las dimensiones de la revisión.
+
+## Idempotencia de demos
+
+Cada uno de los siete seeds se ejecutó cinco veces en el mismo Postgres 16 y después se repitió una
+ronda adicional comparando los conteos de todas las tablas con `org_id`. No hubo diferencias.
+
+Conteos agregados de las siete organizaciones después de la ronda de comprobación:
+
+- 30 contactos, 15 citas, 6 oportunidades y 3 conversaciones.
+- 10 productos, 6 ventas, 2 compras y 20 movimientos de inventario.
+- 3 tours, 3 reservas y 2 pagos de tours.
+- 2 cursos, 4 alumnos, 4 inscripciones, 4 colegiaturas y 4 asistencias.
+- 5 propiedades, 6 vehículos y 2 expedientes legales.
