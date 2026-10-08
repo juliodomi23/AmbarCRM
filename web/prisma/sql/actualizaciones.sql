@@ -821,8 +821,9 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
 -- multi-tenant.sql crea la organización plataforma con id explícito. Sin sincronizar
 -- la secuencia, el primer tenant creado después puede intentar reutilizar ese id.
+-- Nunca baja la secuencia: si se borró una org con id mayor, su id no se reutiliza.
 SELECT setval(
   pg_get_serial_sequence('orgs', 'id'),
-  GREATEST(COALESCE((SELECT MAX(id) FROM orgs), 0), 1),
+  GREATEST(COALESCE((SELECT MAX(id) FROM orgs), 0), (SELECT last_value FROM orgs_id_seq), 1),
   true
 );

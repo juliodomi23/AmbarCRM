@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { puestosParaModulos, validarPuesto } from "../src/lib/puestos";
+import { puestosParaModulos, validarPuesto } from "../src/lib/puestos.ts";
 
 const modulos = await readFile(new URL("../src/lib/modulos.ts", import.meta.url), "utf8");
 const auth = await readFile(new URL("../src/lib/auth.ts", import.meta.url), "utf8");
