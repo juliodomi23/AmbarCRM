@@ -281,6 +281,9 @@ comando `node` sin el prefijo de variable.
 - [ ] Proteger cada ruta del módulo con `conModulo(clave, opciones, handler)`.
 - [ ] Crear componentes pequeños y reutilizables para la interfaz.
 - [ ] Crear la página del módulo y comprobar su estado activo antes de mostrarla.
+- [ ] Dar captura en pantalla con `FormularioModulo` (`components/modulos/`): se le pasa
+  la lista de campos (texto, número, dinero, fecha, selección o contacto) y el endpoint;
+  el servidor valida todo. Las opciones comunes están en `lib/opciones-formularios.ts`.
 - [ ] Preparar un seed idempotente con datos exclusivamente ficticios.
 - [ ] Añadir o extender un script `scripts/check-*.ts`.
 - [ ] Incluir las tablas nuevas en la prueba automática de aislamiento multi-tenant.

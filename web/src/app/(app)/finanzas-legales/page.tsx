@@ -5,6 +5,8 @@ import { esPasante } from "@/lib/legal";
 import { moduloActivo } from "@/lib/modulos";
 import { LIMITE_PANEL } from "@/lib/paginacion";
 import { getSesion } from "@/lib/session";
+import { FormularioModulo } from "@/components/modulos/FormularioModulo";
+import { hoyMexico, LIMITE_OPCIONES, OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +29,19 @@ export default async function FinanzasLegalesPage() {
   const deTipo = (tipo: string) => porTipo.find((item) => item.tipo === tipo);
   const total = (tipo: string) => Number(deTipo(tipo)?._sum.monto ?? 0);
   const moneda = (valor: number) => valor.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
+  const expedientesOpciones = await db.expedienteLegal.findMany({
+    where: { ...(esPasante(sesion.user.puesto, sesion.user.rol) ? { responsableId: BigInt(sesion.user.id) } : {}), estado: { in: ["activo", "suspendido"] } }, include: { contacto: true },
+    orderBy: { updatedAt: "desc" }, take: LIMITE_OPCIONES,
+  });
   return <PanelLegal titulo="Honorarios y caja" descripcion="Planes, cobros, gastos, caja y diligencias."
+    acciones={<FormularioModulo boton="+ Nuevo movimiento" titulo="Nuevo movimiento" endpoint="/api/legal/movimientos"
+      campos={[
+        { nombre: "tipo", etiqueta: "Tipo", tipo: "seleccion", requerido: true, opciones: OPCIONES.tipoMovimiento },
+        { nombre: "concepto", etiqueta: "Concepto", tipo: "texto", requerido: true },
+        { nombre: "monto", etiqueta: "Monto", tipo: "dinero", requerido: true, ayuda: "Los gastos pueden capturarse en negativo" },
+        { nombre: "expedienteId", etiqueta: "Expediente", tipo: "seleccion", opciones: opcionesDe(expedientesOpciones, (e) => [e.numeroInterno, e.materia, e.contacto?.nombre].filter(Boolean).join(" · "), "Sin expediente") },
+        { nombre: "fecha", etiqueta: "Fecha", tipo: "fecha", valorInicial: hoyMexico() },
+      ]} />}
     metricas={[
       { etiqueta: "Movimientos", valor: String(cantidad) },
       { etiqueta: "Cobrado", valor: moneda(total("pago")) },

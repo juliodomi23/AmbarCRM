@@ -32,9 +32,9 @@ export function validarExpedienteLegal(body: Record<string, unknown>) {
   if (!ESTADOS_EXPEDIENTE.includes(estado as (typeof ESTADOS_EXPEDIENTE)[number])) {
     return { error: "Estado de expediente inválido" } as const;
   }
-  const cuantia = body.cuantia === "" || body.cuantia == null ? null : Number(body.cuantia);
-  if (cuantia !== null && (!Number.isFinite(cuantia) || cuantia < 0)) {
-    return { error: "La cuantía debe ser un número positivo" } as const;
+  const cuantia = body.cuantia === "" || body.cuantia == null ? null : dinero(body.cuantia);
+  if (cuantia === null && body.cuantia !== "" && body.cuantia != null) {
+    return { error: "La cuantía debe ser un monto positivo con máximo 2 decimales" } as const;
   }
   return {
     data: {
@@ -111,6 +111,32 @@ export function validarAsesoriaLegal(body: Record<string, unknown>) {
       expedienteId: entero(body.expedienteId),
       sucursalId: entero(body.sucursalId),
       abogadoId: entero(body.abogadoId),
+    },
+  } as const;
+}
+
+const TIPOS_OPERACION = ["checada", "actividad", "incidencia"] as const;
+
+export function validarSucursalLegal(body: Record<string, unknown>) {
+  const nombre = texto(body.nombre, 160);
+  if (!nombre) return { error: "El nombre de la sucursal es obligatorio" } as const;
+  return {
+    data: { nombre, direccion: texto(body.direccion, 300), telefono: texto(body.telefono, 30) },
+  } as const;
+}
+
+export function validarRegistroOperacion(body: Record<string, unknown>) {
+  const tipo = String(body.tipo ?? "checada");
+  if (!TIPOS_OPERACION.includes(tipo as (typeof TIPOS_OPERACION)[number])) {
+    return { error: "Tipo de registro inválido" } as const;
+  }
+  return {
+    data: {
+      tipo,
+      fecha: fecha(body.fecha) ?? new Date(),
+      estado: texto(body.estado, 80),
+      descripcion: texto(body.descripcion, 2000),
+      sucursalId: entero(body.sucursalId),
     },
   } as const;
 }

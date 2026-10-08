@@ -9,7 +9,16 @@ for (const ruta of rutas) {
   const contenido = await readFile(new URL(ruta.replaceAll("\\", "/"), raizApi), "utf8");
   if (contenido.includes("conModulo(")) rutasConModulo.push(ruta);
 }
-assert.equal(rutasConModulo.length, 33, "deben existir 33 rutas de módulos con conModulo (31 + 2 de lealtad)");
+assert.equal(rutasConModulo.length, 35, "deben existir 35 rutas de módulos con conModulo (31 + 2 de lealtad + 2 de operación legal)");
+
+// Cada módulo de listado debe permitir capturar desde la pantalla, no solo por API.
+for (const pagina of [
+  "tours", "reservas-tours", "pagos-tours", "alumnos", "cursos-academia", "inscripciones-academia",
+  "colegiaturas", "asistencia-academia", "legal", "asesorias-legales", "finanzas-legales", "operacion-legal",
+]) {
+  const contenido = await readFile(`src/app/(app)/${pagina}/page.tsx`, "utf8");
+  assert.match(contenido, /<FormularioModulo/, `${pagina} debe tener formulario de captura`);
+}
 
 const config = await readFile(
   new URL("../src/components/config/ConfiguracionCliente.tsx", import.meta.url),
