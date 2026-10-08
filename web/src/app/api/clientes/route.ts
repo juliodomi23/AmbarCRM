@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
-import { requireModuloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
-import { requireSesion } from "@/lib/session";
+import { conModulo } from "@/lib/con-modulo";
+import { paginacionListado } from "@/lib/paginacion";
 
 function texto(valor: unknown) {
   return String(valor ?? "").trim() || null;
@@ -36,11 +36,7 @@ const incluirCliente = {
   },
 };
 
-export async function GET(req: NextRequest) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("clientes");
-  if (apagado) return apagado;
+export const GET = conModulo("clientes", {}, async (sesion, req: NextRequest) => {
   const contactoId = aBigInt(req.nextUrl.searchParams.get("contactoId"));
   const clientes = await db.contacto.findMany({
     where: {
@@ -49,15 +45,12 @@ export async function GET(req: NextRequest) {
     },
     include: incluirCliente,
     orderBy: { nombre: "asc" },
+    ...paginacionListado(req),
   });
   return NextResponse.json(serializar({ clientes }));
-}
+});
 
-export async function POST(req: NextRequest) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("clientes");
-  if (apagado) return apagado;
+export const POST = conModulo("clientes", {}, async (sesion, req: NextRequest) => {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const fecha = fechaNacimiento(body.fechaNacimiento);
   if (fecha === undefined) {
@@ -112,4 +105,4 @@ export async function POST(req: NextRequest) {
     include: incluirCliente,
   });
   return NextResponse.json(serializar({ cliente }), { status: 201 });
-}
+});

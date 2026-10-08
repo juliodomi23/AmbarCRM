@@ -2,19 +2,11 @@ import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
-import { requireModuloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
-import { requireSesion } from "@/lib/session";
 import { validarVehiculo } from "@/lib/vehiculos";
+import { conModulo } from "@/lib/con-modulo";
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("automotriz");
-  if (apagado) return apagado;
+export const PATCH = conModulo("automotriz", {}, async (sesion, req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const id = aBigInt((await params).id);
   if (id === null) {
     return NextResponse.json({ error: "Vehículo inválido" }, { status: 400 });
@@ -43,4 +35,4 @@ export async function PATCH(
     }
     throw error;
   }
-}
+});

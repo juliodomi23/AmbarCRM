@@ -1,19 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { aBigInt } from "@/lib/ids";
-import { requireModuloActivo } from "@/lib/modulos";
 import { validarMovimiento } from "@/lib/retail";
 import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
-import { requireSesion } from "@/lib/session";
+import { conModulo } from "@/lib/con-modulo";
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("productos");
-  if (apagado) return apagado;
+export const POST = conModulo("productos", {}, async (sesion, req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const id = aBigInt((await params).id);
   if (id === null || sesion.orgId === null) {
     return NextResponse.json({ error: "Producto u organización inválidos" }, { status: 400 });
@@ -56,4 +48,4 @@ export async function POST(
     }
     throw error;
   }
-}
+});

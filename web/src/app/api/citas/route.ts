@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
-import { requireModuloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
-import { requireSesion } from "@/lib/session";
+import { conModulo } from "@/lib/con-modulo";
+import { paginacionListado } from "@/lib/paginacion";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  const s = await requireSesion();
-  if ("error" in s) return s.error;
-  const apagado = await requireModuloActivo("citas");
-  if (apagado) return apagado;
+export const GET = conModulo("citas", {}, async (s, req: NextRequest) => {
   const desde = new Date(
     req.nextUrl.searchParams.get("desde") ?? new Date().toISOString(),
   );
@@ -31,15 +27,12 @@ export async function GET(req: NextRequest) {
       doctor: true,
     },
     orderBy: { inicio: "asc" },
+    ...paginacionListado(req),
   });
   return NextResponse.json(serializar({ citas }));
-}
+});
 
-export async function POST(req: NextRequest) {
-  const s = await requireSesion();
-  if ("error" in s) return s.error;
-  const apagado = await requireModuloActivo("citas");
-  if (apagado) return apagado;
+export const POST = conModulo("citas", {}, async (s, req: NextRequest) => {
   const b = await req.json().catch(() => ({}));
   const doctorId = b.doctorId ? aBigInt(String(b.doctorId)) : null;
   const inicio = new Date(b.inicio),
@@ -85,4 +78,4 @@ export async function POST(req: NextRequest) {
     },
   });
   return NextResponse.json(serializar({ cita }), { status: 201 });
-}
+});

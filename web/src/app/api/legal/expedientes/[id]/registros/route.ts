@@ -2,15 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { esPasante, validarRegistroLegal } from "@/lib/legal";
-import { requireModuloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
-import { requireSesion } from "@/lib/session";
+import { conModulo } from "@/lib/con-modulo";
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("legal");
-  if (apagado) return apagado;
+export const POST = conModulo("legal", {}, async (sesion, req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const expedienteId = aBigInt((await params).id);
   if (expedienteId === null) return NextResponse.json({ error: "id inválido" }, { status: 400 });
   if (
@@ -30,4 +25,4 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     data: { ...validacion.data, expedienteId, usuarioId: sesion.userId },
   });
   return NextResponse.json(serializar({ registro }), { status: 201 });
-}
+});

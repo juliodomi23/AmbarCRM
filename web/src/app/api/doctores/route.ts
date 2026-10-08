@@ -1,25 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireModuloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
-import { requireSesion } from "@/lib/session";
+import { conModulo } from "@/lib/con-modulo";
+import { paginacionListado } from "@/lib/paginacion";
 
-export async function GET() {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("citas");
-  if (apagado) return apagado;
+export const GET = conModulo("citas", {}, async (sesion, req: NextRequest) => {
   const doctores = await db.doctor.findMany({
     orderBy: [{ activo: "desc" }, { nombre: "asc" }],
+    ...paginacionListado(req),
   });
   return NextResponse.json(serializar({ doctores }));
-}
+});
 
-export async function POST(req: NextRequest) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("citas");
-  if (apagado) return apagado;
+export const POST = conModulo("citas", {}, async (sesion, req: NextRequest) => {
   const body = await req.json().catch(() => ({}));
   const nombre = String(body.nombre ?? "").trim();
   if (!nombre) {
@@ -38,4 +31,4 @@ export async function POST(req: NextRequest) {
     },
   });
   return NextResponse.json(serializar({ doctor }), { status: 201 });
-}
+});

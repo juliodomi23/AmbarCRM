@@ -1,7 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireModuloActivo } from "@/lib/modulos";
 import {
   estadoUsaInventario,
   folioVenta,
@@ -9,13 +8,9 @@ import {
 } from "@/lib/retail";
 import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
-import { requireSesion } from "@/lib/session";
+import { conModulo } from "@/lib/con-modulo";
 
-export async function GET() {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("ventas");
-  if (apagado) return apagado;
+export const GET = conModulo("ventas", {}, async (sesion) => {
   const ventas = await db.venta.findMany({
     include: {
       contacto: { select: { id: true, nombre: true, telefono: true } },
@@ -26,13 +21,9 @@ export async function GET() {
     take: 100,
   });
   return NextResponse.json(serializar({ ventas }));
-}
+});
 
-export async function POST(req: NextRequest) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("ventas");
-  if (apagado) return apagado;
+export const POST = conModulo("ventas", {}, async (sesion, req: NextRequest) => {
   if (sesion.orgId === null) {
     return NextResponse.json({ error: "Organización no disponible" }, { status: 400 });
   }
@@ -131,4 +122,4 @@ export async function POST(req: NextRequest) {
     }
     throw error;
   }
-}
+});

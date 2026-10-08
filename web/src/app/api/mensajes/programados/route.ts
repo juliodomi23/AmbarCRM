@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { serializar } from "@/lib/serialize";
+import { paginacionListado } from "@/lib/paginacion";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,8 @@ export async function GET(req: NextRequest) {
 
   const programados = await db.mensajeProgramado.findMany({
     where: { conversacionId: BigInt(convId), estado: "pendiente" },
-    orderBy: { enviarAt: "asc" }
+    orderBy: { enviarAt: "asc" },
+    ...paginacionListado(req),
   });
   return NextResponse.json({ programados: serializar(programados) });
 }

@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ErrorCupo, registrarPagoTourConSaldo } from "@/lib/cupos-db";
-import { requireModuloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
-import { requireSesion } from "@/lib/session";
 import { validarPagoTour } from "@/lib/viajes";
+import { conModulo } from "@/lib/con-modulo";
 
-export async function POST(req: NextRequest) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("pagos_tours");
-  if (apagado) return apagado;
+export const POST = conModulo("pagos_tours", {}, async (sesion, req: NextRequest) => {
   if (sesion.orgId === null) {
     return NextResponse.json({ error: "Organización no disponible" }, { status: 400 });
   }
@@ -24,4 +19,4 @@ export async function POST(req: NextRequest) {
     }
     throw error;
   }
-}
+});

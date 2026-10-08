@@ -1,17 +1,12 @@
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireModuloActivo } from "@/lib/modulos";
 import { compraUsaInventario, folioCompra, validarCompra } from "@/lib/retail";
 import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
-import { requireSesion } from "@/lib/session";
+import { conModulo } from "@/lib/con-modulo";
 
-export async function GET() {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("compras");
-  if (apagado) return apagado;
+export const GET = conModulo("compras", {}, async (sesion) => {
   const compras = await db.compra.findMany({
     include: {
       proveedor: true,
@@ -22,13 +17,9 @@ export async function GET() {
     take: 100,
   });
   return NextResponse.json(serializar({ compras }));
-}
+});
 
-export async function POST(req: NextRequest) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("compras");
-  if (apagado) return apagado;
+export const POST = conModulo("compras", {}, async (sesion, req: NextRequest) => {
   if (sesion.orgId === null) {
     return NextResponse.json({ error: "Organización no disponible" }, { status: 400 });
   }
@@ -116,4 +107,4 @@ export async function POST(req: NextRequest) {
     }
     throw error;
   }
-}
+});

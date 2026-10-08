@@ -1,30 +1,25 @@
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireModuloActivo } from "@/lib/modulos";
 import { validarProducto } from "@/lib/retail";
 import { transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
-import { requireSesion } from "@/lib/session";
+import { conModulo } from "@/lib/con-modulo";
+import { paginacionListado } from "@/lib/paginacion";
 
 function conflictoUnico(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
-export async function GET() {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("productos");
-  if (apagado) return apagado;
-  const productos = await db.producto.findMany({ orderBy: [{ activo: "desc" }, { nombre: "asc" }] });
+export const GET = conModulo("productos", {}, async (sesion, req: NextRequest) => {
+  const productos = await db.producto.findMany({
+    orderBy: [{ activo: "desc" }, { nombre: "asc" }],
+    ...paginacionListado(req),
+  });
   return NextResponse.json(serializar({ productos }));
-}
+});
 
-export async function POST(req: NextRequest) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("productos");
-  if (apagado) return apagado;
+export const POST = conModulo("productos", {}, async (sesion, req: NextRequest) => {
   if (sesion.orgId === null) {
     return NextResponse.json({ error: "Organización no disponible" }, { status: 400 });
   }
@@ -62,4 +57,4 @@ export async function POST(req: NextRequest) {
     }
     throw error;
   }
-}
+});

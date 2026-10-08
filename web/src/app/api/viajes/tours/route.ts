@@ -1,24 +1,20 @@
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireModuloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
-import { requireSesion } from "@/lib/session";
 import { validarTour } from "@/lib/viajes";
+import { conModulo } from "@/lib/con-modulo";
+import { paginacionListado } from "@/lib/paginacion";
 
-export async function GET() {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("tours");
-  if (apagado) return apagado;
-  return NextResponse.json(serializar({ tours: await db.tour.findMany({ orderBy: { fechaSalida: "asc" } }) }));
-}
+export const GET = conModulo("tours", {}, async (sesion, req: NextRequest) => {
+  const tours = await db.tour.findMany({
+    orderBy: { fechaSalida: "asc" },
+    ...paginacionListado(req),
+  });
+  return NextResponse.json(serializar({ tours }));
+});
 
-export async function POST(req: NextRequest) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("tours");
-  if (apagado) return apagado;
+export const POST = conModulo("tours", {}, async (sesion, req: NextRequest) => {
   const validacion = validarTour(await req.json().catch(() => ({})));
   if ("error" in validacion) return NextResponse.json({ error: validacion.error }, { status: 400 });
   try {
@@ -32,4 +28,4 @@ export async function POST(req: NextRequest) {
     }
     throw error;
   }
-}
+});

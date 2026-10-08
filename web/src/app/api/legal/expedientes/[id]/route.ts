@@ -2,15 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { esPasante, validarExpedienteLegal } from "@/lib/legal";
-import { requireModuloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
-import { requireSesion } from "@/lib/session";
+import { conModulo } from "@/lib/con-modulo";
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("legal");
-  if (apagado) return apagado;
+export const PATCH = conModulo("legal", {}, async (sesion, req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const id = aBigInt((await params).id);
   if (id === null) return NextResponse.json({ error: "id inválido" }, { status: 400 });
   const actual = await db.expedienteLegal.findFirst({
@@ -37,4 +32,4 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     },
   });
   return NextResponse.json(serializar({ expediente }));
-}
+});

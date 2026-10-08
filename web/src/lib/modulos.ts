@@ -236,7 +236,10 @@ export async function moduloHabilitado(clave: ClaveModulo) {
   );
 }
 
-export async function requireModuloActivo(clave: ClaveModulo) {
+export async function requireModuloActivo(
+  clave: ClaveModulo,
+  sesionActual?: { rol?: string; puesto?: string },
+) {
   const modulo = await db.moduloOrg.findFirst({
     where: { clave, activo: true },
     select: { config: true },
@@ -244,7 +247,9 @@ export async function requireModuloActivo(clave: ClaveModulo) {
   if (!modulo) {
     return Response.json({ error: "módulo no activo" }, { status: 404 });
   }
-  const sesion = await getSesion();
+  const sesion = sesionActual
+    ? { user: sesionActual }
+    : await getSesion();
   if (
     sesion?.user &&
     !puestoPuedeAcceder(

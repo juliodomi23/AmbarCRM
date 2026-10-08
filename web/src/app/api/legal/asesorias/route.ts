@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { esPasante, validarAsesoriaLegal } from "@/lib/legal";
-import { requireModuloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
-import { requireSesion } from "@/lib/session";
+import { conModulo } from "@/lib/con-modulo";
 
-export async function POST(req: NextRequest) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("asesorias_legales");
-  if (apagado) return apagado;
+export const POST = conModulo("asesorias_legales", {}, async (sesion, req: NextRequest) => {
   const validacion = validarAsesoriaLegal(await req.json().catch(() => ({})));
   if ("error" in validacion) {
     return NextResponse.json({ error: validacion.error }, { status: 400 });
@@ -23,4 +18,4 @@ export async function POST(req: NextRequest) {
     },
   });
   return NextResponse.json(serializar({ asesoria }), { status: 201 });
-}
+});

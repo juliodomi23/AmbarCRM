@@ -1,31 +1,24 @@
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireModuloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
-import { requireSesion } from "@/lib/session";
 import { validarVehiculo } from "@/lib/vehiculos";
+import { conModulo } from "@/lib/con-modulo";
+import { paginacionListado } from "@/lib/paginacion";
 
 function errorUnico(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
-export async function GET() {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("automotriz");
-  if (apagado) return apagado;
+export const GET = conModulo("automotriz", {}, async (sesion, req: NextRequest) => {
   const vehiculos = await db.vehiculo.findMany({
     orderBy: [{ estado: "asc" }, { createdAt: "desc" }],
+    ...paginacionListado(req),
   });
   return NextResponse.json(serializar({ vehiculos }));
-}
+});
 
-export async function POST(req: NextRequest) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("automotriz");
-  if (apagado) return apagado;
+export const POST = conModulo("automotriz", {}, async (sesion, req: NextRequest) => {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const validacion = validarVehiculo(body);
   if ("error" in validacion) {
@@ -43,5 +36,4 @@ export async function POST(req: NextRequest) {
     }
     throw error;
   }
-}
-
+});

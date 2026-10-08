@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validarInscripcion } from "@/lib/academia";
 import { ErrorCupo, inscribirAlumnoConCupo } from "@/lib/cupos-db";
-import { requireModuloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
-import { requireSesion } from "@/lib/session";
+import { conModulo } from "@/lib/con-modulo";
 
-export async function POST(req: NextRequest) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("inscripciones_academia");
-  if (apagado) return apagado;
+export const POST = conModulo("inscripciones_academia", {}, async (sesion, req: NextRequest) => {
   if (sesion.orgId === null) {
     return NextResponse.json({ error: "Organización no disponible" }, { status: 400 });
   }
@@ -24,4 +19,4 @@ export async function POST(req: NextRequest) {
     }
     throw error;
   }
-}
+});

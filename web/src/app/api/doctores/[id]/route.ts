@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireModuloActivo } from "@/lib/modulos";
-import { requireSesion } from "@/lib/session";
+import { conModulo } from "@/lib/con-modulo";
 
-export async function PATCH(
-  req: NextRequest,
-  props: { params: Promise<{ id: string }> },
-) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("citas");
-  if (apagado) return apagado;
+export const PATCH = conModulo("citas", {}, async (sesion, req: NextRequest, props: { params: Promise<{ id: string }> }) => {
   const body = await req.json().catch(() => ({}));
   const { id } = await props.params;
   await db.doctor.update({
@@ -18,4 +10,4 @@ export async function PATCH(
     data: { activo: Boolean(body.activo) },
   });
   return NextResponse.json({ ok: true });
-}
+});

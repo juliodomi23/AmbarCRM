@@ -1,27 +1,20 @@
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireModuloActivo } from "@/lib/modulos";
 import { validarProveedor } from "@/lib/retail";
 import { serializar } from "@/lib/serialize";
-import { requireSesion } from "@/lib/session";
+import { conModulo } from "@/lib/con-modulo";
+import { paginacionListado } from "@/lib/paginacion";
 
-export async function GET() {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("compras");
-  if (apagado) return apagado;
+export const GET = conModulo("compras", {}, async (sesion, req: NextRequest) => {
   const proveedores = await db.proveedor.findMany({
     orderBy: [{ activo: "desc" }, { nombre: "asc" }],
+    ...paginacionListado(req),
   });
   return NextResponse.json(serializar({ proveedores }));
-}
+});
 
-export async function POST(req: NextRequest) {
-  const sesion = await requireSesion();
-  if ("error" in sesion) return sesion.error;
-  const apagado = await requireModuloActivo("compras");
-  if (apagado) return apagado;
+export const POST = conModulo("compras", {}, async (sesion, req: NextRequest) => {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const validacion = validarProveedor(body);
   if ("error" in validacion) {
@@ -36,4 +29,4 @@ export async function POST(req: NextRequest) {
     }
     throw error;
   }
-}
+});

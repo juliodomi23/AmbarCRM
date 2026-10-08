@@ -239,3 +239,15 @@ Los puestos sugeridos son profesor y coordinador académico.
 cd web
 node scripts/seed-demo-academia.mjs academia@local.test AcademiaDemo2026!
 ```
+
+## Cómo agregar un módulo
+
+- [ ] Añadir la clave, ruta, descripción y acceso por puesto en `src/lib/modulos.ts`.
+- [ ] Agregar los modelos necesarios en `prisma/schema.prisma` y el SQL idempotente
+  correspondiente en `prisma/sql/actualizaciones.sql`.
+- [ ] Proteger cada ruta del módulo con `conModulo(clave, opciones, handler)`.
+- [ ] Crear componentes pequeños y reutilizables para la interfaz.
+- [ ] Crear la página del módulo y comprobar su estado activo antes de mostrarla.
+- [ ] Preparar un seed idempotente con datos exclusivamente ficticios.
+- [ ] Añadir o extender un script `scripts/check-*.ts`.
+- [ ] Incluir las tablas nuevas en la prueba automática de aislamiento multi-tenant.

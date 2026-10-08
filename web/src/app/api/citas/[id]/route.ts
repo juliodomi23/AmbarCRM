@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
-import { requireModuloActivo } from "@/lib/modulos";
-import { requireSesion } from "@/lib/session";
+import { conModulo } from "@/lib/con-modulo";
 
 const ESTADOS = [
   "programada",
@@ -13,14 +12,7 @@ const ESTADOS = [
   "no_asistio",
 ] as const;
 
-export async function PATCH(
-  req: NextRequest,
-  props: { params: Promise<{ id: string }> },
-) {
-  const s = await requireSesion();
-  if ("error" in s) return s.error;
-  const apagado = await requireModuloActivo("citas");
-  if (apagado) return apagado;
+export const PATCH = conModulo("citas", {}, async (s, req: NextRequest, props: { params: Promise<{ id: string }> }) => {
   const b = await req.json().catch(() => ({}));
   const { id } = await props.params;
   const data: {
@@ -64,4 +56,4 @@ export async function PATCH(
     );
   await db.cita.update({ where: { id: BigInt(id) }, data });
   return NextResponse.json({ ok: true });
-}
+});
