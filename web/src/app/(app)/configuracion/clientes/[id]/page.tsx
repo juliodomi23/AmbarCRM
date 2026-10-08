@@ -37,6 +37,9 @@ export default async function DetalleOrganizacionPage({
       ventas,
       proveedores,
       compras,
+      expedientesLegales,
+      asesoriasLegales,
+      movimientosLegales,
     ] =
       await Promise.all([
         db.usuario.findMany({
@@ -61,6 +64,9 @@ export default async function DetalleOrganizacionPage({
         db.venta.count(),
         db.proveedor.count(),
         db.compra.count(),
+        db.expedienteLegal.count(),
+        db.asesoriaLegal.count(),
+        db.movimientoLegal.count(),
       ]);
     return {
       usuarios,
@@ -78,6 +84,9 @@ export default async function DetalleOrganizacionPage({
         ventas,
         proveedores,
         compras,
+        expedientesLegales,
+        asesoriasLegales,
+        movimientosLegales,
       },
     };
   });

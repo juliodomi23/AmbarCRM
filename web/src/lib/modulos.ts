@@ -61,6 +61,34 @@ export const MODULOS = [
     icono: "M3 3h2l2 12h10l2-8H6M9 20h.01M17 20h.01",
     ruta: "/ventas",
   },
+  {
+    clave: "legal",
+    nombre: "Expedientes legales",
+    descripcion: "Asuntos, actuaciones, audiencias, términos y documentos.",
+    icono: "M12 3v18M5 7h14M7 7l-4 7h8L7 7zm10 0-4 7h8l-4-7M8 21h8",
+    ruta: "/legal",
+  },
+  {
+    clave: "asesorias_legales",
+    nombre: "Asesorías legales",
+    descripcion: "Consultas, seguimiento, conversión y responsables.",
+    icono: "M8 10h8M8 14h5M5 4h14v16H5z",
+    ruta: "/asesorias-legales",
+  },
+  {
+    clave: "finanzas_legales",
+    nombre: "Honorarios y caja",
+    descripcion: "Planes de pago, cobros, gastos y movimientos del despacho.",
+    icono: "M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
+    ruta: "/finanzas-legales",
+  },
+  {
+    clave: "operacion_legal",
+    nombre: "Operación del despacho",
+    descripcion: "Sucursales, productividad, asistencia y actividad del equipo.",
+    icono: "M4 21V10l8-7 8 7v11M9 21v-6h6v6M8 11h.01M16 11h.01",
+    ruta: "/operacion-legal",
+  },
 ] as const;
 
 export type ClaveModulo = (typeof MODULOS)[number]["clave"];

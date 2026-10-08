@@ -393,6 +393,190 @@ CREATE INDEX IF NOT EXISTS movimientos_compra_id_idx
 CREATE INDEX IF NOT EXISTS movimientos_inventario_org_idx
   ON movimientos_inventario(org_id);
 
+CREATE TABLE IF NOT EXISTS sucursales_legales (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  legacy_id TEXT,
+  nombre TEXT NOT NULL,
+  direccion TEXT,
+  telefono TEXT,
+  activa BOOLEAN NOT NULL DEFAULT true,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, legacy_id),
+  UNIQUE (org_id, nombre)
+);
+CREATE INDEX IF NOT EXISTS sucursales_legales_org_activa_idx
+  ON sucursales_legales(org_id, activa);
+
+CREATE TABLE IF NOT EXISTS expedientes_legales (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  legacy_id TEXT,
+  numero_interno TEXT,
+  numero_judicial TEXT,
+  contacto_id BIGINT REFERENCES contactos(id) ON DELETE SET NULL,
+  responsable_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  sucursal_id BIGINT REFERENCES sucursales_legales(id) ON DELETE SET NULL,
+  rol_cliente TEXT,
+  materia TEXT,
+  tipo_juicio TEXT,
+  juzgado TEXT,
+  etapa_procesal TEXT,
+  estado TEXT NOT NULL DEFAULT 'activo',
+  cuantia NUMERIC(14, 2),
+  resumen TEXT,
+  fecha_inicio DATE,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, legacy_id)
+);
+CREATE INDEX IF NOT EXISTS expedientes_legales_org_estado_updated_idx
+  ON expedientes_legales(org_id, estado, updated_at);
+CREATE INDEX IF NOT EXISTS expedientes_legales_contacto_id_idx
+  ON expedientes_legales(contacto_id);
+CREATE INDEX IF NOT EXISTS expedientes_legales_responsable_id_idx
+  ON expedientes_legales(responsable_id);
+CREATE INDEX IF NOT EXISTS expedientes_legales_sucursal_id_idx
+  ON expedientes_legales(sucursal_id);
+
+CREATE TABLE IF NOT EXISTS registros_expediente_legal (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  legacy_id TEXT,
+  expediente_id BIGINT NOT NULL REFERENCES expedientes_legales(id) ON DELETE CASCADE,
+  usuario_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  tipo TEXT NOT NULL,
+  titulo TEXT NOT NULL,
+  descripcion TEXT,
+  estado TEXT,
+  fecha_inicio TIMESTAMPTZ,
+  fecha_fin TIMESTAMPTZ,
+  monto NUMERIC(14, 2),
+  archivo_url TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, tipo, legacy_id)
+);
+CREATE INDEX IF NOT EXISTS registros_expediente_fecha_idx
+  ON registros_expediente_legal(expediente_id, fecha_inicio);
+CREATE INDEX IF NOT EXISTS registros_expediente_legal_org_tipo_idx
+  ON registros_expediente_legal(org_id, tipo);
+
+CREATE TABLE IF NOT EXISTS asesorias_legales (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  legacy_id TEXT,
+  contacto_id BIGINT REFERENCES contactos(id) ON DELETE SET NULL,
+  expediente_id BIGINT REFERENCES expedientes_legales(id) ON DELETE SET NULL,
+  sucursal_id BIGINT REFERENCES sucursales_legales(id) ON DELETE SET NULL,
+  abogado_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  fecha DATE,
+  tema TEXT,
+  resumen TEXT,
+  estado TEXT NOT NULL DEFAULT 'pendiente',
+  monto NUMERIC(14, 2),
+  seguimiento TEXT,
+  origen TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, legacy_id)
+);
+CREATE INDEX IF NOT EXISTS asesorias_legales_org_estado_fecha_idx
+  ON asesorias_legales(org_id, estado, fecha);
+CREATE INDEX IF NOT EXISTS asesorias_legales_contacto_id_idx
+  ON asesorias_legales(contacto_id);
+CREATE INDEX IF NOT EXISTS asesorias_legales_expediente_id_idx
+  ON asesorias_legales(expediente_id);
+
+CREATE TABLE IF NOT EXISTS movimientos_legales (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  legacy_id TEXT,
+  expediente_id BIGINT REFERENCES expedientes_legales(id) ON DELETE SET NULL,
+  contacto_id BIGINT REFERENCES contactos(id) ON DELETE SET NULL,
+  sucursal_id BIGINT REFERENCES sucursales_legales(id) ON DELETE SET NULL,
+  usuario_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  tipo TEXT NOT NULL,
+  concepto TEXT NOT NULL,
+  monto NUMERIC(14, 2) NOT NULL DEFAULT 0,
+  estado TEXT,
+  fecha DATE,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, tipo, legacy_id)
+);
+CREATE INDEX IF NOT EXISTS movimientos_legales_org_tipo_fecha_idx
+  ON movimientos_legales(org_id, tipo, fecha);
+CREATE INDEX IF NOT EXISTS movimientos_legales_expediente_id_idx
+  ON movimientos_legales(expediente_id);
+
+CREATE TABLE IF NOT EXISTS registros_operacion_legal (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  legacy_id TEXT,
+  usuario_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  sucursal_id BIGINT REFERENCES sucursales_legales(id) ON DELETE SET NULL,
+  tipo TEXT NOT NULL,
+  fecha TIMESTAMPTZ,
+  estado TEXT,
+  descripcion TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, tipo, legacy_id)
+);
+CREATE INDEX IF NOT EXISTS registros_operacion_org_tipo_fecha_idx
+  ON registros_operacion_legal(org_id, tipo, fecha);
+CREATE INDEX IF NOT EXISTS registros_operacion_usuario_id_idx
+  ON registros_operacion_legal(usuario_id);
+
+CREATE TABLE IF NOT EXISTS referencias_externas (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  sistema TEXT NOT NULL,
+  entidad TEXT NOT NULL,
+  clave TEXT NOT NULL,
+  destino_id BIGINT,
+  destino_clave TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, sistema, entidad, clave)
+);
+CREATE INDEX IF NOT EXISTS referencias_externas_org_entidad_idx
+  ON referencias_externas(org_id, entidad);
+
+CREATE TABLE IF NOT EXISTS registros_legacy_legal (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  sistema TEXT NOT NULL,
+  tabla TEXT NOT NULL,
+  legacy_id TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, sistema, tabla, legacy_id)
+);
+CREATE INDEX IF NOT EXISTS registros_legacy_legal_org_tabla_idx
+  ON registros_legacy_legal(org_id, tabla);
+
 DO $$ DECLARE t TEXT; BEGIN
   FOREACH t IN ARRAY ARRAY[
     'modulos_org',
@@ -409,7 +593,15 @@ DO $$ DECLARE t TEXT; BEGIN
     'proveedores',
     'compras',
     'compra_partidas',
-    'movimientos_inventario'
+    'movimientos_inventario',
+    'sucursales_legales',
+    'expedientes_legales',
+    'registros_expediente_legal',
+    'asesorias_legales',
+    'movimientos_legales',
+    'registros_operacion_legal',
+    'referencias_externas',
+    'registros_legacy_legal'
   ] LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
@@ -442,6 +634,14 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   proveedores,
   compras,
   compra_partidas,
-  movimientos_inventario
+  movimientos_inventario,
+  sucursales_legales,
+  expedientes_legales,
+  registros_expediente_legal,
+  asesorias_legales,
+  movimientos_legales,
+  registros_operacion_legal,
+  referencias_externas,
+  registros_legacy_legal
 TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;

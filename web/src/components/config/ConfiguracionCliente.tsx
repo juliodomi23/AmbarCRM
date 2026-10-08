@@ -1321,6 +1321,10 @@ function TabUsuarios({ usuarios }: { usuarios: any[] }) {
             <option>Asesor inmobiliario</option>
             <option>Asesor automotriz</option>
             <option>Vendedor de tienda</option>
+            <option>Abogado</option>
+            <option>Pasante</option>
+            <option>Asistente jurídico</option>
+            <option>Coordinador jurídico</option>
             <option>Cajero</option>
             <option>Encargado de inventario</option>
           </select>

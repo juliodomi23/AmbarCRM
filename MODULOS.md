@@ -172,3 +172,41 @@ El seed idempotente crea `demo-retail` con diez productos, tres proveedores, dos
 órdenes de compra, movimientos de inventario, seis clientes, seis ventas en
 distintos estados y un equipo formado por vendedor, cajero y encargado de
 inventario.
+
+## Despachos legales
+
+La vertical legal se compone de cuatro módulos independientes:
+
+- **Expedientes legales** muestra asuntos, responsables, materias, etapas y el
+  historial unificado de actuaciones, audiencias, documentos, términos, partes
+  y seguimientos;
+- **Asesorías legales** registra consultas, responsables, seguimiento y
+  conversión a contrato;
+- **Honorarios y caja** concentra planes de pago, cobros, caja, diligencias y
+  gastos por expediente;
+- **Operación del despacho** muestra sucursales, asistencia y productividad del
+  equipo.
+
+Los puestos sugeridos para esta vertical son abogado, pasante, asistente
+jurídico y coordinador jurídico. Citas sigue siendo un módulo compartido y los
+prospectos se administran en un embudo legal normal del CRM.
+
+### Importar una instancia de GestorLegal
+
+El importador `web/scripts/import-gestorlegal.mjs` recibe la conexión de la base
+de origen mediante `SOURCE_DATABASE_URL`. Es idempotente: crea referencias
+estables entre los identificadores viejos y nuevos, por lo que puede ejecutarse
+varias veces sin duplicar registros. También admite `LEGACY_LOGO_PATH`,
+`REASSIGNMENT_CSV`, `REASSIGN_TO_NAME`, `TARGET_ORG_SLUG` y `TARGET_ORG_NAME`.
+
+```bash
+cd web
+SOURCE_DATABASE_URL=postgresql://... \
+  node scripts/import-gestorlegal.mjs soporte@local.test ClaveSegura
+```
+
+Además de convertir los datos operativos, conserva cada fila de origen en
+`registros_legacy_legal`. Antes de guardarla elimina hashes de contraseña, PIN,
+tokens y secretos. Los respaldos, documentos y datos reales del despacho no
+forman parte del repositorio: la importación se ejecuta únicamente en el entorno
+privado autorizado.

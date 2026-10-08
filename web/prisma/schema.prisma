@@ -172,18 +172,23 @@ model Usuario {
   activo       Boolean    @default(true)
   createdAt    DateTime   @default(now()) @map("created_at")
 
-  contactos      Contacto[]
-  oportunidades  Oportunidad[]
-  conversaciones Conversacion[]
-  mensajes       Mensaje[]
-  notas          Nota[]
-  tareas         Tarea[]
-  eventos        Evento[]
-  citas          Cita[]
-  evoluciones    EvolucionClinica[]
-  ventasCreadas  Venta[]                @relation("VentaCreadoPor")
-  movimientos    MovimientoInventario[] @relation("MovimientoUsuario")
-  comprasCreadas Compra[]               @relation("CompraCreadoPor")
+  contactos          Contacto[]
+  oportunidades      Oportunidad[]
+  conversaciones     Conversacion[]
+  mensajes           Mensaje[]
+  notas              Nota[]
+  tareas             Tarea[]
+  eventos            Evento[]
+  citas              Cita[]
+  evoluciones        EvolucionClinica[]
+  ventasCreadas      Venta[]                   @relation("VentaCreadoPor")
+  movimientos        MovimientoInventario[]    @relation("MovimientoUsuario")
+  comprasCreadas     Compra[]                  @relation("CompraCreadoPor")
+  expedientesLegales ExpedienteLegal[]         @relation("ExpedienteResponsable")
+  registrosLegales   RegistroExpedienteLegal[] @relation("RegistroLegalUsuario")
+  asesoriasLegales   AsesoriaLegal[]           @relation("AsesoriaAbogado")
+  movimientosLegales MovimientoLegal[]         @relation("MovimientoLegalUsuario")
+  operacionesLegales RegistroOperacionLegal[]  @relation("OperacionLegalUsuario")
 
   @@unique([orgId, email])
   @@index([orgId])
@@ -243,13 +248,16 @@ model Contacto {
   optOutDifusion Boolean @default(false) @map("opt_out_difusion") // excluido de difusiones masivas
   campos         Json    @default("{}")
 
-  responsable    Usuario?            @relation(fields: [responsableId], references: [id], onDelete: SetNull)
-  etiquetas      ContactoEtiqueta[]
-  oportunidades  Oportunidad[]
-  conversaciones Conversacion[]
-  citas          Cita[]
-  expediente     ExpedientePaciente?
-  ventas         Venta[]
+  responsable        Usuario?            @relation(fields: [responsableId], references: [id], onDelete: SetNull)
+  etiquetas          ContactoEtiqueta[]
+  oportunidades      Oportunidad[]
+  conversaciones     Conversacion[]
+  citas              Cita[]
+  expediente         ExpedientePaciente?
+  ventas             Venta[]
+  expedientesLegales ExpedienteLegal[]
+  asesoriasLegales   AsesoriaLegal[]
+  movimientosLegales MovimientoLegal[]
 
   @@unique([orgId, telefono])
   @@index([responsableId])
@@ -900,6 +908,202 @@ model MovimientoInventario {
   @@index([compraId])
   @@index([orgId])
   @@map("movimientos_inventario")
+}
+
+model SucursalLegal {
+  id        BigInt   @id @default(autoincrement())
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  legacyId  String?  @map("legacy_id")
+  nombre    String
+  direccion String?
+  telefono  String?
+  activa    Boolean  @default(true)
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  expedientes ExpedienteLegal[]
+  asesorias   AsesoriaLegal[]
+  movimientos MovimientoLegal[]
+  operaciones RegistroOperacionLegal[]
+
+  @@unique([orgId, legacyId])
+  @@unique([orgId, nombre])
+  @@index([orgId, activa])
+  @@map("sucursales_legales")
+}
+
+model ExpedienteLegal {
+  id             BigInt    @id @default(autoincrement())
+  orgId          BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  legacyId       String?   @map("legacy_id")
+  numeroInterno  String?   @map("numero_interno")
+  numeroJudicial String?   @map("numero_judicial")
+  contactoId     BigInt?   @map("contacto_id")
+  responsableId  BigInt?   @map("responsable_id")
+  sucursalId     BigInt?   @map("sucursal_id")
+  rolCliente     String?   @map("rol_cliente")
+  materia        String?
+  tipoJuicio     String?   @map("tipo_juicio")
+  juzgado        String?
+  etapaProcesal  String?   @map("etapa_procesal")
+  estado         String    @default("activo")
+  cuantia        Decimal?  @db.Decimal(14, 2)
+  resumen        String?
+  fechaInicio    DateTime? @map("fecha_inicio") @db.Date
+  metadata       Json      @default("{}")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  contacto    Contacto?                 @relation(fields: [contactoId], references: [id], onDelete: SetNull)
+  responsable Usuario?                  @relation("ExpedienteResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
+  sucursal    SucursalLegal?            @relation(fields: [sucursalId], references: [id], onDelete: SetNull)
+  registros   RegistroExpedienteLegal[]
+  asesorias   AsesoriaLegal[]
+  movimientos MovimientoLegal[]
+
+  @@unique([orgId, legacyId])
+  @@index([orgId, estado, updatedAt])
+  @@index([contactoId])
+  @@index([responsableId])
+  @@index([sucursalId])
+  @@map("expedientes_legales")
+}
+
+model RegistroExpedienteLegal {
+  id           BigInt    @id @default(autoincrement())
+  orgId        BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  legacyId     String?   @map("legacy_id")
+  expedienteId BigInt    @map("expediente_id")
+  usuarioId    BigInt?   @map("usuario_id")
+  tipo         String
+  titulo       String
+  descripcion  String?
+  estado       String?
+  fechaInicio  DateTime? @map("fecha_inicio")
+  fechaFin     DateTime? @map("fecha_fin")
+  monto        Decimal?  @db.Decimal(14, 2)
+  archivoUrl   String?   @map("archivo_url")
+  metadata     Json      @default("{}")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  expediente ExpedienteLegal @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  usuario    Usuario?        @relation("RegistroLegalUsuario", fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@unique([orgId, tipo, legacyId])
+  @@index([expedienteId, fechaInicio])
+  @@index([orgId, tipo])
+  @@map("registros_expediente_legal")
+}
+
+model AsesoriaLegal {
+  id           BigInt    @id @default(autoincrement())
+  orgId        BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  legacyId     String?   @map("legacy_id")
+  contactoId   BigInt?   @map("contacto_id")
+  expedienteId BigInt?   @map("expediente_id")
+  sucursalId   BigInt?   @map("sucursal_id")
+  abogadoId    BigInt?   @map("abogado_id")
+  fecha        DateTime? @db.Date
+  tema         String?
+  resumen      String?
+  estado       String    @default("pendiente")
+  monto        Decimal?  @db.Decimal(14, 2)
+  seguimiento  String?
+  origen       String?
+  metadata     Json      @default("{}")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  contacto   Contacto?        @relation(fields: [contactoId], references: [id], onDelete: SetNull)
+  expediente ExpedienteLegal? @relation(fields: [expedienteId], references: [id], onDelete: SetNull)
+  sucursal   SucursalLegal?   @relation(fields: [sucursalId], references: [id], onDelete: SetNull)
+  abogado    Usuario?         @relation("AsesoriaAbogado", fields: [abogadoId], references: [id], onDelete: SetNull)
+
+  @@unique([orgId, legacyId])
+  @@index([orgId, estado, fecha])
+  @@index([contactoId])
+  @@index([expedienteId])
+  @@map("asesorias_legales")
+}
+
+model MovimientoLegal {
+  id           BigInt    @id @default(autoincrement())
+  orgId        BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  legacyId     String?   @map("legacy_id")
+  expedienteId BigInt?   @map("expediente_id")
+  contactoId   BigInt?   @map("contacto_id")
+  sucursalId   BigInt?   @map("sucursal_id")
+  usuarioId    BigInt?   @map("usuario_id")
+  tipo         String
+  concepto     String
+  monto        Decimal   @default(0) @db.Decimal(14, 2)
+  estado       String?
+  fecha        DateTime? @db.Date
+  metadata     Json      @default("{}")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  expediente ExpedienteLegal? @relation(fields: [expedienteId], references: [id], onDelete: SetNull)
+  contacto   Contacto?        @relation(fields: [contactoId], references: [id], onDelete: SetNull)
+  sucursal   SucursalLegal?   @relation(fields: [sucursalId], references: [id], onDelete: SetNull)
+  usuario    Usuario?         @relation("MovimientoLegalUsuario", fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@unique([orgId, tipo, legacyId])
+  @@index([orgId, tipo, fecha])
+  @@index([expedienteId])
+  @@map("movimientos_legales")
+}
+
+model RegistroOperacionLegal {
+  id          BigInt    @id @default(autoincrement())
+  orgId       BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  legacyId    String?   @map("legacy_id")
+  usuarioId   BigInt?   @map("usuario_id")
+  sucursalId  BigInt?   @map("sucursal_id")
+  tipo        String
+  fecha       DateTime?
+  estado      String?
+  descripcion String?
+  metadata    Json      @default("{}")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  usuario  Usuario?       @relation("OperacionLegalUsuario", fields: [usuarioId], references: [id], onDelete: SetNull)
+  sucursal SucursalLegal? @relation(fields: [sucursalId], references: [id], onDelete: SetNull)
+
+  @@unique([orgId, tipo, legacyId])
+  @@index([orgId, tipo, fecha])
+  @@index([usuarioId])
+  @@map("registros_operacion_legal")
+}
+
+model ReferenciaExterna {
+  id           BigInt   @id @default(autoincrement())
+  orgId        BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  sistema      String
+  entidad      String
+  clave        String
+  destinoId    BigInt?  @map("destino_id")
+  destinoClave String?  @map("destino_clave")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([orgId, sistema, entidad, clave])
+  @@index([orgId, entidad])
+  @@map("referencias_externas")
+}
+
+model RegistroLegacyLegal {
+  id        BigInt   @id @default(autoincrement())
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  sistema   String
+  tabla     String
+  legacyId  String   @map("legacy_id")
+  payload   Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([orgId, sistema, tabla, legacyId])
+  @@index([orgId, tabla])
+  @@map("registros_legacy_legal")
 }
 
 model Evento {
