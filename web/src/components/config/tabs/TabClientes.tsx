@@ -234,7 +234,7 @@ export function TabClientes({
                         activos
                       </span>
                     </div>
-                    <div className="grid gap-3 lg:grid-cols-2">
+                    <div className="grid items-start gap-3 lg:grid-cols-2">
                       {grupos.map((grupo) => {
                         const claveArea = `${o.id}:${grupo.area}`;
                         const abierto = Boolean(areasAbiertas[claveArea]);
