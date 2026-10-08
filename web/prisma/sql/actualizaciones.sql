@@ -55,6 +55,21 @@ CREATE TABLE IF NOT EXISTS modulos_org (
 );
 CREATE INDEX IF NOT EXISTS modulos_org_org_idx ON modulos_org(org_id);
 
+UPDATE modulos_org
+SET config = jsonb_set(
+  COALESCE(config, '{}'::jsonb),
+  '{puestosPermitidos}',
+  CASE
+    WHEN clave = 'pacientes' THEN
+      '["Administrador", "Doctor", "Coordinador clínico"]'::jsonb
+    WHEN clave IN ('legal', 'asesorias_legales', 'finanzas_legales', 'operacion_legal') THEN
+      '["Administrador", "Abogado", "Coordinador jurídico", "Pasante"]'::jsonb
+    ELSE '[]'::jsonb
+  END,
+  true
+)
+WHERE NOT (COALESCE(config, '{}'::jsonb) ? 'puestosPermitidos');
+
 DO $$
 BEGIN
   CREATE TYPE entidad_campo_personalizado AS ENUM ('contacto', 'oportunidad');

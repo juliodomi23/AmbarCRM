@@ -1,13 +1,20 @@
 import { redirect } from "next/navigation";
 import { PanelLegal } from "@/components/legal/PanelLegal";
 import { db } from "@/lib/db";
+import { esPasante } from "@/lib/legal";
 import { moduloActivo } from "@/lib/modulos";
+import { getSesion } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function LegalPage() {
+  const sesion = await getSesion();
+  if (!sesion?.user?.id) redirect("/login");
   if (!(await moduloActivo("legal"))) redirect("/");
   const expedientes = await db.expedienteLegal.findMany({
+    where: esPasante(sesion.user.puesto, sesion.user.rol)
+      ? { responsableId: BigInt(sesion.user.id) }
+      : undefined,
     include: { contacto: true, responsable: true },
     orderBy: { updatedAt: "desc" },
   });

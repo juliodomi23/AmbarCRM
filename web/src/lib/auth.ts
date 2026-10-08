@@ -43,7 +43,14 @@ export const authOptions: NextAuthOptions = {
         if (!u || !u.activo) return null;
         const ok = await bcrypt.compare(creds.password, u.passwordHash);
         if (!ok) return null;
-        return { id: String(u.id), name: u.nombre, email: u.email, rol: u.rol, orgId: String(org.id) };
+        return {
+          id: String(u.id),
+          name: u.nombre,
+          email: u.email,
+          rol: u.rol,
+          orgId: String(org.id),
+          puesto: u.puesto,
+        };
       }
     })
   ],
@@ -53,6 +60,7 @@ export const authOptions: NextAuthOptions = {
         token.id = (user as any).id;
         token.rol = (user as any).rol;
         token.orgId = (user as any).orgId;
+        token.puesto = (user as any).puesto;
         (token as any).checkedAt = Date.now();
       }
       // Revalida contra la BD cada 5 min: desactivar un usuario (o su org) mata su
@@ -68,6 +76,7 @@ export const authOptions: NextAuthOptions = {
           else {
             (token as any).revocado = false;
             token.rol = u.rol as "admin" | "agente";
+            token.puesto = u.puesto;
           }
         } catch {
           /* BD caída: no cerramos sesiones por un error transitorio */
@@ -85,6 +94,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id;
         (session.user as any).rol = token.rol;
         (session.user as any).orgId = token.orgId;
+        (session.user as any).puesto = token.puesto;
       }
       return session;
     }

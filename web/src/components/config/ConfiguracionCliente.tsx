@@ -24,6 +24,30 @@ const TABS = [
 ] as const;
 type Tab = (typeof TABS)[number] | "Clientes Ámbar CRM";
 
+const PUESTOS = [
+  "Administrador",
+  "Agente",
+  "Recepcionista",
+  "Doctor",
+  "Coordinador clínico",
+  "Especialista",
+  "Vendedor",
+  "Asesor inmobiliario",
+  "Asesor automotriz",
+  "Vendedor de tienda",
+  "Abogado",
+  "Pasante",
+  "Asistente jurídico",
+  "Coordinador jurídico",
+  "Agente de viajes",
+  "Coordinador de tours",
+  "Guía",
+  "Profesor",
+  "Coordinador académico",
+  "Cajero",
+  "Encargado de inventario",
+] as const;
+
 async function api(url: string, metodo: string, body?: unknown) {
   const res = await fetch(url, {
     method: metodo,
@@ -138,6 +162,7 @@ function TabModulos({ modulos, canales }: { modulos: any[]; canales: any[] }) {
   const router = useRouter();
   const [items, setItems] = useState<any[]>([]);
   const [config, setConfig] = useState<Record<string, string>>({});
+  const [puestos, setPuestos] = useState<Record<string, string[]>>({});
   useEffect(() => {
     fetch("/api/modulos")
       .then((r) => r.json())
@@ -147,7 +172,23 @@ function TabModulos({ modulos, canales }: { modulos: any[]; canales: any[] }) {
           Object.fromEntries(
             (d.modulos ?? []).map((m: any) => [
               m.clave,
-              JSON.stringify(m.config ?? {}, null, 2),
+              JSON.stringify(
+                Object.fromEntries(
+                  Object.entries(m.config ?? {}).filter(
+                    ([clave]) => clave !== "puestosPermitidos",
+                  ),
+                ),
+                null,
+                2,
+              ),
+            ]),
+          ),
+        );
+        setPuestos(
+          Object.fromEntries(
+            (d.modulos ?? []).map((m: any) => [
+              m.clave,
+              m.config?.puestosPermitidos ?? [],
             ]),
           ),
         );
@@ -156,11 +197,34 @@ function TabModulos({ modulos, canales }: { modulos: any[]; canales: any[] }) {
   async function guardar(clave: string) {
     try {
       const body = JSON.parse(config[clave] || "{}");
+      body.puestosPermitidos = puestos[clave] ?? [];
       if (await api("/api/modulos", "PATCH", { clave, config: body }))
         router.refresh();
     } catch {
       toast("La configuración debe ser JSON válido", "error");
     }
+  }
+  async function guardarAccesos(clave: string) {
+    if (
+      await api("/api/modulos", "PATCH", {
+        clave,
+        config: { puestosPermitidos: puestos[clave] ?? [] },
+      })
+    ) {
+      toast("Accesos guardados");
+      router.refresh();
+    }
+  }
+  function togglePuesto(clave: string, puesto: string) {
+    setPuestos((actual) => {
+      const seleccionados = actual[clave] ?? [];
+      return {
+        ...actual,
+        [clave]: seleccionados.includes(puesto)
+          ? seleccionados.filter((item) => item !== puesto)
+          : [...seleccionados, puesto],
+      };
+    });
   }
   return (
     <div className="max-w-2xl space-y-3">
@@ -186,6 +250,31 @@ function TabModulos({ modulos, canales }: { modulos: any[]; canales: any[] }) {
           </div>
           {m.activo && (
             <>
+              <div className="mt-4 rounded-lg border border-border p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium">Puestos permitidos</p>
+                    <p className="text-xs text-muted-foreground">
+                      Sin puestos seleccionados, todo el equipo puede entrar.
+                    </p>
+                  </div>
+                  <Boton onClick={() => guardarAccesos(m.clave)}>
+                    Guardar accesos
+                  </Boton>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {PUESTOS.map((puesto) => (
+                    <label key={puesto} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={(puestos[m.clave] ?? []).includes(puesto)}
+                        onChange={() => togglePuesto(m.clave, puesto)}
+                      />
+                      {puesto}
+                    </label>
+                  ))}
+                </div>
+              </div>
               {m.clave === "citas" && (
                 <CitasConfig modulo={m} canales={canales} />
               )}
@@ -1313,25 +1402,9 @@ function TabUsuarios({ usuarios }: { usuarios: any[] }) {
             onChange={(e) => setForm({ ...form, puesto: e.target.value })}
             className="w-full rounded-lg border border-input px-3 py-2 text-sm"
           >
-            <option>Agente</option>
-            <option>Recepcionista</option>
-            <option>Doctor</option>
-            <option>Especialista</option>
-            <option>Vendedor</option>
-            <option>Asesor inmobiliario</option>
-            <option>Asesor automotriz</option>
-            <option>Vendedor de tienda</option>
-            <option>Abogado</option>
-            <option>Pasante</option>
-            <option>Asistente jurídico</option>
-            <option>Coordinador jurídico</option>
-            <option>Agente de viajes</option>
-            <option>Coordinador de tours</option>
-            <option>Guía</option>
-            <option>Profesor</option>
-            <option>Coordinador académico</option>
-            <option>Cajero</option>
-            <option>Encargado de inventario</option>
+            {PUESTOS.map((puesto) => (
+              <option key={puesto}>{puesto}</option>
+            ))}
           </select>
         </label>
         <div className="sm:col-span-2">

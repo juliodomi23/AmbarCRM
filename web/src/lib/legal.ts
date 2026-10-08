@@ -1,6 +1,10 @@
 const ESTADOS_EXPEDIENTE = ["activo", "suspendido", "cerrado", "archivado"] as const;
 const TIPOS_REGISTRO = ["actuacion", "audiencia", "documento", "termino", "parte", "seguimiento"] as const;
 
+export function esPasante(puesto?: string, rol?: string) {
+  return rol !== "admin" && puesto?.trim().toLocaleLowerCase("es-MX") === "pasante";
+}
+
 function texto(valor: unknown, maximo = 500) {
   const limpio = String(valor ?? "").trim();
   return limpio ? limpio.slice(0, maximo) : null;

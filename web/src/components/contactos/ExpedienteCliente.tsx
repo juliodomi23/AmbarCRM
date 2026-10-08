@@ -50,18 +50,20 @@ export function ExpedienteCliente({
   citas,
   citasActivo,
   modo = "clientes",
+  soloBasico = false,
 }: {
   contacto: {
     id: string;
     nombre: string;
     telefono: string | null;
     email: string | null;
-    expediente: Expediente | null;
+    expediente?: Expediente | null;
   };
   doctores: DoctorCita[];
   citas: CitaExpediente[];
   citasActivo: boolean;
   modo?: "clientes" | "pacientes";
+  soloBasico?: boolean;
 }) {
   const esClinica = modo === "pacientes";
   const expedienteInicial = contacto.expediente;
@@ -144,6 +146,14 @@ export function ExpedienteCliente({
         )}
       </header>
 
+      {soloBasico && (
+        <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">
+          Puedes consultar los datos básicos y gestionar sus citas. El expediente y
+          las evoluciones clínicas están disponibles únicamente para puestos autorizados.
+        </div>
+      )}
+
+      {!soloBasico && (
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
         <form
           onSubmit={guardar}
@@ -255,6 +265,7 @@ export function ExpedienteCliente({
           </div>
         </section>
       </div>
+      )}
     </div>
   );
 }

@@ -1,13 +1,20 @@
 import { redirect } from "next/navigation";
 import { PanelLegal } from "@/components/legal/PanelLegal";
 import { db } from "@/lib/db";
+import { esPasante } from "@/lib/legal";
 import { moduloActivo } from "@/lib/modulos";
+import { getSesion } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function FinanzasLegalesPage() {
+  const sesion = await getSesion();
+  if (!sesion?.user?.id) redirect("/login");
   if (!(await moduloActivo("finanzas_legales"))) redirect("/");
   const movimientos = await db.movimientoLegal.findMany({
+    where: esPasante(sesion.user.puesto, sesion.user.rol)
+      ? { expediente: { responsableId: BigInt(sesion.user.id) } }
+      : undefined,
     include: { contacto: true, expediente: true }, orderBy: [{ fecha: "desc" }, { createdAt: "desc" }],
   });
   const total = (tipo: string) => movimientos.filter((item) => item.tipo === tipo)

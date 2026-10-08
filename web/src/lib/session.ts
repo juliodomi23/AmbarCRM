@@ -18,5 +18,5 @@ export async function requireSesion(soloAdmin = false) {
   }
   const userId = session.user.id ? BigInt(session.user.id) : null;
   const orgId = session.user.orgId ? BigInt(session.user.orgId) : null;
-  return { userId, rol: session.user.rol, orgId };
+  return { userId, rol: session.user.rol, orgId, puesto: session.user.puesto ?? "Agente" };
 }

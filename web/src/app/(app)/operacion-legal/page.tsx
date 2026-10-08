@@ -1,14 +1,21 @@
 import { redirect } from "next/navigation";
 import { PanelLegal } from "@/components/legal/PanelLegal";
 import { db } from "@/lib/db";
+import { esPasante } from "@/lib/legal";
 import { moduloActivo } from "@/lib/modulos";
+import { getSesion } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function OperacionLegalPage() {
+  const sesion = await getSesion();
+  if (!sesion?.user?.id) redirect("/login");
   if (!(await moduloActivo("operacion_legal"))) redirect("/");
   const [operaciones, sucursales, usuarios] = await Promise.all([
     db.registroOperacionLegal.findMany({
+      where: esPasante(sesion.user.puesto, sesion.user.rol)
+        ? { usuarioId: BigInt(sesion.user.id) }
+        : undefined,
       include: { usuario: true, sucursal: true }, orderBy: [{ fecha: "desc" }, { createdAt: "desc" }],
     }),
     db.sucursalLegal.count({ where: { activa: true } }),

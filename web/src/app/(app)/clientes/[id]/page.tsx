@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { ExpedienteCliente } from "@/components/contactos/ExpedienteCliente";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
-import { moduloActivo } from "@/lib/modulos";
+import { moduloActivo, moduloHabilitado } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
 
 export const dynamic = "force-dynamic";
@@ -15,21 +15,30 @@ export default async function ClientePage({
   if (!(await moduloActivo("clientes"))) redirect("/");
   const id = aBigInt((await params).id);
   if (id === null) notFound();
+  const [pacientesHabilitado, pacientesAccesible] = await Promise.all([
+    moduloHabilitado("pacientes"),
+    moduloActivo("pacientes"),
+  ]);
+  const soloBasico = pacientesHabilitado && !pacientesAccesible;
   const [contacto, doctores, citas, citasActivo] = await Promise.all([
-    db.contacto.findFirst({
-      where: { id, expediente: { isNot: null } },
-      include: {
-        expediente: {
+    soloBasico
+      ? db.contacto.findUnique({ where: { id } })
+      : db.contacto.findFirst({
+          where: { id, expediente: { isNot: null } },
           include: {
-            evoluciones: {
-              include: { doctor: true, cita: true, registradoPor: true },
-              orderBy: { createdAt: "desc" },
+            expediente: {
+              include: {
+                evoluciones: {
+                  include: { doctor: true, cita: true, registradoPor: true },
+                  orderBy: { createdAt: "desc" },
+                },
+              },
             },
           },
-        },
-      },
-    }),
-    db.doctor.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+        }),
+    soloBasico
+      ? Promise.resolve([])
+      : db.doctor.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
     db.cita.findMany({
       where: { contactoId: id },
       include: { doctor: true },
@@ -46,6 +55,7 @@ export default async function ClientePage({
       citas={serializar(citas)}
       citasActivo={citasActivo}
       modo="clientes"
+      soloBasico={soloBasico}
     />
   );
 }

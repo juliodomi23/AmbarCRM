@@ -1,9 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, runWithOrg } from "@/lib/db";
-import { MODULOS, moduloPorClave } from "@/lib/modulos";
+import {
+  MODULOS,
+  moduloPorClave,
+  puestoPuedeAcceder,
+  puestosPermitidosModulo,
+} from "@/lib/modulos";
 import { requireSesion } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
+
+function configObjeto(config: unknown): Record<string, unknown> {
+  return config && typeof config === "object" && !Array.isArray(config)
+    ? (config as Record<string, unknown>)
+    : {};
+}
+
+function normalizarPuestos(valor: unknown) {
+  if (!Array.isArray(valor)) return null;
+  return [...new Set(
+    valor
+      .filter((puesto): puesto is string => typeof puesto === "string")
+      .map((puesto) => puesto.trim().slice(0, 80))
+      .filter(Boolean),
+  )];
+}
 
 export async function GET() {
   const s = await requireSesion();
@@ -13,11 +34,20 @@ export async function GET() {
     select: { clave: true, config: true },
   });
   return NextResponse.json({
-    modulos: MODULOS.map((m) => ({
-      ...m,
-      activo: activos.some((a) => a.clave === m.clave),
-      config: activos.find((a) => a.clave === m.clave)?.config ?? {},
-    })),
+    modulos: MODULOS.map((m) => {
+      const guardado = activos.find((a) => a.clave === m.clave);
+      const config = configObjeto(guardado?.config);
+      return {
+        ...m,
+        activo:
+          Boolean(guardado) &&
+          puestoPuedeAcceder(m.clave, config, s.puesto, s.rol),
+        config: {
+          ...config,
+          puestosPermitidos: puestosPermitidosModulo(m.clave, config),
+        },
+      };
+    }),
   });
 }
 
@@ -26,8 +56,9 @@ export async function PATCH(req: NextRequest) {
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
   const { clave, config } = await req.json().catch(() => ({}));
+  const catalogo = moduloPorClave(String(clave));
   if (
-    !moduloPorClave(String(clave)) ||
+    !catalogo ||
     !config ||
     typeof config !== "object" ||
     Array.isArray(config)
@@ -36,12 +67,34 @@ export async function PATCH(req: NextRequest) {
       { error: "configuración inválida" },
       { status: 400 },
     );
+  const puestos = normalizarPuestos(
+    (config as Record<string, unknown>).puestosPermitidos,
+  );
+  if (
+    Object.hasOwn(config as object, "puestosPermitidos") &&
+    puestos === null
+  ) {
+    return NextResponse.json(
+      { error: "puestosPermitidos debe ser una lista" },
+      { status: 400 },
+    );
+  }
   const existente = await db.moduloOrg.findFirst({
     where: { clave: String(clave), activo: true },
   });
   if (!existente)
     return NextResponse.json({ error: "módulo no activo" }, { status: 404 });
-  await db.moduloOrg.update({ where: { id: existente.id }, data: { config } });
+  const actual = configObjeto(existente.config);
+  const siguiente = {
+    ...actual,
+    ...(config as Record<string, unknown>),
+    puestosPermitidos:
+      puestos ?? puestosPermitidosModulo(catalogo.clave, actual),
+  };
+  await db.moduloOrg.update({
+    where: { id: existente.id },
+    data: { config: siguiente },
+  });
   return NextResponse.json({ ok: true });
 }
 
@@ -55,18 +108,36 @@ export async function POST(req: NextRequest) {
       { status: 403 },
     );
   const { orgId, clave, activo } = await req.json().catch(() => ({}));
-  if (!orgId || !moduloPorClave(String(clave)) || typeof activo !== "boolean")
+  const catalogo = moduloPorClave(String(clave));
+  if (!orgId || !catalogo || typeof activo !== "boolean")
     return NextResponse.json({ error: "datos inválidos" }, { status: 400 });
   await runWithOrg(BigInt(orgId), async () => {
     const actual = await db.moduloOrg.findFirst({
       where: { clave: String(clave) },
     });
-    if (actual)
-      await db.moduloOrg.update({ where: { id: actual.id }, data: { activo } });
-    else
-      await db.moduloOrg.create({
-        data: { clave: String(clave), activo, config: {} },
+    if (actual) {
+      const config = configObjeto(actual.config);
+      await db.moduloOrg.update({
+        where: { id: actual.id },
+        data: {
+          activo,
+          config: {
+            ...config,
+            puestosPermitidos: puestosPermitidosModulo(catalogo.clave, config),
+          },
+        },
       });
+    } else {
+      await db.moduloOrg.create({
+        data: {
+          clave: catalogo.clave,
+          activo,
+          config: {
+            puestosPermitidos: [...catalogo.acceso.puestosPorDefecto],
+          },
+        },
+      });
+    }
   });
   return NextResponse.json({ ok: true });
 }

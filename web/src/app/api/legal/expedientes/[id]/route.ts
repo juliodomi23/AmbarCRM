@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
-import { validarExpedienteLegal } from "@/lib/legal";
+import { esPasante, validarExpedienteLegal } from "@/lib/legal";
 import { requireModuloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
 import { requireSesion } from "@/lib/session";
@@ -13,13 +13,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (apagado) return apagado;
   const id = aBigInt((await params).id);
   if (id === null) return NextResponse.json({ error: "id inválido" }, { status: 400 });
-  const actual = await db.expedienteLegal.findUnique({ where: { id } });
+  const actual = await db.expedienteLegal.findFirst({
+    where: {
+      id,
+      ...(esPasante(sesion.puesto, sesion.rol)
+        ? { responsableId: sesion.userId }
+        : {}),
+    },
+  });
   if (!actual) return NextResponse.json({ error: "expediente no encontrado" }, { status: 404 });
   const body = await req.json().catch(() => ({}));
   const validacion = validarExpedienteLegal({ ...actual, ...body });
   if ("error" in validacion) {
     return NextResponse.json({ error: validacion.error }, { status: 400 });
   }
-  const expediente = await db.expedienteLegal.update({ where: { id }, data: validacion.data });
+  const expediente = await db.expedienteLegal.update({
+    where: { id },
+    data: {
+      ...validacion.data,
+      ...(esPasante(sesion.puesto, sesion.rol)
+        ? { responsableId: sesion.userId }
+        : {}),
+    },
+  });
   return NextResponse.json(serializar({ expediente }));
 }

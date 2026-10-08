@@ -2,16 +2,25 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
+import { esPasante } from "@/lib/legal";
 import { moduloActivo } from "@/lib/modulos";
+import { getSesion } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function DetalleExpedientePage({ params }: { params: Promise<{ id: string }> }) {
+  const sesion = await getSesion();
+  if (!sesion?.user?.id) redirect("/login");
   if (!(await moduloActivo("legal"))) redirect("/");
   const id = aBigInt((await params).id);
   if (id === null) notFound();
-  const expediente = await db.expedienteLegal.findUnique({
-    where: { id },
+  const expediente = await db.expedienteLegal.findFirst({
+    where: {
+      id,
+      ...(esPasante(sesion.user.puesto, sesion.user.rol)
+        ? { responsableId: BigInt(sesion.user.id) }
+        : {}),
+    },
     include: {
       contacto: true,
       responsable: true,
