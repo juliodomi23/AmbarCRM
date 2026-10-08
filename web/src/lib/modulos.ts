@@ -12,6 +12,7 @@ const ACCESO_LEGAL = {
 export const MODULOS = [
   {
     clave: "clientes",
+    area: "CRM y agenda",
     nombre: "Clientes",
     descripcion: "Ficha de servicio, preferencias e historial de cada cliente.",
     acceso: ACCESO_TODOS,
@@ -21,6 +22,7 @@ export const MODULOS = [
   },
   {
     clave: "pacientes",
+    area: "Clínica",
     nombre: "Pacientes",
     descripcion: "Expediente clínico, alergias y seguimiento de pacientes.",
     acceso: ACCESO_CLINICO,
@@ -30,6 +32,7 @@ export const MODULOS = [
   },
   {
     clave: "citas",
+    area: "CRM y agenda",
     nombre: "Citas",
     descripcion: "Agenda, seguimiento y recordatorios de citas.",
     acceso: ACCESO_TODOS,
@@ -39,6 +42,7 @@ export const MODULOS = [
   },
   {
     clave: "automotriz",
+    area: "Automotriz",
     nombre: "Automotriz",
     descripcion: "Inventario de vehículos, disponibilidad y seguimiento comercial.",
     acceso: ACCESO_TODOS,
@@ -48,6 +52,7 @@ export const MODULOS = [
   },
   {
     clave: "inmobiliaria",
+    area: "Inmobiliaria",
     nombre: "Inmobiliaria",
     descripcion: "Catálogo de propiedades, disponibilidad y citas de visita.",
     acceso: ACCESO_TODOS,
@@ -56,6 +61,7 @@ export const MODULOS = [
   },
   {
     clave: "productos",
+    area: "Retail y comercio",
     nombre: "Productos e inventario",
     descripcion: "Catálogo, existencias, alertas de stock y movimientos.",
     acceso: ACCESO_TODOS,
@@ -64,6 +70,7 @@ export const MODULOS = [
   },
   {
     clave: "compras",
+    area: "Retail y comercio",
     nombre: "Compras y proveedores",
     descripcion: "Proveedores, órdenes de compra y recepción de mercancía.",
     acceso: ACCESO_TODOS,
@@ -72,6 +79,7 @@ export const MODULOS = [
   },
   {
     clave: "ventas",
+    area: "Retail y comercio",
     nombre: "Ventas y pedidos",
     descripcion: "Pedidos de mostrador, WhatsApp y tienda en línea.",
     acceso: ACCESO_TODOS,
@@ -80,6 +88,7 @@ export const MODULOS = [
   },
   {
     clave: "legal",
+    area: "Legal",
     nombre: "Expedientes legales",
     descripcion: "Asuntos, actuaciones, audiencias, términos y documentos.",
     acceso: ACCESO_LEGAL,
@@ -88,6 +97,7 @@ export const MODULOS = [
   },
   {
     clave: "asesorias_legales",
+    area: "Legal",
     nombre: "Asesorías legales",
     descripcion: "Consultas, seguimiento, conversión y responsables.",
     acceso: ACCESO_LEGAL,
@@ -96,6 +106,7 @@ export const MODULOS = [
   },
   {
     clave: "finanzas_legales",
+    area: "Legal",
     nombre: "Honorarios y caja",
     descripcion: "Planes de pago, cobros, gastos y movimientos del despacho.",
     acceso: ACCESO_LEGAL,
@@ -104,6 +115,7 @@ export const MODULOS = [
   },
   {
     clave: "operacion_legal",
+    area: "Legal",
     nombre: "Operación del despacho",
     descripcion: "Sucursales, productividad, asistencia y actividad del equipo.",
     acceso: ACCESO_LEGAL,
@@ -112,6 +124,7 @@ export const MODULOS = [
   },
   {
     clave: "tours",
+    area: "Viajes y tours",
     nombre: "Tours y salidas",
     descripcion: "Catálogo, itinerarios, fechas, cupo y precio de cada experiencia.",
     acceso: ACCESO_TODOS,
@@ -120,6 +133,7 @@ export const MODULOS = [
   },
   {
     clave: "reservas_tours",
+    area: "Viajes y tours",
     nombre: "Reservas y viajeros",
     descripcion: "Apartados, pasajeros, confirmación, salida y saldo pendiente.",
     acceso: ACCESO_TODOS,
@@ -128,6 +142,7 @@ export const MODULOS = [
   },
   {
     clave: "pagos_tours",
+    area: "Viajes y tours",
     nombre: "Cobranza de viajes",
     descripcion: "Anticipos, liquidaciones, referencias y saldos de reservaciones.",
     acceso: ACCESO_TODOS,
@@ -136,6 +151,7 @@ export const MODULOS = [
   },
   {
     clave: "alumnos",
+    area: "Educación y academias",
     nombre: "Alumnos",
     descripcion: "Ficha, matrícula, tutor, nivel e historial de cada alumno.",
     acceso: ACCESO_TODOS,
@@ -144,6 +160,7 @@ export const MODULOS = [
   },
   {
     clave: "cursos_academia",
+    area: "Educación y academias",
     nombre: "Cursos y grupos",
     descripcion: "Oferta académica, profesores, horarios, cupo y mensualidad.",
     acceso: ACCESO_TODOS,
@@ -152,6 +169,7 @@ export const MODULOS = [
   },
   {
     clave: "inscripciones_academia",
+    area: "Educación y academias",
     nombre: "Inscripciones",
     descripcion: "Altas, bajas, avance y relación de alumnos con sus cursos.",
     acceso: ACCESO_TODOS,
@@ -160,6 +178,7 @@ export const MODULOS = [
   },
   {
     clave: "colegiaturas",
+    area: "Educación y academias",
     nombre: "Colegiaturas",
     descripcion: "Cargos, vencimientos, pagos y cartera pendiente.",
     acceso: ACCESO_TODOS,
@@ -168,6 +187,7 @@ export const MODULOS = [
   },
   {
     clave: "asistencia_academia",
+    area: "Educación y academias",
     nombre: "Asistencia",
     descripcion: "Pase de lista por curso, faltas, retardos y justificaciones.",
     acceso: ACCESO_TODOS,

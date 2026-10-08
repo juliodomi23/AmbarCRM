@@ -7,6 +7,24 @@ import { toast } from "@/components/Toaster";
 import { Boton, Campo } from "@/components/ui";
 import { api, slugificar } from "@/components/config/tabs/shared";
 
+const ORDEN_AREAS = [
+  "CRM y agenda",
+  "Clínica",
+  "Automotriz",
+  "Inmobiliaria",
+  "Retail y comercio",
+  "Legal",
+  "Viajes y tours",
+  "Educación y academias",
+];
+
+function gruposPorArea(modulos: any[]) {
+  return ORDEN_AREAS.map((area) => ({
+    area,
+    modulos: modulos.filter((modulo) => modulo.area === area),
+  })).filter((grupo) => grupo.modulos.length > 0);
+}
+
 export function TabClientes({
   orgs,
   modulosPorOrg,
@@ -31,6 +49,7 @@ export function TabClientes({
     null,
   );
   const [modulosActivos, setModulosActivos] = useState(modulosPorOrg);
+  const grupos = gruposPorArea(modulos);
 
   function setNombre(nombre: string) {
     setF((prev) => ({
@@ -196,32 +215,97 @@ export function TabClientes({
                     {o.activo ? "Activa" : "Inactiva"}
                   </span>
                 </td>
-                <td className="px-4 py-2">
-                  <div className="flex flex-wrap gap-2">
-                    {modulos.map((m) => {
-                      const activo = (modulosActivos[String(o.id)] ?? []).some(
-                        (x) => x.clave === m.clave && x.activo,
-                      );
-                      return (
-                        <label
-                          key={m.clave}
-                          className="flex items-center gap-1 text-xs"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={activo}
-                            onChange={(e) =>
-                              toggleModulo(
-                                String(o.id),
-                                m.clave,
-                                e.target.checked,
-                              )
-                            }
-                          />{" "}
-                          {m.nombre}
-                        </label>
-                      );
-                    })}
+                <td className="px-4 py-3 align-top">
+                  <div className="min-w-[34rem] space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs text-muted-foreground">
+                        Activa los módulos que necesita este cliente por área.
+                      </p>
+                      <span
+                        className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[11px]
+                          font-semibold text-primary"
+                      >
+                        {(modulosActivos[String(o.id)] ?? []).filter(
+                          (modulo) => modulo.activo,
+                        ).length}{" "}
+                        activos
+                      </span>
+                    </div>
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      {grupos.map((grupo) => {
+                        const activos = grupo.modulos.filter((modulo) =>
+                          (modulosActivos[String(o.id)] ?? []).some(
+                            (actual) =>
+                              actual.clave === modulo.clave && actual.activo,
+                          ),
+                        ).length;
+                        return (
+                          <section
+                            key={grupo.area}
+                            className="rounded-xl border border-border/80 bg-muted/20 p-2.5"
+                          >
+                            <div className="mb-2 flex items-center justify-between px-1">
+                              <h4 className="text-xs font-semibold text-foreground">
+                                {grupo.area}
+                              </h4>
+                              <span className="text-[10px] text-muted-foreground">
+                                {activos}/{grupo.modulos.length}
+                              </span>
+                            </div>
+                            <div className="space-y-1.5">
+                              {grupo.modulos.map((modulo) => {
+                                const activo = (
+                                  modulosActivos[String(o.id)] ?? []
+                                ).some(
+                                  (actual) =>
+                                    actual.clave === modulo.clave &&
+                                    actual.activo,
+                                );
+                                return (
+                                  <label
+                                    key={modulo.clave}
+                                    className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg
+                                      border border-transparent bg-card px-2.5 py-2 transition hover:border-primary/30
+                                      hover:bg-primary/[0.04]"
+                                  >
+                                    <span className="min-w-0">
+                                      <span className="block truncate text-xs font-medium text-foreground">
+                                        {modulo.nombre}
+                                      </span>
+                                      <span className="block truncate text-[10px] text-muted-foreground">
+                                        {modulo.descripcion}
+                                      </span>
+                                    </span>
+                                    <span className="relative shrink-0">
+                                      <input
+                                        type="checkbox"
+                                        className="peer sr-only"
+                                        checked={activo}
+                                        aria-label={`${activo ? "Desactivar" : "Activar"} ${modulo.nombre}`}
+                                        onChange={(e) =>
+                                          toggleModulo(
+                                            String(o.id),
+                                            modulo.clave,
+                                            e.target.checked,
+                                          )
+                                        }
+                                      />
+                                      <span
+                                        className="block h-5 w-9 rounded-full bg-muted-foreground/30 transition
+                                          peer-checked:bg-primary peer-focus-visible:ring-2
+                                          peer-focus-visible:ring-primary/40 after:absolute after:left-0.5
+                                          after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white
+                                          after:shadow-sm after:transition-transform peer-checked:after:translate-x-4"
+                                      />
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </section>
+                        );
+                      })}
+                    </div>
                   </div>
                 </td>
                 <td className="px-4 py-2">
