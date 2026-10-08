@@ -238,7 +238,16 @@ export function Board({ columnasIniciales }: { columnasIniciales: Columna[] }) {
           </button>
         ))}
       </div>
-      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd}>
+      <DndContext
+        // id fijo: dnd-kit genera ids de accesibilidad distintos en servidor y navegador
+        // y provoca un aviso de hidratación en desarrollo.
+        id="kanban-embudo"
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDragEnd={onDragEnd}
+      >
         <div className="flex flex-1 gap-3 overflow-x-auto p-4">
           {colsVistas.map((c) => <ColumnaVista key={c.id} col={c} onBorrar={borrar} onChat={abrirChat} />)}
         </div>
