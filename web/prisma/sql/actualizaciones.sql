@@ -818,3 +818,11 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   asistencias_academia
 TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+-- multi-tenant.sql crea la organización plataforma con id explícito. Sin sincronizar
+-- la secuencia, el primer tenant creado después puede intentar reutilizar ese id.
+SELECT setval(
+  pg_get_serial_sequence('orgs', 'id'),
+  GREATEST(COALESCE((SELECT MAX(id) FROM orgs), 0), 1),
+  true
+);
