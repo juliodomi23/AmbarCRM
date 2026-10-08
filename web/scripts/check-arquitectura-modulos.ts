@@ -9,7 +9,7 @@ for (const ruta of rutas) {
   const contenido = await readFile(new URL(ruta.replaceAll("\\", "/"), raizApi), "utf8");
   if (contenido.includes("conModulo(")) rutasConModulo.push(ruta);
 }
-assert.equal(rutasConModulo.length, 31, "deben existir 31 rutas migradas a conModulo");
+assert.equal(rutasConModulo.length, 33, "deben existir 33 rutas de módulos con conModulo (31 + 2 de lealtad)");
 
 const config = await readFile(
   new URL("../src/components/config/ConfiguracionCliente.tsx", import.meta.url),

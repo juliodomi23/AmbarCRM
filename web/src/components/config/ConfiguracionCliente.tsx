@@ -44,7 +44,7 @@ export function ConfiguracionCliente({
       embudos: "Embudos", marca: "Marca", usuarios: "Usuarios",
       canal: "Canal WhatsApp", plantillas: "Plantillas",
       meta: "Plantillas de Meta", automatizaciones: "Automatizaciones",
-      bots: "Bots", ia: "IA", clientes: "Clientes Ámbar CRM",
+      bots: "Bots", ia: "IA", modulos: "Módulos", clientes: "Clientes Ámbar CRM",
     };
     if (t && mapa[t]) setTab(mapa[t]);
   }, []);

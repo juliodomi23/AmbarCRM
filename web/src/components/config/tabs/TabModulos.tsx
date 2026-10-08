@@ -3,9 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CitasConfig } from "@/components/config/CitasConfig";
+import { LealtadConfig } from "@/components/lealtad/LealtadConfig";
 import { toast } from "@/components/Toaster";
 import { Boton } from "@/components/ui";
 import { api, PUESTOS } from "@/components/config/tabs/shared";
+
+/** Módulos con formulario propio en lugar del JSON libre. */
+const CONFIG_PROPIA = new Set(["citas", "lealtad"]);
 
 export function TabModulos({ modulos, canales }: { modulos: any[]; canales: any[] }) {
   const router = useRouter();
@@ -127,7 +131,10 @@ export function TabModulos({ modulos, canales }: { modulos: any[]; canales: any[
               {m.clave === "citas" && (
                 <CitasConfig modulo={m} canales={canales} />
               )}
-              {m.clave !== "citas" && (
+              {m.clave === "lealtad" && (
+                <LealtadConfig modulo={m} canales={canales} />
+              )}
+              {!CONFIG_PROPIA.has(m.clave) && (
                 <textarea
                   value={config[m.clave] ?? "{}"}
                   onChange={(e) =>
@@ -137,7 +144,7 @@ export function TabModulos({ modulos, canales }: { modulos: any[]; canales: any[
                   className="mt-3 w-full rounded-lg border border-input p-2 font-mono text-xs"
                 />
               )}
-              {m.clave !== "citas" && (
+              {!CONFIG_PROPIA.has(m.clave) && (
                 <Boton className="mt-2" onClick={() => guardar(m.clave)}>
                   Guardar configuración
                 </Boton>

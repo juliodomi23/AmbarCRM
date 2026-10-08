@@ -112,6 +112,33 @@ marcar una cita como `confirmada` o `cancelada` mediante `PATCH` con
 `{ "citaId": "...", "estado": "confirmada" }`. Esto permite confirmar por
 WhatsApp sin modificar el webhook de Meta.
 
+## Módulo Lealtad (Aurum)
+
+Conecta AmbarCRM con las tarjetas de sellos de Aurum (`lealtad.ambarrojostudios.cloud`).
+Aurum sigue siendo un sistema aparte (app en tiendas y pases de Wallet); AmbarCRM lo usa
+por su API, sin cambios en Aurum.
+
+- **Conexión**: Configuración → Módulos → Lealtad, con el identificador (slug) del negocio
+  y la clave del dueño en Aurum. La clave se verifica una vez y se guarda cifrada con
+  `META_TOKEN_ENCRYPTION_KEY`; la API de módulos nunca la devuelve ni deja sobrescribirla.
+  Un negocio de Aurum solo puede estar conectado a una empresa.
+- **En el chat**: el panel del contacto muestra sellos y premios por canjear (se cruza por
+  los últimos 10 dígitos del teléfono), con botones Sellar y Canjear, o la liga de alta si
+  aún no tiene tarjeta. El token de la tarjeta nunca sale del servidor.
+- **Premio ganado**: Aurum llama al webhook; AmbarCRM confirma el premio con Aurum, deja
+  una nota interna y avisa por WhatsApp: texto libre si la ventana de 24 h está abierta,
+  la plantilla configurada (`{{1}}` nombre, `{{2}}` premio) si está cerrada.
+- **Protección del bloqueo por IP de Aurum** (10 claves fallidas bloquean la IP 15 min, y es
+  la IP de todas las empresas): un 401 marca la conexión con error y no se vuelve a llamar
+  hasta reconectar.
+
+Variables de entorno en AmbarCRM: `AURUM_URL` (fija; ninguna empresa la elige) y
+`AURUM_WEBHOOK_SECRET`. En Aurum: `WEBHOOK_URL=https://<crm>/api/public/aurum/webhook?clave=<AURUM_WEBHOOK_SECRET>`.
+
+Prueba contra un Aurum de pruebas (nunca producción), con una clienta `9611234567` y una
+meta de 1 sello: `AURUM_URL=… AURUM_SLUG=… AURUM_CLAVE=… AURUM_WEBHOOK_SECRET=…
+META_TOKEN_ENCRYPTION_KEY=… npx tsx prisma/scripts/test-lealtad-aurum.ts`.
+
 ## Campos personalizados
 
 Las definiciones se administran en **Configuración → Campos personalizados**.

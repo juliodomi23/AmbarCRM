@@ -6,6 +6,7 @@ import {
   puestoPuedeAcceder,
   puestosPermitidosModulo,
 } from "@/lib/modulos";
+import { configSinSecretos } from "@/lib/lealtad";
 import { referenciaPropia } from "@/lib/referencias";
 import { requireSesion } from "@/lib/session";
 
@@ -37,7 +38,7 @@ export async function GET() {
   return NextResponse.json({
     modulos: MODULOS.map((m) => {
       const guardado = activos.find((a) => a.clave === m.clave);
-      const config = configObjeto(guardado?.config);
+      const config = configSinSecretos(configObjeto(guardado?.config));
       return {
         ...m,
         activo:
@@ -68,6 +69,8 @@ export async function PATCH(req: NextRequest) {
       { error: "configuración inválida" },
       { status: 400 },
     );
+  // La conexión con Aurum (clave cifrada) solo se cambia desde /api/lealtad/conexion.
+  delete (config as Record<string, unknown>).aurum;
   const puestos = normalizarPuestos(
     (config as Record<string, unknown>).puestosPermitidos,
   );

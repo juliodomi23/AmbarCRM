@@ -827,3 +827,12 @@ SELECT setval(
   GREATEST(COALESCE((SELECT MAX(id) FROM orgs), 0), (SELECT last_value FROM orgs_id_seq), 1),
   true
 );
+
+-- Lealtad (Aurum): el webhook de Aurum llega sin sesión; esta función solo enruta el
+-- slug del negocio de Aurum a la empresa que lo conectó (como resolve_org_by_phone).
+CREATE OR REPLACE FUNCTION resolve_org_by_aurum_slug(p_slug text)
+  RETURNS bigint LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
+    SELECT org_id FROM modulos_org
+    WHERE clave = 'lealtad' AND config->'aurum'->>'slug' = p_slug
+    ORDER BY id LIMIT 1
+$$;
