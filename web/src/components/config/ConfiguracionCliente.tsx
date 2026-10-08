@@ -21,11 +21,12 @@ const TABS = [
 type Tab = (typeof TABS)[number] | "Clientes Ámbar CRM";
 
 export function ConfiguracionCliente({
-  embudos, usuarios, canales, plantillas, ajustes, bots, orgs = null,
+  embudos, usuarios, puestosSugeridos, canales, plantillas, ajustes, bots, orgs = null,
   modulosPorOrg = null, modulos = [],
 }: {
   embudos: any[];
   usuarios: any[];
+  puestosSugeridos: string[];
   canales: any[];
   plantillas: any[];
   ajustes: any;
@@ -65,7 +66,9 @@ export function ConfiguracionCliente({
 
       {tab === "Marca" && <MarcaConfig ajustes={ajustes} />}
       {tab === "Embudos" && <TabEmbudos embudos={embudos} />}
-      {tab === "Usuarios" && <TabUsuarios usuarios={usuarios} />}
+      {tab === "Usuarios" && (
+        <TabUsuarios usuarios={usuarios} puestosSugeridos={puestosSugeridos} />
+      )}
       {tab === "Canal WhatsApp" && <MetaCanales canales={canales} />}
       {tab === "Plantillas" && <TabPlantillas plantillas={plantillas} />}
       {tab === "Plantillas de Meta" && <MetaCanales canales={canales} vista="plantillas" />}

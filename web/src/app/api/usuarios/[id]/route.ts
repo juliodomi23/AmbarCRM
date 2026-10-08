@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
+import { validarPuesto } from "@/lib/puestos";
 import { requireSesion } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,13 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
   const data: Record<string, unknown> = {};
   if ("nombre" in body) data.nombre = body.nombre;
   if ("rol" in body) data.rol = body.rol === "admin" ? "admin" : "agente";
-  if ("puesto" in body) data.puesto = String(body.puesto || "Agente").trim();
+  if ("puesto" in body) {
+    const puestoValidado = validarPuesto(body.puesto);
+    if ("error" in puestoValidado) {
+      return NextResponse.json({ error: puestoValidado.error }, { status: 400 });
+    }
+    data.puesto = puestoValidado.valor;
+  }
   if ("activo" in body) data.activo = !!body.activo;
   if (body.password) {
     if (String(body.password).length < 8) {

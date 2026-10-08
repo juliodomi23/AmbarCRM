@@ -1,12 +1,7 @@
 import { toast } from "@/components/Toaster";
+import { PUESTOS_CATALOGO } from "@/lib/puestos";
 
-export const PUESTOS = [
-  "Administrador", "Agente", "Recepcionista", "Doctor", "Coordinador clínico",
-  "Especialista", "Vendedor", "Asesor inmobiliario", "Asesor automotriz",
-  "Vendedor de tienda", "Abogado", "Pasante", "Asistente jurídico",
-  "Coordinador jurídico", "Agente de viajes", "Coordinador de tours", "Guía",
-  "Profesor", "Coordinador académico", "Cajero", "Encargado de inventario",
-] as const;
+export const PUESTOS = PUESTOS_CATALOGO;
 
 export async function api(url: string, metodo: string, body?: unknown) {
   const res = await fetch(url, {

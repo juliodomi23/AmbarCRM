@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { db, runWithOrg } from "@/lib/db";
-import { MODULOS } from "@/lib/modulos";
+import { MODULOS, puestoPuedeAcceder } from "@/lib/modulos";
+import { puestosParaModulos } from "@/lib/puestos";
 import { getSesion } from "@/lib/session";
 import {
   getEmbudosConEtapas,
@@ -22,7 +23,7 @@ export default async function ConfiguracionPage() {
   // Solo la org plataforma (Ámbar Rojo, id=1) administra clientes (tenants).
   const esPlataforma = (session.user as any)?.orgId === "1";
 
-  const [embudos, usuarios, canales, plantillas, ajustes, bots, orgs] =
+  const [embudos, usuarios, canales, plantillas, ajustes, bots, orgs, modulosActivos] =
     await Promise.all([
       getEmbudosConEtapas(),
       listarUsuarios(),
@@ -33,7 +34,27 @@ export default async function ConfiguracionPage() {
       esPlataforma
         ? db.org.findMany({ orderBy: { id: "asc" } })
         : Promise.resolve(null),
+      db.moduloOrg.findMany({
+        where: { activo: true },
+        select: { clave: true, config: true },
+      }),
     ]);
+  const usuariosConAcceso = usuarios.map((usuario) => ({
+    ...usuario,
+    modulosAccesibles: modulosActivos
+      .filter((activo) => {
+        const modulo = MODULOS.find((item) => item.clave === activo.clave);
+        return modulo && puestoPuedeAcceder(
+          modulo.clave,
+          activo.config,
+          usuario.puesto,
+          usuario.rol,
+        );
+      })
+      .map((activo) => MODULOS.find((item) => item.clave === activo.clave)?.nombre)
+      .filter(Boolean),
+  }));
+  const puestosSugeridos = puestosParaModulos(modulosActivos.map((modulo) => modulo.clave));
   const modulosPorOrg = orgs
     ? Object.fromEntries(
         await Promise.all(
@@ -50,7 +71,8 @@ export default async function ConfiguracionPage() {
   return (
     <ConfiguracionCliente
       embudos={serializar(embudos)}
-      usuarios={serializar(usuarios)}
+      usuarios={serializar(usuariosConAcceso)}
+      puestosSugeridos={puestosSugeridos}
       canales={serializar(canales)}
       plantillas={serializar(plantillas)}
       ajustes={serializar(ajustes)}

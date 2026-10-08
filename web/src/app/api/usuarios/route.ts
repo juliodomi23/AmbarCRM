@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
+import { validarPuesto } from "@/lib/puestos";
 import { requireSesion } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,10 @@ export async function POST(req: NextRequest) {
   if (String(password).length < 8) {
     return NextResponse.json({ error: "la contraseña debe tener al menos 8 caracteres" }, { status: 400 });
   }
+  const puestoValidado = validarPuesto(puesto ?? "Agente");
+  if ("error" in puestoValidado) {
+    return NextResponse.json({ error: puestoValidado.error }, { status: 400 });
+  }
 
   const existe = await db.usuario.findFirst({ where: { email } });
   if (existe) return NextResponse.json({ error: "el email ya existe" }, { status: 409 });
@@ -27,7 +32,7 @@ export async function POST(req: NextRequest) {
       email,
       passwordHash: await bcrypt.hash(password, 10),
       rol: rol === "admin" ? "admin" : "agente",
-      puesto: String(puesto ?? "Agente").trim() || "Agente",
+      puesto: puestoValidado.valor,
     },
   });
   return NextResponse.json({ ok: true, id: u.id.toString() });
