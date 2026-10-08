@@ -5,7 +5,10 @@ import { validarPropiedad } from "@/lib/propiedades";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
 
-export const PATCH = conModulo("inmobiliaria", {}, async (sesion, req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+export const PATCH = conModulo(
+  "inmobiliaria",
+  {},
+  async (sesion, req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const id = aBigInt((await params).id);
   if (id === null) {
     return NextResponse.json({ error: "Propiedad inválida" }, { status: 400 });
@@ -21,4 +24,5 @@ export const PATCH = conModulo("inmobiliaria", {}, async (sesion, req: NextReque
   }
   const propiedad = await db.propiedad.update({ where: { id }, data: validacion.data });
   return NextResponse.json(serializar({ propiedad }));
-});
+  },
+);

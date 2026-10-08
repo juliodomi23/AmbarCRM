@@ -92,7 +92,10 @@ export async function dispatchABot(bot: { webhookUrl: string }, d: DatosDispatch
       if (res.ok) return;
       throw new Error(`HTTP ${res.status}`);
     } catch (e) {
-      console.error(`dispatch a bot falló (intento ${intento}, conv ${d.conversacionId}):`, e instanceof Error ? e.message : e);
+      console.error(
+        `dispatch a bot falló (intento ${intento}, conv ${d.conversacionId}):`,
+        e instanceof Error ? e.message : e,
+      );
       if (intento < 2) await new Promise((r) => setTimeout(r, 1500));
     }
   }

@@ -5,7 +5,10 @@ import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
 
-export const POST = conModulo("productos", {}, async (sesion, req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+export const POST = conModulo(
+  "productos",
+  {},
+  async (sesion, req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const id = aBigInt((await params).id);
   if (id === null || sesion.orgId === null) {
     return NextResponse.json({ error: "Producto u organización inválidos" }, { status: 400 });
@@ -48,4 +51,5 @@ export const POST = conModulo("productos", {}, async (sesion, req: NextRequest, 
     }
     throw error;
   }
-});
+  },
+);

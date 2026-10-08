@@ -5,7 +5,10 @@ import { esPasante, validarRegistroLegal } from "@/lib/legal";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
 
-export const POST = conModulo("legal", {}, async (sesion, req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+export const POST = conModulo(
+  "legal",
+  {},
+  async (sesion, req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const expedienteId = aBigInt((await params).id);
   if (expedienteId === null) return NextResponse.json({ error: "id inválido" }, { status: 400 });
   if (
@@ -25,4 +28,5 @@ export const POST = conModulo("legal", {}, async (sesion, req: NextRequest, { pa
     data: { ...validacion.data, expedienteId, usuarioId: sesion.userId },
   });
   return NextResponse.json(serializar({ registro }), { status: 201 });
-});
+  },
+);

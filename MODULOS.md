@@ -257,3 +257,18 @@ comando `node` sin el prefijo de variable.
 - [ ] Preparar un seed idempotente con datos exclusivamente ficticios.
 - [ ] Añadir o extender un script `scripts/check-*.ts`.
 - [ ] Incluir las tablas nuevas en la prueba automática de aislamiento multi-tenant.
+
+## Calidad antes de publicar
+
+- [ ] Ejecutar `npm run lint`, `npx prisma validate`, `npx next build` y todos los
+  `scripts/check-*.ts` después de cada fase.
+- [ ] Para inventario, ventas, compras, pagos de tours e inscripciones, validar
+  cupos o saldos dentro de una transacción y bloquear las filas necesarias con
+  `FOR UPDATE`.
+- [ ] Ejecutar `npx tsx prisma/scripts/test-concurrencia-retail.ts` contra un
+  Postgres de prueba y comprobar que la versión sin bloqueos falla de forma
+  deliberada antes de restaurar los bloqueos.
+- [ ] Ejecutar cada seed cinco veces en la misma base y comparar los conteos de
+  todas las tablas que tienen `org_id`.
+- [ ] Revisar las rutas principales de cada demo en escritorio (1440 × 900) y
+  celular (390 × 844), incluyendo la barra inferior y el cajón Más.

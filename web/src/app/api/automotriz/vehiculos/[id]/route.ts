@@ -6,7 +6,10 @@ import { serializar } from "@/lib/serialize";
 import { validarVehiculo } from "@/lib/vehiculos";
 import { conModulo } from "@/lib/con-modulo";
 
-export const PATCH = conModulo("automotriz", {}, async (sesion, req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+export const PATCH = conModulo(
+  "automotriz",
+  {},
+  async (sesion, req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const id = aBigInt((await params).id);
   if (id === null) {
     return NextResponse.json({ error: "Vehículo inválido" }, { status: 400 });
@@ -35,4 +38,5 @@ export const PATCH = conModulo("automotriz", {}, async (sesion, req: NextRequest
     }
     throw error;
   }
-});
+  },
+);

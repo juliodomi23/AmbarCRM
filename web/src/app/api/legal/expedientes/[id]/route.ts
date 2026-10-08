@@ -5,7 +5,10 @@ import { esPasante, validarExpedienteLegal } from "@/lib/legal";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
 
-export const PATCH = conModulo("legal", {}, async (sesion, req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+export const PATCH = conModulo(
+  "legal",
+  {},
+  async (sesion, req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const id = aBigInt((await params).id);
   if (id === null) return NextResponse.json({ error: "id inválido" }, { status: 400 });
   const actual = await db.expedienteLegal.findFirst({
@@ -32,4 +35,5 @@ export const PATCH = conModulo("legal", {}, async (sesion, req: NextRequest, { p
     },
   });
   return NextResponse.json(serializar({ expediente }));
-});
+  },
+);
