@@ -40,6 +40,11 @@ export default async function DetalleOrganizacionPage({
       expedientesLegales,
       asesoriasLegales,
       movimientosLegales,
+      tours,
+      reservasTours,
+      alumnos,
+      cursos,
+      inscripciones,
     ] =
       await Promise.all([
         db.usuario.findMany({
@@ -67,6 +72,11 @@ export default async function DetalleOrganizacionPage({
         db.expedienteLegal.count(),
         db.asesoriaLegal.count(),
         db.movimientoLegal.count(),
+        db.tour.count(),
+        db.reservaTour.count(),
+        db.alumnoAcademia.count(),
+        db.cursoAcademia.count(),
+        db.inscripcionAcademia.count(),
       ]);
     return {
       usuarios,
@@ -87,6 +97,11 @@ export default async function DetalleOrganizacionPage({
         expedientesLegales,
         asesoriasLegales,
         movimientosLegales,
+        tours,
+        reservasTours,
+        alumnos,
+        cursos,
+        inscripciones,
       },
     };
   });

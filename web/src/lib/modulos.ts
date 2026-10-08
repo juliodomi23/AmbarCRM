@@ -89,6 +89,62 @@ export const MODULOS = [
     icono: "M4 21V10l8-7 8 7v11M9 21v-6h6v6M8 11h.01M16 11h.01",
     ruta: "/operacion-legal",
   },
+  {
+    clave: "tours",
+    nombre: "Tours y salidas",
+    descripcion: "Catálogo, itinerarios, fechas, cupo y precio de cada experiencia.",
+    icono: "M3 17l6-6 4 4 8-10M5 19h14M16 5h5v5M21 5l-8 8",
+    ruta: "/tours",
+  },
+  {
+    clave: "reservas_tours",
+    nombre: "Reservas y viajeros",
+    descripcion: "Apartados, pasajeros, confirmación, salida y saldo pendiente.",
+    icono: "M4 5h16v14H4zM8 3v4m8-4v4M7 11h10M8 15h3",
+    ruta: "/reservas-tours",
+  },
+  {
+    clave: "pagos_tours",
+    nombre: "Cobranza de viajes",
+    descripcion: "Anticipos, liquidaciones, referencias y saldos de reservaciones.",
+    icono: "M3 7h18v12H3zM3 11h18M7 16h4",
+    ruta: "/pagos-tours",
+  },
+  {
+    clave: "alumnos",
+    nombre: "Alumnos",
+    descripcion: "Ficha, matrícula, tutor, nivel e historial de cada alumno.",
+    icono: "M3 10l9-5 9 5-9 5-9-5M7 12v5c3 2 7 2 10 0v-5",
+    ruta: "/alumnos",
+  },
+  {
+    clave: "cursos_academia",
+    nombre: "Cursos y grupos",
+    descripcion: "Oferta académica, profesores, horarios, cupo y mensualidad.",
+    icono: "M4 5h16v14H4zM8 9h8M8 13h8M8 17h5",
+    ruta: "/cursos-academia",
+  },
+  {
+    clave: "inscripciones_academia",
+    nombre: "Inscripciones",
+    descripcion: "Altas, bajas, avance y relación de alumnos con sus cursos.",
+    icono: "M9 11l3 3 8-8M5 4h10v4M5 4v16h14v-8",
+    ruta: "/inscripciones-academia",
+  },
+  {
+    clave: "colegiaturas",
+    nombre: "Colegiaturas",
+    descripcion: "Cargos, vencimientos, pagos y cartera pendiente.",
+    icono: "M12 2v20M17 6H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H6",
+    ruta: "/colegiaturas",
+  },
+  {
+    clave: "asistencia_academia",
+    nombre: "Asistencia",
+    descripcion: "Pase de lista por curso, faltas, retardos y justificaciones.",
+    icono: "M9 11l3 3 8-8M4 5h11M4 10h4M4 15h4M4 20h15",
+    ruta: "/asistencia-academia",
+  },
 ] as const;
 
 export type ClaveModulo = (typeof MODULOS)[number]["clave"];

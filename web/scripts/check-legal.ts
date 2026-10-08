@@ -9,7 +9,6 @@ import {
 
 const catalogo = await readFile(new URL("../src/lib/modulos.ts", import.meta.url), "utf8");
 const sql = await readFile(new URL("../prisma/sql/actualizaciones.sql", import.meta.url), "utf8");
-const importador = await readFile(new URL("./import-gestorlegal.mjs", import.meta.url), "utf8");
 
 for (const [clave, ruta] of [
   ["legal", "/legal"],
@@ -26,14 +25,9 @@ for (const tabla of [
   "asesorias_legales",
   "movimientos_legales",
   "registros_operacion_legal",
-  "referencias_externas",
-  "registros_legacy_legal",
 ]) {
   assert.match(sql, new RegExp(`CREATE TABLE IF NOT EXISTS ${tabla}`));
 }
-assert.match(importador, /SENSITIVE_KEYS/);
-assert.match(importador, /password_hash/);
-assert.match(importador, /registroLegacyLegal\.deleteMany/);
 assert.ok("data" in validarExpedienteLegal({ numeroInterno: "EXP-1", estado: "activo" }));
 assert.ok("error" in validarExpedienteLegal({ estado: "desconocido" }));
 assert.ok("data" in validarRegistroLegal({ tipo: "audiencia", titulo: "Audiencia inicial" }));
@@ -41,4 +35,4 @@ assert.ok("data" in validarAsesoriaLegal({ tema: "Consulta mercantil" }));
 assert.ok("data" in validarMovimientoLegal({ tipo: "pago", concepto: "Anticipo", monto: 5000 }));
 assert.ok("error" in validarMovimientoLegal({ tipo: "pago", concepto: "", monto: "x" }));
 
-console.log("legal: módulos, validadores, SQL e importador seguro OK");
+console.log("legal: módulos, validadores y SQL OK");

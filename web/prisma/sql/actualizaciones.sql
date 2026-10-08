@@ -398,7 +398,6 @@ CREATE TABLE IF NOT EXISTS sucursales_legales (
   org_id BIGINT NOT NULL
     DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
     REFERENCES orgs(id),
-  legacy_id TEXT,
   nombre TEXT NOT NULL,
   direccion TEXT,
   telefono TEXT,
@@ -406,7 +405,6 @@ CREATE TABLE IF NOT EXISTS sucursales_legales (
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (org_id, legacy_id),
   UNIQUE (org_id, nombre)
 );
 CREATE INDEX IF NOT EXISTS sucursales_legales_org_activa_idx
@@ -417,7 +415,6 @@ CREATE TABLE IF NOT EXISTS expedientes_legales (
   org_id BIGINT NOT NULL
     DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
     REFERENCES orgs(id),
-  legacy_id TEXT,
   numero_interno TEXT,
   numero_judicial TEXT,
   contacto_id BIGINT REFERENCES contactos(id) ON DELETE SET NULL,
@@ -434,8 +431,7 @@ CREATE TABLE IF NOT EXISTS expedientes_legales (
   fecha_inicio DATE,
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (org_id, legacy_id)
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS expedientes_legales_org_estado_updated_idx
   ON expedientes_legales(org_id, estado, updated_at);
@@ -451,7 +447,6 @@ CREATE TABLE IF NOT EXISTS registros_expediente_legal (
   org_id BIGINT NOT NULL
     DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
     REFERENCES orgs(id),
-  legacy_id TEXT,
   expediente_id BIGINT NOT NULL REFERENCES expedientes_legales(id) ON DELETE CASCADE,
   usuario_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
   tipo TEXT NOT NULL,
@@ -463,8 +458,7 @@ CREATE TABLE IF NOT EXISTS registros_expediente_legal (
   monto NUMERIC(14, 2),
   archivo_url TEXT,
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (org_id, tipo, legacy_id)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS registros_expediente_fecha_idx
   ON registros_expediente_legal(expediente_id, fecha_inicio);
@@ -476,7 +470,6 @@ CREATE TABLE IF NOT EXISTS asesorias_legales (
   org_id BIGINT NOT NULL
     DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
     REFERENCES orgs(id),
-  legacy_id TEXT,
   contacto_id BIGINT REFERENCES contactos(id) ON DELETE SET NULL,
   expediente_id BIGINT REFERENCES expedientes_legales(id) ON DELETE SET NULL,
   sucursal_id BIGINT REFERENCES sucursales_legales(id) ON DELETE SET NULL,
@@ -490,8 +483,7 @@ CREATE TABLE IF NOT EXISTS asesorias_legales (
   origen TEXT,
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (org_id, legacy_id)
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS asesorias_legales_org_estado_fecha_idx
   ON asesorias_legales(org_id, estado, fecha);
@@ -505,7 +497,6 @@ CREATE TABLE IF NOT EXISTS movimientos_legales (
   org_id BIGINT NOT NULL
     DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
     REFERENCES orgs(id),
-  legacy_id TEXT,
   expediente_id BIGINT REFERENCES expedientes_legales(id) ON DELETE SET NULL,
   contacto_id BIGINT REFERENCES contactos(id) ON DELETE SET NULL,
   sucursal_id BIGINT REFERENCES sucursales_legales(id) ON DELETE SET NULL,
@@ -516,8 +507,7 @@ CREATE TABLE IF NOT EXISTS movimientos_legales (
   estado TEXT,
   fecha DATE,
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (org_id, tipo, legacy_id)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS movimientos_legales_org_tipo_fecha_idx
   ON movimientos_legales(org_id, tipo, fecha);
@@ -529,7 +519,6 @@ CREATE TABLE IF NOT EXISTS registros_operacion_legal (
   org_id BIGINT NOT NULL
     DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
     REFERENCES orgs(id),
-  legacy_id TEXT,
   usuario_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
   sucursal_id BIGINT REFERENCES sucursales_legales(id) ON DELETE SET NULL,
   tipo TEXT NOT NULL,
@@ -537,45 +526,200 @@ CREATE TABLE IF NOT EXISTS registros_operacion_legal (
   estado TEXT,
   descripcion TEXT,
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (org_id, tipo, legacy_id)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS registros_operacion_org_tipo_fecha_idx
   ON registros_operacion_legal(org_id, tipo, fecha);
 CREATE INDEX IF NOT EXISTS registros_operacion_usuario_id_idx
   ON registros_operacion_legal(usuario_id);
 
-CREATE TABLE IF NOT EXISTS referencias_externas (
+CREATE TABLE IF NOT EXISTS tours (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL
     DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
     REFERENCES orgs(id),
-  sistema TEXT NOT NULL,
-  entidad TEXT NOT NULL,
-  clave TEXT NOT NULL,
-  destino_id BIGINT,
-  destino_clave TEXT,
+  clave TEXT,
+  nombre TEXT NOT NULL,
+  destino TEXT NOT NULL,
+  pais TEXT,
+  tipo TEXT NOT NULL DEFAULT 'tour',
+  duracion_dias INTEGER NOT NULL DEFAULT 1,
+  fecha_salida TIMESTAMPTZ,
+  fecha_regreso TIMESTAMPTZ,
+  capacidad INTEGER NOT NULL DEFAULT 1,
+  precio NUMERIC(14, 2) NOT NULL DEFAULT 0,
+  moneda TEXT NOT NULL DEFAULT 'MXN',
+  punto_encuentro TEXT,
+  incluye TEXT,
+  no_incluye TEXT,
+  estado TEXT NOT NULL DEFAULT 'publicado',
+  imagen_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (org_id, sistema, entidad, clave)
+  UNIQUE (org_id, clave)
 );
-CREATE INDEX IF NOT EXISTS referencias_externas_org_entidad_idx
-  ON referencias_externas(org_id, entidad);
+CREATE INDEX IF NOT EXISTS tours_org_estado_salida_idx
+  ON tours(org_id, estado, fecha_salida);
 
-CREATE TABLE IF NOT EXISTS registros_legacy_legal (
+CREATE TABLE IF NOT EXISTS itinerarios_tour (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL
     DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
     REFERENCES orgs(id),
-  sistema TEXT NOT NULL,
-  tabla TEXT NOT NULL,
-  legacy_id TEXT NOT NULL,
-  payload JSONB NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (org_id, sistema, tabla, legacy_id)
+  tour_id BIGINT NOT NULL REFERENCES tours(id) ON DELETE CASCADE,
+  dia INTEGER NOT NULL,
+  orden INTEGER NOT NULL DEFAULT 0,
+  titulo TEXT NOT NULL,
+  descripcion TEXT
 );
-CREATE INDEX IF NOT EXISTS registros_legacy_legal_org_tabla_idx
-  ON registros_legacy_legal(org_id, tabla);
+CREATE INDEX IF NOT EXISTS itinerarios_tour_dia_idx
+  ON itinerarios_tour(tour_id, dia, orden);
+CREATE INDEX IF NOT EXISTS itinerarios_tour_org_idx
+  ON itinerarios_tour(org_id);
+
+CREATE TABLE IF NOT EXISTS reservas_tour (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  codigo TEXT NOT NULL,
+  tour_id BIGINT NOT NULL REFERENCES tours(id),
+  contacto_id BIGINT NOT NULL REFERENCES contactos(id),
+  viajeros INTEGER NOT NULL DEFAULT 1,
+  estado TEXT NOT NULL DEFAULT 'solicitada',
+  total NUMERIC(14, 2) NOT NULL DEFAULT 0,
+  saldo NUMERIC(14, 2) NOT NULL DEFAULT 0,
+  fecha_salida TIMESTAMPTZ,
+  notas TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, codigo)
+);
+CREATE INDEX IF NOT EXISTS reservas_tour_org_estado_salida_idx
+  ON reservas_tour(org_id, estado, fecha_salida);
+CREATE INDEX IF NOT EXISTS reservas_tour_tour_idx ON reservas_tour(tour_id);
+CREATE INDEX IF NOT EXISTS reservas_tour_contacto_idx ON reservas_tour(contacto_id);
+
+CREATE TABLE IF NOT EXISTS pagos_tour (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  reserva_id BIGINT NOT NULL REFERENCES reservas_tour(id) ON DELETE CASCADE,
+  concepto TEXT NOT NULL,
+  monto NUMERIC(14, 2) NOT NULL,
+  fecha TIMESTAMPTZ NOT NULL DEFAULT now(),
+  metodo TEXT,
+  referencia TEXT,
+  estado TEXT NOT NULL DEFAULT 'aplicado',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS pagos_tour_org_fecha_idx ON pagos_tour(org_id, fecha);
+CREATE INDEX IF NOT EXISTS pagos_tour_reserva_idx ON pagos_tour(reserva_id);
+
+CREATE TABLE IF NOT EXISTS alumnos_academia (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  contacto_id BIGINT NOT NULL UNIQUE REFERENCES contactos(id) ON DELETE CASCADE,
+  matricula TEXT,
+  fecha_nacimiento DATE,
+  tutor_nombre TEXT,
+  tutor_telefono TEXT,
+  nivel TEXT,
+  estado TEXT NOT NULL DEFAULT 'activo',
+  observaciones TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, matricula)
+);
+CREATE INDEX IF NOT EXISTS alumnos_academia_org_estado_idx
+  ON alumnos_academia(org_id, estado);
+
+CREATE TABLE IF NOT EXISTS cursos_academia (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  clave TEXT,
+  nombre TEXT NOT NULL,
+  categoria TEXT,
+  modalidad TEXT NOT NULL DEFAULT 'presencial',
+  profesor TEXT,
+  horario TEXT,
+  fecha_inicio DATE,
+  fecha_fin DATE,
+  capacidad INTEGER NOT NULL DEFAULT 1,
+  mensualidad NUMERIC(14, 2) NOT NULL DEFAULT 0,
+  estado TEXT NOT NULL DEFAULT 'abierto',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, clave)
+);
+CREATE INDEX IF NOT EXISTS cursos_academia_org_estado_idx
+  ON cursos_academia(org_id, estado);
+
+CREATE TABLE IF NOT EXISTS inscripciones_academia (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  alumno_id BIGINT NOT NULL REFERENCES alumnos_academia(id) ON DELETE CASCADE,
+  curso_id BIGINT NOT NULL REFERENCES cursos_academia(id),
+  fecha_alta DATE NOT NULL DEFAULT CURRENT_DATE,
+  fecha_baja DATE,
+  estado TEXT NOT NULL DEFAULT 'activa',
+  descuento NUMERIC(5, 2) NOT NULL DEFAULT 0,
+  avance INTEGER NOT NULL DEFAULT 0,
+  notas TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (alumno_id, curso_id)
+);
+CREATE INDEX IF NOT EXISTS inscripciones_academia_org_estado_idx
+  ON inscripciones_academia(org_id, estado);
+CREATE INDEX IF NOT EXISTS inscripciones_academia_curso_idx
+  ON inscripciones_academia(curso_id);
+
+CREATE TABLE IF NOT EXISTS colegiaturas_academia (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  alumno_id BIGINT NOT NULL REFERENCES alumnos_academia(id) ON DELETE CASCADE,
+  inscripcion_id BIGINT REFERENCES inscripciones_academia(id) ON DELETE SET NULL,
+  concepto TEXT NOT NULL,
+  periodo TEXT,
+  monto NUMERIC(14, 2) NOT NULL,
+  vencimiento DATE NOT NULL,
+  pagado_en TIMESTAMPTZ,
+  metodo TEXT,
+  estado TEXT NOT NULL DEFAULT 'pendiente',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS colegiaturas_org_estado_vencimiento_idx
+  ON colegiaturas_academia(org_id, estado, vencimiento);
+CREATE INDEX IF NOT EXISTS colegiaturas_alumno_idx
+  ON colegiaturas_academia(alumno_id);
+
+CREATE TABLE IF NOT EXISTS asistencias_academia (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  alumno_id BIGINT NOT NULL REFERENCES alumnos_academia(id) ON DELETE CASCADE,
+  curso_id BIGINT NOT NULL REFERENCES cursos_academia(id) ON DELETE CASCADE,
+  fecha DATE NOT NULL,
+  estado TEXT NOT NULL DEFAULT 'presente',
+  notas TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (alumno_id, curso_id, fecha)
+);
+CREATE INDEX IF NOT EXISTS asistencias_org_fecha_estado_idx
+  ON asistencias_academia(org_id, fecha, estado);
+CREATE INDEX IF NOT EXISTS asistencias_curso_idx
+  ON asistencias_academia(curso_id);
 
 DO $$ DECLARE t TEXT; BEGIN
   FOREACH t IN ARRAY ARRAY[
@@ -600,8 +744,15 @@ DO $$ DECLARE t TEXT; BEGIN
     'asesorias_legales',
     'movimientos_legales',
     'registros_operacion_legal',
-    'referencias_externas',
-    'registros_legacy_legal'
+    'tours',
+    'itinerarios_tour',
+    'reservas_tour',
+    'pagos_tour',
+    'alumnos_academia',
+    'cursos_academia',
+    'inscripciones_academia',
+    'colegiaturas_academia',
+    'asistencias_academia'
   ] LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
@@ -641,7 +792,14 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   asesorias_legales,
   movimientos_legales,
   registros_operacion_legal,
-  referencias_externas,
-  registros_legacy_legal
+  tours,
+  itinerarios_tour,
+  reservas_tour,
+  pagos_tour,
+  alumnos_academia,
+  cursos_academia,
+  inscripciones_academia,
+  colegiaturas_academia,
+  asistencias_academia
 TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;

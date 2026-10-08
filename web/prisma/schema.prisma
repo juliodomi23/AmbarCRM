@@ -258,6 +258,8 @@ model Contacto {
   expedientesLegales ExpedienteLegal[]
   asesoriasLegales   AsesoriaLegal[]
   movimientosLegales MovimientoLegal[]
+  reservasTour       ReservaTour[]
+  alumnoAcademia     AlumnoAcademia?
 
   @@unique([orgId, telefono])
   @@index([responsableId])
@@ -913,7 +915,6 @@ model MovimientoInventario {
 model SucursalLegal {
   id        BigInt   @id @default(autoincrement())
   orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  legacyId  String?  @map("legacy_id")
   nombre    String
   direccion String?
   telefono  String?
@@ -927,7 +928,6 @@ model SucursalLegal {
   movimientos MovimientoLegal[]
   operaciones RegistroOperacionLegal[]
 
-  @@unique([orgId, legacyId])
   @@unique([orgId, nombre])
   @@index([orgId, activa])
   @@map("sucursales_legales")
@@ -936,7 +936,6 @@ model SucursalLegal {
 model ExpedienteLegal {
   id             BigInt    @id @default(autoincrement())
   orgId          BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  legacyId       String?   @map("legacy_id")
   numeroInterno  String?   @map("numero_interno")
   numeroJudicial String?   @map("numero_judicial")
   contactoId     BigInt?   @map("contacto_id")
@@ -962,7 +961,6 @@ model ExpedienteLegal {
   asesorias   AsesoriaLegal[]
   movimientos MovimientoLegal[]
 
-  @@unique([orgId, legacyId])
   @@index([orgId, estado, updatedAt])
   @@index([contactoId])
   @@index([responsableId])
@@ -973,7 +971,6 @@ model ExpedienteLegal {
 model RegistroExpedienteLegal {
   id           BigInt    @id @default(autoincrement())
   orgId        BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  legacyId     String?   @map("legacy_id")
   expedienteId BigInt    @map("expediente_id")
   usuarioId    BigInt?   @map("usuario_id")
   tipo         String
@@ -990,7 +987,6 @@ model RegistroExpedienteLegal {
   expediente ExpedienteLegal @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
   usuario    Usuario?        @relation("RegistroLegalUsuario", fields: [usuarioId], references: [id], onDelete: SetNull)
 
-  @@unique([orgId, tipo, legacyId])
   @@index([expedienteId, fechaInicio])
   @@index([orgId, tipo])
   @@map("registros_expediente_legal")
@@ -999,7 +995,6 @@ model RegistroExpedienteLegal {
 model AsesoriaLegal {
   id           BigInt    @id @default(autoincrement())
   orgId        BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  legacyId     String?   @map("legacy_id")
   contactoId   BigInt?   @map("contacto_id")
   expedienteId BigInt?   @map("expediente_id")
   sucursalId   BigInt?   @map("sucursal_id")
@@ -1020,7 +1015,6 @@ model AsesoriaLegal {
   sucursal   SucursalLegal?   @relation(fields: [sucursalId], references: [id], onDelete: SetNull)
   abogado    Usuario?         @relation("AsesoriaAbogado", fields: [abogadoId], references: [id], onDelete: SetNull)
 
-  @@unique([orgId, legacyId])
   @@index([orgId, estado, fecha])
   @@index([contactoId])
   @@index([expedienteId])
@@ -1030,7 +1024,6 @@ model AsesoriaLegal {
 model MovimientoLegal {
   id           BigInt    @id @default(autoincrement())
   orgId        BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  legacyId     String?   @map("legacy_id")
   expedienteId BigInt?   @map("expediente_id")
   contactoId   BigInt?   @map("contacto_id")
   sucursalId   BigInt?   @map("sucursal_id")
@@ -1048,7 +1041,6 @@ model MovimientoLegal {
   sucursal   SucursalLegal?   @relation(fields: [sucursalId], references: [id], onDelete: SetNull)
   usuario    Usuario?         @relation("MovimientoLegalUsuario", fields: [usuarioId], references: [id], onDelete: SetNull)
 
-  @@unique([orgId, tipo, legacyId])
   @@index([orgId, tipo, fecha])
   @@index([expedienteId])
   @@map("movimientos_legales")
@@ -1057,7 +1049,6 @@ model MovimientoLegal {
 model RegistroOperacionLegal {
   id          BigInt    @id @default(autoincrement())
   orgId       BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  legacyId    String?   @map("legacy_id")
   usuarioId   BigInt?   @map("usuario_id")
   sucursalId  BigInt?   @map("sucursal_id")
   tipo        String
@@ -1070,40 +1061,214 @@ model RegistroOperacionLegal {
   usuario  Usuario?       @relation("OperacionLegalUsuario", fields: [usuarioId], references: [id], onDelete: SetNull)
   sucursal SucursalLegal? @relation(fields: [sucursalId], references: [id], onDelete: SetNull)
 
-  @@unique([orgId, tipo, legacyId])
   @@index([orgId, tipo, fecha])
   @@index([usuarioId])
   @@map("registros_operacion_legal")
 }
 
-model ReferenciaExterna {
-  id           BigInt   @id @default(autoincrement())
-  orgId        BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  sistema      String
-  entidad      String
-  clave        String
-  destinoId    BigInt?  @map("destino_id")
-  destinoClave String?  @map("destino_clave")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+model Tour {
+  id             BigInt    @id @default(autoincrement())
+  orgId          BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  clave          String?
+  nombre         String
+  destino        String
+  pais           String?
+  tipo           String    @default("tour")
+  duracionDias   Int       @default(1) @map("duracion_dias")
+  fechaSalida    DateTime? @map("fecha_salida")
+  fechaRegreso   DateTime? @map("fecha_regreso")
+  capacidad      Int       @default(1)
+  precio         Decimal   @default(0) @db.Decimal(14, 2)
+  moneda         String    @default("MXN")
+  puntoEncuentro String?   @map("punto_encuentro")
+  incluye        String?
+  noIncluye      String?   @map("no_incluye")
+  estado         String    @default("publicado")
+  imagenUrl      String?   @map("imagen_url")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
 
-  @@unique([orgId, sistema, entidad, clave])
-  @@index([orgId, entidad])
-  @@map("referencias_externas")
+  itinerario ItinerarioTour[]
+  reservas   ReservaTour[]
+
+  @@unique([orgId, clave])
+  @@index([orgId, estado, fechaSalida])
+  @@map("tours")
 }
 
-model RegistroLegacyLegal {
+model ItinerarioTour {
+  id          BigInt  @id @default(autoincrement())
+  orgId       BigInt  @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  tourId      BigInt  @map("tour_id")
+  dia         Int
+  orden       Int     @default(0)
+  titulo      String
+  descripcion String?
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@index([tourId, dia, orden])
+  @@index([orgId])
+  @@map("itinerarios_tour")
+}
+
+model ReservaTour {
+  id          BigInt    @id @default(autoincrement())
+  orgId       BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  codigo      String
+  tourId      BigInt    @map("tour_id")
+  contactoId  BigInt    @map("contacto_id")
+  viajeros    Int       @default(1)
+  estado      String    @default("solicitada")
+  total       Decimal   @default(0) @db.Decimal(14, 2)
+  saldo       Decimal   @default(0) @db.Decimal(14, 2)
+  fechaSalida DateTime? @map("fecha_salida")
+  notas       String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  tour     Tour       @relation(fields: [tourId], references: [id], onDelete: Restrict)
+  contacto Contacto   @relation(fields: [contactoId], references: [id], onDelete: Restrict)
+  pagos    PagoTour[]
+
+  @@unique([orgId, codigo])
+  @@index([orgId, estado, fechaSalida])
+  @@index([tourId])
+  @@index([contactoId])
+  @@map("reservas_tour")
+}
+
+model PagoTour {
+  id         BigInt   @id @default(autoincrement())
+  orgId      BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  reservaId  BigInt   @map("reserva_id")
+  concepto   String
+  monto      Decimal  @db.Decimal(14, 2)
+  fecha      DateTime @default(now())
+  metodo     String?
+  referencia String?
+  estado     String   @default("aplicado")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  reserva ReservaTour @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, fecha])
+  @@index([reservaId])
+  @@map("pagos_tour")
+}
+
+model AlumnoAcademia {
+  id              BigInt    @id @default(autoincrement())
+  orgId           BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contactoId      BigInt    @unique @map("contacto_id")
+  matricula       String?
+  fechaNacimiento DateTime? @map("fecha_nacimiento") @db.Date
+  tutorNombre     String?   @map("tutor_nombre")
+  tutorTelefono   String?   @map("tutor_telefono")
+  nivel           String?
+  estado          String    @default("activo")
+  observaciones   String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  contacto      Contacto              @relation(fields: [contactoId], references: [id], onDelete: Cascade)
+  inscripciones InscripcionAcademia[]
+  colegiaturas  ColegiaturaAcademia[]
+  asistencias   AsistenciaAcademia[]
+
+  @@unique([orgId, matricula])
+  @@index([orgId, estado])
+  @@map("alumnos_academia")
+}
+
+model CursoAcademia {
+  id          BigInt    @id @default(autoincrement())
+  orgId       BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  clave       String?
+  nombre      String
+  categoria   String?
+  modalidad   String    @default("presencial")
+  profesor    String?
+  horario     String?
+  fechaInicio DateTime? @map("fecha_inicio") @db.Date
+  fechaFin    DateTime? @map("fecha_fin") @db.Date
+  capacidad   Int       @default(1)
+  mensualidad Decimal   @default(0) @db.Decimal(14, 2)
+  estado      String    @default("abierto")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  inscripciones InscripcionAcademia[]
+  asistencias   AsistenciaAcademia[]
+
+  @@unique([orgId, clave])
+  @@index([orgId, estado])
+  @@map("cursos_academia")
+}
+
+model InscripcionAcademia {
+  id        BigInt    @id @default(autoincrement())
+  orgId     BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  alumnoId  BigInt    @map("alumno_id")
+  cursoId   BigInt    @map("curso_id")
+  fechaAlta DateTime  @default(now()) @map("fecha_alta") @db.Date
+  fechaBaja DateTime? @map("fecha_baja") @db.Date
+  estado    String    @default("activa")
+  descuento Decimal   @default(0) @db.Decimal(5, 2)
+  avance    Int       @default(0)
+  notas     String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  alumno       AlumnoAcademia        @relation(fields: [alumnoId], references: [id], onDelete: Cascade)
+  curso        CursoAcademia         @relation(fields: [cursoId], references: [id], onDelete: Restrict)
+  colegiaturas ColegiaturaAcademia[]
+
+  @@unique([alumnoId, cursoId])
+  @@index([orgId, estado])
+  @@index([cursoId])
+  @@map("inscripciones_academia")
+}
+
+model ColegiaturaAcademia {
+  id            BigInt    @id @default(autoincrement())
+  orgId         BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  alumnoId      BigInt    @map("alumno_id")
+  inscripcionId BigInt?   @map("inscripcion_id")
+  concepto      String
+  periodo       String?
+  monto         Decimal   @db.Decimal(14, 2)
+  vencimiento   DateTime  @db.Date
+  pagadoEn      DateTime? @map("pagado_en")
+  metodo        String?
+  estado        String    @default("pendiente")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  alumno      AlumnoAcademia       @relation(fields: [alumnoId], references: [id], onDelete: Cascade)
+  inscripcion InscripcionAcademia? @relation(fields: [inscripcionId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, estado, vencimiento])
+  @@index([alumnoId])
+  @@map("colegiaturas_academia")
+}
+
+model AsistenciaAcademia {
   id        BigInt   @id @default(autoincrement())
   orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  sistema   String
-  tabla     String
-  legacyId  String   @map("legacy_id")
-  payload   Json
+  alumnoId  BigInt   @map("alumno_id")
+  cursoId   BigInt   @map("curso_id")
+  fecha     DateTime @db.Date
+  estado    String   @default("presente")
+  notas     String?
   createdAt DateTime @default(now()) @map("created_at")
 
-  @@unique([orgId, sistema, tabla, legacyId])
-  @@index([orgId, tabla])
-  @@map("registros_legacy_legal")
+  alumno AlumnoAcademia @relation(fields: [alumnoId], references: [id], onDelete: Cascade)
+  curso  CursoAcademia  @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+
+  @@unique([alumnoId, cursoId, fecha])
+  @@index([orgId, fecha, estado])
+  @@index([cursoId])
+  @@map("asistencias_academia")
 }
 
 model Evento {

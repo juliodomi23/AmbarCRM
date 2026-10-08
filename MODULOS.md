@@ -191,22 +191,51 @@ Los puestos sugeridos para esta vertical son abogado, pasante, asistente
 jurídico y coordinador jurídico. Citas sigue siendo un módulo compartido y los
 prospectos se administran en un embudo legal normal del CRM.
 
-### Importar una instancia de GestorLegal
-
-El importador `web/scripts/import-gestorlegal.mjs` recibe la conexión de la base
-de origen mediante `SOURCE_DATABASE_URL`. Es idempotente: crea referencias
-estables entre los identificadores viejos y nuevos, por lo que puede ejecutarse
-varias veces sin duplicar registros. También admite `LEGACY_LOGO_PATH`,
-`REASSIGNMENT_CSV`, `REASSIGN_TO_NAME`, `TARGET_ORG_SLUG` y `TARGET_ORG_NAME`.
+La demo jurídica usa exclusivamente nombres y asuntos ficticios. No importa ni
+conserva información del sistema de ningún despacho real.
 
 ```bash
 cd web
-SOURCE_DATABASE_URL=postgresql://... \
-  node scripts/import-gestorlegal.mjs soporte@local.test ClaveSegura
+node scripts/seed-demo-legal.mjs legal@local.test LegalDemo2026!
 ```
 
-Además de convertir los datos operativos, conserva cada fila de origen en
-`registros_legacy_legal`. Antes de guardarla elimina hashes de contraseña, PIN,
-tokens y secretos. Los respaldos, documentos y datos reales del despacho no
-forman parte del repositorio: la importación se ejecuta únicamente en el entorno
-privado autorizado.
+## Viajes y tours
+
+La vertical de viajes usa tres módulos activables:
+
+- **Tours y salidas** administra destinos, experiencias, fechas, duración,
+  itinerario, precio y capacidad;
+- **Reservas y viajeros** conecta cada apartado con un contacto del CRM, controla
+  pasajeros, estado, total y saldo;
+- **Cobranza de viajes** registra anticipos y liquidaciones y actualiza el saldo
+  de la reservación.
+
+Los contactos, el chat, los embudos y Citas siguen siendo compartidos. Los
+puestos sugeridos son agente de viajes, coordinador de tours y guía. La API
+impide reservar más personas que el cupo disponible y rechaza pagos mayores al
+saldo pendiente.
+
+```bash
+cd web
+node scripts/seed-demo-viajes.mjs viajes@local.test ViajesDemo2026!
+```
+
+## Educación y academias
+
+Educación se divide en cinco módulos para que una organización active solo lo
+que necesita:
+
+- **Alumnos** extiende un contacto con matrícula, tutor, nivel y estado;
+- **Cursos y grupos** administra modalidad, profesor, horario, cupo y precio;
+- **Inscripciones** relaciona alumnos con cursos y registra su avance;
+- **Colegiaturas** controla cargos, vencimientos y pagos;
+- **Asistencia** guarda presencia, faltas, retardos y justificaciones por clase.
+
+El servidor valida el cupo antes de inscribir y el pase de lista es idempotente:
+registrar otra vez el mismo alumno, curso y fecha actualiza el estado existente.
+Los puestos sugeridos son profesor y coordinador académico.
+
+```bash
+cd web
+node scripts/seed-demo-academia.mjs academia@local.test AcademiaDemo2026!
+```
