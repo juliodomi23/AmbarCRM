@@ -227,6 +227,172 @@ CREATE INDEX IF NOT EXISTS propiedades_org_estado_idx ON propiedades(org_id, est
 CREATE INDEX IF NOT EXISTS propiedades_org_ciudad_tipo_idx
   ON propiedades(org_id, ciudad, tipo);
 
+CREATE TABLE IF NOT EXISTS productos (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  sku TEXT,
+  codigo_barras TEXT,
+  nombre TEXT NOT NULL,
+  categoria TEXT,
+  descripcion TEXT,
+  precio NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  costo NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  stock INTEGER NOT NULL DEFAULT 0,
+  stock_minimo INTEGER NOT NULL DEFAULT 0,
+  moneda TEXT NOT NULL DEFAULT 'MXN',
+  foto_url TEXT,
+  activo BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, sku),
+  UNIQUE (org_id, codigo_barras),
+  CHECK (stock >= 0),
+  CHECK (stock_minimo >= 0),
+  CHECK (precio >= 0),
+  CHECK (costo >= 0)
+);
+CREATE INDEX IF NOT EXISTS productos_org_activo_nombre_idx
+  ON productos(org_id, activo, nombre);
+CREATE INDEX IF NOT EXISTS productos_org_categoria_idx
+  ON productos(org_id, categoria);
+
+CREATE TABLE IF NOT EXISTS ventas (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  folio TEXT NOT NULL,
+  contacto_id BIGINT REFERENCES contactos(id) ON DELETE SET NULL,
+  creado_por_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  estado TEXT NOT NULL DEFAULT 'pendiente',
+  canal TEXT NOT NULL DEFAULT 'mostrador',
+  metodo_pago TEXT,
+  subtotal NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  descuento NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  total NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  moneda TEXT NOT NULL DEFAULT 'MXN',
+  notas TEXT,
+  stock_aplicado BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, folio),
+  CHECK (subtotal >= 0),
+  CHECK (descuento >= 0),
+  CHECK (total >= 0)
+);
+CREATE INDEX IF NOT EXISTS ventas_org_estado_created_idx
+  ON ventas(org_id, estado, created_at);
+CREATE INDEX IF NOT EXISTS ventas_contacto_id_idx ON ventas(contacto_id);
+
+CREATE TABLE IF NOT EXISTS venta_partidas (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  venta_id BIGINT NOT NULL REFERENCES ventas(id) ON DELETE CASCADE,
+  producto_id BIGINT NOT NULL REFERENCES productos(id) ON DELETE RESTRICT,
+  cantidad INTEGER NOT NULL,
+  precio_unitario NUMERIC(12, 2) NOT NULL,
+  total NUMERIC(12, 2) NOT NULL,
+  CHECK (cantidad > 0),
+  CHECK (precio_unitario >= 0),
+  CHECK (total >= 0)
+);
+CREATE INDEX IF NOT EXISTS venta_partidas_venta_id_idx ON venta_partidas(venta_id);
+CREATE INDEX IF NOT EXISTS venta_partidas_producto_id_idx ON venta_partidas(producto_id);
+CREATE INDEX IF NOT EXISTS venta_partidas_org_idx ON venta_partidas(org_id);
+
+CREATE TABLE IF NOT EXISTS proveedores (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  nombre TEXT NOT NULL,
+  contacto_nombre TEXT,
+  telefono TEXT,
+  email TEXT,
+  rfc TEXT,
+  notas TEXT,
+  activo BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, nombre)
+);
+CREATE INDEX IF NOT EXISTS proveedores_org_activo_idx
+  ON proveedores(org_id, activo);
+
+CREATE TABLE IF NOT EXISTS compras (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  folio TEXT NOT NULL,
+  proveedor_id BIGINT NOT NULL REFERENCES proveedores(id) ON DELETE RESTRICT,
+  creado_por_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  estado TEXT NOT NULL DEFAULT 'ordenada',
+  total NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  moneda TEXT NOT NULL DEFAULT 'MXN',
+  notas TEXT,
+  stock_aplicado BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, folio),
+  CHECK (total >= 0)
+);
+CREATE INDEX IF NOT EXISTS compras_org_estado_created_idx
+  ON compras(org_id, estado, created_at);
+CREATE INDEX IF NOT EXISTS compras_proveedor_id_idx ON compras(proveedor_id);
+
+CREATE TABLE IF NOT EXISTS compra_partidas (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  compra_id BIGINT NOT NULL REFERENCES compras(id) ON DELETE CASCADE,
+  producto_id BIGINT NOT NULL REFERENCES productos(id) ON DELETE RESTRICT,
+  cantidad INTEGER NOT NULL,
+  costo_unitario NUMERIC(12, 2) NOT NULL,
+  total NUMERIC(12, 2) NOT NULL,
+  CHECK (cantidad > 0),
+  CHECK (costo_unitario >= 0),
+  CHECK (total >= 0)
+);
+CREATE INDEX IF NOT EXISTS compra_partidas_compra_id_idx ON compra_partidas(compra_id);
+CREATE INDEX IF NOT EXISTS compra_partidas_producto_id_idx ON compra_partidas(producto_id);
+CREATE INDEX IF NOT EXISTS compra_partidas_org_idx ON compra_partidas(org_id);
+
+CREATE TABLE IF NOT EXISTS movimientos_inventario (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL
+    DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint
+    REFERENCES orgs(id),
+  producto_id BIGINT NOT NULL REFERENCES productos(id) ON DELETE CASCADE,
+  venta_id BIGINT REFERENCES ventas(id) ON DELETE SET NULL,
+  compra_id BIGINT REFERENCES compras(id) ON DELETE SET NULL,
+  usuario_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  tipo TEXT NOT NULL,
+  cantidad INTEGER NOT NULL,
+  existencia_antes INTEGER NOT NULL,
+  existencia_despues INTEGER NOT NULL,
+  motivo TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (cantidad <> 0),
+  CHECK (existencia_antes >= 0),
+  CHECK (existencia_despues >= 0)
+);
+ALTER TABLE movimientos_inventario
+  ADD COLUMN IF NOT EXISTS compra_id BIGINT REFERENCES compras(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS movimientos_producto_created_idx
+  ON movimientos_inventario(producto_id, created_at);
+CREATE INDEX IF NOT EXISTS movimientos_venta_id_idx
+  ON movimientos_inventario(venta_id);
+CREATE INDEX IF NOT EXISTS movimientos_compra_id_idx
+  ON movimientos_inventario(compra_id);
+CREATE INDEX IF NOT EXISTS movimientos_inventario_org_idx
+  ON movimientos_inventario(org_id);
+
 DO $$ DECLARE t TEXT; BEGIN
   FOREACH t IN ARRAY ARRAY[
     'modulos_org',
@@ -236,7 +402,14 @@ DO $$ DECLARE t TEXT; BEGIN
     'expedientes_paciente',
     'evoluciones_clinicas',
     'vehiculos',
-    'propiedades'
+    'propiedades',
+    'productos',
+    'ventas',
+    'venta_partidas',
+    'proveedores',
+    'compras',
+    'compra_partidas',
+    'movimientos_inventario'
   ] LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
@@ -262,6 +435,13 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   expedientes_paciente,
   evoluciones_clinicas,
   vehiculos,
-  propiedades
+  propiedades,
+  productos,
+  ventas,
+  venta_partidas,
+  proveedores,
+  compras,
+  compra_partidas,
+  movimientos_inventario
 TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;

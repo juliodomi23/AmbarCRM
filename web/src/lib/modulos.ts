@@ -40,6 +40,27 @@ export const MODULOS = [
     icono: "M3 11l9-8 9 8M5 10v10h14V10M9 20v-6h6v6",
     ruta: "/inmobiliaria",
   },
+  {
+    clave: "productos",
+    nombre: "Productos e inventario",
+    descripcion: "Catálogo, existencias, alertas de stock y movimientos.",
+    icono: "M4 7l8-4 8 4-8 4-8-4zm0 0v10l8 4 8-4V7M12 11v10",
+    ruta: "/productos",
+  },
+  {
+    clave: "compras",
+    nombre: "Compras y proveedores",
+    descripcion: "Proveedores, órdenes de compra y recepción de mercancía.",
+    icono: "M4 7h16l-1 13H5L4 7zm3 0V5a5 5 0 0 1 10 0v2M8 11h8",
+    ruta: "/compras",
+  },
+  {
+    clave: "ventas",
+    nombre: "Ventas y pedidos",
+    descripcion: "Pedidos de mostrador, WhatsApp y tienda en línea.",
+    icono: "M3 3h2l2 12h10l2-8H6M9 20h.01M17 20h.01",
+    ruta: "/ventas",
+  },
 ] as const;
 
 export type ClaveModulo = (typeof MODULOS)[number]["clave"];

@@ -33,6 +33,10 @@ export default async function DetalleOrganizacionPage({
       citas,
       vehiculos,
       propiedades,
+      productos,
+      ventas,
+      proveedores,
+      compras,
     ] =
       await Promise.all([
         db.usuario.findMany({
@@ -53,13 +57,28 @@ export default async function DetalleOrganizacionPage({
         db.cita.count(),
         db.vehiculo.count(),
         db.propiedad.count(),
+        db.producto.count(),
+        db.venta.count(),
+        db.proveedor.count(),
+        db.compra.count(),
       ]);
     return {
       usuarios,
       modulos,
       ajustes,
       canales,
-      metricas: { contactos, conversaciones, oportunidades, citas, vehiculos, propiedades },
+      metricas: {
+        contactos,
+        conversaciones,
+        oportunidades,
+        citas,
+        vehiculos,
+        propiedades,
+        productos,
+        ventas,
+        proveedores,
+        compras,
+      },
     };
   });
   const activos = datos.modulos.filter((modulo) => modulo.activo);

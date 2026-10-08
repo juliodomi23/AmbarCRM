@@ -181,6 +181,9 @@ model Usuario {
   eventos        Evento[]
   citas          Cita[]
   evoluciones    EvolucionClinica[]
+  ventasCreadas  Venta[]                @relation("VentaCreadoPor")
+  movimientos    MovimientoInventario[] @relation("MovimientoUsuario")
+  comprasCreadas Compra[]               @relation("CompraCreadoPor")
 
   @@unique([orgId, email])
   @@index([orgId])
@@ -246,6 +249,7 @@ model Contacto {
   conversaciones Conversacion[]
   citas          Cita[]
   expediente     ExpedientePaciente?
+  ventas         Venta[]
 
   @@unique([orgId, telefono])
   @@index([responsableId])
@@ -731,6 +735,171 @@ model Propiedad {
   @@index([orgId, estado])
   @@index([orgId, ciudad, tipo])
   @@map("propiedades")
+}
+
+model Producto {
+  id           BigInt   @id @default(autoincrement())
+  orgId        BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  sku          String?
+  codigoBarras String?  @map("codigo_barras")
+  nombre       String
+  categoria    String?
+  descripcion  String?
+  precio       Decimal  @default(0) @db.Decimal(12, 2)
+  costo        Decimal  @default(0) @db.Decimal(12, 2)
+  stock        Int      @default(0)
+  stockMinimo  Int      @default(0) @map("stock_minimo")
+  moneda       String   @default("MXN")
+  fotoUrl      String?  @map("foto_url")
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  movimientos MovimientoInventario[]
+  partidas    VentaPartida[]
+  compras     CompraPartida[]
+
+  @@unique([orgId, sku])
+  @@unique([orgId, codigoBarras])
+  @@index([orgId, activo, nombre])
+  @@index([orgId, categoria])
+  @@map("productos")
+}
+
+model Venta {
+  id            BigInt   @id @default(autoincrement())
+  orgId         BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  folio         String
+  contactoId    BigInt?  @map("contacto_id")
+  creadoPorId   BigInt?  @map("creado_por_id")
+  estado        String   @default("pendiente")
+  canal         String   @default("mostrador")
+  metodoPago    String?  @map("metodo_pago")
+  subtotal      Decimal  @default(0) @db.Decimal(12, 2)
+  descuento     Decimal  @default(0) @db.Decimal(12, 2)
+  total         Decimal  @default(0) @db.Decimal(12, 2)
+  moneda        String   @default("MXN")
+  notas         String?
+  stockAplicado Boolean  @default(false) @map("stock_aplicado")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  contacto    Contacto?              @relation(fields: [contactoId], references: [id], onDelete: SetNull)
+  creadoPor   Usuario?               @relation("VentaCreadoPor", fields: [creadoPorId], references: [id], onDelete: SetNull)
+  partidas    VentaPartida[]
+  movimientos MovimientoInventario[]
+
+  @@unique([orgId, folio])
+  @@index([orgId, estado, createdAt])
+  @@index([contactoId])
+  @@map("ventas")
+}
+
+model VentaPartida {
+  id             BigInt  @id @default(autoincrement())
+  orgId          BigInt  @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  ventaId        BigInt  @map("venta_id")
+  productoId     BigInt  @map("producto_id")
+  cantidad       Int
+  precioUnitario Decimal @map("precio_unitario") @db.Decimal(12, 2)
+  total          Decimal @db.Decimal(12, 2)
+
+  venta    Venta    @relation(fields: [ventaId], references: [id], onDelete: Cascade)
+  producto Producto @relation(fields: [productoId], references: [id], onDelete: Restrict)
+
+  @@index([ventaId])
+  @@index([productoId])
+  @@index([orgId])
+  @@map("venta_partidas")
+}
+
+model Proveedor {
+  id             BigInt   @id @default(autoincrement())
+  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre         String
+  contactoNombre String?  @map("contacto_nombre")
+  telefono       String?
+  email          String?
+  rfc            String?
+  notas          String?
+  activo         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  compras Compra[]
+
+  @@unique([orgId, nombre])
+  @@index([orgId, activo])
+  @@map("proveedores")
+}
+
+model Compra {
+  id            BigInt   @id @default(autoincrement())
+  orgId         BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  folio         String
+  proveedorId   BigInt   @map("proveedor_id")
+  creadoPorId   BigInt?  @map("creado_por_id")
+  estado        String   @default("ordenada")
+  total         Decimal  @default(0) @db.Decimal(12, 2)
+  moneda        String   @default("MXN")
+  notas         String?
+  stockAplicado Boolean  @default(false) @map("stock_aplicado")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  proveedor   Proveedor              @relation(fields: [proveedorId], references: [id], onDelete: Restrict)
+  creadoPor   Usuario?               @relation("CompraCreadoPor", fields: [creadoPorId], references: [id], onDelete: SetNull)
+  partidas    CompraPartida[]
+  movimientos MovimientoInventario[]
+
+  @@unique([orgId, folio])
+  @@index([orgId, estado, createdAt])
+  @@index([proveedorId])
+  @@map("compras")
+}
+
+model CompraPartida {
+  id            BigInt  @id @default(autoincrement())
+  orgId         BigInt  @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  compraId      BigInt  @map("compra_id")
+  productoId    BigInt  @map("producto_id")
+  cantidad      Int
+  costoUnitario Decimal @map("costo_unitario") @db.Decimal(12, 2)
+  total         Decimal @db.Decimal(12, 2)
+
+  compra   Compra   @relation(fields: [compraId], references: [id], onDelete: Cascade)
+  producto Producto @relation(fields: [productoId], references: [id], onDelete: Restrict)
+
+  @@index([compraId])
+  @@index([productoId])
+  @@index([orgId])
+  @@map("compra_partidas")
+}
+
+model MovimientoInventario {
+  id                BigInt   @id @default(autoincrement())
+  orgId             BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  productoId        BigInt   @map("producto_id")
+  ventaId           BigInt?  @map("venta_id")
+  compraId          BigInt?  @map("compra_id")
+  usuarioId         BigInt?  @map("usuario_id")
+  tipo              String
+  cantidad          Int
+  existenciaAntes   Int      @map("existencia_antes")
+  existenciaDespues Int      @map("existencia_despues")
+  motivo            String?
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  producto Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  venta    Venta?   @relation(fields: [ventaId], references: [id], onDelete: SetNull)
+  compra   Compra?  @relation(fields: [compraId], references: [id], onDelete: SetNull)
+  usuario  Usuario? @relation("MovimientoUsuario", fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([productoId, createdAt])
+  @@index([ventaId])
+  @@index([compraId])
+  @@index([orgId])
+  @@map("movimientos_inventario")
 }
 
 model Evento {

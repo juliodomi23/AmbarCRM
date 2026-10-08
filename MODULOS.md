@@ -54,6 +54,25 @@ tipo, ciudad, dirección, recámaras, baños, superficie, precio, fotografía y
 estado. Se combina con Citas para agendar visitas y con Usuarios para invitar
 asesores inmobiliarios.
 
+## Retail y comercio
+
+Retail se arma con tres módulos independientes para adaptarse tanto a una tienda
+física como a ventas por WhatsApp:
+
+- **Clientes** conserva compradores frecuentes, preferencias e historial;
+- **Productos e inventario** administra catálogo, SKU, código de barras, precio,
+  costo, existencia mínima y entradas o salidas auditables;
+- **Compras y proveedores** guarda proveedores, órdenes, costos y recepción de
+  mercancía conectada automáticamente con las existencias;
+- **Ventas y pedidos** registra ventas de mostrador, WhatsApp, teléfono o tienda
+  en línea, con cliente opcional, descuentos, método de pago y preparación.
+
+Cada venta o compra calcula sus importes en servidor. Los pedidos activos
+descuentan existencias dentro de una transacción y las compras recibidas las
+incrementan. Al cancelar o regresar a borrador, el movimiento se revierte y
+queda auditado. Los puestos operativos incluyen vendedor de tienda, cajero y
+encargado de inventario.
+
 ## Módulo Citas
 
 Cuando Citas está activo aparece en el menú lateral, la barra móvil y Ctrl+K. Su
@@ -141,3 +160,15 @@ node scripts/seed-demo-inmobiliaria.mjs inmobiliaria@local.test InmoDemo2026!
 
 El seed es idempotente y solo trabaja sobre `demo-inmobiliaria`. Carga cinco
 propiedades, dos asesores, tres prospectos y tres citas de visita.
+
+## Demo retail
+
+```bash
+cd web
+node scripts/seed-demo-retail.mjs retail@local.test RetailDemo2026!
+```
+
+El seed idempotente crea `demo-retail` con diez productos, tres proveedores, dos
+órdenes de compra, movimientos de inventario, seis clientes, seis ventas en
+distintos estados y un equipo formado por vendedor, cajero y encargado de
+inventario.
