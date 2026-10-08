@@ -49,6 +49,9 @@ export function TabClientes({
     null,
   );
   const [modulosActivos, setModulosActivos] = useState(modulosPorOrg);
+  const [areasAbiertas, setAreasAbiertas] = useState<Record<string, boolean>>(
+    {},
+  );
   const grupos = gruposPorArea(modulos);
 
   function setNombre(nombre: string) {
@@ -233,6 +236,7 @@ export function TabClientes({
                     </div>
                     <div className="grid gap-3 lg:grid-cols-2">
                       {grupos.map((grupo) => {
+                        const claveArea = `${o.id}:${grupo.area}`;
                         const activos = grupo.modulos.filter((modulo) =>
                           (modulosActivos[String(o.id)] ?? []).some(
                             (actual) =>
@@ -242,7 +246,14 @@ export function TabClientes({
                         return (
                           <details
                             key={grupo.area}
-                            open={grupo.area === "CRM y agenda"}
+                            open={Boolean(areasAbiertas[claveArea])}
+                            onToggle={(evento) => {
+                              const abierto = evento.currentTarget.open;
+                              setAreasAbiertas((prev) => ({
+                                ...prev,
+                                [claveArea]: abierto,
+                              }));
+                            }}
                             className="group rounded-xl border border-border/80 bg-muted/20 p-2.5"
                           >
                             <summary className="flex cursor-pointer list-none items-center justify-between px-1">
