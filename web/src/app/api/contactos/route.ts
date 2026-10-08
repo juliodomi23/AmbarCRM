@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { validarCampos } from "@/lib/campos-personalizados";
+import { referenciaPropia } from "@/lib/referencias";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const responsable = await referenciaPropia("usuario", responsableId);
+  if (responsable === false)
+    return NextResponse.json({ error: "responsable inexistente" }, { status: 400 });
+
   const c = await db.contacto.create({
     data: {
       nombre,
@@ -41,7 +46,7 @@ export async function POST(req: NextRequest) {
       empresa: empresa || null,
       fuente: fuente || "manual",
       notas: notas || null,
-      responsableId: responsableId ? BigInt(responsableId) : null,
+      responsableId: responsable,
       campos: resultado.campos,
     },
   });

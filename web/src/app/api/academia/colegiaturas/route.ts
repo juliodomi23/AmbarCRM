@@ -3,6 +3,7 @@ import { validarColegiatura } from "@/lib/academia";
 import { ErrorCupo, registrarColegiaturaIdempotente } from "@/lib/cupos-db";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
+import { referenciaAjena } from "@/lib/referencias";
 
 export const POST = conModulo("colegiaturas", {}, async (sesion, req: NextRequest) => {
   if (sesion.orgId === null) {
@@ -10,6 +11,8 @@ export const POST = conModulo("colegiaturas", {}, async (sesion, req: NextReques
   }
   const validacion = validarColegiatura(await req.json().catch(() => ({})));
   if ("error" in validacion) return NextResponse.json({ error: validacion.error }, { status: 400 });
+  const ajena = await referenciaAjena(validacion.data, { alumnoId: "alumno", inscripcionId: "inscripcion" });
+  if (ajena) return NextResponse.json({ error: `${ajena} inexistente` }, { status: 400 });
   try {
     const colegiatura = await registrarColegiaturaIdempotente(sesion.orgId, validacion.data);
     return NextResponse.json(serializar({ colegiatura }), { status: 201 });

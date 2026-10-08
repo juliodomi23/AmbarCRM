@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
+import { referenciaAjena } from "@/lib/referencias";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,8 @@ export async function POST(req: NextRequest) {
 
   const { titulo, descripcion, venceAt, responsableId, oportunidadId } = await req.json().catch(() => ({}));
   if (!titulo) return NextResponse.json({ error: "falta titulo" }, { status: 400 });
+  const ajena = await referenciaAjena({ responsableId, oportunidadId }, { responsableId: "usuario", oportunidadId: "oportunidad" });
+  if (ajena) return NextResponse.json({ error: `${ajena} inexistente` }, { status: 400 });
 
   const t = await db.tarea.create({
     data: {

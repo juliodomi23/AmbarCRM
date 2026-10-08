@@ -6,6 +6,7 @@ import {
   puestoPuedeAcceder,
   puestosPermitidosModulo,
 } from "@/lib/modulos";
+import { referenciaPropia } from "@/lib/referencias";
 import { requireSesion } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -78,6 +79,12 @@ export async function PATCH(req: NextRequest) {
       { error: "puestosPermitidos debe ser una lista" },
       { status: 400 },
     );
+  }
+  if (Object.hasOwn(config as object, "canalId")) {
+    const canalId = await referenciaPropia("canal", (config as Record<string, unknown>).canalId);
+    if (canalId === false)
+      return NextResponse.json({ error: "canal inexistente" }, { status: 400 });
+    (config as Record<string, unknown>).canalId = canalId === null ? null : String(canalId);
   }
   const existente = await db.moduloOrg.findFirst({
     where: { clave: String(clave), activo: true },

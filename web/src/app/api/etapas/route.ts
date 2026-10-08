@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
+import { referenciaAjena } from "@/lib/referencias";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,8 @@ export async function POST(req: NextRequest) {
 
   const { embudoId, nombre, color, tipo } = await req.json().catch(() => ({}));
   if (!embudoId || !nombre) return NextResponse.json({ error: "faltan campos" }, { status: 400 });
+  const ajena = await referenciaAjena({ embudoId }, { embudoId: "embudo" });
+  if (ajena) return NextResponse.json({ error: `${ajena} inexistente` }, { status: 400 });
 
   const ultima = await db.etapa.findFirst({ where: { embudoId: BigInt(embudoId) }, orderBy: { orden: "desc" } });
   const etapa = await db.etapa.create({

@@ -8,6 +8,7 @@ import {
   validarInscripcion,
 } from "../src/lib/academia.ts";
 import { validarPagoTour, validarReservaTour, validarTour } from "../src/lib/viajes.ts";
+import { dinero } from "../src/lib/dinero.ts";
 
 const catalogo = await readFile(new URL("../src/lib/modulos.ts", import.meta.url), "utf8");
 const sql = await readFile(new URL("../prisma/sql/actualizaciones.sql", import.meta.url), "utf8");
@@ -52,5 +53,17 @@ assert.match(cuposDb, /reservaTour\.aggregate/);
 assert.match(cuposDb, /FROM cursos_academia[\s\S]*?FOR UPDATE/);
 assert.match(cuposDb, /inscripcionAcademia\.count/);
 assert.match(cuposDb, /FROM reservas_tour[\s\S]*?FOR UPDATE/);
+
+// Dinero: máximo 2 decimales y saldo nunca mayor al total.
+assert.equal(dinero("150.5"), 150.5);
+assert.equal(dinero(99.99), 99.99);
+assert.equal(dinero("0.005"), null);
+assert.equal(dinero("-10"), null);
+assert.equal(dinero("-10", { permitirNegativo: true }), -10);
+assert.equal(dinero("abc"), null);
+assert.equal(dinero("99999999999"), null);
+assert.ok("error" in validarPagoTour({ reservaId: 1, monto: "0.005" }));
+assert.ok("error" in validarReservaTour({ tourId: 1, contactoId: 1, viajeros: 1, total: 100, saldo: 150 }));
+assert.ok("error" in validarReservaTour({ tourId: 1, contactoId: 1, viajeros: 1, total: 100, saldo: "x" }));
 
 console.log("viajes y academia: catálogo, reservas, cobros, alumnos, cursos y asistencia OK");

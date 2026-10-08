@@ -1,3 +1,4 @@
+import { dinero } from "./dinero.ts";
 import { Prisma } from "@prisma/client";
 
 export const ESTADOS_VENTA = [
@@ -31,8 +32,7 @@ function entero(valor: unknown, minimo = 0) {
 }
 
 function decimal(valor: unknown) {
-  const numero = Number(valor);
-  return Number.isFinite(numero) && numero >= 0 ? numero : null;
+  return dinero(valor);
 }
 
 function idBigInt(valor: unknown) {

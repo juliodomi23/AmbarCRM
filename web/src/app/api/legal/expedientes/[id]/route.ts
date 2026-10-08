@@ -4,6 +4,7 @@ import { aBigInt } from "@/lib/ids";
 import { esPasante, validarExpedienteLegal } from "@/lib/legal";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
+import { referenciaAjena } from "@/lib/referencias";
 
 export const PATCH = conModulo(
   "legal",
@@ -25,6 +26,8 @@ export const PATCH = conModulo(
   if ("error" in validacion) {
     return NextResponse.json({ error: validacion.error }, { status: 400 });
   }
+  const ajena = await referenciaAjena(validacion.data, { contactoId: "contacto", responsableId: "usuario", sucursalId: "sucursalLegal" });
+  if (ajena) return NextResponse.json({ error: `${ajena} inexistente` }, { status: 400 });
   const expediente = await db.expedienteLegal.update({
     where: { id },
     data: {

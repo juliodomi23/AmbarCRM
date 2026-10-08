@@ -10,6 +10,8 @@ export default async function AutomotrizPage() {
   if (!(await moduloActivo("automotriz"))) redirect("/");
   const vehiculos = await db.vehiculo.findMany({
     orderBy: [{ estado: "asc" }, { createdAt: "desc" }],
+    // ponytail: el inventario se filtra en el navegador; con más de 500 unidades, mover la búsqueda al servidor.
+    take: 500,
   });
   return <AutomotrizCliente vehiculos={serializar(vehiculos)} />;
 }

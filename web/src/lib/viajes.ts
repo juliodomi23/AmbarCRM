@@ -1,3 +1,4 @@
+import { dinero } from "./dinero.ts";
 function texto(valor: unknown, maximo = 500) {
   const limpio = String(valor ?? "").trim();
   return limpio ? limpio.slice(0, maximo) : null;
@@ -22,10 +23,10 @@ function fecha(valor: unknown) {
 export function validarTour(body: Record<string, unknown>) {
   const nombre = texto(body.nombre, 200);
   const destino = texto(body.destino, 200);
-  const precio = Number(body.precio);
+  const precio = dinero(body.precio);
   const capacidad = enteroPositivo(body.capacidad);
   if (!nombre || !destino) return { error: "Nombre y destino son obligatorios" } as const;
-  if (!Number.isFinite(precio) || precio < 0) return { error: "Precio inválido" } as const;
+  if (precio === null) return { error: "Precio inválido (máximo 2 decimales)" } as const;
   if (!capacidad) return { error: "La capacidad debe ser mayor a cero" } as const;
   return {
     data: {
@@ -53,10 +54,12 @@ export function validarReservaTour(body: Record<string, unknown>) {
   const tourId = id(body.tourId);
   const contactoId = id(body.contactoId);
   const viajeros = enteroPositivo(body.viajeros);
-  const total = Number(body.total);
+  const total = dinero(body.total);
+  const saldo = body.saldo == null || body.saldo === "" ? total : dinero(body.saldo);
   if (!tourId || !contactoId) return { error: "Tour y viajero son obligatorios" } as const;
   if (!viajeros) return { error: "Debe existir al menos un viajero" } as const;
-  if (!Number.isFinite(total) || total < 0) return { error: "Total inválido" } as const;
+  if (total === null) return { error: "Total inválido (máximo 2 decimales)" } as const;
+  if (saldo === null || saldo > total) return { error: "El saldo no puede superar el total" } as const;
   return {
     data: {
       codigo: texto(body.codigo, 80) ?? `RES-${Date.now()}`,
@@ -65,7 +68,7 @@ export function validarReservaTour(body: Record<string, unknown>) {
       viajeros,
       estado: texto(body.estado, 40) ?? "solicitada",
       total,
-      saldo: body.saldo == null ? total : Number(body.saldo),
+      saldo,
       fechaSalida: fecha(body.fechaSalida),
       notas: texto(body.notas, 3000),
     },
@@ -74,9 +77,9 @@ export function validarReservaTour(body: Record<string, unknown>) {
 
 export function validarPagoTour(body: Record<string, unknown>) {
   const reservaId = id(body.reservaId);
-  const monto = Number(body.monto);
+  const monto = dinero(body.monto);
   if (!reservaId) return { error: "La reserva es obligatoria" } as const;
-  if (!Number.isFinite(monto) || monto <= 0) return { error: "Monto inválido" } as const;
+  if (monto === null || monto <= 0) return { error: "Monto inválido (máximo 2 decimales)" } as const;
   return {
     data: {
       reservaId,

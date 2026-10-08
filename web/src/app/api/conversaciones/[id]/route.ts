@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { serializar } from "@/lib/serialize";
 import { enviarCsat } from "@/lib/services/csat";
+import { referenciaPropia } from "@/lib/referencias";
 
 export const dynamic = "force-dynamic";
 
@@ -72,8 +73,12 @@ export async function PATCH(
 
   const body = await req.json().catch(() => ({}));
   const data: Record<string, unknown> = {};
-  if ("responsableId" in body)
-    data.responsableId = body.responsableId ? BigInt(body.responsableId) : null;
+  if ("responsableId" in body) {
+    const responsableId = await referenciaPropia("usuario", body.responsableId);
+    if (responsableId === false)
+      return NextResponse.json({ error: "responsable inexistente" }, { status: 400 });
+    data.responsableId = responsableId;
+  }
   if (
     body.estado === "abierta" ||
     body.estado === "pendiente" ||

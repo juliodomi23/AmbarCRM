@@ -1,3 +1,4 @@
+import { dinero } from "./dinero.ts";
 import type { EstadoVehiculo, Prisma } from "@prisma/client";
 
 export const ESTADOS_VEHICULO = [
@@ -28,7 +29,7 @@ export function validarVehiculo(body: Record<string, unknown>) {
   const modelo = texto(body.modelo);
   const anio = numeroEntero(body.anio, 1900);
   const kilometraje = numeroEntero(body.kilometraje);
-  const precio = Number(body.precio);
+  const precio = dinero(body.precio);
   const estado = String(body.estado ?? "disponible") as EstadoVehiculo;
 
   if (!marca || !modelo) return { error: "Marca y modelo son obligatorios" } as const;
@@ -36,7 +37,7 @@ export function validarVehiculo(body: Record<string, unknown>) {
     return { error: "El año del vehículo no es válido" } as const;
   }
   if (kilometraje === null) return { error: "El kilometraje no es válido" } as const;
-  if (!Number.isFinite(precio) || precio < 0) {
+  if (precio === null) {
     return { error: "El precio no es válido" } as const;
   }
   if (!ESTADOS_VEHICULO.includes(estado)) {

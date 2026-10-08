@@ -7,6 +7,7 @@ import { guardarMediaBase64 } from "@/lib/storage";
 import { serializar } from "@/lib/serialize";
 import { estadoVentana } from "@/lib/meta/ventana";
 import { motivoDeError } from "@/lib/meta/errores";
+import { referenciaAjena } from "@/lib/referencias";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,8 @@ export async function POST(req: NextRequest) {
   if (!conversacionId || (!esMedia && !esAudio && !plantilla && !texto?.trim())) {
     return NextResponse.json({ error: "faltan campos" }, { status: 400 });
   }
+  const ajena = await referenciaAjena({ conversacionId }, { conversacionId: "conversacion" });
+  if (ajena) return NextResponse.json({ error: `${ajena} inexistente` }, { status: 404 });
 
   // Nota interna: se guarda en el hilo pero NO se manda a WhatsApp.
   if (interna === true && texto?.trim()) {

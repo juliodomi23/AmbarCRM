@@ -1,3 +1,4 @@
+import { dinero } from "./dinero.ts";
 const ESTADOS_EXPEDIENTE = ["activo", "suspendido", "cerrado", "archivado"] as const;
 const TIPOS_REGISTRO = ["actuacion", "audiencia", "documento", "termino", "parte", "seguimiento"] as const;
 
@@ -78,9 +79,9 @@ export function validarRegistroLegal(body: Record<string, unknown>) {
 export function validarMovimientoLegal(body: Record<string, unknown>) {
   const concepto = texto(body.concepto, 250);
   const tipo = texto(body.tipo, 80);
-  const monto = Number(body.monto);
+  const monto = dinero(body.monto, { permitirNegativo: true });
   if (!concepto || !tipo) return { error: "Tipo y concepto son obligatorios" } as const;
-  if (!Number.isFinite(monto)) return { error: "Monto inválido" } as const;
+  if (monto === null) return { error: "Monto inválido (máximo 2 decimales)" } as const;
   return {
     data: {
       tipo,

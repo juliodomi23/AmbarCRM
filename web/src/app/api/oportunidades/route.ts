@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { referenciaAjena } from "@/lib/referencias";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,8 @@ export async function POST(req: NextRequest) {
   if (!titulo || !embudoId || !etapaId) {
     return NextResponse.json({ error: "faltan campos" }, { status: 400 });
   }
+  const ajena = await referenciaAjena(body, { embudoId: "embudo", etapaId: "etapa", contactoId: "contacto" });
+  if (ajena) return NextResponse.json({ error: `${ajena} inexistente` }, { status: 400 });
 
   // Resolver contacto.
   let cId: bigint;

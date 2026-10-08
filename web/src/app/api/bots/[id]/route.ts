@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { generarToken } from "@/lib/services/bots";
 import { validarWebhookUrl } from "@/lib/webhook-url";
+import { referenciaPropia } from "@/lib/referencias";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,11 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     data.webhookUrl = body.webhookUrl.trim();
   }
   if (typeof body.activo === "boolean") data.activo = body.activo;
-  if ("canalId" in body) data.canalId = body.canalId ? BigInt(body.canalId) : null;
+  if ("canalId" in body) {
+    const canalId = await referenciaPropia("canal", body.canalId);
+    if (canalId === false) return NextResponse.json({ error: "canal inexistente" }, { status: 400 });
+    data.canalId = canalId;
+  }
   if (body.regenerarToken === true) data.apiToken = generarToken();
 
   const bot = await db.bot.update({ where: { id: BigInt(params.id) }, data });

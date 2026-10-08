@@ -4,6 +4,7 @@ import { aBigInt } from "@/lib/ids";
 import { esPasante, validarRegistroLegal } from "@/lib/legal";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
+import { referenciaAjena } from "@/lib/referencias";
 
 export const POST = conModulo(
   "legal",
@@ -11,6 +12,8 @@ export const POST = conModulo(
   async (sesion, req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const expedienteId = aBigInt((await params).id);
   if (expedienteId === null) return NextResponse.json({ error: "id inválido" }, { status: 400 });
+  const ajena = await referenciaAjena({ expedienteId }, { expedienteId: "expedienteLegal" });
+  if (ajena) return NextResponse.json({ error: `${ajena} inexistente` }, { status: 404 });
   if (
     esPasante(sesion.puesto, sesion.rol) &&
     !(await db.expedienteLegal.findFirst({

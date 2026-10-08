@@ -49,11 +49,21 @@ export const PATCH = conModulo("citas", {}, async (s, req: NextRequest, props: {
   }
   if (b.inicio) data.inicio = new Date(b.inicio);
   if (b.fin) data.fin = new Date(b.fin);
-  if (data.inicio && data.fin && data.fin <= data.inicio)
+  if ((data.inicio && Number.isNaN(+data.inicio)) || (data.fin && Number.isNaN(+data.fin))) {
+    return NextResponse.json({ error: "fecha inválida" }, { status: 400 });
+  }
+  const citaId = aBigInt(id);
+  const actual = citaId
+    ? await db.cita.findFirst({ where: { id: citaId }, select: { inicio: true, fin: true } })
+    : null;
+  if (!citaId || !actual) {
+    return NextResponse.json({ error: "cita inexistente" }, { status: 404 });
+  }
+  if ((data.fin ?? actual.fin) <= (data.inicio ?? actual.inicio))
     return NextResponse.json(
       { error: "el fin debe ser posterior al inicio" },
       { status: 400 },
     );
-  await db.cita.update({ where: { id: BigInt(id) }, data });
+  await db.cita.update({ where: { id: citaId }, data });
   return NextResponse.json({ ok: true });
 });

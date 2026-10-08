@@ -3,6 +3,7 @@ import { PanelLegal } from "@/components/legal/PanelLegal";
 import { db } from "@/lib/db";
 import { esPasante } from "@/lib/legal";
 import { moduloActivo } from "@/lib/modulos";
+import { LIMITE_PANEL } from "@/lib/paginacion";
 import { getSesion } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -11,22 +12,26 @@ export default async function OperacionLegalPage() {
   const sesion = await getSesion();
   if (!sesion?.user?.id) redirect("/login");
   if (!(await moduloActivo("operacion_legal"))) redirect("/");
-  const [operaciones, sucursales, usuarios] = await Promise.all([
+  const filtro = esPasante(sesion.user.puesto, sesion.user.rol)
+    ? { usuarioId: BigInt(sesion.user.id) }
+    : {};
+  const [operaciones, sucursales, usuarios, registros, checadas] = await Promise.all([
     db.registroOperacionLegal.findMany({
-      where: esPasante(sesion.user.puesto, sesion.user.rol)
-        ? { usuarioId: BigInt(sesion.user.id) }
-        : undefined,
+      where: filtro,
       include: { usuario: true, sucursal: true }, orderBy: [{ fecha: "desc" }, { createdAt: "desc" }],
+      take: LIMITE_PANEL,
     }),
     db.sucursalLegal.count({ where: { activa: true } }),
     db.usuario.count({ where: { activo: true } }),
+    db.registroOperacionLegal.count({ where: filtro }),
+    db.registroOperacionLegal.count({ where: { ...filtro, tipo: "checada" } }),
   ]);
   return <PanelLegal titulo="Operación del despacho" descripcion="Sucursales, asistencia y productividad del equipo."
     metricas={[
       { etiqueta: "Sucursales", valor: String(sucursales) },
       { etiqueta: "Equipo activo", valor: String(usuarios) },
-      { etiqueta: "Registros", valor: String(operaciones.length) },
-      { etiqueta: "Checadas", valor: String(operaciones.filter((item) => item.tipo === "checada").length) },
+      { etiqueta: "Registros", valor: String(registros) },
+      { etiqueta: "Checadas", valor: String(checadas) },
     ]}
     filas={operaciones.map((item) => ({
       id: String(item.id), titulo: item.descripcion || item.tipo,

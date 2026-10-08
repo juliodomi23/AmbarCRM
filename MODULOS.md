@@ -257,6 +257,11 @@ comando `node` sin el prefijo de variable.
 - [ ] Preparar un seed idempotente con datos exclusivamente ficticios.
 - [ ] Añadir o extender un script `scripts/check-*.ts`.
 - [ ] Incluir las tablas nuevas en la prueba automática de aislamiento multi-tenant.
+- [ ] Verificar con `referenciaAjena()` (`lib/referencias.ts`) todo id que llegue del
+  cliente (contacto, responsable, expediente…): las llaves foráneas no respetan RLS.
+- [ ] Validar montos con `dinero()` (`lib/dinero.ts`): máximo 2 decimales.
+- [ ] En páginas de listado, usar `take: LIMITE_PANEL` y calcular las métricas con
+  `count`/`aggregate`/`groupBy` en la base, no sobre la lista cargada.
 
 ## Calidad antes de publicar
 
@@ -268,6 +273,8 @@ comando `node` sin el prefijo de variable.
 - [ ] Ejecutar `npx tsx prisma/scripts/test-concurrencia-retail.ts` contra un
   Postgres de prueba y comprobar que la versión sin bloqueos falla de forma
   deliberada antes de restaurar los bloqueos.
+- [ ] Ejecutar `npx tsx prisma/scripts/test-referencias.ts`: rechazo de ids de otra
+  empresa y recordatorios de citas sin atascos.
 - [ ] Ejecutar cada seed cinco veces en la misma base y comparar los conteos de
   todas las tablas que tienen `org_id`.
 - [ ] Revisar las rutas principales de cada demo en escritorio (1440 × 900) y

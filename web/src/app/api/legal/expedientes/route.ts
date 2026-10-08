@@ -4,6 +4,7 @@ import { esPasante, validarExpedienteLegal } from "@/lib/legal";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
 import { paginacionListado } from "@/lib/paginacion";
+import { referenciaAjena } from "@/lib/referencias";
 
 export const GET = conModulo("legal", {}, async (sesion, req: NextRequest) => {
   const expedientes = await db.expedienteLegal.findMany({
@@ -22,6 +23,8 @@ export const POST = conModulo("legal", {}, async (sesion, req: NextRequest) => {
   if ("error" in validacion) {
     return NextResponse.json({ error: validacion.error }, { status: 400 });
   }
+  const ajena = await referenciaAjena(validacion.data, { contactoId: "contacto", responsableId: "usuario", sucursalId: "sucursalLegal" });
+  if (ajena) return NextResponse.json({ error: `${ajena} inexistente` }, { status: 400 });
   const expediente = await db.expedienteLegal.create({
     data: {
       ...validacion.data,

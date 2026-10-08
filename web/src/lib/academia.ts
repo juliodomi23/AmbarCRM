@@ -1,3 +1,4 @@
+import { dinero } from "./dinero.ts";
 function texto(valor: unknown, maximo = 500) {
   const limpio = String(valor ?? "").trim();
   return limpio ? limpio.slice(0, maximo) : null;
@@ -77,10 +78,10 @@ export function validarInscripcion(body: Record<string, unknown>) {
 
 export function validarColegiatura(body: Record<string, unknown>) {
   const alumnoId = id(body.alumnoId);
-  const monto = Number(body.monto);
+  const monto = dinero(body.monto);
   const vencimiento = fecha(body.vencimiento);
   if (!alumnoId || !vencimiento) return { error: "Alumno y vencimiento son obligatorios" } as const;
-  if (!Number.isFinite(monto) || monto < 0) return { error: "Monto inválido" } as const;
+  if (monto === null) return { error: "Monto inválido (máximo 2 decimales)" } as const;
   return {
     data: {
       alumnoId,

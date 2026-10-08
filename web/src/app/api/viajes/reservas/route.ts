@@ -5,6 +5,7 @@ import { serializar } from "@/lib/serialize";
 import { validarReservaTour } from "@/lib/viajes";
 import { conModulo } from "@/lib/con-modulo";
 import { paginacionListado } from "@/lib/paginacion";
+import { referenciaAjena } from "@/lib/referencias";
 
 export const GET = conModulo("reservas_tours", {}, async (sesion, req: NextRequest) => {
   const reservas = await db.reservaTour.findMany({
@@ -20,6 +21,8 @@ export const POST = conModulo("reservas_tours", {}, async (sesion, req: NextRequ
   }
   const validacion = validarReservaTour(await req.json().catch(() => ({})));
   if ("error" in validacion) return NextResponse.json({ error: validacion.error }, { status: 400 });
+  const ajena = await referenciaAjena(validacion.data, { contactoId: "contacto", tourId: "tour" });
+  if (ajena) return NextResponse.json({ error: `${ajena} inexistente` }, { status: 400 });
   try {
     const reserva = await reservarTourConCupo(sesion.orgId, validacion.data);
     return NextResponse.json(serializar({ reserva }), { status: 201 });

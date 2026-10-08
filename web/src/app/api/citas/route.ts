@@ -4,22 +4,28 @@ import { aBigInt } from "@/lib/ids";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
 import { paginacionListado } from "@/lib/paginacion";
+import { referenciaPropia } from "@/lib/referencias";
 
 export const dynamic = "force-dynamic";
 
 export const GET = conModulo("citas", {}, async (s, req: NextRequest) => {
-  const desde = new Date(
-    req.nextUrl.searchParams.get("desde") ?? new Date().toISOString(),
-  );
-  const hasta = new Date(
-    req.nextUrl.searchParams.get("hasta") ??
-      new Date(desde.getTime() + 7 * 86400000).toISOString(),
-  );
-  const contactoId = req.nextUrl.searchParams.get("contactoId");
+  const parametros = req.nextUrl.searchParams;
+  const desde = new Date(parametros.get("desde") ?? Date.now());
+  const hasta = parametros.get("hasta")
+    ? new Date(parametros.get("hasta")!)
+    : new Date(desde.getTime() + 7 * 86400000);
+  if (Number.isNaN(+desde) || Number.isNaN(+hasta)) {
+    return NextResponse.json({ error: "rango de fechas inválido" }, { status: 400 });
+  }
+  const contactoTexto = parametros.get("contactoId");
+  const contactoId = aBigInt(contactoTexto);
+  if (contactoTexto && contactoId === null) {
+    return NextResponse.json({ error: "contacto inválido" }, { status: 400 });
+  }
   const citas = await db.cita.findMany({
     where: {
       inicio: { gte: desde, lt: hasta },
-      contactoId: contactoId ? BigInt(contactoId) : undefined,
+      contactoId: contactoId ?? undefined,
     },
     include: {
       contacto: { include: { expediente: { select: { id: true } } } },
@@ -39,7 +45,7 @@ export const POST = conModulo("citas", {}, async (s, req: NextRequest) => {
     fin = new Date(b.fin);
   if (
     !b.contactoId ||
-    !b.titulo?.trim() ||
+    !String(b.titulo ?? "").trim() ||
     Number.isNaN(+inicio) ||
     Number.isNaN(+fin) ||
     fin <= inicio
@@ -60,14 +66,28 @@ export const POST = conModulo("citas", {}, async (s, req: NextRequest) => {
       return NextResponse.json({ error: "doctor inexistente o inactivo" }, { status: 400 });
     }
   }
+  const [contactoId, conversacionId, responsableId] = await Promise.all([
+    referenciaPropia("contacto", b.contactoId),
+    referenciaPropia("conversacion", b.conversacionId),
+    referenciaPropia("usuario", b.responsableId),
+  ]);
+  if (!contactoId) {
+    return NextResponse.json({ error: "contacto inexistente" }, { status: 400 });
+  }
+  if (conversacionId === false || responsableId === false) {
+    return NextResponse.json(
+      { error: "conversación o responsable inexistente" },
+      { status: 400 },
+    );
+  }
   const cita = await db.cita.create({
     data: {
-      contactoId: BigInt(b.contactoId),
-      conversacionId: b.conversacionId ? BigInt(b.conversacionId) : null,
-      responsableId: b.responsableId ? BigInt(b.responsableId) : s.userId,
+      contactoId,
+      conversacionId,
+      responsableId: responsableId ?? s.userId,
       doctorId,
-      titulo: b.titulo.trim(),
-      notas: b.notas?.trim() || null,
+      titulo: String(b.titulo).trim(),
+      notas: String(b.notas ?? "").trim() || null,
       inicio,
       fin,
     },

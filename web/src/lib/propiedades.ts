@@ -1,3 +1,4 @@
+import { dinero } from "./dinero.ts";
 import type { Prisma } from "@prisma/client";
 
 export const ESTADOS_PROPIEDAD = [
@@ -31,7 +32,7 @@ export function validarPropiedad(body: Record<string, unknown>) {
   const recamaras = numero(body.recamaras);
   const banos = numero(body.banos);
   const superficie = numero(body.superficie);
-  const precio = numero(body.precio);
+  const precio = dinero(body.precio);
   const estado = String(body.estado ?? "disponible");
 
   if (!titulo || !tipo || !operacion || !ciudad) {

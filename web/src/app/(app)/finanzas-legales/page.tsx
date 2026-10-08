@@ -3,6 +3,7 @@ import { PanelLegal } from "@/components/legal/PanelLegal";
 import { db } from "@/lib/db";
 import { esPasante } from "@/lib/legal";
 import { moduloActivo } from "@/lib/modulos";
+import { LIMITE_PANEL } from "@/lib/paginacion";
 import { getSesion } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -11,20 +12,26 @@ export default async function FinanzasLegalesPage() {
   const sesion = await getSesion();
   if (!sesion?.user?.id) redirect("/login");
   if (!(await moduloActivo("finanzas_legales"))) redirect("/");
-  const movimientos = await db.movimientoLegal.findMany({
-    where: esPasante(sesion.user.puesto, sesion.user.rol)
-      ? { expediente: { responsableId: BigInt(sesion.user.id) } }
-      : undefined,
-    include: { contacto: true, expediente: true }, orderBy: [{ fecha: "desc" }, { createdAt: "desc" }],
-  });
-  const total = (tipo: string) => movimientos.filter((item) => item.tipo === tipo)
-    .reduce((suma, item) => suma + Number(item.monto), 0);
+  const filtro = esPasante(sesion.user.puesto, sesion.user.rol)
+    ? { expediente: { responsableId: BigInt(sesion.user.id) } }
+    : {};
+  const [movimientos, cantidad, porTipo] = await Promise.all([
+    db.movimientoLegal.findMany({
+      where: filtro,
+      include: { contacto: true, expediente: true }, orderBy: [{ fecha: "desc" }, { createdAt: "desc" }],
+      take: LIMITE_PANEL,
+    }),
+    db.movimientoLegal.count({ where: filtro }),
+    db.movimientoLegal.groupBy({ by: ["tipo"], where: filtro, _count: { _all: true }, _sum: { monto: true } }),
+  ]);
+  const deTipo = (tipo: string) => porTipo.find((item) => item.tipo === tipo);
+  const total = (tipo: string) => Number(deTipo(tipo)?._sum.monto ?? 0);
   const moneda = (valor: number) => valor.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
   return <PanelLegal titulo="Honorarios y caja" descripcion="Planes, cobros, gastos, caja y diligencias."
     metricas={[
-      { etiqueta: "Movimientos", valor: String(movimientos.length) },
+      { etiqueta: "Movimientos", valor: String(cantidad) },
       { etiqueta: "Cobrado", valor: moneda(total("pago")) },
-      { etiqueta: "Planes", valor: String(movimientos.filter((item) => item.tipo === "plan_pago").length) },
+      { etiqueta: "Planes", valor: String(deTipo("plan_pago")?._count._all ?? 0) },
       { etiqueta: "Gastos", valor: moneda(total("gasto") + total("diligencia")) },
     ]}
     filas={movimientos.map((item) => ({

@@ -10,6 +10,8 @@ export default async function InmobiliariaPage() {
   if (!(await moduloActivo("inmobiliaria"))) redirect("/");
   const propiedades = await db.propiedad.findMany({
     orderBy: [{ estado: "asc" }, { createdAt: "desc" }],
+    // ponytail: el inventario se filtra en el navegador; con más de 500 unidades, mover la búsqueda al servidor.
+    take: 500,
   });
   return <InmobiliariaCliente propiedades={serializar(propiedades)} />;
 }

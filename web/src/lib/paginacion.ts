@@ -14,3 +14,6 @@ export function paginacionListado(req: NextRequest) {
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
   };
 }
+
+/** Paneles de módulos: se listan los registros más recientes; las métricas se calculan en la BD sobre todos. */
+export const LIMITE_PANEL = 200;

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { generarToken } from "@/lib/services/bots";
 import { validarWebhookUrl } from "@/lib/webhook-url";
+import { referenciaAjena } from "@/lib/referencias";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,8 @@ export async function POST(req: NextRequest) {
   if (!nombre || !webhookUrl) return NextResponse.json({ error: "faltan nombre o webhookUrl" }, { status: 400 });
   const errorUrl = validarWebhookUrl(String(webhookUrl));
   if (errorUrl) return NextResponse.json({ error: errorUrl }, { status: 400 });
+  const ajena = await referenciaAjena({ canalId }, { canalId: "canal" });
+  if (ajena) return NextResponse.json({ error: `${ajena} inexistente` }, { status: 400 });
 
   const bot = await db.bot.create({
     data: {
