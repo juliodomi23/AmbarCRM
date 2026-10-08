@@ -418,16 +418,22 @@ await prisma.$transaction(async (tx) => {
     ["pagos", "pago", "concepto", "monto_total", "fecha_pago"],
     ["movimientos_caja", null, "concepto", "monto", "fecha"],
     ["diligencias", "diligencia", "folio", null, "fecha"],
+    ["diligencia_renglones", "renglon_diligencia", "descripcion", "importe", "fecha"],
     ["gastos_expediente", "gasto", "concepto", "monto", "fecha"],
   ];
   for (const [tabla, tipoFijo, conceptoCampo, montoCampo, fechaCampo] of fuentesFinancieras) {
     for (const fila of tablas.get(tabla) ?? []) {
       const tipo = tipoFijo || limpio(fila.tipo) || "movimiento_caja";
+      const diligencia = tabla === "diligencia_renglones"
+        ? (tablas.get("diligencias") ?? []).find((item) => item.id === fila.diligencia_id)
+        : null;
       const data = {
         expedienteId: expedientes.get(String(fila.expediente_id)) ?? null,
-        contactoId: contactos.get(String(fila.cliente_id)) ?? null,
-        sucursalId: sucursales.get(String(fila.sucursal_id)) ?? null,
-        usuarioId: usuarios.get(String(fila.registrado_por || fila.abogado_id)) ?? null,
+        contactoId: contactos.get(String(fila.cliente_id || diligencia?.cliente_id)) ?? null,
+        sucursalId: sucursales.get(String(fila.sucursal_id || diligencia?.sucursal_id)) ?? null,
+        usuarioId: usuarios.get(
+          String(fila.registrado_por || fila.abogado_id || diligencia?.abogado_id),
+        ) ?? null,
         concepto: limpio(fila[conceptoCampo]) || `${tipo.replaceAll("_", " ")} ${fila.id}`,
         monto: monto(montoCampo ? fila[montoCampo] : 0),
         estado: limpio(fila.estado || fila.estado_pago || fila.tipo),
@@ -449,16 +455,22 @@ await prisma.$transaction(async (tx) => {
     "actividades_respuestas",
     "auditoria",
     "envios_registro",
+    "llamadas_prospecto",
   ];
   for (const tabla of fuentesOperacion) {
     for (const fila of tablas.get(tabla) ?? []) {
       const tipo = tabla.replace(/s$/, "");
       const data = {
-        usuarioId: usuarios.get(String(fila.usuario_id || fila.user_id)) ?? null,
+        usuarioId: usuarios.get(String(fila.usuario_id || fila.user_id || fila.abogado_id)) ?? null,
         sucursalId: sucursales.get(String(fila.sucursal_id)) ?? null,
         fecha: fecha(fila.fecha || fila.creado_en || fila.actualizado_en),
         estado: limpio(fila.tipo || fila.estado || fila.respuesta),
-        descripcion: limpio(fila.descripcion || fila.observaciones || fila.accion),
+        descripcion: limpio(
+          fila.descripcion
+          || fila.observaciones
+          || fila.accion
+          || (fila.prospecto_id ? "Llamada de seguimiento a prospecto" : null),
+        ),
         metadata: sanear(fila),
       };
       await tx.registroOperacionLegal.upsert({
