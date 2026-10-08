@@ -237,6 +237,7 @@ export function TabClientes({
                     <div className="grid gap-3 lg:grid-cols-2">
                       {grupos.map((grupo) => {
                         const claveArea = `${o.id}:${grupo.area}`;
+                        const abierto = Boolean(areasAbiertas[claveArea]);
                         const activos = grupo.modulos.filter((modulo) =>
                           (modulosActivos[String(o.id)] ?? []).some(
                             (actual) =>
@@ -244,24 +245,28 @@ export function TabClientes({
                           ),
                         ).length;
                         return (
-                          <details
+                          <div
                             key={grupo.area}
-                            open={Boolean(areasAbiertas[claveArea])}
-                            onToggle={(evento) => {
-                              const abierto = evento.currentTarget.open;
-                              setAreasAbiertas((prev) => ({
-                                ...prev,
-                                [claveArea]: abierto,
-                              }));
-                            }}
-                            className="group rounded-xl border border-border/80 bg-muted/20 p-2.5"
+                            className="rounded-xl border border-border/80 bg-muted/20 p-2.5"
                           >
-                            <summary className="flex cursor-pointer list-none items-center justify-between px-1">
+                            <button
+                              type="button"
+                              aria-expanded={abierto}
+                              className="flex w-full items-center justify-between px-1 text-left"
+                              onClick={() => {
+                                setAreasAbiertas((prev) => ({
+                                  ...prev,
+                                  [claveArea]: !abierto,
+                                }));
+                              }}
+                            >
                               <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
                                 <span
                                   aria-hidden="true"
-                                  className="text-muted-foreground transition-transform
-                                    group-open:rotate-90"
+                                  className={[
+                                    "text-muted-foreground transition-transform",
+                                    abierto ? "rotate-90" : "",
+                                  ].join(" ")}
                                 >
                                   ›
                                 </span>
@@ -270,9 +275,10 @@ export function TabClientes({
                               <span className="text-[10px] text-muted-foreground">
                                 {activos}/{grupo.modulos.length}
                               </span>
-                            </summary>
-                            <div className="mt-2 space-y-1.5">
-                              {grupo.modulos.map((modulo) => {
+                            </button>
+                            {abierto && (
+                              <div className="mt-2 space-y-1.5">
+                                {grupo.modulos.map((modulo) => {
                                 const activo = (
                                   modulosActivos[String(o.id)] ?? []
                                 ).some(
@@ -319,9 +325,10 @@ export function TabClientes({
                                     </span>
                                   </label>
                                 );
-                              })}
-                            </div>
-                          </details>
+                                })}
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
