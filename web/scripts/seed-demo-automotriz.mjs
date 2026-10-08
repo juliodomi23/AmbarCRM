@@ -1,8 +1,9 @@
 // Uso opcional: node scripts/seed-demo-automotriz.mjs correo contraseña
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { credencialesDemo, imprimirCredencialesDemo } from "./lib/demo-seed.mjs";
 
-const [email = "auto@local.test", password = "AutoDemo2026!"] = process.argv.slice(2);
+const { email, password, passwordGenerada } = credencialesDemo("auto@local.test");
 const prisma = new PrismaClient();
 const ZONA = "America/Mexico_City";
 
@@ -168,5 +169,11 @@ await prisma.$transaction(async (tx) => {
   }
 });
 
-console.log("Demo automotriz lista: /login?org=demo-auto", email);
+imprimirCredencialesDemo({
+  nombre: "automotriz",
+  slug: "demo-auto",
+  email,
+  password,
+  passwordGenerada,
+});
 await prisma.$disconnect();

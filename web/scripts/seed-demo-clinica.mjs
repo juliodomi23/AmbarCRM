@@ -1,12 +1,8 @@
-// Uso: node scripts/seed-demo-clinica.mjs admin@demo.test ClaveSegura
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { credencialesDemo, imprimirCredencialesDemo } from "./lib/demo-seed.mjs";
 
-const [email, password] = process.argv.slice(2);
-if (!email || !password)
-  throw new Error(
-    "Uso: node scripts/seed-demo-clinica.mjs <email> <contraseña>",
-  );
+const { email, password, passwordGenerada } = credencialesDemo("admin@demo.test");
 const prisma = new PrismaClient();
 const ZONA = "America/Mexico_City";
 
@@ -333,5 +329,11 @@ await prisma.$transaction(async (tx) => {
   }
 });
 
-console.log("Demo lista: /login?org=demo-clinica", email);
+imprimirCredencialesDemo({
+  nombre: "clínica",
+  slug: "demo-clinica",
+  email,
+  password,
+  passwordGenerada,
+});
 await prisma.$disconnect();

@@ -1,8 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { credencialesDemo, imprimirCredencialesDemo } from "./lib/demo-seed.mjs";
 
-const [email, password] = process.argv.slice(2);
-if (!email || !password) throw new Error("Uso: node scripts/seed-demo-legal.mjs <email> <contraseña>");
+const { email, password, passwordGenerada } = credencialesDemo("legal@local.test");
 const prisma = new PrismaClient();
 const org = await prisma.org.upsert({
   where: { slug: "demo-legal" },
@@ -106,5 +106,11 @@ await prisma.$transaction(async (tx) => {
   }
 }, { timeout: 60_000 });
 
-console.log("demo legal ficticia lista: /login?org=demo-legal");
+imprimirCredencialesDemo({
+  nombre: "legal ficticia",
+  slug: "demo-legal",
+  email,
+  password,
+  passwordGenerada,
+});
 await prisma.$disconnect();

@@ -1,7 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { credencialesDemo, imprimirCredencialesDemo } from "./lib/demo-seed.mjs";
 
-const [email = "retail@local.test", password = "RetailDemo2026!"] = process.argv.slice(2);
+const { email, password, passwordGenerada } = credencialesDemo("retail@local.test");
 const prisma = new PrismaClient();
 
 function fechaMexico(dias, hora) {
@@ -328,5 +329,11 @@ await prisma.$transaction(async (tx) => {
   }
 });
 
-console.log("Demo retail lista: /login?org=demo-retail", email);
+imprimirCredencialesDemo({
+  nombre: "retail",
+  slug: "demo-retail",
+  email,
+  password,
+  passwordGenerada,
+});
 await prisma.$disconnect();

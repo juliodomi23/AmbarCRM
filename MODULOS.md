@@ -132,7 +132,7 @@ el rol técnico (`Admin` o `Agente`) y el puesto operativo (`Recepcionista`,
 
 ```bash
 cd web
-node scripts/seed-demo-clinica.mjs admin@demo.test ClaveSegura
+ALLOW_DEMO_SEED=1 node scripts/seed-demo-clinica.mjs
 ```
 
 El seed es idempotente y solo trabaja sobre `demo-clinica`. Crea la marca Salud,
@@ -145,7 +145,7 @@ clínicos para los ocho pacientes con historial de ejemplo.
 
 ```bash
 cd web
-node scripts/seed-demo-automotriz.mjs auto@local.test AutoDemo2026!
+ALLOW_DEMO_SEED=1 node scripts/seed-demo-automotriz.mjs
 ```
 
 El seed es idempotente y solo trabaja sobre `demo-auto`. Carga seis vehículos
@@ -155,7 +155,7 @@ en distintos estados y crea una cuenta administradora para esa organización.
 
 ```bash
 cd web
-node scripts/seed-demo-inmobiliaria.mjs inmobiliaria@local.test InmoDemo2026!
+ALLOW_DEMO_SEED=1 node scripts/seed-demo-inmobiliaria.mjs
 ```
 
 El seed es idempotente y solo trabaja sobre `demo-inmobiliaria`. Carga cinco
@@ -165,7 +165,7 @@ propiedades, dos asesores, tres prospectos y tres citas de visita.
 
 ```bash
 cd web
-node scripts/seed-demo-retail.mjs retail@local.test RetailDemo2026!
+ALLOW_DEMO_SEED=1 node scripts/seed-demo-retail.mjs
 ```
 
 El seed idempotente crea `demo-retail` con diez productos, tres proveedores, dos
@@ -196,7 +196,7 @@ conserva información del sistema de ningún despacho real.
 
 ```bash
 cd web
-node scripts/seed-demo-legal.mjs legal@local.test LegalDemo2026!
+ALLOW_DEMO_SEED=1 node scripts/seed-demo-legal.mjs
 ```
 
 ## Viajes y tours
@@ -217,7 +217,7 @@ saldo pendiente.
 
 ```bash
 cd web
-node scripts/seed-demo-viajes.mjs viajes@local.test ViajesDemo2026!
+ALLOW_DEMO_SEED=1 node scripts/seed-demo-viajes.mjs
 ```
 
 ## Educación y academias
@@ -237,8 +237,14 @@ Los puestos sugeridos son profesor y coordinador académico.
 
 ```bash
 cd web
-node scripts/seed-demo-academia.mjs academia@local.test AcademiaDemo2026!
+ALLOW_DEMO_SEED=1 node scripts/seed-demo-academia.mjs
 ```
+
+Todos los seeds de demo se niegan a ejecutar en producción y requieren
+`ALLOW_DEMO_SEED=1`. Se puede pasar correo y contraseña como argumentos; si se
+omite la contraseña, el script genera una segura y la muestra únicamente al
+terminar. En PowerShell, define primero `$env:ALLOW_DEMO_SEED="1"` y ejecuta el
+comando `node` sin el prefijo de variable.
 
 ## Cómo agregar un módulo
 
