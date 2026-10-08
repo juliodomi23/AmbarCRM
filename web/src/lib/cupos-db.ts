@@ -110,3 +110,31 @@ export function registrarPagoTourConSaldo(
     return pago;
   });
 }
+
+export function registrarColegiaturaIdempotente(
+  orgId: bigint,
+  data: Prisma.ColegiaturaAcademiaUncheckedCreateInput,
+) {
+  return transaccionTenant(orgId, async (tx) => {
+    const bloqueado = await tx.$queryRaw<Array<{ id: bigint }>>`
+      SELECT id
+      FROM alumnos_academia
+      WHERE id = ${data.alumnoId}
+      FOR UPDATE
+    `;
+    if (bloqueado.length === 0) throw new ErrorCupo("Alumno no encontrado", 404);
+
+    const existente = await tx.colegiaturaAcademia.findFirst({
+      where: {
+        alumnoId: BigInt(data.alumnoId),
+        inscripcionId: data.inscripcionId ? BigInt(data.inscripcionId) : null,
+        concepto: data.concepto,
+        periodo: data.periodo ?? null,
+        monto: data.monto,
+        vencimiento: data.vencimiento,
+      },
+    });
+    if (existente) return existente;
+    return tx.colegiaturaAcademia.create({ data });
+  });
+}
