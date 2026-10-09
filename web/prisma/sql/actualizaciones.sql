@@ -844,3 +844,78 @@ CREATE INDEX IF NOT EXISTS mensajes_media_url_idx ON mensajes(media_url) WHERE m
 -- Búsqueda de contactos sin acentos («monica» encuentra «Mónica»). Extensión confiable
 -- desde Postgres 13: la crea el dueño de la base en db-migrate.
 CREATE EXTENSION IF NOT EXISTS unaccent;
+
+-- Reservas en línea (motor de Cita en Click): servicios, horarios por especialista y
+-- excepciones. Las horas se guardan como minutos desde la medianoche (9:30 = 570) en la
+-- zona del negocio. La doble reserva se evita bloqueando al especialista (FOR UPDATE),
+-- no con EXCLUDE: un EXCLUDE sobre citas ya existentes podría hacer fallar la migración.
+CREATE TABLE IF NOT EXISTS servicios_reserva (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  nombre TEXT NOT NULL,
+  descripcion TEXT,
+  duracion_min INT NOT NULL CHECK (duracion_min > 0),
+  buffer_min INT NOT NULL DEFAULT 0 CHECK (buffer_min >= 0),
+  precio NUMERIC(12,2) NOT NULL DEFAULT 0,
+  activo BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, nombre)
+);
+CREATE TABLE IF NOT EXISTS servicio_reserva_doctores (
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  servicio_id BIGINT NOT NULL REFERENCES servicios_reserva(id) ON DELETE CASCADE,
+  doctor_id BIGINT NOT NULL REFERENCES doctores(id) ON DELETE CASCADE,
+  PRIMARY KEY (servicio_id, doctor_id)
+);
+CREATE TABLE IF NOT EXISTS horarios_doctor (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  doctor_id BIGINT NOT NULL REFERENCES doctores(id) ON DELETE CASCADE,
+  dia_semana SMALLINT NOT NULL CHECK (dia_semana BETWEEN 0 AND 6),
+  inicio_min INT NOT NULL,
+  fin_min INT NOT NULL,
+  CHECK (inicio_min >= 0 AND inicio_min < fin_min AND fin_min <= 1440)
+);
+CREATE INDEX IF NOT EXISTS horarios_doctor_idx ON horarios_doctor(doctor_id, dia_semana);
+CREATE TABLE IF NOT EXISTS excepciones_horario (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  doctor_id BIGINT NOT NULL REFERENCES doctores(id) ON DELETE CASCADE,
+  fecha DATE NOT NULL,
+  inicio_min INT,
+  fin_min INT,
+  motivo TEXT,
+  CHECK ((inicio_min IS NULL AND fin_min IS NULL) OR (inicio_min >= 0 AND inicio_min < fin_min AND fin_min <= 1440))
+);
+CREATE INDEX IF NOT EXISTS excepciones_horario_idx ON excepciones_horario(doctor_id, fecha);
+
+ALTER TABLE citas ADD COLUMN IF NOT EXISTS servicio_id BIGINT REFERENCES servicios_reserva(id) ON DELETE SET NULL;
+ALTER TABLE citas ADD COLUMN IF NOT EXISTS token_gestion TEXT;
+ALTER TABLE citas ADD COLUMN IF NOT EXISTS origen TEXT NOT NULL DEFAULT 'interna';
+CREATE UNIQUE INDEX IF NOT EXISTS citas_token_gestion_uq ON citas(token_gestion) WHERE token_gestion IS NOT NULL;
+CREATE INDEX IF NOT EXISTS citas_doctor_inicio_idx ON citas(doctor_id, inicio);
+
+DO $$ DECLARE t TEXT; BEGIN
+  FOREACH t IN ARRAY ARRAY['servicios_reserva', 'servicio_reserva_doctores', 'horarios_doctor', 'excepciones_horario'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format(
+      $policy$
+        CREATE POLICY org_isolation ON %I
+        USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+        WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+      $policy$,
+      t
+    );
+  END LOOP;
+END $$;
+GRANT SELECT, INSERT, UPDATE, DELETE ON servicios_reserva, servicio_reserva_doctores, horarios_doctor, excepciones_horario TO crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+-- La página pública de una cita (cancelar sin cuenta) llega sin sesión: esta función solo
+-- enruta el token del enlace a la empresa dueña de la cita.
+CREATE OR REPLACE FUNCTION resolve_org_by_cita_token(p_token text)
+  RETURNS bigint LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
+    SELECT org_id FROM citas WHERE token_gestion = p_token LIMIT 1
+$$;

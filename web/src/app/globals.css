@@ -115,3 +115,18 @@
 @media (max-width: 639px) {
   input:not([type="checkbox"]):not([type="radio"]), textarea, select { font-size: 16px !important; }
 }
+
+/* Páginas públicas con la marca de un negocio (reservas): --primary se resuelve en :root,
+   así que se vuelve a declarar en el contenedor que trae las variables --brand-*. */
+.marca-local {
+  --primary: var(--brand-primary-light);
+  --primary-foreground: var(--brand-primary-foreground-light);
+  --brand-from: var(--brand-primary-light);
+  --brand-to: var(--brand-accent-light);
+}
+.dark .marca-local {
+  --primary: var(--brand-primary-dark);
+  --primary-foreground: var(--brand-primary-foreground-dark);
+  --brand-from: var(--brand-primary-dark);
+  --brand-to: var(--brand-accent-dark);
+}

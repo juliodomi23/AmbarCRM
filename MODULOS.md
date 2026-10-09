@@ -112,6 +112,33 @@ marcar una cita como `confirmada` o `cancelada` mediante `PATCH` con
 `{ "citaId": "...", "estado": "confirmada" }`. Esto permite confirmar por
 WhatsApp sin modificar el webhook de Meta.
 
+## Módulo Reservas en línea
+
+El motor de Cita en Click dentro de AmbarCRM: un enlace público
+(`/reservar/<empresa>`) donde el cliente final elige servicio, especialista (o "no
+tengo preferencia"), día y hora, deja nombre y WhatsApp, y la cita aparece en Citas con
+origen "en línea". Requiere el módulo Citas (los especialistas son sus doctores).
+
+- **Configuración** en `/reservas-en-linea` (solo administradores): servicios con
+  duración, tiempo libre posterior, precio y quién los da; horario semanal por
+  especialista (varias filas = turno partido); días especiales (cerrado u horario
+  distinto); anticipación mínima, días a futuro, cada cuánto se ofrecen horarios y
+  tope de citas por teléfono.
+- **Motor** (`lib/reservas/horarios.ts`, función pura, sin librerías): convierte las
+  horas locales del negocio a UTC por día, también con horario de verano. Probado con
+  los mismos casos de Cita en Click en `scripts/check-reservas.ts`.
+- **Sin dobles reservas**: la cita se crea con el especialista bloqueado (`FOR UPDATE`)
+  y revisando empalmes en la misma transacción; "no tengo preferencia" asigna al menos
+  ocupado y, si se ocupa, pasa al siguiente. No se usa `EXCLUDE` para no romper la
+  migración con citas que ya estuvieran encimadas.
+- **Seguridad del enlace público**: la disponibilidad se recalcula en el servidor, límite
+  por IP, tope de citas creadas por teléfono en 24 h, fechas solo dentro de la ventana.
+  El cliente consulta o cancela con `/reservar/cita/<token>` (32 hex), sin cuenta y sin
+  ver datos personales.
+- Los recordatorios por WhatsApp son los del módulo Citas (plantilla y anticipación).
+
+Prueba de concurrencia: `npx tsx prisma/scripts/test-reservas-concurrentes.ts`.
+
 ## Módulo Lealtad (Aurum)
 
 Conecta AmbarCRM con las tarjetas de sellos de Aurum (`lealtad.ambarrojostudios.cloud`).

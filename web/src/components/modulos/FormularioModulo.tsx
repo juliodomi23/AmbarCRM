@@ -11,7 +11,7 @@ export type OpcionCampo = { valor: string; etiqueta: string };
 export type CampoFormulario = {
   nombre: string;
   etiqueta: string;
-  tipo: "texto" | "textarea" | "numero" | "dinero" | "fecha" | "seleccion" | "contacto";
+  tipo: "texto" | "textarea" | "numero" | "dinero" | "fecha" | "hora" | "seleccion" | "multiseleccion" | "contacto";
   requerido?: boolean;
   opciones?: OpcionCampo[];
   valorInicial?: string;
@@ -126,6 +126,25 @@ export function FormularioModulo({
                     </option>
                   ))}
                 </select>
+              ) : campo.tipo === "multiseleccion" ? (
+                <div className="space-y-1 rounded-lg border p-2">
+                  {campo.opciones?.map((opcion) => {
+                    const elegidos = (valores[campo.nombre] ?? "").split(",").filter(Boolean);
+                    const marcado = elegidos.includes(opcion.valor);
+                    return (
+                      <label key={opcion.valor} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={marcado}
+                          onChange={() =>
+                            cambiar(campo.nombre, (marcado ? elegidos.filter((v) => v !== opcion.valor) : [...elegidos, opcion.valor]).join(","))
+                          }
+                        />
+                        {opcion.etiqueta}
+                      </label>
+                    );
+                  })}
+                </div>
               ) : campo.tipo === "textarea" ? (
                 <textarea
                   value={valores[campo.nombre]}
@@ -135,7 +154,7 @@ export function FormularioModulo({
                 />
               ) : (
                 <input
-                  type={campo.tipo === "fecha" ? "date" : campo.tipo === "texto" ? "text" : "number"}
+                  type={campo.tipo === "fecha" ? "date" : campo.tipo === "hora" ? "time" : campo.tipo === "texto" ? "text" : "number"}
                   step={campo.tipo === "dinero" ? "0.01" : campo.tipo === "numero" ? "1" : undefined}
                   min={campo.tipo === "dinero" || campo.tipo === "numero" ? "0" : undefined}
                   value={valores[campo.nombre]}

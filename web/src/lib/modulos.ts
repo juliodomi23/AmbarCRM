@@ -41,6 +41,16 @@ export const MODULOS = [
     ruta: "/citas",
   },
   {
+    clave: "reservas_en_linea",
+    area: "CRM y agenda",
+    nombre: "Reservas en línea",
+    descripcion: "Link público para que tus clientes agenden solos con disponibilidad real.",
+    acceso: ACCESO_TODOS,
+    icono:
+      "M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm4 10l2 2 4-4",
+    ruta: "/reservas-en-linea",
+  },
+  {
     clave: "lealtad",
     area: "CRM y agenda",
     nombre: "Lealtad",

@@ -49,6 +49,9 @@ async function valorColumna(columna: Columna, tabla: string, indice: number) {
     if (!resultado.rows[0]) throw new Error(`Enum sin valores: ${columna.udt_name}`);
     return resultado.rows[0].valor;
   }
+  // Columnas con CHECK de rango (reservas en línea): valores válidos fijos.
+  const enterosFijos: Record<string, number> = { dia_semana: 1, inicio_min: 540, fin_min: 600, duracion_min: 30, buffer_min: 0 };
+  if (columna.column_name in enterosFijos) return enterosFijos[columna.column_name];
   if (["bigint", "integer", "smallint"].includes(columna.data_type)) {
     return 8_000_000 + indice;
   }

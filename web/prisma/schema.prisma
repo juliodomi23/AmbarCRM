@@ -620,6 +620,9 @@ model Cita {
   notas                 String?
   estado                EstadoCita @default(programada)
   recordatorioEnviadoAt DateTime?  @map("recordatorio_enviado_at")
+  servicioId            BigInt?    @map("servicio_id")
+  tokenGestion          String?    @unique @map("token_gestion")
+  origen                String     @default("interna")
   createdAt             DateTime   @default(now()) @map("created_at")
   updatedAt             DateTime   @default(now()) @updatedAt @map("updated_at")
 
@@ -627,6 +630,7 @@ model Cita {
   conversacion Conversacion?      @relation(fields: [conversacionId], references: [id], onDelete: SetNull)
   responsable  Usuario?           @relation(fields: [responsableId], references: [id], onDelete: SetNull)
   doctor       Doctor?            @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  servicio     ServicioReserva?   @relation(fields: [servicioId], references: [id], onDelete: SetNull)
   evoluciones  EvolucionClinica[]
 
   @@index([orgId, inicio])
@@ -648,6 +652,9 @@ model Doctor {
 
   citas       Cita[]
   evoluciones EvolucionClinica[]
+  servicios   ServicioReservaDoctor[]
+  horarios    HorarioDoctor[]
+  excepciones ExcepcionHorario[]
 
   @@unique([orgId, nombre])
   @@index([orgId, activo])
@@ -1287,4 +1294,67 @@ model Evento {
   @@index([oportunidadId, createdAt])
   @@index([orgId])
   @@map("eventos")
+}
+
+/// Servicio que el cliente final puede agendar en línea (Reservas en línea).
+model ServicioReserva {
+  id          BigInt   @id @default(autoincrement())
+  orgId       BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre      String
+  descripcion String?
+  duracionMin Int      @map("duracion_min")
+  bufferMin   Int      @default(0) @map("buffer_min")
+  precio      Decimal  @default(0) @db.Decimal(12, 2)
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  doctores ServicioReservaDoctor[]
+  citas    Cita[]
+
+  @@unique([orgId, nombre])
+  @@map("servicios_reserva")
+}
+
+model ServicioReservaDoctor {
+  orgId      BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  servicioId BigInt @map("servicio_id")
+  doctorId   BigInt @map("doctor_id")
+
+  servicio ServicioReserva @relation(fields: [servicioId], references: [id], onDelete: Cascade)
+  doctor   Doctor          @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@id([servicioId, doctorId])
+  @@map("servicio_reserva_doctores")
+}
+
+/// Horario semanal de un especialista, en minutos desde la medianoche (zona del negocio).
+model HorarioDoctor {
+  id        BigInt @id @default(autoincrement())
+  orgId     BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  doctorId  BigInt @map("doctor_id")
+  diaSemana Int    @map("dia_semana") @db.SmallInt
+  inicioMin Int    @map("inicio_min")
+  finMin    Int    @map("fin_min")
+
+  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@index([doctorId, diaSemana])
+  @@map("horarios_doctor")
+}
+
+/// Excepción de un día: sin horas = cerrado; con horas = horario especial de ese día.
+model ExcepcionHorario {
+  id        BigInt   @id @default(autoincrement())
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  doctorId  BigInt   @map("doctor_id")
+  fecha     DateTime @db.Date
+  inicioMin Int?     @map("inicio_min")
+  finMin    Int?     @map("fin_min")
+  motivo    String?
+
+  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@index([doctorId, fecha])
+  @@map("excepciones_horario")
 }
