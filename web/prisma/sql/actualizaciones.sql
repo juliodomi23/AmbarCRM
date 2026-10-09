@@ -1050,3 +1050,123 @@ DO $$ DECLARE t TEXT; BEGIN
 END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON cajas, turnos_caja, movimientos_caja, pagos_venta TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+-- A2 · Devoluciones, apartados y crédito a clientes.
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS es_credito BOOLEAN NOT NULL DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS devoluciones_venta (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  venta_original_id BIGINT NOT NULL REFERENCES ventas(id) ON DELETE RESTRICT,
+  venta_cambio_id BIGINT REFERENCES ventas(id) ON DELETE SET NULL,
+  turno_id BIGINT REFERENCES turnos_caja(id) ON DELETE SET NULL,
+  usuario_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  tipo_reembolso TEXT NOT NULL CHECK (tipo_reembolso IN ('efectivo', 'nota_credito')),
+  total NUMERIC(12,2) NOT NULL CHECK (total > 0),
+  motivo TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS devoluciones_venta_original_idx ON devoluciones_venta(venta_original_id, created_at);
+CREATE INDEX IF NOT EXISTS devoluciones_venta_org_idx ON devoluciones_venta(org_id);
+
+CREATE TABLE IF NOT EXISTS devolucion_partidas (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  devolucion_id BIGINT NOT NULL REFERENCES devoluciones_venta(id) ON DELETE CASCADE,
+  venta_partida_id BIGINT NOT NULL REFERENCES venta_partidas(id) ON DELETE RESTRICT,
+  cantidad NUMERIC(12,3) NOT NULL CHECK (cantidad > 0),
+  monto NUMERIC(12,2) NOT NULL CHECK (monto > 0),
+  UNIQUE (devolucion_id, venta_partida_id)
+);
+CREATE INDEX IF NOT EXISTS devolucion_partidas_venta_idx ON devolucion_partidas(venta_partida_id);
+CREATE INDEX IF NOT EXISTS devolucion_partidas_org_idx ON devolucion_partidas(org_id);
+
+CREATE TABLE IF NOT EXISTS apartados (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  venta_id BIGINT NOT NULL UNIQUE REFERENCES ventas(id) ON DELETE RESTRICT,
+  contacto_id BIGINT NOT NULL REFERENCES contactos(id) ON DELETE RESTRICT,
+  usuario_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  estado TEXT NOT NULL DEFAULT 'activo' CHECK (estado IN ('activo', 'liquidado', 'cancelado', 'vencido')),
+  anticipo NUMERIC(12,2) NOT NULL CHECK (anticipo > 0),
+  saldo NUMERIC(12,2) NOT NULL CHECK (saldo >= 0),
+  vence_at TIMESTAMPTZ NOT NULL,
+  liquidado_at TIMESTAMPTZ,
+  cancelado_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS apartados_org_estado_vence_idx ON apartados(org_id, estado, vence_at);
+CREATE INDEX IF NOT EXISTS apartados_contacto_idx ON apartados(contacto_id);
+
+CREATE TABLE IF NOT EXISTS abonos_apartado (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  apartado_id BIGINT NOT NULL REFERENCES apartados(id) ON DELETE CASCADE,
+  turno_id BIGINT REFERENCES turnos_caja(id) ON DELETE SET NULL,
+  usuario_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  metodo TEXT NOT NULL CHECK (metodo IN ('efectivo', 'tarjeta', 'transferencia')),
+  monto NUMERIC(12,2) NOT NULL CHECK (monto > 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS abonos_apartado_idx ON abonos_apartado(apartado_id, created_at);
+CREATE INDEX IF NOT EXISTS abonos_apartado_org_idx ON abonos_apartado(org_id);
+
+CREATE TABLE IF NOT EXISTS cuentas_cliente (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  contacto_id BIGINT NOT NULL UNIQUE REFERENCES contactos(id) ON DELETE RESTRICT,
+  limite_credito NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (limite_credito >= 0),
+  saldo NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (saldo >= 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS cuentas_cliente_org_idx ON cuentas_cliente(org_id);
+
+CREATE TABLE IF NOT EXISTS movimientos_cuenta_cliente (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  cuenta_id BIGINT NOT NULL REFERENCES cuentas_cliente(id) ON DELETE CASCADE,
+  venta_id BIGINT REFERENCES ventas(id) ON DELETE SET NULL,
+  turno_id BIGINT REFERENCES turnos_caja(id) ON DELETE SET NULL,
+  usuario_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  tipo TEXT NOT NULL CHECK (tipo IN ('cargo', 'abono')),
+  monto NUMERIC(12,2) NOT NULL CHECK (monto > 0),
+  saldo_antes NUMERIC(12,2) NOT NULL CHECK (saldo_antes >= 0),
+  saldo_despues NUMERIC(12,2) NOT NULL CHECK (saldo_despues >= 0),
+  referencia TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS movimientos_cuenta_cliente_idx ON movimientos_cuenta_cliente(cuenta_id, created_at);
+CREATE INDEX IF NOT EXISTS movimientos_cuenta_org_idx ON movimientos_cuenta_cliente(org_id);
+
+CREATE TABLE IF NOT EXISTS notas_credito_cliente (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  contacto_id BIGINT NOT NULL REFERENCES contactos(id) ON DELETE RESTRICT,
+  devolucion_id BIGINT UNIQUE REFERENCES devoluciones_venta(id) ON DELETE RESTRICT,
+  apartado_id BIGINT REFERENCES apartados(id) ON DELETE RESTRICT,
+  monto_original NUMERIC(12,2) NOT NULL CHECK (monto_original > 0),
+  saldo NUMERIC(12,2) NOT NULL CHECK (saldo >= 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK ((devolucion_id IS NOT NULL) <> (apartado_id IS NOT NULL))
+);
+CREATE INDEX IF NOT EXISTS notas_credito_contacto_idx ON notas_credito_cliente(contacto_id, created_at);
+CREATE INDEX IF NOT EXISTS notas_credito_org_idx ON notas_credito_cliente(org_id);
+
+DO $$ DECLARE t TEXT; BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'devoluciones_venta', 'devolucion_partidas', 'apartados', 'abonos_apartado',
+    'cuentas_cliente', 'movimientos_cuenta_cliente', 'notas_credito_cliente'
+  ] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format(
+      'CREATE POLICY org_isolation ON %I USING (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint) WITH CHECK (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint)',
+      t
+    );
+  END LOOP;
+END $$;
+GRANT SELECT, INSERT, UPDATE, DELETE ON devoluciones_venta, devolucion_partidas, apartados,
+  abonos_apartado, cuentas_cliente, movimientos_cuenta_cliente, notas_credito_cliente TO crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;

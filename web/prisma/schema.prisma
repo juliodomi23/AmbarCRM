@@ -186,6 +186,10 @@ model Usuario {
   comprasCreadas     Compra[]                  @relation("CompraCreadoPor")
   turnosCaja         TurnoCaja[]
   movimientosCaja    MovimientoCaja[]          @relation("MovimientoCajaUsuario")
+  devolucionesCaja   DevolucionVenta[]
+  apartadosCreados   Apartado[]
+  abonosApartado     AbonoApartado[]
+  movimientosCuenta  MovimientoCuentaCliente[]
   expedientesLegales ExpedienteLegal[]         @relation("ExpedienteResponsable")
   registrosLegales   RegistroExpedienteLegal[] @relation("RegistroLegalUsuario")
   asesoriasLegales   AsesoriaLegal[]           @relation("AsesoriaAbogado")
@@ -250,7 +254,7 @@ model Contacto {
   optOutDifusion Boolean @default(false) @map("opt_out_difusion") // excluido de difusiones masivas
   campos         Json    @default("{}")
 
-  responsable        Usuario?            @relation(fields: [responsableId], references: [id], onDelete: SetNull)
+  responsable        Usuario?             @relation(fields: [responsableId], references: [id], onDelete: SetNull)
   etiquetas          ContactoEtiqueta[]
   oportunidades      Oportunidad[]
   conversaciones     Conversacion[]
@@ -262,6 +266,9 @@ model Contacto {
   movimientosLegales MovimientoLegal[]
   reservasTour       ReservaTour[]
   alumnoAcademia     AlumnoAcademia?
+  cuentaCliente      CuentaCliente?
+  apartados          Apartado[]
+  notasCredito       NotaCreditoCliente[]
 
   @@unique([orgId, telefono])
   @@index([responsableId])
@@ -806,16 +813,21 @@ model Venta {
   moneda        String   @default("MXN")
   notas         String?
   stockAplicado Boolean  @default(false) @map("stock_aplicado")
+  esCredito     Boolean  @default(false) @map("es_credito")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
 
-  contacto    Contacto?              @relation(fields: [contactoId], references: [id], onDelete: SetNull)
-  creadoPor   Usuario?               @relation("VentaCreadoPor", fields: [creadoPorId], references: [id], onDelete: SetNull)
-  turno       TurnoCaja?             @relation(fields: [turnoId], references: [id], onDelete: SetNull)
-  caja        Caja?                  @relation(fields: [cajaId], references: [id], onDelete: SetNull)
-  partidas    VentaPartida[]
-  pagos       PagoVenta[]
-  movimientos MovimientoInventario[]
+  contacto               Contacto?                 @relation(fields: [contactoId], references: [id], onDelete: SetNull)
+  creadoPor              Usuario?                  @relation("VentaCreadoPor", fields: [creadoPorId], references: [id], onDelete: SetNull)
+  turno                  TurnoCaja?                @relation(fields: [turnoId], references: [id], onDelete: SetNull)
+  caja                   Caja?                     @relation(fields: [cajaId], references: [id], onDelete: SetNull)
+  partidas               VentaPartida[]
+  pagos                  PagoVenta[]
+  movimientos            MovimientoInventario[]
+  devolucionesOriginales DevolucionVenta[]         @relation("VentaOriginal")
+  devolucionesCambio     DevolucionVenta[]         @relation("VentaCambio")
+  apartado               Apartado?
+  movimientosCuenta      MovimientoCuentaCliente[]
 
   @@unique([orgId, folio])
   @@unique([orgId, uuidCliente])
@@ -836,8 +848,9 @@ model VentaPartida {
   descuento      Decimal @default(0) @db.Decimal(12, 2)
   total          Decimal @db.Decimal(12, 2)
 
-  venta    Venta    @relation(fields: [ventaId], references: [id], onDelete: Cascade)
-  producto Producto @relation(fields: [productoId], references: [id], onDelete: Restrict)
+  venta        Venta               @relation(fields: [ventaId], references: [id], onDelete: Cascade)
+  producto     Producto            @relation(fields: [productoId], references: [id], onDelete: Restrict)
+  devoluciones DevolucionPartida[]
 
   @@index([ventaId])
   @@index([productoId])
@@ -877,10 +890,13 @@ model TurnoCaja {
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
 
-  caja        Caja             @relation(fields: [cajaId], references: [id], onDelete: Restrict)
-  usuario     Usuario          @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
-  movimientos MovimientoCaja[]
-  ventas      Venta[]
+  caja              Caja                      @relation(fields: [cajaId], references: [id], onDelete: Restrict)
+  usuario           Usuario                   @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  movimientos       MovimientoCaja[]
+  ventas            Venta[]
+  devoluciones      DevolucionVenta[]
+  abonosApartado    AbonoApartado[]
+  movimientosCuenta MovimientoCuentaCliente[]
 
   @@index([orgId, estado])
   @@index([cajaId, estado])
@@ -919,6 +935,151 @@ model PagoVenta {
   @@unique([ventaId, metodo])
   @@index([orgId])
   @@map("pagos_venta")
+}
+
+model DevolucionVenta {
+  id              BigInt   @id @default(autoincrement())
+  orgId           BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  ventaOriginalId BigInt   @map("venta_original_id")
+  ventaCambioId   BigInt?  @map("venta_cambio_id")
+  turnoId         BigInt?  @map("turno_id")
+  usuarioId       BigInt?  @map("usuario_id")
+  tipoReembolso   String   @map("tipo_reembolso")
+  total           Decimal  @db.Decimal(12, 2)
+  motivo          String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  ventaOriginal Venta               @relation("VentaOriginal", fields: [ventaOriginalId], references: [id], onDelete: Restrict)
+  ventaCambio   Venta?              @relation("VentaCambio", fields: [ventaCambioId], references: [id], onDelete: SetNull)
+  turno         TurnoCaja?          @relation(fields: [turnoId], references: [id], onDelete: SetNull)
+  usuario       Usuario?            @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  partidas      DevolucionPartida[]
+  notaCredito   NotaCreditoCliente?
+
+  @@index([ventaOriginalId, createdAt])
+  @@index([orgId])
+  @@map("devoluciones_venta")
+}
+
+model DevolucionPartida {
+  id             BigInt  @id @default(autoincrement())
+  orgId          BigInt  @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  devolucionId   BigInt  @map("devolucion_id")
+  ventaPartidaId BigInt  @map("venta_partida_id")
+  cantidad       Decimal @db.Decimal(12, 3)
+  monto          Decimal @db.Decimal(12, 2)
+
+  devolucion   DevolucionVenta @relation(fields: [devolucionId], references: [id], onDelete: Cascade)
+  ventaPartida VentaPartida    @relation(fields: [ventaPartidaId], references: [id], onDelete: Restrict)
+
+  @@unique([devolucionId, ventaPartidaId])
+  @@index([ventaPartidaId])
+  @@index([orgId])
+  @@map("devolucion_partidas")
+}
+
+model Apartado {
+  id          BigInt    @id @default(autoincrement())
+  orgId       BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  ventaId     BigInt    @unique @map("venta_id")
+  contactoId  BigInt    @map("contacto_id")
+  usuarioId   BigInt?   @map("usuario_id")
+  estado      String    @default("activo")
+  anticipo    Decimal   @db.Decimal(12, 2)
+  saldo       Decimal   @db.Decimal(12, 2)
+  venceAt     DateTime  @map("vence_at")
+  liquidadoAt DateTime? @map("liquidado_at")
+  canceladoAt DateTime? @map("cancelado_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  venta        Venta                @relation(fields: [ventaId], references: [id], onDelete: Restrict)
+  contacto     Contacto             @relation(fields: [contactoId], references: [id], onDelete: Restrict)
+  usuario      Usuario?             @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  abonos       AbonoApartado[]
+  notasCredito NotaCreditoCliente[]
+
+  @@index([orgId, estado, venceAt])
+  @@index([contactoId])
+  @@map("apartados")
+}
+
+model AbonoApartado {
+  id         BigInt   @id @default(autoincrement())
+  orgId      BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  apartadoId BigInt   @map("apartado_id")
+  turnoId    BigInt?  @map("turno_id")
+  usuarioId  BigInt?  @map("usuario_id")
+  metodo     String
+  monto      Decimal  @db.Decimal(12, 2)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  apartado Apartado   @relation(fields: [apartadoId], references: [id], onDelete: Cascade)
+  turno    TurnoCaja? @relation(fields: [turnoId], references: [id], onDelete: SetNull)
+  usuario  Usuario?   @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([apartadoId, createdAt])
+  @@index([orgId])
+  @@map("abonos_apartado")
+}
+
+model CuentaCliente {
+  id            BigInt   @id @default(autoincrement())
+  orgId         BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contactoId    BigInt   @unique @map("contacto_id")
+  limiteCredito Decimal  @default(0) @map("limite_credito") @db.Decimal(12, 2)
+  saldo         Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  contacto    Contacto                  @relation(fields: [contactoId], references: [id], onDelete: Restrict)
+  movimientos MovimientoCuentaCliente[]
+
+  @@index([orgId])
+  @@map("cuentas_cliente")
+}
+
+model MovimientoCuentaCliente {
+  id           BigInt   @id @default(autoincrement())
+  orgId        BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  cuentaId     BigInt   @map("cuenta_id")
+  ventaId      BigInt?  @map("venta_id")
+  turnoId      BigInt?  @map("turno_id")
+  usuarioId    BigInt?  @map("usuario_id")
+  tipo         String
+  monto        Decimal  @db.Decimal(12, 2)
+  saldoAntes   Decimal  @map("saldo_antes") @db.Decimal(12, 2)
+  saldoDespues Decimal  @map("saldo_despues") @db.Decimal(12, 2)
+  referencia   String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  cuenta  CuentaCliente @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
+  venta   Venta?        @relation(fields: [ventaId], references: [id], onDelete: SetNull)
+  turno   TurnoCaja?    @relation(fields: [turnoId], references: [id], onDelete: SetNull)
+  usuario Usuario?      @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([cuentaId, createdAt])
+  @@index([orgId])
+  @@map("movimientos_cuenta_cliente")
+}
+
+model NotaCreditoCliente {
+  id            BigInt   @id @default(autoincrement())
+  orgId         BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contactoId    BigInt   @map("contacto_id")
+  devolucionId  BigInt?  @unique @map("devolucion_id")
+  apartadoId    BigInt?  @map("apartado_id")
+  montoOriginal Decimal  @map("monto_original") @db.Decimal(12, 2)
+  saldo         Decimal  @db.Decimal(12, 2)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  contacto   Contacto         @relation(fields: [contactoId], references: [id], onDelete: Restrict)
+  devolucion DevolucionVenta? @relation(fields: [devolucionId], references: [id], onDelete: Restrict)
+  apartado   Apartado?        @relation(fields: [apartadoId], references: [id], onDelete: Restrict)
+
+  @@index([contactoId, createdAt])
+  @@index([orgId])
+  @@map("notas_credito_cliente")
 }
 
 model Proveedor {

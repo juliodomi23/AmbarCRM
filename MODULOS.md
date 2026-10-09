@@ -88,6 +88,21 @@ y toda escritura de existencia ocurre dentro de `transaccionTenant()` después d
 contado y diferencia de forma irreversible. Un Cajero no puede cancelar ventas de caja:
 la cancelación y devolución de inventario exige Encargado de tienda o Admin.
 
+Las devoluciones conservan la referencia a la venta y admiten cantidades parciales,
+reembolso desde el turno abierto actual o nota de crédito del cliente. El turno de la
+venta original nunca se reabre: primero se bloquea el turno que entrega efectivo, luego
+la venta original y finalmente sus productos. Dos devoluciones concurrentes no pueden
+superar lo vendido, y un cambio enlaza la devolución con la nueva venta.
+
+Los apartados separan existencia al crearse, registran anticipo y abonos, y liberan los
+productos al cancelar o vencer. Su vigencia se configura con `apartadoDiasVigencia` en
+el módulo Caja. El crédito por cliente mantiene límite, saldo, cargos, abonos y
+antigüedad; la cuenta se bloquea antes de cada venta para que cobros simultáneos no
+rebasen el límite. Solo Encargado de tienda o Admin configura el límite o autoriza una
+venta que lo exceda. Los abonos en efectivo entran al turno abierto. Los recordatorios
+de saldo usan texto dentro de la ventana de WhatsApp y una plantilla aprobada fuera de
+ella.
+
 ## Módulo Citas
 
 Cuando Citas está activo aparece en el menú lateral, la barra móvil y Ctrl+K. Su

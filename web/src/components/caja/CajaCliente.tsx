@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AbrirTicket } from "@/components/caja/BotonImprimir";
+import { OperacionesCajaA2 } from "@/components/caja/OperacionesCajaA2";
 import { TarjetaLealtad } from "@/components/lealtad/TarjetaLealtad";
 import type { ContactoVenta, ProductoRetail } from "@/components/retail/tipos";
 import { toast } from "@/components/Toaster";
@@ -187,9 +188,36 @@ export function CajaCliente({
         partidas: lineas.map((linea) => ({ productoId: linea.producto.id, cantidad: linea.cantidad, descuento: linea.descuento })),
         pagos: Object.entries(pagos).filter(([, monto]) => dinero(monto) > 0).map(([metodo, monto]) => ({ metodo, monto })),
       });
-      setVenta(data.venta); setLineas([]); setDescuento("0"); setPagos({ efectivo: "", tarjeta: "", transferencia: "" }); setUuid(crypto.randomUUID());
+      setVenta(data.venta); limpiarVenta();
       toast(data.repetida ? "La venta ya estaba registrada" : `Venta ${data.venta.folio} cobrada`);
       router.refresh();
+    } catch (error) { toast((error as Error).message, "error"); }
+    finally { setOcupado(false); }
+  }
+
+  function limpiarVenta() {
+    setLineas([]); setDescuento("0"); setPagos({ efectivo: "", tarjeta: "", transferencia: "" }); setUuid(crypto.randomUUID());
+  }
+
+  async function apartar() {
+    if (!turno || !contactoId || !lineas.length || ocupado) return;
+    const anticipo = window.prompt("Anticipo del apartado", "100");
+    const metodo = anticipo === null ? null : window.prompt("Método: efectivo, tarjeta o transferencia", "efectivo");
+    if (anticipo === null || !metodo) return;
+    setOcupado(true);
+    try {
+      const data = await api("/api/caja/apartados", "POST", { turnoId: turno.id, contactoId, anticipo, metodo, uuidCliente: uuid, partidas: lineas.map((linea) => ({ productoId: linea.producto.id, cantidad: linea.cantidad, descuento: linea.descuento })) });
+      limpiarVenta(); toast(data.repetido ? "El apartado ya estaba registrado" : "Apartado registrado y existencia separada"); router.refresh();
+    } catch (error) { toast((error as Error).message, "error"); }
+    finally { setOcupado(false); }
+  }
+
+  async function venderCredito() {
+    if (!turno || !contactoId || !lineas.length || ocupado) return;
+    setOcupado(true);
+    try {
+      const data = await api("/api/caja/credito/ventas", "POST", { turnoId: turno.id, contactoId, descuento, uuidCliente: uuid, partidas: lineas.map((linea) => ({ productoId: linea.producto.id, cantidad: linea.cantidad, descuento: linea.descuento })) });
+      setVenta(data.venta); limpiarVenta(); toast(data.repetida ? "La venta ya estaba registrada" : "Venta a crédito registrada"); router.refresh();
     } catch (error) { toast((error as Error).message, "error"); }
     finally { setOcupado(false); }
   }
@@ -245,11 +273,12 @@ export function CajaCliente({
           <label className="block text-xs">Descuento general $ <span className="text-muted-foreground">(Cajero hasta {descuentoMaximo}%)</span><input type="number" min="0" step="0.01" value={descuento} onChange={(e) => setDescuento(e.target.value)} className="mt-1 w-full rounded border p-2" /></label>
           <div className="space-y-2"><p className="text-xs font-semibold uppercase text-muted-foreground">Cobro mixto</p>{(["efectivo", "tarjeta", "transferencia"] as const).map((metodo) => <label key={metodo} className="grid grid-cols-[1fr_130px] items-center text-sm capitalize"><span>{metodo}</span><input type="number" min="0" step="0.01" value={pagos[metodo]} onChange={(e) => setPagos({ ...pagos, [metodo]: e.target.value })} className="rounded border p-2 text-right" /></label>)}<div className="flex flex-wrap gap-1">{[50,100,200,500,1000].map((billete) => <button key={billete} onClick={() => setPagos({ ...pagos, efectivo: String(billete) })} className="rounded bg-muted px-2 py-1 text-xs">${billete}</button>)}</div></div>
           <div className="border-t pt-3 text-sm"><p className="flex justify-between"><span>Subtotal</span><span>{formatoMoneda(subtotal)}</span></p><p className="flex justify-between"><span>Pagado</span><span>{formatoMoneda(pagado)}</span></p><p className="flex justify-between text-base font-bold"><span>Total</span><span>{formatoMoneda(total)}</span></p><p className="flex justify-between text-success"><span>Cambio</span><span>{formatoMoneda(cambio)}</span></p></div>
-          <Boton className="w-full py-3" disabled={!lineas.length || pagado < total || ocupado} onClick={cobrar}>Cobrar (F2)</Boton>
+          <div className="grid grid-cols-3 gap-2"><Boton className="py-3" disabled={!lineas.length || pagado < total || ocupado} onClick={cobrar}>Cobrar (F2)</Boton><Boton variante="ghost" disabled={!lineas.length || !contactoId || ocupado} onClick={apartar}>Apartar</Boton><Boton variante="ghost" disabled={!lineas.length || !contactoId || ocupado} onClick={venderCredito}>A crédito</Boton></div>
         </aside>
       </div>
       {corte && <section className="surface grid gap-2 p-4 text-sm sm:grid-cols-3"><strong className="sm:col-span-3">Corte {turno ? "X" : "Z"}</strong><span>{corte.ventas} ventas · {formatoMoneda(corte.ventasTotal)}</span><span>Efectivo cobrado {formatoMoneda(corte.efectivoCobrado)}</span><span>Esperado {formatoMoneda(corte.efectivoEsperado)}</span><span>Entradas {formatoMoneda(corte.entradas)}</span><span>Salidas {formatoMoneda(corte.salidas)}</span>{corte.diferencia !== undefined && <b>Diferencia {formatoMoneda(corte.diferencia)}</b>}</section>}
       {venta && <section className="surface space-y-3 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><strong>{venta.folio}</strong><p className="text-sm text-success">Venta registrada</p></div><AbrirTicket ventaId={venta.id}>Imprimir / reimprimir ticket</AbrirTicket></div>{venta.contacto && <TarjetaLealtad contactoId={venta.contacto.id} />}</section>}
+      <OperacionesCajaA2 turnoId={turno.id} contactoId={contactoId} puedeConfigurarCredito={usuario.rol === "admin" || normalizar(usuario.puesto) === "encargado de tienda"} />
       <p className="text-xs text-muted-foreground">Perfil: {usuario.puesto}{usuario.rol === "admin" ? " · Admin" : ""}</p>
     </div>
   );

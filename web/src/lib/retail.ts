@@ -9,6 +9,7 @@ export const ESTADOS_VENTA = [
   "preparando",
   "lista",
   "entregada",
+  "apartado",
   "cancelada",
 ] as const;
 

@@ -113,7 +113,7 @@ await prisma.$transaction(async (tx) => {
   }
   await tx.moduloOrg.update({
     where: { orgId_clave: { orgId: org.id, clave: "caja" } },
-    data: { config: { puestosPermitidos: ["Cajero", "Encargado de tienda"], descuentoMaximoCajero: 10 } },
+    data: { config: { puestosPermitidos: ["Cajero", "Encargado de tienda"], descuentoMaximoCajero: 10, apartadoDiasVigencia: 7 } },
   });
   await tx.caja.upsert({
     where: { orgId_nombre: { orgId: org.id, nombre: "Caja principal" } },
@@ -282,6 +282,7 @@ await prisma.$transaction(async (tx) => {
     }
   }
 
+  const ventasCreadas = new Map();
   for (let indice = 0; indice < ventasDemo.length; indice++) {
     const [folio, contactoIndice, estado, canal, metodoPago, partidas] = ventasDemo[indice];
     const aplicaStock = estado !== "borrador" && estado !== "cancelada";
@@ -300,9 +301,11 @@ await prisma.$transaction(async (tx) => {
         subtotal,
         total: subtotal,
         stockAplicado: aplicaStock,
+        esCredito: folio === "DEMO-005",
         createdAt: fechaMexico(indice < 4 ? 0 : -indice + 3, 10 + indice),
       },
     });
+    ventasCreadas.set(folio, venta);
     for (const [sku, cantidadValor] of partidas) {
       const producto = productos.get(sku);
       const cantidad = new Prisma.Decimal(String(cantidadValor));
@@ -337,6 +340,26 @@ await prisma.$transaction(async (tx) => {
       }
     }
   }
+
+  const ventaCredito = ventasCreadas.get("DEMO-005");
+  const cuenta = await tx.cuentaCliente.upsert({
+    where: { contactoId: contactos[4].id },
+    update: { limiteCredito: 3000, saldo: ventaCredito.total },
+    create: { contactoId: contactos[4].id, limiteCredito: 3000, saldo: ventaCredito.total },
+  });
+  await tx.movimientoCuentaCliente.deleteMany({ where: { cuentaId: cuenta.id } });
+  await tx.movimientoCuentaCliente.create({
+    data: {
+      cuentaId: cuenta.id,
+      ventaId: ventaCredito.id,
+      usuarioId: equipo[0].id,
+      tipo: "cargo",
+      monto: ventaCredito.total,
+      saldoAntes: 0,
+      saldoDespues: ventaCredito.total,
+      referencia: ventaCredito.folio,
+    },
+  });
 });
 
 imprimirCredencialesDemo({
