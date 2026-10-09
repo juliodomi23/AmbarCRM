@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState, useCallback } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { aplicarVariables } from "@/lib/plantillas";
 import { PanelConversacion } from "@/components/chat/PanelConversacion";
@@ -18,7 +19,7 @@ type Canal = { id: string; nombre: string; proveedor: string; activo: boolean };
 
 export type ConversacionItem = {
   id: string;
-  contacto: { nombre: string; telefono: string | null };
+  contacto: { id: string; nombre: string; telefono: string | null };
   esPersonal: boolean;
   fijado: boolean;
   responsableId: string | null;
@@ -631,6 +632,12 @@ export function ChatCliente({
                   <p className="truncate text-xs text-muted-foreground">+{seleccionada.contacto.telefono}</p>
                 )}
               </div>
+              <Link
+                href={`/cotizaciones?nueva=1&contactoId=${seleccionada.contacto.id}`}
+                className="hidden rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 sm:block"
+              >
+                Nueva cotización
+              </Link>
               <span
                 className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground"
                 title={enVivo ? "Recibiendo mensajes en tiempo real" : "Sin conexión en vivo, reintentando…"}

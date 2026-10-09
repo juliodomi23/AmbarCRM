@@ -1175,3 +1175,71 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 ALTER TABLE pagos_venta DROP CONSTRAINT IF EXISTS pagos_venta_metodo_check;
 ALTER TABLE pagos_venta ADD CONSTRAINT pagos_venta_metodo_check
   CHECK (metodo IN ('efectivo', 'tarjeta', 'transferencia', 'nota_credito'));
+
+-- B · Cotizaciones.
+CREATE TABLE IF NOT EXISTS cotizaciones (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  folio TEXT NOT NULL,
+  contacto_id BIGINT NOT NULL REFERENCES contactos(id) ON DELETE RESTRICT,
+  oportunidad_id BIGINT REFERENCES oportunidades(id) ON DELETE SET NULL,
+  venta_id BIGINT UNIQUE REFERENCES ventas(id) ON DELETE SET NULL,
+  creado_por_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  estado TEXT NOT NULL DEFAULT 'borrador' CHECK (estado IN ('borrador', 'enviada', 'aceptada', 'rechazada', 'vencida')),
+  vigencia DATE NOT NULL,
+  notas TEXT,
+  condiciones TEXT,
+  subtotal NUMERIC(12,2) NOT NULL CHECK (subtotal >= 0),
+  descuento NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (descuento >= 0),
+  impuestos NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (impuestos >= 0),
+  total NUMERIC(12,2) NOT NULL CHECK (total >= 0),
+  iva_porcentaje NUMERIC(5,2) NOT NULL DEFAULT 16 CHECK (iva_porcentaje >= 0 AND iva_porcentaje <= 100),
+  precios_con_iva BOOLEAN NOT NULL DEFAULT false,
+  token_publico TEXT NOT NULL UNIQUE CHECK (token_publico ~ '^[0-9a-f]{32}$'),
+  version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
+  convertir_venta BOOLEAN NOT NULL DEFAULT false,
+  respondido_por TEXT,
+  respondido_at TIMESTAMPTZ,
+  respondido_ip TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, folio)
+);
+CREATE INDEX IF NOT EXISTS cotizaciones_org_estado_created_idx ON cotizaciones(org_id, estado, created_at);
+CREATE INDEX IF NOT EXISTS cotizaciones_contacto_idx ON cotizaciones(contacto_id);
+CREATE INDEX IF NOT EXISTS cotizaciones_oportunidad_idx ON cotizaciones(oportunidad_id);
+
+CREATE TABLE IF NOT EXISTS cotizacion_partidas (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  cotizacion_id BIGINT NOT NULL REFERENCES cotizaciones(id) ON DELETE CASCADE,
+  producto_id BIGINT REFERENCES productos(id) ON DELETE SET NULL,
+  concepto TEXT NOT NULL,
+  cantidad NUMERIC(12,3) NOT NULL CHECK (cantidad > 0),
+  precio NUMERIC(12,2) NOT NULL CHECK (precio >= 0),
+  descuento NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (descuento >= 0),
+  total NUMERIC(12,2) NOT NULL CHECK (total >= 0)
+);
+CREATE INDEX IF NOT EXISTS cotizacion_partidas_cotizacion_idx ON cotizacion_partidas(cotizacion_id);
+CREATE INDEX IF NOT EXISTS cotizacion_partidas_producto_idx ON cotizacion_partidas(producto_id);
+CREATE INDEX IF NOT EXISTS cotizacion_partidas_org_idx ON cotizacion_partidas(org_id);
+
+DO $$ DECLARE t TEXT; BEGIN
+  FOREACH t IN ARRAY ARRAY['cotizaciones', 'cotizacion_partidas'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format(
+      'CREATE POLICY org_isolation ON %I USING (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint) WITH CHECK (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint)',
+      t
+    );
+  END LOOP;
+END $$;
+GRANT SELECT, INSERT, UPDATE, DELETE ON cotizaciones, cotizacion_partidas TO crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+CREATE OR REPLACE FUNCTION resolve_org_by_cotizacion_token(p_token text)
+  RETURNS bigint LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
+    SELECT org_id FROM cotizaciones WHERE token_publico = p_token LIMIT 1
+  $$;
+REVOKE ALL ON FUNCTION resolve_org_by_cotizacion_token(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION resolve_org_by_cotizacion_token(text) TO crm_app;

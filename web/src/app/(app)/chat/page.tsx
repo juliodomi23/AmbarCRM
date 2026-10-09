@@ -22,7 +22,7 @@ export default async function ChatPage() {
 
   const conversaciones: ConversacionItem[] = convs.map((c: any) => ({
     id: c.id,
-    contacto: { nombre: c.contacto.nombre, telefono: c.contacto.telefono },
+    contacto: { id: c.contacto.id, nombre: c.contacto.nombre, telefono: c.contacto.telefono },
     esPersonal: c.contacto.esPersonal ?? false,
     fijado: !!c.fijadoAt,
     responsableId: c.responsable?.id ?? null,

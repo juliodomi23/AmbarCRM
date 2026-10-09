@@ -13,7 +13,7 @@ export const ESTADOS_VENTA = [
   "cancelada",
 ] as const;
 
-export const CANALES_VENTA = ["mostrador", "whatsapp", "tienda_en_linea", "telefono"] as const;
+export const CANALES_VENTA = ["mostrador", "whatsapp", "tienda_en_linea", "telefono", "cotizacion"] as const;
 export const METODOS_PAGO = ["efectivo", "tarjeta", "transferencia", "enlace", "otro"] as const;
 export const TIPOS_MOVIMIENTO = ["entrada", "salida"] as const;
 export const ESTADOS_COMPRA = ["borrador", "ordenada", "recibida", "cancelada"] as const;

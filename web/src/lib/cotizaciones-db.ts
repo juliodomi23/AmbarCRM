@@ -1,0 +1,254 @@
+import { randomBytes } from "node:crypto";
+import { Prisma } from "@prisma/client";
+import { calcularCotizacion, configCotizaciones, type PartidaCotizacionEntrada } from "@/lib/cotizaciones";
+import { dbRaw } from "@/lib/db";
+import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
+
+export class ErrorCotizacion extends ErrorRetail {}
+
+type DatosCotizacion = {
+  contactoId: bigint;
+  oportunidadId: bigint | null;
+  vigencia: Date;
+  descuentoGeneral: Prisma.Decimal;
+  convertirVenta: boolean;
+  notas: string | null;
+  condiciones: string | null;
+  partidas: readonly PartidaCotizacionEntrada[];
+};
+
+const detalleCotizacion = {
+  contacto: true,
+  oportunidad: true,
+  venta: true,
+  creadoPor: { select: { id: true, nombre: true } },
+  partidas: { include: { producto: true }, orderBy: { id: "asc" as const } },
+};
+
+function folioCotizacion() {
+  return `COT-${Date.now().toString(36).toUpperCase()}-${randomBytes(2).toString("hex").toUpperCase()}`;
+}
+
+async function prepararPartidas(tx: Prisma.TransactionClient, entradas: readonly PartidaCotizacionEntrada[]) {
+  const ids = entradas.flatMap((partida) => partida.productoId === null ? [] : [partida.productoId]);
+  const productos = ids.length ? await tx.producto.findMany({ where: { id: { in: ids }, activo: true } }) : [];
+  if (productos.length !== new Set(ids.map(String)).size) throw new ErrorCotizacion("Uno de los productos no existe o está inactivo", 404);
+  const porId = new Map(productos.map((producto) => [String(producto.id), producto]));
+  return entradas.map((partida) => {
+    const producto = partida.productoId === null ? null : porId.get(String(partida.productoId));
+    return {
+      productoId: partida.productoId,
+      concepto: producto?.nombre ?? partida.concepto,
+      cantidad: partida.cantidad,
+      precio: producto?.precio ?? partida.precio!,
+      descuento: partida.descuento,
+    };
+  });
+}
+
+export async function crearCotizacion(orgId: bigint, userId: bigint | null, datos: DatosCotizacion) {
+  return transaccionTenant(orgId, async (tx) => {
+    const contacto = await tx.contacto.findUnique({ where: { id: datos.contactoId } });
+    if (!contacto) throw new ErrorCotizacion("El cliente no existe", 404);
+    if (datos.oportunidadId !== null) {
+      const oportunidad = await tx.oportunidad.findUnique({ where: { id: datos.oportunidadId } });
+      if (!oportunidad || oportunidad.contactoId !== contacto.id) throw new ErrorCotizacion("La oportunidad no pertenece al cliente", 404);
+    }
+    const modulo = await tx.moduloOrg.findFirst({ where: { clave: "cotizaciones", activo: true }, select: { config: true } });
+    const config = configCotizaciones(modulo?.config);
+    const preparadas = await prepararPartidas(tx, datos.partidas);
+    let calculo;
+    try {
+      calculo = calcularCotizacion(preparadas, datos.descuentoGeneral, config);
+    } catch (error) {
+      throw new ErrorCotizacion(error instanceof Error ? error.message : "No se pudo calcular la cotización");
+    }
+    const cotizacion = await tx.cotizacion.create({
+      data: {
+        folio: folioCotizacion(),
+        contactoId: contacto.id,
+        oportunidadId: datos.oportunidadId,
+        creadoPorId: userId,
+        vigencia: datos.vigencia,
+        notas: datos.notas,
+        condiciones: datos.condiciones,
+        subtotal: calculo.subtotal,
+        descuento: calculo.descuento,
+        impuestos: calculo.impuestos,
+        total: calculo.total,
+        ivaPorcentaje: config.ivaPorcentaje,
+        preciosConIva: config.preciosConIva,
+        tokenPublico: randomBytes(16).toString("hex"),
+        convertirVenta: datos.convertirVenta,
+      },
+    });
+    await tx.cotizacionPartida.createMany({
+      data: calculo.partidas.map((partida) => ({
+        cotizacionId: cotizacion.id,
+        productoId: partida.productoId,
+        concepto: partida.concepto,
+        cantidad: partida.cantidad,
+        precio: partida.precio,
+        descuento: partida.descuento,
+        total: partida.total,
+      })),
+    });
+    return tx.cotizacion.findUniqueOrThrow({ where: { id: cotizacion.id }, include: detalleCotizacion });
+  });
+}
+
+export function cotizacionInterna(orgId: bigint, id: bigint) {
+  return transaccionTenant(orgId, (tx) => tx.cotizacion.findUnique({ where: { id }, include: detalleCotizacion }));
+}
+
+async function bloquearCotizacion(tx: Prisma.TransactionClient, token: string) {
+  const filas = await tx.$queryRaw<Array<{ id: bigint }>>(Prisma.sql`
+    SELECT id FROM cotizaciones WHERE token_publico = ${token} FOR UPDATE
+  `);
+  if (!filas[0]) throw new ErrorCotizacion("Cotización no encontrada", 404);
+  return filas[0].id;
+}
+
+async function convertirEnVenta(tx: Prisma.TransactionClient, cotizacion: Awaited<ReturnType<typeof cotizacionBloqueada>>) {
+  if (cotizacion.ventaId !== null) return cotizacion.ventaId;
+  const moduloVentas = await tx.moduloOrg.findFirst({ where: { clave: "ventas", activo: true }, select: { id: true } });
+  if (!moduloVentas) throw new ErrorCotizacion("El módulo Ventas no está activo para convertir la cotización", 409);
+  if (cotizacion.partidas.some((partida) => partida.productoId === null)) {
+    throw new ErrorCotizacion("La cotización tiene conceptos libres y no puede convertirse en venta", 409);
+  }
+  const productoIds = cotizacion.partidas.map((partida) => partida.productoId!);
+  await bloquearProductos(tx, productoIds);
+  const productos = await tx.producto.findMany({ where: { id: { in: productoIds }, activo: true } });
+  const porId = new Map(productos.map((producto) => [String(producto.id), producto]));
+  const cantidadesPorProducto = new Map<string, Prisma.Decimal>();
+  for (const partida of cotizacion.partidas) {
+    const producto = porId.get(String(partida.productoId));
+    if (!producto) throw new ErrorCotizacion(`El producto ${partida.concepto} ya no está disponible`, 409);
+    const clave = String(producto.id);
+    cantidadesPorProducto.set(clave, (cantidadesPorProducto.get(clave) ?? new Prisma.Decimal(0)).plus(partida.cantidad));
+  }
+  for (const [productoId, cantidadTotal] of cantidadesPorProducto) {
+    const producto = porId.get(productoId)!;
+    if (producto.stock.lt(cantidadTotal)) throw new ErrorCotizacion(`No hay existencias suficientes de ${producto.nombre}`, 409);
+  }
+  const venta = await tx.venta.create({
+    data: {
+      folio: `V-COT-${cotizacion.folio}`,
+      contactoId: cotizacion.contactoId,
+      creadoPorId: cotizacion.creadoPorId,
+      estado: "pendiente",
+      canal: "cotizacion",
+      subtotal: cotizacion.subtotal,
+      descuento: cotizacion.descuento,
+      total: cotizacion.total,
+      notas: `Convertida desde ${cotizacion.folio}`,
+      stockAplicado: true,
+    },
+  });
+  for (const partida of cotizacion.partidas) {
+    await tx.ventaPartida.create({
+      data: {
+        ventaId: venta.id,
+        productoId: partida.productoId!,
+        cantidad: partida.cantidad,
+        precioUnitario: partida.precio,
+        descuento: partida.descuento,
+        total: partida.total,
+      },
+    });
+  }
+  for (const [productoId, cantidadTotal] of cantidadesPorProducto) {
+    const producto = porId.get(productoId)!;
+    const existenciaDespues = producto.stock.minus(cantidadTotal);
+    await tx.producto.update({ where: { id: producto.id }, data: { stock: existenciaDespues } });
+    await tx.movimientoInventario.create({
+      data: {
+        productoId: producto.id,
+        ventaId: venta.id,
+        usuarioId: cotizacion.creadoPorId,
+        tipo: "venta",
+        cantidad: cantidadTotal.neg(),
+        existenciaAntes: producto.stock,
+        existenciaDespues,
+        motivo: `Venta de cotización ${cotizacion.folio}`,
+      },
+    });
+  }
+  return venta.id;
+}
+
+async function cotizacionBloqueada(tx: Prisma.TransactionClient, token: string) {
+  const id = await bloquearCotizacion(tx, token);
+  return tx.cotizacion.findUniqueOrThrow({ where: { id }, include: detalleCotizacion });
+}
+
+function estaVencida(vigencia: Date, ahora: Date) {
+  return vigencia.getTime() < new Date(ahora.toISOString().slice(0, 10) + "T00:00:00.000Z").getTime();
+}
+
+export async function responderCotizacion(
+  orgId: bigint,
+  token: string,
+  datos: { accion: "aceptar" | "rechazar"; nombre: string; ip: string; ahora?: Date },
+) {
+  return transaccionTenant(orgId, async (tx) => {
+    const cotizacion = await cotizacionBloqueada(tx, token);
+    const estadoDestino = datos.accion === "aceptar" ? "aceptada" : "rechazada";
+    if (cotizacion.estado === estadoDestino) return { cotizacion, repetida: true };
+    if (["aceptada", "rechazada", "vencida"].includes(cotizacion.estado)) {
+      throw new ErrorCotizacion(`La cotización ya está ${cotizacion.estado}`, 409);
+    }
+    const ahora = datos.ahora ?? new Date();
+    if (estaVencida(cotizacion.vigencia, ahora)) {
+      await tx.cotizacion.update({ where: { id: cotizacion.id }, data: { estado: "vencida", version: { increment: 1 } } });
+      throw new ErrorCotizacion("La cotización está vencida", 409);
+    }
+    let ventaId = cotizacion.ventaId;
+    if (datos.accion === "aceptar" && cotizacion.convertirVenta) ventaId = await convertirEnVenta(tx, cotizacion);
+    if (datos.accion === "aceptar" && cotizacion.oportunidadId !== null) {
+      const oportunidad = await tx.oportunidad.findUnique({ where: { id: cotizacion.oportunidadId } });
+      if (oportunidad) {
+        const ganada = await tx.etapa.findFirst({ where: { embudoId: oportunidad.embudoId, tipo: "ganado" }, orderBy: { orden: "asc" } });
+        if (ganada) {
+          await tx.oportunidad.update({ where: { id: oportunidad.id }, data: { etapaId: ganada.id, estado: "ganado", closedAt: ahora } });
+          await tx.evento.create({ data: { oportunidadId: oportunidad.id, tipo: "ganada", descripcion: `Cotización ${cotizacion.folio} aceptada` } });
+        }
+      }
+    }
+    const actualizada = await tx.cotizacion.update({
+      where: { id: cotizacion.id },
+      data: {
+        estado: estadoDestino,
+        ventaId,
+        respondidoPor: datos.nombre,
+        respondidoAt: ahora,
+        respondidoIp: datos.ip,
+        version: { increment: 1 },
+      },
+      include: detalleCotizacion,
+    });
+    return { cotizacion: actualizada, repetida: false };
+  });
+}
+
+export async function resolverOrgCotizacion(token: string) {
+  if (!/^[0-9a-f]{32}$/.test(token)) return null;
+  const filas = await dbRaw.$queryRaw<Array<{ org_id: bigint | null }>>(Prisma.sql`
+    SELECT resolve_org_by_cotizacion_token(${token}) AS org_id
+  `);
+  return filas[0]?.org_id ?? null;
+}
+
+export async function cotizacionPublica(orgId: bigint, token: string) {
+  return transaccionTenant(orgId, (tx) => tx.cotizacion.findUnique({ where: { tokenPublico: token }, include: detalleCotizacion }));
+}
+
+export async function vencerCotizaciones(orgId: bigint, ahora = new Date()) {
+  return transaccionTenant(orgId, async (tx) => {
+    const resultado = await tx.cotizacion.updateMany({
+      where: { estado: { in: ["borrador", "enviada"] }, vigencia: { lt: new Date(ahora.toISOString().slice(0, 10) + "T00:00:00.000Z") } },
+      data: { estado: "vencida", version: { increment: 1 } },
+    });
+    return resultado.count;
+  });
+}

@@ -36,6 +36,7 @@ function identificador(valor: string) {
 
 async function valorColumna(columna: Columna, tabla: string, indice: number) {
   if (columna.column_name === "org_id") return orgA.toString();
+  if (tabla === "cotizaciones" && columna.column_name === "token_publico") return "a".repeat(32);
   if (tabla === "movimientos_caja" && columna.column_name === "tipo") return "entrada";
   if (tabla === "pagos_venta" && columna.column_name === "metodo") return "efectivo";
   if (tabla === "devoluciones_venta" && columna.column_name === "tipo_reembolso") return "efectivo";

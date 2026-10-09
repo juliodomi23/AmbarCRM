@@ -142,6 +142,12 @@ export function OportunidadCliente({ op }: { op: any }) {
         <span className="rounded-lg bg-muted px-3 py-1 text-muted-foreground">
           Responsable: {op.responsable?.nombre ?? "—"}
         </span>
+        <Link
+          href={`/cotizaciones?nueva=1&contactoId=${op.contacto.id}&oportunidadId=${op.id}`}
+          className="rounded-lg bg-primary/10 px-3 py-1 font-medium text-primary hover:bg-primary/20"
+        >
+          Nueva cotización
+        </Link>
         {op.contacto.telefono && (
           <Link
             href={convId ? `/chat?conv=${convId}` : "/chat"}

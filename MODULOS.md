@@ -110,6 +110,28 @@ se bloquean antes de consumir saldo y nunca generan efectivo ni cambio. El cron
 `/api/cron/vencer-apartados`, protegido con `WA_API_KEY`, libera apartados vencidos en
 todas las empresas sin atribuir sus movimientos automáticos a una persona.
 
+## Módulo Cotizaciones
+
+Cotizaciones vive en `/cotizaciones` y puede iniciarse desde una oportunidad o desde el
+chat con el contacto precargado. Acepta productos del catálogo y conceptos libres; el
+navegador solo manda las entradas y el servidor vuelve a calcular subtotal, descuentos,
+IVA y total con `Prisma.Decimal`. Cada empresa configura el porcentaje de IVA y si sus
+precios ya lo incluyen.
+
+El documento público `/cotizacion/<token>` usa un token aleatorio de 32 caracteres
+hexadecimales, la marca de la empresa y estilos de impresión A4 exclusivos de esa ruta.
+Aceptar o rechazar bloquea primero la cotización y es idempotente. Una aceptación puede
+marcar la oportunidad como ganada y, si se configuró así, convertir la propuesta en venta
+dentro de la misma `transaccionTenant()`: bloquea los productos antes de modificar sus
+existencias y deja el movimiento de inventario auditado.
+
+WhatsApp usa texto libre únicamente dentro de la ventana de 24 horas. Fuera de ella exige
+la plantilla aprobada configurada en el módulo. El cron
+`/api/cron/vencer-cotizaciones`, protegido con `WA_API_KEY`, recorre todas las empresas y
+continúa aunque falle una. Las pruebas principales son `scripts/check-cotizaciones.ts`,
+`prisma/scripts/test-concurrencia-cotizaciones.ts` y
+`prisma/scripts/test-cotizaciones-e2e.ts`.
+
 ## Módulo Citas
 
 Cuando Citas está activo aparece en el menú lateral, la barra móvil y Ctrl+K. Su

@@ -104,7 +104,7 @@ await prisma.$transaction(async (tx) => {
       marcaPreset: "retail",
     },
   });
-  for (const clave of ["clientes", "productos", "compras", "ventas", "caja"]) {
+  for (const clave of ["clientes", "productos", "compras", "ventas", "caja", "cotizaciones"]) {
     await tx.moduloOrg.upsert({
       where: { orgId_clave: { orgId: org.id, clave } },
       update: { activo: true },
@@ -114,6 +114,10 @@ await prisma.$transaction(async (tx) => {
   await tx.moduloOrg.update({
     where: { orgId_clave: { orgId: org.id, clave: "caja" } },
     data: { config: { puestosPermitidos: ["Cajero", "Encargado de tienda"], descuentoMaximoCajero: 10, apartadoDiasVigencia: 7 } },
+  });
+  await tx.moduloOrg.update({
+    where: { orgId_clave: { orgId: org.id, clave: "cotizaciones" } },
+    data: { config: { ivaPorcentaje: "16", preciosConIva: false } },
   });
   await tx.caja.upsert({
     where: { orgId_nombre: { orgId: org.id, nombre: "Caja principal" } },
@@ -185,6 +189,37 @@ await prisma.$transaction(async (tx) => {
     });
     productos.set(sku, producto);
   }
+
+  await tx.cotizacion.deleteMany({ where: { folio: { startsWith: "DEMO-COT-" } } });
+  await tx.cotizacion.create({
+    data: {
+      folio: "DEMO-COT-001",
+      contactoId: contactos[0].id,
+      creadoPorId: admin.id,
+      estado: "enviada",
+      vigencia: fechaMexico(10, 12),
+      notas: "Propuesta de ejemplo para revisar el documento público.",
+      condiciones: "Vigencia de 10 días. Entrega sujeta a disponibilidad.",
+      subtotal: 899,
+      descuento: 0,
+      impuestos: 143.84,
+      total: 1042.84,
+      ivaPorcentaje: 16,
+      preciosConIva: false,
+      tokenPublico: "c07a2ac10de0486a92a29dd10c0ffee1",
+      convertirVenta: true,
+      partidas: {
+        create: {
+          productoId: productos.get("CAM-001").id,
+          concepto: "Camisa lino arena",
+          cantidad: 1,
+          precio: 899,
+          descuento: 0,
+          total: 899,
+        },
+      },
+    },
+  });
 
   await tx.venta.deleteMany({ where: { folio: { startsWith: "DEMO-" } } });
   await tx.compra.deleteMany({ where: { folio: { startsWith: "DEMO-C-" } } });

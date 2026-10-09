@@ -1,0 +1,34 @@
+.pagina {
+  min-height: 100vh;
+  padding: 1.5rem;
+  background: hsl(var(--muted));
+}
+
+.acciones {
+  display: flex;
+  width: min(210mm, 100%);
+  margin: 0 auto 1rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.documento {
+  width: min(210mm, 100%);
+  min-height: 270mm;
+  margin: 0 auto;
+  padding: 16mm;
+  background: white;
+  color: #171717;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 12%);
+}
+
+.respuesta { margin-top: 2rem; border-top: 1px solid hsl(var(--border)); padding-top: 1.5rem; }
+
+@page { size: A4; margin: 12mm; }
+
+@media print {
+  .pagina { min-height: auto; padding: 0; background: white; }
+  .acciones, .respuesta { display: none; }
+  .documento { width: 100%; min-height: auto; margin: 0; padding: 0; box-shadow: none; }
+}

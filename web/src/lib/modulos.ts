@@ -61,6 +61,15 @@ export const MODULOS = [
     ruta: "/lealtad",
   },
   {
+    clave: "cotizaciones",
+    area: "CRM y agenda",
+    nombre: "Cotizaciones",
+    descripcion: "Propuestas con vigencia, aceptación pública y conversión opcional en venta.",
+    acceso: ACCESO_TODOS,
+    icono: "M5 3h14v18H5zM8 8h8M8 12h8M8 16h5M15 18l2 2 4-4",
+    ruta: "/cotizaciones",
+  },
+  {
     clave: "automotriz",
     area: "Automotriz",
     nombre: "Automotriz",
