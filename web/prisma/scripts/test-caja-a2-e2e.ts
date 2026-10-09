@@ -15,6 +15,7 @@ const slug = `e2e-caja-a2-${sufijo}`;
 const emailCajero = `cajero-a2-${sufijo}@test.local`;
 const emailEncargado = `encargado-a2-${sufijo}@test.local`;
 const password = "Caja-A2-E2E-2026!";
+const apiKey = process.env.WA_API_KEY ?? "caja-a2-e2e-key";
 
 function cookiesDe(respuesta: Response) {
   const headers = respuesta.headers as Headers & { getSetCookie?: () => string[] };
@@ -118,6 +119,15 @@ async function main() {
   });
   assert.equal(nota.respuesta.status, 201);
   assert.equal(Number(nota.data.devolucion.notaCredito.saldo), 40);
+  const pagoConNota = await peticion("/api/caja/ventas", cookieCajero, "POST", {
+    turnoId: turnoActualId,
+    contactoId: String(base.contacto.id),
+    uuidCliente: `usa-nota-${sufijo}`,
+    partidas: [{ productoId: String(base.productos[5].id), cantidad: "1", descuento: "0" }],
+    pagos: [{ metodo: "nota_credito", monto: "40" }],
+    descuento: "0",
+  });
+  assert.equal(pagoConNota.respuesta.status, 201);
 
   const apartado = await peticion("/api/caja/apartados", cookieCajero, "POST", {
     turnoId: turnoActualId,
@@ -141,9 +151,12 @@ async function main() {
   });
   assert.equal(vence.respuesta.status, 201);
   await transaccionTenant(orgId, (tx) => tx.apartado.update({ where: { id: BigInt(vence.data.apartado.id) }, data: { venceAt: new Date(Date.now() - 60_000) } }));
-  const vencimiento = await peticion("/api/caja/apartados/vencer", cookieCajero, "POST");
-  assert.equal(vencimiento.respuesta.status, 200);
-  assert.equal(vencimiento.data.vencidos, 1);
+  const cronSinLlave = await fetch(`${baseUrl}/api/cron/vencer-apartados`, { method: "POST" });
+  assert.equal(cronSinLlave.status, 401);
+  const cronRespuesta = await fetch(`${baseUrl}/api/cron/vencer-apartados`, { method: "POST", headers: { "x-api-key": apiKey } });
+  const vencimiento = await cronRespuesta.json();
+  assert.equal(cronRespuesta.status, 200);
+  assert.equal(vencimiento.vencidos, 1);
 
   const limiteCajero = await peticion(`/api/caja/credito/${base.contacto.id}`, cookieCajero, "PATCH", { limiteCredito: "100" });
   assert.equal(limiteCajero.respuesta.status, 403);
@@ -189,6 +202,7 @@ async function main() {
     stockApartado: Number((await tx.producto.findUniqueOrThrow({ where: { id: base.productos[2].id } })).stock),
     stockVencido: Number((await tx.producto.findUniqueOrThrow({ where: { id: base.productos[3].id } })).stock),
     saldoCredito: Number((await tx.cuentaCliente.findUniqueOrThrow({ where: { contactoId: base.contacto.id } })).saldo),
+    saldoNota: Number((await tx.notaCreditoCliente.findUniqueOrThrow({ where: { id: BigInt(nota.data.devolucion.notaCredito.id) } })).saldo),
   }));
   assert.equal(estado.turnoOriginal.estado, "cerrado");
   assert.equal(estado.salidasOriginal, 0);
@@ -197,12 +211,13 @@ async function main() {
   assert.equal(estado.stockApartado, 1);
   assert.equal(estado.stockVencido, 1);
   assert.equal(estado.saldoCredito, 130);
+  assert.equal(estado.saldoNota, 0);
 
   console.log(JSON.stringify({
     loginReal: { cajero: true, encargado: true },
     devolucionTurnoCerrado: { turnoOriginal: "cerrado", salidasOriginal: estado.salidasOriginal, salidasTurnoActual: estado.salidasActual, cambioLigado: true },
-    notaCredito: { saldo: nota.data.devolucion.notaCredito.saldo },
-    apartados: { cancelacionLiberaStock: estado.stockApartado, vencimientoLiberaStock: estado.stockVencido },
+    notaCredito: { saldoInicial: nota.data.devolucion.notaCredito.saldo, pagoAplicado: 40, saldoFinal: estado.saldoNota },
+    apartados: { cancelacionLiberaStock: estado.stockApartado, vencimientoLiberaStock: estado.stockVencido, cronSinLlave: cronSinLlave.status, cronConLlave: cronRespuesta.status },
     credito: { cajeroConfiguraLimite: limiteCajero.respuesta.status, cajeroSobreLimite: credito2.respuesta.status, encargadoSobreLimite: creditoSobreLimite.respuesta.status, abonoEntraAlTurno: estado.entradasAbono, saldoFinal: estado.saldoCredito },
     whatsappSinConversacionOficial: recordatorio.respuesta.status,
   }));

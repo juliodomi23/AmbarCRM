@@ -75,13 +75,14 @@ async function totalesTurno(tx: Prisma.TransactionClient, turnoId: bigint) {
       include: { caja: true, usuario: { select: { id: true, nombre: true } } },
     }),
     tx.venta.findMany({
-      where: { turnoId, estado: { not: "cancelada" } },
-      select: { id: true, total: true, cambio: true, pagos: true },
+      where: { turnoId },
+      select: { id: true, estado: true, total: true, cambio: true, pagos: true },
     }),
     tx.movimientoCaja.findMany({ where: { turnoId } }),
   ]);
   if (!turno) throw new ErrorCaja("Turno no encontrado", 404);
-  const ventasTotal = ventas.reduce((suma, venta) => suma.plus(venta.total), CERO_DECIMAL);
+  const ventasVigentes = ventas.filter((venta) => venta.estado !== "cancelada");
+  const ventasTotal = ventasVigentes.reduce((suma, venta) => suma.plus(venta.total), CERO_DECIMAL);
   const efectivoCobrado = ventas.reduce(
     (suma, venta) => suma.plus(venta.pagos.find((pago) => pago.metodo === "efectivo")?.monto ?? 0).minus(venta.cambio),
     CERO_DECIMAL,
@@ -89,7 +90,42 @@ async function totalesTurno(tx: Prisma.TransactionClient, turnoId: bigint) {
   const entradas = movimientos.filter((m) => m.tipo === "entrada").reduce((suma, m) => suma.plus(m.monto), CERO_DECIMAL);
   const salidas = movimientos.filter((m) => m.tipo === "salida").reduce((suma, m) => suma.plus(m.monto), CERO_DECIMAL);
   const efectivoEsperado = turno.fondoInicial.plus(efectivoCobrado).plus(entradas).minus(salidas);
-  return { turno, ventasTotal, efectivoCobrado, entradas, salidas, efectivoEsperado, ventas: ventas.length };
+  return { turno, ventasTotal, efectivoCobrado, entradas, salidas, efectivoEsperado, ventas: ventasVigentes.length };
+}
+
+async function notasCreditoBloqueadas(tx: Prisma.TransactionClient, contactoId: bigint) {
+  const filas = await tx.$queryRaw<Array<{ id: bigint }>>(Prisma.sql`
+    SELECT id
+    FROM notas_credito_cliente
+    WHERE contacto_id = ${contactoId} AND saldo > 0
+    ORDER BY id
+    FOR UPDATE
+  `);
+  if (filas.length === 0) return [];
+  return tx.notaCreditoCliente.findMany({
+    where: { id: { in: filas.map((fila) => fila.id) } },
+    orderBy: { id: "asc" },
+  });
+}
+
+async function consumirNotasCredito(
+  tx: Prisma.TransactionClient,
+  contactoId: bigint,
+  monto: Prisma.Decimal,
+) {
+  const notas = await notasCreditoBloqueadas(tx, contactoId);
+  const disponible = notas.reduce((suma, nota) => suma.plus(nota.saldo), CERO_DECIMAL);
+  if (disponible.lt(monto)) throw new ErrorCaja("El saldo de notas de crédito no cubre el monto indicado", 409);
+  let restante = monto;
+  for (const nota of notas) {
+    if (restante.isZero()) break;
+    const aplicado = nota.saldo.lte(restante) ? nota.saldo : restante;
+    await tx.notaCreditoCliente.update({
+      where: { id: nota.id },
+      data: { saldo: nota.saldo.minus(aplicado) },
+    });
+    restante = restante.minus(aplicado);
+  }
 }
 
 export async function corteX(sesion: IdentidadCaja, turnoId: bigint) {
@@ -195,9 +231,15 @@ export async function registrarVentaCaja(sesion: IdentidadCaja, datos: VentaCaja
       }
       const pagado = datos.pagos.reduce((suma, pago) => suma.plus(pago.monto), CERO_DECIMAL);
       const efectivo = datos.pagos.find((pago) => pago.metodo === "efectivo")?.monto ?? CERO_DECIMAL;
+      const notaCredito = datos.pagos.find((pago) => pago.metodo === "nota_credito")?.monto ?? CERO_DECIMAL;
+      if (notaCredito.gt(0) && datos.contactoId === null) {
+        throw new ErrorCaja("La nota de crédito requiere seleccionar un cliente", 409);
+      }
+      if (notaCredito.gt(total)) throw new ErrorCaja("La nota de crédito no puede superar el total de la venta");
       const cambio = pagado.minus(total);
       if (cambio.lt(0)) throw new ErrorCaja("El pago no cubre el total");
       if (cambio.gt(efectivo)) throw new ErrorCaja("Solo el efectivo puede generar cambio");
+      if (notaCredito.gt(0)) await consumirNotasCredito(tx, datos.contactoId!, notaCredito);
 
       const metodoPago = datos.pagos.length === 1 ? datos.pagos[0].metodo : "mixto";
       const venta = await tx.venta.create({

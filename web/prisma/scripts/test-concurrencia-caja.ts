@@ -65,7 +65,7 @@ async function esperadoSegunVentas(turnoId: bigint) {
   return transaccionTenant(orgId, async (tx) => {
     const turno = await tx.turnoCaja.findUniqueOrThrow({ where: { id: turnoId } });
     const [ventas, movimientos] = await Promise.all([
-      tx.venta.findMany({ where: { turnoId, estado: { not: "cancelada" } }, include: { pagos: true } }),
+      tx.venta.findMany({ where: { turnoId }, include: { pagos: true } }),
       tx.movimientoCaja.findMany({ where: { turnoId } }),
     ]);
     const efectivo = ventas.reduce(
@@ -87,7 +87,7 @@ async function carreraCancelacionCorteSinProteccion(turnoId: bigint, ventaId: bi
   const cierre = transaccionTenant(orgId, async (tx) => {
     const turno = await tx.turnoCaja.findUniqueOrThrow({ where: { id: turnoId } });
     const ventas = await tx.venta.findMany({
-      where: { turnoId, estado: { not: "cancelada" } },
+      where: { turnoId },
       include: { pagos: true },
     });
     const efectivoEsperado = ventas.reduce(
@@ -105,10 +105,17 @@ async function carreraCancelacionCorteSinProteccion(turnoId: bigint, ventaId: bi
   const cancelacion = (async () => {
     await corteCalculado;
     await transaccionTenant(orgId, async (tx) => {
-      const venta = await tx.venta.findUniqueOrThrow({ where: { id: ventaId }, include: { partidas: true } });
+      const venta = await tx.venta.findUniqueOrThrow({ where: { id: ventaId }, include: { partidas: true, pagos: true } });
       for (const partida of venta.partidas) {
         const producto = await tx.producto.findUniqueOrThrow({ where: { id: partida.productoId } });
         await tx.producto.update({ where: { id: producto.id }, data: { stock: producto.stock.plus(partida.cantidad) } });
+      }
+      const efectivo = venta.pagos.find((pago) => pago.metodo === "efectivo")?.monto ?? new Prisma.Decimal(0);
+      const salida = efectivo.minus(venta.cambio);
+      if (salida.gt(0)) {
+        await tx.movimientoCaja.create({
+          data: { turnoId, tipo: "salida", monto: salida, motivo: `Cancelación de ${venta.folio}`, usuarioId: venta.creadoPorId },
+        });
       }
       await tx.venta.update({ where: { id: ventaId }, data: { estado: "cancelada", stockAplicado: false } });
     });

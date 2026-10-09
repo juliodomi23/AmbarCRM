@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { cantidad, cantidadValidaParaProducto } from "@/lib/cantidad";
 import { dinero } from "@/lib/dinero";
 
-export const METODOS_CAJA = ["efectivo", "tarjeta", "transferencia"] as const;
+export const METODOS_CAJA = ["efectivo", "tarjeta", "transferencia", "nota_credito"] as const;
 export const TIPOS_MOVIMIENTO_CAJA = ["entrada", "salida"] as const;
 export type MetodoCaja = (typeof METODOS_CAJA)[number];
 export type TipoMovimientoCaja = (typeof TIPOS_MOVIMIENTO_CAJA)[number];

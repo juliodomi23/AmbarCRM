@@ -22,6 +22,8 @@ type DatosVentaNueva = {
   notas: string | null;
 };
 
+type IdentidadVencimiento = Omit<IdentidadCaja, "userId"> & { userId: bigint | null };
+
 async function turnoAbiertoPropio(tx: Prisma.TransactionClient, sesion: IdentidadCaja, turnoId: bigint) {
   await bloquearTurnoCaja(tx, turnoId);
   const turno = await tx.turnoCaja.findUnique({ where: { id: turnoId } });
@@ -151,26 +153,55 @@ export async function registrarDevolucion(
     const partidasVenta = venta.partidas.filter((partida) => idsSolicitados.has(String(partida.id)));
     if (partidasVenta.length !== datos.partidas.length) throw new ErrorCajaA2("Una partida no pertenece a la venta", 404);
     const anteriores = await tx.devolucionPartida.findMany({
-      where: { ventaPartidaId: { in: datos.partidas.map((partida) => partida.ventaPartidaId) } },
-      select: { ventaPartidaId: true, cantidad: true },
+      where: { ventaPartidaId: { in: venta.partidas.map((partida) => partida.id) } },
+      select: { ventaPartidaId: true, cantidad: true, monto: true },
     });
-    const devueltoPorPartida = new Map<string, Prisma.Decimal>();
+    const devueltoPorPartida = new Map<string, { cantidad: Prisma.Decimal; monto: Prisma.Decimal }>();
     for (const anterior of anteriores) {
       const clave = String(anterior.ventaPartidaId);
-      devueltoPorPartida.set(clave, anterior.cantidad.plus(devueltoPorPartida.get(clave) ?? 0));
+      const previo = devueltoPorPartida.get(clave);
+      devueltoPorPartida.set(clave, {
+        cantidad: anterior.cantidad.plus(previo?.cantidad ?? 0),
+        monto: anterior.monto.plus(previo?.monto ?? 0),
+      });
+    }
+
+    const partidasOrdenadas = [...venta.partidas].sort((a, b) => (a.id < b.id ? -1 : 1));
+    const baseTrasDescuentosPartida = partidasOrdenadas.reduce((suma, partida) => suma.plus(partida.total), CERO_DECIMAL);
+    if (baseTrasDescuentosPartida.lte(0)) throw new ErrorCajaA2("La venta no tiene un importe reembolsable", 409);
+    const montoTotalPorPartida = new Map<string, Prisma.Decimal>();
+    let asignado = CERO_DECIMAL;
+    for (const [indice, partida] of partidasOrdenadas.entries()) {
+      const monto = indice === partidasOrdenadas.length - 1
+        ? venta.total.minus(asignado)
+        : partida.total.mul(venta.total).div(baseTrasDescuentosPartida).toDecimalPlaces(2);
+      montoTotalPorPartida.set(String(partida.id), monto);
+      asignado = asignado.plus(monto);
     }
 
     const calculadas = datos.partidas.map((solicitada) => {
       const partida = partidasVenta.find((item) => item.id === solicitada.ventaPartidaId)!;
-      const disponible = partida.cantidad.minus(devueltoPorPartida.get(String(partida.id)) ?? 0);
+      const devuelto = devueltoPorPartida.get(String(partida.id));
+      const cantidadAnterior = devuelto?.cantidad ?? CERO_DECIMAL;
+      const montoAnterior = devuelto?.monto ?? CERO_DECIMAL;
+      const disponible = partida.cantidad.minus(cantidadAnterior);
       if (solicitada.cantidad.gt(disponible)) {
         throw new ErrorCajaA2(`Solo quedan ${disponible.toString()} por devolver de ${partida.producto.nombre}`, 409);
       }
-      const monto = partida.total.div(partida.cantidad).mul(solicitada.cantidad).toDecimalPlaces(2);
+      const cantidadAcumulada = cantidadAnterior.plus(solicitada.cantidad);
+      const montoAcumulado = montoTotalPorPartida.get(String(partida.id))!
+        .mul(cantidadAcumulada)
+        .div(partida.cantidad)
+        .toDecimalPlaces(2);
+      const monto = montoAcumulado.minus(montoAnterior);
       if (monto.lte(0)) throw new ErrorCajaA2("No se puede reembolsar una partida sin importe");
       return { partida, cantidad: solicitada.cantidad, monto };
     });
     const total = calculadas.reduce((suma, partida) => suma.plus(partida.monto), CERO_DECIMAL);
+    const totalDevueltoAntes = anteriores.reduce((suma, partida) => suma.plus(partida.monto), CERO_DECIMAL);
+    if (totalDevueltoAntes.plus(total).gt(venta.total)) {
+      throw new ErrorCajaA2("La devolución supera el total cobrado en la venta", 409);
+    }
 
     await bloquearProductos(tx, calculadas.map(({ partida }) => partida.productoId));
     const devolucion = await tx.devolucionVenta.create({
@@ -307,13 +338,14 @@ export async function abonarApartado(
 
 async function cancelarApartadoTx(
   tx: Prisma.TransactionClient,
-  sesion: IdentidadCaja,
+  sesion: IdentidadVencimiento,
   apartadoId: bigint,
   forma: FormaCancelacionApartado,
   estado: "cancelado" | "vencido",
 ) {
   let turnoActual: Awaited<ReturnType<typeof tx.turnoCaja.findFirst>> = null;
   if (forma === "efectivo") {
+    if (sesion.userId === null) throw new ErrorCajaA2("El reembolso en efectivo requiere una persona", 409);
     const encontrado = await tx.turnoCaja.findFirst({ where: { usuarioId: sesion.userId, estado: "abierto" }, select: { id: true } });
     if (!encontrado) throw new ErrorCajaA2("Abre tu turno para reembolsar el apartado", 409);
     await bloquearTurnoCaja(tx, encontrado.id);
@@ -368,7 +400,7 @@ export function cancelarApartado(
   return transaccionTenant(sesion.orgId, (tx) => cancelarApartadoTx(tx, sesion, apartadoId, forma, "cancelado"));
 }
 
-export async function vencerApartados(sesion: IdentidadCaja, ahora = new Date()) {
+export async function vencerApartados(sesion: IdentidadVencimiento, ahora = new Date()) {
   const ids = await transaccionTenant(sesion.orgId, async (tx) => (
     await tx.apartado.findMany({ where: { estado: "activo", venceAt: { lte: ahora } }, select: { id: true }, take: 100 })
   ).map((apartado) => apartado.id));

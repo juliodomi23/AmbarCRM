@@ -38,7 +38,7 @@ export async function cambiarEstadoVenta(
     await bloquearVenta(tx, ventaId);
     const actual = await tx.venta.findUnique({
       where: { id: ventaId },
-      include: { partidas: { include: { producto: true } } },
+      include: { pagos: true, partidas: { include: { producto: true } } },
     });
     if (!actual) throw new ErrorRetail("Venta no encontrada", 404);
 
@@ -49,6 +49,21 @@ export async function cambiarEstadoVenta(
       const turno = await tx.turnoCaja.findUnique({ where: { id: actual.turnoId } });
       if (!turno || turno.estado !== "abierto") {
         throw new ErrorRetail("Este turno ya tuvo corte; registra una devolución", 409);
+      }
+      if (actual.estado !== "cancelada") {
+        const efectivoPagado = actual.pagos.find((pago) => pago.metodo === "efectivo")?.monto ?? new Prisma.Decimal(0);
+        const efectivoDevuelto = efectivoPagado.minus(actual.cambio);
+        if (efectivoDevuelto.gt(0)) {
+          await tx.movimientoCaja.create({
+            data: {
+              turnoId: turno.id,
+              tipo: "salida",
+              monto: efectivoDevuelto,
+              motivo: `Cancelación de ${actual.folio}`,
+              usuarioId: sesion.userId,
+            },
+          });
+        }
       }
     }
 

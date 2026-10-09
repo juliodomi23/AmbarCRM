@@ -103,6 +103,13 @@ venta que lo exceda. Los abonos en efectivo entran al turno abierto. Los recorda
 de saldo usan texto dentro de la ventana de WhatsApp y una plantilla aprobada fuera de
 ella.
 
+El corte funciona como libro de efectivo: suma todos los cobros en efectivo históricos
+del turno, incluso si la venta terminó cancelada, y resta cada reembolso como una salida
+explícita. Las notas de crédito pueden usarse como pago cuando la venta tiene cliente;
+se bloquean antes de consumir saldo y nunca generan efectivo ni cambio. El cron
+`/api/cron/vencer-apartados`, protegido con `WA_API_KEY`, libera apartados vencidos en
+todas las empresas sin atribuir sus movimientos automáticos a una persona.
+
 ## Módulo Citas
 
 Cuando Citas está activo aparece en el menú lateral, la barra móvil y Ctrl+K. Su

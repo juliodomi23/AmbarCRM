@@ -55,6 +55,12 @@ assert.ok("data" in validarVentaCaja({
   partidas: [{ productoId: "2", cantidad: "0.750", descuento: "5" }],
   pagos: [{ metodo: "efectivo", monto: "50" }, { metodo: "tarjeta", monto: "100" }],
 }));
+assert.ok("data" in validarVentaCaja({
+  turnoId: "1", contactoId: "2", uuidCliente: "nota-1", descuento: "0",
+  partidas: [{ productoId: "3", cantidad: "1", descuento: "0" }],
+  pagos: [{ metodo: "nota_credito", monto: "50" }],
+}));
+assert.match(sql, /'nota_credito'/);
 assert.ok("error" in validarVentaCaja({ turnoId: "1", uuidCliente: "", partidas: [], pagos: [] }));
 assert.equal(descuentoMaximoCajero({ descuentoMaximoCajero: 7.5 }), 7.5);
 assert.equal(puedeAutorizarDescuento("agente", "Cajero"), false);

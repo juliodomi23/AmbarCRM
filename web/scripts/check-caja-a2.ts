@@ -10,11 +10,14 @@ import {
 } from "../src/lib/caja-a2.ts";
 import { canalRecordatorioSaldo } from "../src/lib/credito-recordatorio.ts";
 
-const [schema, sql, servicio, interfaz] = await Promise.all([
+const [schema, sql, servicio, interfaz, cajaDb, ventaEstado, cron] = await Promise.all([
   readFile(new URL("../prisma/schema.prisma", import.meta.url), "utf8"),
   readFile(new URL("../prisma/sql/actualizaciones.sql", import.meta.url), "utf8"),
   readFile(new URL("../src/lib/caja-a2-db.ts", import.meta.url), "utf8"),
   readFile(new URL("../src/components/caja/OperacionesCajaA2.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/lib/caja-db.ts", import.meta.url), "utf8"),
+  readFile(new URL("../src/lib/venta-estado-db.ts", import.meta.url), "utf8"),
+  readFile(new URL("../src/app/api/cron/vencer-apartados/route.ts", import.meta.url), "utf8"),
 ]);
 
 for (const modelo of ["DevolucionVenta", "DevolucionPartida", "Apartado", "AbonoApartado", "CuentaCliente", "MovimientoCuentaCliente", "NotaCreditoCliente"]) {
@@ -27,6 +30,15 @@ assert.match(servicio, /bloquearVenta[\s\S]*bloquearProductos/);
 assert.match(servicio, /bloquearCuenta[\s\S]*prepararPartidas/);
 assert.match(servicio, /bloquearTurnoCaja[\s\S]*bloquearVenta[\s\S]*bloquearProductos/);
 assert.match(servicio, /estado: "cancelada", stockAplicado: false/);
+assert.match(servicio, /montoTotalPorPartida/);
+assert.match(cajaDb, /notas_credito_cliente[\s\S]*FOR UPDATE/);
+assert.match(cajaDb, /notaCreditoCliente\.update/);
+assert.match(cajaDb, /where: \{ turnoId \}/);
+assert.match(ventaEstado, /Cancelación de/);
+assert.match(cron, /requireApiKey/);
+assert.match(cron, /runWithOrg/);
+assert.match(cron, /userId: null/);
+assert.match(cron, /empresasConError/);
 assert.match(interfaz, /Devoluciones y cambios/);
 assert.match(interfaz, /Apartados/);
 assert.match(interfaz, /Crédito del cliente/);

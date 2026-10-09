@@ -73,7 +73,7 @@ export function CajaCliente({
   const [contactoId, setContactoId] = useState("");
   const [busquedaContacto, setBusquedaContacto] = useState("");
   const [contactosEncontrados, setContactosEncontrados] = useState<ContactoBusqueda[]>([]);
-  const [pagos, setPagos] = useState({ efectivo: "", tarjeta: "", transferencia: "" });
+  const [pagos, setPagos] = useState({ efectivo: "", tarjeta: "", transferencia: "", nota_credito: "" });
   const [uuid, setUuid] = useState(() => crypto.randomUUID());
   const [ocupado, setOcupado] = useState(false);
   const [corte, setCorte] = useState<Corte | null>(null);
@@ -196,7 +196,7 @@ export function CajaCliente({
   }
 
   function limpiarVenta() {
-    setLineas([]); setDescuento("0"); setPagos({ efectivo: "", tarjeta: "", transferencia: "" }); setUuid(crypto.randomUUID());
+    setLineas([]); setDescuento("0"); setPagos({ efectivo: "", tarjeta: "", transferencia: "", nota_credito: "" }); setUuid(crypto.randomUUID());
   }
 
   async function apartar() {
@@ -271,7 +271,7 @@ export function CajaCliente({
           {!lineas.length && <p className="text-sm text-muted-foreground">Escanea o selecciona productos.</p>}
           <div className="text-xs"><label htmlFor="buscar-cliente">Cliente (opcional, busca sin acentos)</label><input id="buscar-cliente" value={busquedaContacto} onChange={(e) => { setBusquedaContacto(e.target.value); setContactoId(""); }} placeholder="Nombre o teléfono" className="mt-1 w-full rounded border p-2" />{contactoId && <button onClick={() => { setContactoId(""); setBusquedaContacto(""); }} className="mt-1 text-primary">Quitar cliente</button>}{contactosEncontrados.length > 0 && !contactoId && <div className="mt-1 max-h-32 overflow-y-auto rounded border bg-card p-1">{contactosEncontrados.map((contacto) => <button key={contacto.id} onClick={() => { setContactoId(contacto.id); setBusquedaContacto(contacto.nombre); }} className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted">{contacto.nombre}{contacto.detalle ? ` · ${contacto.detalle}` : ""}</button>)}</div>}</div>
           <label className="block text-xs">Descuento general $ <span className="text-muted-foreground">(Cajero hasta {descuentoMaximo}%)</span><input type="number" min="0" step="0.01" value={descuento} onChange={(e) => setDescuento(e.target.value)} className="mt-1 w-full rounded border p-2" /></label>
-          <div className="space-y-2"><p className="text-xs font-semibold uppercase text-muted-foreground">Cobro mixto</p>{(["efectivo", "tarjeta", "transferencia"] as const).map((metodo) => <label key={metodo} className="grid grid-cols-[1fr_130px] items-center text-sm capitalize"><span>{metodo}</span><input type="number" min="0" step="0.01" value={pagos[metodo]} onChange={(e) => setPagos({ ...pagos, [metodo]: e.target.value })} className="rounded border p-2 text-right" /></label>)}<div className="flex flex-wrap gap-1">{[50,100,200,500,1000].map((billete) => <button key={billete} onClick={() => setPagos({ ...pagos, efectivo: String(billete) })} className="rounded bg-muted px-2 py-1 text-xs">${billete}</button>)}</div></div>
+          <div className="space-y-2"><p className="text-xs font-semibold uppercase text-muted-foreground">Cobro mixto</p>{(["efectivo", "tarjeta", "transferencia", "nota_credito"] as const).map((metodo) => <label key={metodo} className="grid grid-cols-[1fr_130px] items-center text-sm capitalize"><span>{metodo.replace("_", " ")}</span><input type="number" min="0" step="0.01" value={pagos[metodo]} disabled={metodo === "nota_credito" && !contactoId} onChange={(e) => setPagos({ ...pagos, [metodo]: e.target.value })} className="rounded border p-2 text-right disabled:opacity-50" /></label>)}<div className="flex flex-wrap gap-1">{[50,100,200,500,1000].map((billete) => <button key={billete} onClick={() => setPagos({ ...pagos, efectivo: String(billete) })} className="rounded bg-muted px-2 py-1 text-xs">${billete}</button>)}</div></div>
           <div className="border-t pt-3 text-sm"><p className="flex justify-between"><span>Subtotal</span><span>{formatoMoneda(subtotal)}</span></p><p className="flex justify-between"><span>Pagado</span><span>{formatoMoneda(pagado)}</span></p><p className="flex justify-between text-base font-bold"><span>Total</span><span>{formatoMoneda(total)}</span></p><p className="flex justify-between text-success"><span>Cambio</span><span>{formatoMoneda(cambio)}</span></p></div>
           <div className="grid grid-cols-3 gap-2"><Boton className="py-3" disabled={!lineas.length || pagado < total || ocupado} onClick={cobrar}>Cobrar (F2)</Boton><Boton variante="ghost" disabled={!lineas.length || !contactoId || ocupado} onClick={apartar}>Apartar</Boton><Boton variante="ghost" disabled={!lineas.length || !contactoId || ocupado} onClick={venderCredito}>A crédito</Boton></div>
         </aside>

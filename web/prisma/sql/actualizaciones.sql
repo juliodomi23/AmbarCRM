@@ -1170,3 +1170,8 @@ END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON devoluciones_venta, devolucion_partidas, apartados,
   abonos_apartado, cuentas_cliente, movimientos_cuenta_cliente, notas_credito_cliente TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+-- Corrección A2 · las notas de crédito pueden pagar ventas de caja.
+ALTER TABLE pagos_venta DROP CONSTRAINT IF EXISTS pagos_venta_metodo_check;
+ALTER TABLE pagos_venta ADD CONSTRAINT pagos_venta_metodo_check
+  CHECK (metodo IN ('efectivo', 'tarjeta', 'transferencia', 'nota_credito'));
