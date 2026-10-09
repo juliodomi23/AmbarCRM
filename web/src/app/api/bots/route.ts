@@ -4,11 +4,12 @@ import { requireSesion } from "@/lib/session";
 import { generarToken } from "@/lib/services/bots";
 import { validarWebhookUrl } from "@/lib/webhook-url";
 import { referenciaAjena } from "@/lib/referencias";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
 /** Crea un bot. Body: { nombre, webhookUrl, canalId?, activo? } */
-export async function POST(req: NextRequest) {
+async function manejarPOST(req: NextRequest) {
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
 
@@ -30,3 +31,5 @@ export async function POST(req: NextRequest) {
   });
   return NextResponse.json({ ok: true, id: bot.id.toString(), apiToken: bot.apiToken });
 }
+
+export const POST = conErrores(manejarPOST);

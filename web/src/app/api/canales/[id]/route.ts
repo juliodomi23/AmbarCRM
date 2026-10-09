@@ -3,11 +3,12 @@ import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { META_GRAPH_URL } from "@/lib/meta/config";
 import { tokenFromChannelConfig } from "@/lib/meta/credentials";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
 /** Edita únicamente los campos administrativos permitidos del canal. */
-export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+async function manejarPATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
@@ -22,7 +23,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 }
 
 /** Elimina la configuración de un canal. Por defecto conserva conversaciones y contactos. */
-export async function DELETE(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+async function manejarDELETE(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
@@ -62,3 +63,6 @@ export async function DELETE(req: NextRequest, props: { params: Promise<{ id: st
   await db.canalWhatsapp.delete({ where: { id: canalId } });
   return NextResponse.json({ ok: true, borrados });
 }
+
+export const PATCH = conErrores(manejarPATCH);
+export const DELETE = conErrores(manejarDELETE);

@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { moduloActivo } from "@/lib/modulos";
 import { LIMITE_PANEL } from "@/lib/paginacion";
 import { FormularioModulo } from "@/components/modulos/FormularioModulo";
-import { hoyMexico, LIMITE_OPCIONES, OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
+import { LIMITE_OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
+import { camposAsistencia, camposAsistenciaEdicion, textoCampo } from "@/lib/campos-modulos";
 
 export const dynamic = "force-dynamic";
 
@@ -27,13 +28,8 @@ export default async function AsistenciaAcademiaPage() {
   });
   return <PanelListado titulo="Asistencia" descripcion="Pase de lista, retardos, faltas y justificaciones."
     acciones={<FormularioModulo boton="+ Pasar lista" titulo="Registrar asistencia" endpoint="/api/academia/asistencia"
-      campos={[
-        { nombre: "cursoId", etiqueta: "Curso", tipo: "seleccion", requerido: true, opciones: opcionesDe(cursosAbiertos, (c) => c.nombre, "Elige un curso") },
-        { nombre: "alumnoId", etiqueta: "Alumno", tipo: "seleccion", requerido: true, opciones: opcionesDe(alumnosActivos, (a) => `${a.contacto.nombre}${a.matricula ? ` · ${a.matricula}` : ""}`, "Elige un alumno") },
-        { nombre: "fecha", etiqueta: "Fecha", tipo: "fecha", requerido: true, valorInicial: hoyMexico() },
-        { nombre: "estado", etiqueta: "Asistencia", tipo: "seleccion", opciones: OPCIONES.asistencia },
-        { nombre: "notas", etiqueta: "Notas", tipo: "texto" },
-      ]} />}
+      campos={camposAsistencia(opcionesDe(alumnosActivos, (a) => `${a.contacto.nombre}${a.matricula ? ` · ${a.matricula}` : ""}`, "Elige un alumno"), opcionesDe(cursosAbiertos, (c) => c.nombre, "Elige un curso"))} />}
+    edicion={{ titulo: "Editar asistencia", campos: camposAsistenciaEdicion(), eliminar: "Borrar registro" }}
     metricas={[
       { etiqueta: "Registros", valor: String(registros) },
       { etiqueta: "Presentes", valor: String(presentes) },
@@ -41,7 +37,7 @@ export default async function AsistenciaAcademiaPage() {
       { etiqueta: "Retardos", valor: String(retardos) },
     ]}
     items={asistencias.map((item) => ({
-      id: String(item.id), titulo: item.alumno.contacto.nombre,
+      id: String(item.id), edicion: { endpoint: `/api/academia/asistencia/${item.id}`, valores: { estado: textoCampo(item.estado), notas: textoCampo(item.notas) } }, titulo: item.alumno.contacto.nombre,
       descripcion: `${item.curso.nombre} · ${item.fecha.toLocaleDateString("es-MX")}`,
       estado: item.estado, dato: item.notas ?? undefined,
     }))} />;

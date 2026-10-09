@@ -28,6 +28,7 @@ export const POST = conModulo("legal", {}, async (sesion, req: NextRequest) => {
   const expediente = await db.expedienteLegal.create({
     data: {
       ...validacion.data,
+      responsableId: validacion.data.responsableId ?? sesion.userId,
       ...(esPasante(sesion.puesto, sesion.rol)
         ? { responsableId: sesion.userId }
         : {}),

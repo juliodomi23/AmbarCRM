@@ -3,6 +3,7 @@ import { db, runWithOrg } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { getProvider } from "@/lib/channel";
 import { aplicarVariables } from "@/lib/plantillas";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ const delayAleatorio = () => sleep(1200 + Math.random() * 1800); // 1.2–3 s
  * El envío corre en SEGUNDO PLANO: la respuesta es inmediata (encolados) y la UI
  * consulta el GET para ver el avance. Así el proxy no corta el request a medias.
  */
-export async function GET(_req: NextRequest) {
+async function manejarGET(_req: NextRequest) {
   const s = await requireSesion();
   if ("error" in s) return s.error;
 
@@ -41,7 +42,7 @@ export async function GET(_req: NextRequest) {
   return NextResponse.json({ yaEnviados, restantes: Math.max(0, LIMITE_DIARIO - yaEnviados), limiteDiario: LIMITE_DIARIO });
 }
 
-export async function POST(req: NextRequest) {
+async function manejarPOST(req: NextRequest) {
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
 
@@ -137,3 +138,6 @@ export async function POST(req: NextRequest) {
     restantesHoy: restantes
   });
 }
+
+export const GET = conErrores(manejarGET);
+export const POST = conErrores(manejarPOST);

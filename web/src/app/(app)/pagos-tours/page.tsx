@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { moduloActivo } from "@/lib/modulos";
 import { LIMITE_PANEL } from "@/lib/paginacion";
 import { FormularioModulo } from "@/components/modulos/FormularioModulo";
-import { hoyMexico, LIMITE_OPCIONES, OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
+import { LIMITE_OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
+import { camposPago, camposPagoEdicion, textoCampo } from "@/lib/campos-modulos";
 
 export const dynamic = "force-dynamic";
 
@@ -26,14 +27,8 @@ export default async function PagosToursPage() {
   });
   return <PanelListado titulo="Cobranza de viajes" descripcion="Anticipos y liquidaciones de las reservas."
     acciones={<FormularioModulo boton="+ Registrar pago" titulo="Registrar pago" endpoint="/api/viajes/pagos"
-      campos={[
-        { nombre: "reservaId", etiqueta: "Reserva", tipo: "seleccion", requerido: true, opciones: opcionesDe(conSaldo, (r) => `${r.codigo} · ${r.contacto.nombre} · saldo ${Number(r.saldo).toLocaleString("es-MX", { style: "currency", currency: "MXN" })}`, "Elige una reserva con saldo") },
-        { nombre: "monto", etiqueta: "Monto", tipo: "dinero", requerido: true },
-        { nombre: "metodo", etiqueta: "Método", tipo: "seleccion", opciones: OPCIONES.metodoPago },
-        { nombre: "referencia", etiqueta: "Referencia", tipo: "texto" },
-        { nombre: "concepto", etiqueta: "Concepto", tipo: "texto", valorInicial: "Pago de reservación" },
-        { nombre: "fecha", etiqueta: "Fecha", tipo: "fecha", valorInicial: hoyMexico() },
-      ]} />}
+      campos={camposPago(opcionesDe(conSaldo, (r) => `${r.codigo} · ${r.contacto.nombre} · saldo ${Number(r.saldo).toLocaleString("es-MX", { style: "currency", currency: "MXN" })}`, "Elige una reserva con saldo"))} />}
+    edicion={{ titulo: "Pago", campos: camposPagoEdicion(), acciones: [{ etiqueta: "Cancelar pago", cuerpo: { estado: "cancelado" } }] }}
     metricas={[
       { etiqueta: "Movimientos", valor: String(totales._count._all) },
       { etiqueta: "Cobrado", valor: moneda(Number(totales._sum.monto ?? 0)) },
@@ -41,7 +36,7 @@ export default async function PagosToursPage() {
       { etiqueta: "Métodos", valor: String(metodos.length) },
     ]}
     items={pagos.map((pago) => ({
-      id: String(pago.id), titulo: `${pago.concepto} · ${pago.reserva.contacto.nombre}`,
+      id: String(pago.id), edicion: { endpoint: `/api/viajes/pagos/${pago.id}`, valores: { concepto: textoCampo(pago.concepto), metodo: textoCampo(pago.metodo), referencia: textoCampo(pago.referencia) } }, titulo: `${pago.concepto} · ${pago.reserva.contacto.nombre}`,
       descripcion: `${pago.reserva.codigo} · ${pago.reserva.tour.nombre} · ${pago.metodo ?? "Sin método"}`,
       estado: pago.estado, dato: moneda(Number(pago.monto)),
     }))} />;

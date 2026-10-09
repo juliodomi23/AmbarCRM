@@ -20,29 +20,48 @@ export type CampoFormulario = {
 
 const CLASE_INPUT = "w-full rounded-lg border bg-card px-3 py-2 text-sm";
 
-function valoresIniciales(campos: CampoFormulario[]) {
+export type AccionRapida = { etiqueta: string; cuerpo: Record<string, string> };
+
+/** Edición por fila en los listados: la página la define una vez; cada fila aporta su endpoint y valores. */
+export type ConfigEdicion = { titulo: string; campos: CampoFormulario[]; eliminar?: string; acciones?: AccionRapida[] };
+export type EdicionFila = { endpoint: string; valores: Record<string, string> };
+
+function valoresIniciales(campos: CampoFormulario[], valores?: Record<string, string>) {
   return Object.fromEntries(
-    campos.map((campo) => [campo.nombre, campo.valorInicial ?? (campo.tipo === "seleccion" ? campo.opciones?.[0]?.valor ?? "" : "")]),
+    campos.map((campo) => [
+      campo.nombre,
+      valores?.[campo.nombre] ?? campo.valorInicial ?? (campo.tipo === "seleccion" ? campo.opciones?.[0]?.valor ?? "" : ""),
+    ]),
   );
 }
 
-/** Botón + modal de alta para cualquier módulo: lo configura cada página con sus campos y su endpoint.
- *  El servidor valida todo; aquí solo se capturan los datos. */
+/** Botón + modal de alta o edición para cualquier módulo: lo configura cada página con sus campos y su
+ *  endpoint. En edición (`valores`) usa PATCH y puede borrar o lanzar acciones rápidas. El servidor valida todo. */
 export function FormularioModulo({
   boton,
   titulo,
   endpoint,
   campos,
+  valores: valoresGuardados,
+  eliminar,
+  acciones = [],
+  discreto = false,
 }: {
   boton: string;
   titulo: string;
   endpoint: string;
   campos: CampoFormulario[];
+  valores?: Record<string, string>;
+  eliminar?: string;
+  acciones?: AccionRapida[];
+  discreto?: boolean;
 }) {
   const router = useRouter();
+  const edicion = valoresGuardados !== undefined;
   const [abierto, setAbierto] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const [valores, setValores] = useState<Record<string, string>>(() => valoresIniciales(campos));
+  const [confirmarBorrado, setConfirmarBorrado] = useState(false);
+  const [valores, setValores] = useState<Record<string, string>>(() => valoresIniciales(campos, valoresGuardados));
 
   function cambiar(nombre: string, valor: string) {
     setValores((actuales) => ({ ...actuales, [nombre]: valor }));
@@ -52,25 +71,39 @@ export function FormularioModulo({
     evento.preventDefault();
     const faltante = campos.find((campo) => campo.requerido && !valores[campo.nombre]?.trim());
     if (faltante) return toast(`Falta: ${faltante.etiqueta}`, "error");
+    // En edición se mandan también los vacíos, para poder borrar un dato.
+    const cuerpo = edicion
+      ? valores
+      : Object.fromEntries(Object.entries(valores).filter(([, valor]) => valor.trim() !== ""));
+    await solicitar(edicion ? "PATCH" : "POST", cuerpo, "Guardado");
+  }
+
+  async function solicitar(metodo: "POST" | "PATCH" | "DELETE", cuerpo: Record<string, string> | null, exito: string) {
     setEnviando(true);
-    const cuerpo = Object.fromEntries(Object.entries(valores).filter(([, valor]) => valor.trim() !== ""));
     const res = await fetch(endpoint, {
-      method: "POST",
+      method: metodo,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cuerpo),
+      body: cuerpo ? JSON.stringify(cuerpo) : undefined,
     });
     const data = await res.json().catch(() => ({}));
     setEnviando(false);
-    if (!res.ok) return toast(data.error ?? "No se pudo guardar", "error");
-    toast("Guardado");
-    setValores(valoresIniciales(campos));
+    setConfirmarBorrado(false);
+    if (!res.ok) return toast(data.error ?? "No se pudo completar", "error");
+    toast(exito);
+    if (!edicion) setValores(valoresIniciales(campos));
     setAbierto(false);
     router.refresh();
   }
 
   return (
     <>
-      <Boton onClick={() => setAbierto(true)}>{boton}</Boton>
+      {discreto ? (
+        <button type="button" onClick={() => setAbierto(true)} className="text-xs font-medium text-primary hover:underline">
+          {boton}
+        </button>
+      ) : (
+        <Boton onClick={() => setAbierto(true)}>{boton}</Boton>
+      )}
       <Modal abierto={abierto} onClose={() => setAbierto(false)} titulo={titulo}>
         <form onSubmit={enviar} className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
           {campos.map((campo) => (
@@ -113,6 +146,27 @@ export function FormularioModulo({
               {campo.ayuda && <span className="block text-xs text-muted-foreground">{campo.ayuda}</span>}
             </label>
           ))}
+          {(acciones.length > 0 || eliminar) && (
+            <div className="flex flex-wrap gap-2 border-t pt-3">
+              {acciones.map((accion) => (
+                <Boton key={accion.etiqueta} type="button" variante="ghost" disabled={enviando}
+                  onClick={() => solicitar("PATCH", accion.cuerpo, accion.etiqueta)}>
+                  {accion.etiqueta}
+                </Boton>
+              ))}
+              {eliminar && !confirmarBorrado && (
+                <Boton type="button" variante="ghost" onClick={() => setConfirmarBorrado(true)}>
+                  {eliminar}
+                </Boton>
+              )}
+              {eliminar && confirmarBorrado && (
+                <Boton type="button" variante="danger" disabled={enviando}
+                  onClick={() => solicitar("DELETE", null, "Eliminado")}>
+                  ¿Seguro? Sí, {eliminar.toLowerCase()}
+                </Boton>
+              )}
+            </div>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <Boton type="button" variante="ghost" onClick={() => setAbierto(false)}>
               Cancelar

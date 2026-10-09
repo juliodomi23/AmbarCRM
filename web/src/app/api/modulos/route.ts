@@ -8,6 +8,7 @@ import {
 } from "@/lib/modulos";
 import { referenciaPropia } from "@/lib/referencias";
 import { requireSesion } from "@/lib/session";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ function normalizarPuestos(valor: unknown) {
   )];
 }
 
-export async function GET() {
+async function manejarGET() {
   const s = await requireSesion();
   if ("error" in s) return s.error;
   const activos = await db.moduloOrg.findMany({
@@ -53,7 +54,7 @@ export async function GET() {
 }
 
 /** El admin de una empresa solo configura módulos que ya estén habilitados. */
-export async function PATCH(req: NextRequest) {
+async function manejarPATCH(req: NextRequest) {
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
   const { clave, config } = await req.json().catch(() => ({}));
@@ -106,7 +107,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 /** La organización plataforma habilita o apaga módulos de cualquier cliente. */
-export async function POST(req: NextRequest) {
+async function manejarPOST(req: NextRequest) {
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
   if (s.orgId !== 1n)
@@ -148,3 +149,7 @@ export async function POST(req: NextRequest) {
   });
   return NextResponse.json({ ok: true });
 }
+
+export const GET = conErrores(manejarGET);
+export const PATCH = conErrores(manejarPATCH);
+export const POST = conErrores(manejarPOST);

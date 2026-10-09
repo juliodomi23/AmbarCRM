@@ -4,11 +4,12 @@ import { requireSesion } from "@/lib/session";
 import { generarToken } from "@/lib/services/bots";
 import { validarWebhookUrl } from "@/lib/webhook-url";
 import { referenciaPropia } from "@/lib/referencias";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
 /** Edita un bot. Body: { nombre?, webhookUrl?, canalId?, activo?, regenerarToken? } */
-export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+async function manejarPATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
@@ -33,10 +34,13 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
   return NextResponse.json({ ok: true, apiToken: bot.apiToken });
 }
 
-export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+async function manejarDELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
   await db.bot.delete({ where: { id: BigInt(params.id) } });
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = conErrores(manejarPATCH);
+export const DELETE = conErrores(manejarDELETE);

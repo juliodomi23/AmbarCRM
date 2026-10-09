@@ -8,6 +8,11 @@ export const OPCIONES = {
   metodoPago: lista(["efectivo", "Efectivo"], ["transferencia", "Transferencia"], ["tarjeta", "Tarjeta"]),
   estadoTour: lista(["publicado", "Publicado"], ["borrador", "Borrador"], ["cerrado", "Cerrado"]),
   estadoReserva: lista(["solicitada", "Solicitada"], ["confirmada", "Confirmada"]),
+  estadoReservaTodos: lista(
+    ["solicitada", "Solicitada"], ["confirmada", "Confirmada"], ["liquidada", "Liquidada"],
+    ["cancelada", "Cancelada"], ["reembolsada", "Reembolsada"],
+  ),
+  estadoInscripcion: lista(["activa", "Activa"], ["baja", "Baja"], ["terminada", "Terminada"]),
   estadoAlumno: lista(["activo", "Activo"], ["baja", "Baja"]),
   modalidad: lista(["presencial", "Presencial"], ["en_linea", "En línea"], ["hibrido", "Híbrido"]),
   estadoCurso: lista(["abierto", "Abierto"], ["cerrado", "Cerrado"]),

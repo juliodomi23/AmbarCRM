@@ -831,3 +831,7 @@ SELECT setval(
 -- /api/media verifica que los archivos antiguos (sin prefijo de empresa) pertenezcan a un
 -- mensaje de la empresa que los pide; este índice evita recorrer toda la tabla.
 CREATE INDEX IF NOT EXISTS mensajes_media_url_idx ON mensajes(media_url) WHERE media_url IS NOT NULL;
+
+-- Búsqueda de contactos sin acentos («monica» encuentra «Mónica»). Extensión confiable
+-- desde Postgres 13: la crea el dueño de la base en db-migrate.
+CREATE EXTENSION IF NOT EXISTS unaccent;

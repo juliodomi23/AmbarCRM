@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { moduloActivo } from "@/lib/modulos";
 import { LIMITE_PANEL } from "@/lib/paginacion";
 import { FormularioModulo } from "@/components/modulos/FormularioModulo";
-import { hoyMexico, LIMITE_OPCIONES, OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
+import { camposCurso, fechaCampo, textoCampo } from "@/lib/campos-modulos";
 
 export const dynamic = "force-dynamic";
 
@@ -22,18 +22,8 @@ export default async function CursosAcademiaPage() {
   const moneda = (valor: number) => valor.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
   return <PanelListado titulo="Cursos y grupos" descripcion="Profesores, horarios, capacidad y mensualidad."
     acciones={<FormularioModulo boton="+ Nuevo curso" titulo="Nuevo curso o grupo" endpoint="/api/academia/cursos"
-      campos={[
-        { nombre: "nombre", etiqueta: "Nombre", tipo: "texto", requerido: true },
-        { nombre: "categoria", etiqueta: "Categoría", tipo: "texto" },
-        { nombre: "modalidad", etiqueta: "Modalidad", tipo: "seleccion", opciones: OPCIONES.modalidad },
-        { nombre: "profesor", etiqueta: "Profesor", tipo: "texto" },
-        { nombre: "horario", etiqueta: "Horario", tipo: "texto" },
-        { nombre: "fechaInicio", etiqueta: "Inicio", tipo: "fecha" },
-        { nombre: "fechaFin", etiqueta: "Fin", tipo: "fecha" },
-        { nombre: "capacidad", etiqueta: "Cupo", tipo: "numero", requerido: true },
-        { nombre: "mensualidad", etiqueta: "Mensualidad", tipo: "dinero" },
-        { nombre: "estado", etiqueta: "Estado", tipo: "seleccion", opciones: OPCIONES.estadoCurso },
-      ]} />}
+      campos={camposCurso()} />}
+    edicion={{ titulo: "Editar curso", campos: camposCurso(), eliminar: "Borrar curso" }}
     metricas={[
       { etiqueta: "Cursos", valor: String(total) },
       { etiqueta: "Abiertos", valor: String(abiertos) },
@@ -41,7 +31,7 @@ export default async function CursosAcademiaPage() {
       { etiqueta: "Cupo", valor: String(cupo._sum.capacidad ?? 0) },
     ]}
     items={cursos.map((curso) => ({
-      id: String(curso.id), titulo: curso.nombre,
+      id: String(curso.id), edicion: { endpoint: `/api/academia/cursos/${curso.id}`, valores: { nombre: textoCampo(curso.nombre), categoria: textoCampo(curso.categoria), modalidad: textoCampo(curso.modalidad), profesor: textoCampo(curso.profesor), horario: textoCampo(curso.horario), fechaInicio: fechaCampo(curso.fechaInicio), fechaFin: fechaCampo(curso.fechaFin), capacidad: textoCampo(curso.capacidad), mensualidad: textoCampo(curso.mensualidad), estado: textoCampo(curso.estado) } }, titulo: curso.nombre,
       descripcion: [curso.categoria, curso.modalidad, curso.profesor, curso.horario].filter(Boolean).join(" · "),
       estado: curso.estado, dato: `${moneda(Number(curso.mensualidad))}/mes`,
     }))} />;

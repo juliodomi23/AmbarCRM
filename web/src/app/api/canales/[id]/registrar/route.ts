@@ -3,11 +3,12 @@ import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { tokenFromChannelConfig } from "@/lib/meta/credentials";
 import { registrarNumero } from "@/lib/meta/registro";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
 /** Activa en Cloud API un número ya conectado que quedó sin registrar. */
-export async function POST(_req: Request, props: { params: Promise<{ id: string }> }) {
+async function manejarPOST(_req: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
@@ -28,3 +29,5 @@ export async function POST(_req: Request, props: { params: Promise<{ id: string 
   });
   return NextResponse.json({ ok: true });
 }
+
+export const POST = conErrores(manejarPOST);

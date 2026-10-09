@@ -15,6 +15,7 @@ export const POST = conModulo("asesorias_legales", {}, async (sesion, req: NextR
   const asesoria = await db.asesoriaLegal.create({
     data: {
       ...validacion.data,
+      abogadoId: validacion.data.abogadoId ?? sesion.userId,
       ...(esPasante(sesion.puesto, sesion.rol)
         ? { abogadoId: sesion.userId }
         : {}),

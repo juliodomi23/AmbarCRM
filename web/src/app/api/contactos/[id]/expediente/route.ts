@@ -4,6 +4,7 @@ import { aBigInt } from "@/lib/ids";
 import { moduloHabilitado, requireModuloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
 import { requireSesion } from "@/lib/session";
+import { conErrores } from "@/lib/errores-api";
 
 const CAMPOS_TEXTO = [
   "sexo",
@@ -35,7 +36,7 @@ async function validarAcceso(id: string) {
   return { contactoId, userId: sesion.userId };
 }
 
-export async function PATCH(
+async function manejarPATCH(
   req: NextRequest,
   props: { params: Promise<{ id: string }> },
 ) {
@@ -61,7 +62,7 @@ export async function PATCH(
   return NextResponse.json(serializar({ expediente }));
 }
 
-export async function POST(
+async function manejarPOST(
   req: NextRequest,
   props: { params: Promise<{ id: string }> },
 ) {
@@ -105,3 +106,6 @@ export async function POST(
   });
   return NextResponse.json(serializar({ evolucion }), { status: 201 });
 }
+
+export const PATCH = conErrores(manejarPATCH);
+export const POST = conErrores(manejarPOST);

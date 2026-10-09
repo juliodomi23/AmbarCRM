@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { referenciaAjena } from "@/lib/referencias";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
 /** Crea una etapa al final de un embudo. Body: { embudoId, nombre, color?, tipo? } */
-export async function POST(req: NextRequest) {
+async function manejarPOST(req: NextRequest) {
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
 
@@ -27,3 +28,5 @@ export async function POST(req: NextRequest) {
   });
   return NextResponse.json({ ok: true, id: etapa.id.toString() });
 }
+
+export const POST = conErrores(manejarPOST);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
  * Body: { oportunidadId, etapaIdDestino, ordenIds: number[] }
  *  - ordenIds = ids de las oportunidades de la columna destino en su orden final.
  */
-export async function POST(req: NextRequest) {
+async function manejarPOST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
 
@@ -56,3 +57,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
+
+export const POST = conErrores(manejarPOST);

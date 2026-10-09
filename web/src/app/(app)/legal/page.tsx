@@ -6,7 +6,8 @@ import { moduloActivo } from "@/lib/modulos";
 import { LIMITE_PANEL } from "@/lib/paginacion";
 import { getSesion } from "@/lib/session";
 import { FormularioModulo } from "@/components/modulos/FormularioModulo";
-import { hoyMexico, LIMITE_OPCIONES, OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
+import { opcionesDe } from "@/lib/opciones-formularios";
+import { camposExpediente, fechaCampo, textoCampo } from "@/lib/campos-modulos";
 
 export const dynamic = "force-dynamic";
 
@@ -36,20 +37,8 @@ export default async function LegalPage() {
       titulo="Expedientes legales"
       descripcion="Asuntos, responsables, etapas procesales y actividad del despacho."
       acciones={<FormularioModulo boton="+ Nuevo expediente" titulo="Nuevo expediente" endpoint="/api/legal/expedientes"
-      campos={[
-        { nombre: "numeroInterno", etiqueta: "Número interno", tipo: "texto", ayuda: "Captura el número interno o la materia" },
-        { nombre: "materia", etiqueta: "Materia", tipo: "texto" },
-        { nombre: "contactoId", etiqueta: "Cliente (contacto)", tipo: "contacto" },
-        { nombre: "responsableId", etiqueta: "Responsable", tipo: "seleccion", opciones: opcionesDe(equipo, (u) => u.nombre, "Yo"), ayuda: "Si eres pasante, quedará a tu nombre" },
-        { nombre: "sucursalId", etiqueta: "Sucursal", tipo: "seleccion", opciones: opcionesDe(sucursales, (s) => s.nombre, "Sin sucursal") },
-        { nombre: "tipoJuicio", etiqueta: "Tipo de juicio", tipo: "texto" },
-        { nombre: "juzgado", etiqueta: "Juzgado", tipo: "texto" },
-        { nombre: "etapaProcesal", etiqueta: "Etapa procesal", tipo: "texto" },
-        { nombre: "fechaInicio", etiqueta: "Fecha de inicio", tipo: "fecha" },
-        { nombre: "cuantia", etiqueta: "Cuantía", tipo: "dinero" },
-        { nombre: "estado", etiqueta: "Estado", tipo: "seleccion", opciones: OPCIONES.estadoExpediente },
-        { nombre: "resumen", etiqueta: "Resumen", tipo: "textarea" },
-      ]} />}
+      campos={camposExpediente(opcionesDe(equipo, (u) => u.nombre, "Quien lo registra"), opcionesDe(sucursales, (s) => s.nombre, "Sin sucursal"))} />}
+      edicion={{ titulo: "Editar expediente", campos: camposExpediente(opcionesDe(equipo, (u) => u.nombre, "Sin asignar"), opcionesDe(sucursales, (s) => s.nombre, "Sin sucursal")).filter((campo) => campo.tipo !== "contacto") }}
       metricas={[
         { etiqueta: "Expedientes", valor: String(total) },
         { etiqueta: "Activos", valor: String(activos) },
@@ -57,7 +46,7 @@ export default async function LegalPage() {
         { etiqueta: "Materias", valor: String(materias.length) },
       ]}
       filas={expedientes.map((item) => ({
-        id: String(item.id),
+        id: String(item.id), edicion: { endpoint: `/api/legal/expedientes/${item.id}`, valores: { numeroInterno: textoCampo(item.numeroInterno), materia: textoCampo(item.materia), responsableId: textoCampo(item.responsableId), sucursalId: textoCampo(item.sucursalId), tipoJuicio: textoCampo(item.tipoJuicio), juzgado: textoCampo(item.juzgado), etapaProcesal: textoCampo(item.etapaProcesal), fechaInicio: fechaCampo(item.fechaInicio), cuantia: textoCampo(item.cuantia), estado: textoCampo(item.estado), resumen: textoCampo(item.resumen) } },
         titulo: item.numeroInterno || item.numeroJudicial || `Expediente ${item.id}`,
         subtitulo: [item.contacto?.nombre, item.materia, item.etapaProcesal, item.responsable?.nombre]
           .filter(Boolean)
