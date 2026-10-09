@@ -5,6 +5,7 @@ import { getProvider } from "@/lib/channel";
 import { META_GRAPH_URL } from "@/lib/meta/config";
 import { tokenFromChannelConfig } from "@/lib/meta/credentials";
 import { componenteBotones, errorDeBotones, errorDePlantilla, leerBotones, variablesDePlantilla } from "@/lib/meta/plantillaMeta";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ async function channel(id: string | null) {
   });
 }
 
-export async function GET(req: NextRequest) {
+async function manejarGET(req: NextRequest) {
   const session = await requireSesion(true);
   if ("error" in session) return session.error;
   const canal = await channel(req.nextUrl.searchParams.get("canalId"));
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ plantillas: await provider.listarPlantillas!() });
 }
 
-export async function POST(req: NextRequest) {
+async function manejarPOST(req: NextRequest) {
   const session = await requireSesion(true);
   if ("error" in session) return session.error;
   const body = await req.json().catch(() => ({}));
@@ -74,3 +75,6 @@ export async function POST(req: NextRequest) {
     plantilla: { name, language, category, status: data.status || "PENDING", id: data.id }
   }, { status: 201 });
 }
+
+export const GET = conErrores(manejarGET);
+export const POST = conErrores(manejarPOST);

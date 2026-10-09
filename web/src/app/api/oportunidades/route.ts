@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { referenciaAjena } from "@/lib/referencias";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
  * Crea una oportunidad (tarjeta). Si se manda contacto nuevo, lo crea/reusa por teléfono.
  * Body: { titulo, valor?, embudoId, etapaId, contactoId? , contacto?: {nombre, telefono?} }
  */
-export async function POST(req: NextRequest) {
+async function manejarPOST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
 
@@ -70,3 +71,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, id: op.id.toString() });
 }
+
+export const POST = conErrores(manejarPOST);

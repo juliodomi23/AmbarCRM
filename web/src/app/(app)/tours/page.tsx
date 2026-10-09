@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { moduloActivo } from "@/lib/modulos";
 import { LIMITE_PANEL } from "@/lib/paginacion";
 import { FormularioModulo } from "@/components/modulos/FormularioModulo";
-import { hoyMexico, LIMITE_OPCIONES, OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
+import { camposTour, fechaCampo, textoCampo } from "@/lib/campos-modulos";
 
 export const dynamic = "force-dynamic";
 
@@ -22,19 +22,8 @@ export default async function ToursPage() {
   ]);
   return <PanelListado titulo="Tours y salidas" descripcion="Experiencias, itinerarios, fechas, precios y cupo."
     acciones={<FormularioModulo boton="+ Nuevo tour" titulo="Nuevo tour" endpoint="/api/viajes/tours"
-      campos={[
-        { nombre: "nombre", etiqueta: "Nombre", tipo: "texto", requerido: true },
-        { nombre: "destino", etiqueta: "Destino", tipo: "texto", requerido: true },
-        { nombre: "pais", etiqueta: "País", tipo: "texto" },
-        { nombre: "fechaSalida", etiqueta: "Fecha de salida", tipo: "fecha" },
-        { nombre: "fechaRegreso", etiqueta: "Fecha de regreso", tipo: "fecha" },
-        { nombre: "duracionDias", etiqueta: "Duración (días)", tipo: "numero", valorInicial: "1" },
-        { nombre: "capacidad", etiqueta: "Cupo (personas)", tipo: "numero", requerido: true },
-        { nombre: "precio", etiqueta: "Precio por persona", tipo: "dinero", requerido: true },
-        { nombre: "puntoEncuentro", etiqueta: "Punto de encuentro", tipo: "texto" },
-        { nombre: "incluye", etiqueta: "Incluye", tipo: "textarea" },
-        { nombre: "estado", etiqueta: "Estado", tipo: "seleccion", opciones: OPCIONES.estadoTour },
-      ]} />}
+      campos={camposTour()} />}
+    edicion={{ titulo: "Editar tour", campos: camposTour(), eliminar: "Borrar tour" }}
     metricas={[
       { etiqueta: "Experiencias", valor: String(total) },
       { etiqueta: "Publicadas", valor: String(publicadas) },
@@ -42,7 +31,7 @@ export default async function ToursPage() {
       { etiqueta: "Cupo total", valor: String(cupo._sum.capacidad ?? 0) },
     ]}
     items={tours.map((tour) => ({
-      id: String(tour.id), titulo: tour.nombre,
+      id: String(tour.id), edicion: { endpoint: `/api/viajes/tours/${tour.id}`, valores: { nombre: textoCampo(tour.nombre), destino: textoCampo(tour.destino), pais: textoCampo(tour.pais), fechaSalida: fechaCampo(tour.fechaSalida), fechaRegreso: fechaCampo(tour.fechaRegreso), duracionDias: textoCampo(tour.duracionDias), capacidad: textoCampo(tour.capacidad), precio: textoCampo(tour.precio), puntoEncuentro: textoCampo(tour.puntoEncuentro), incluye: textoCampo(tour.incluye), estado: textoCampo(tour.estado) } }, titulo: tour.nombre,
       descripcion: [tour.destino, tour.pais, `${tour.duracionDias} días`, tour.fechaSalida?.toLocaleDateString("es-MX")]
         .filter(Boolean).join(" · "),
       estado: tour.estado,

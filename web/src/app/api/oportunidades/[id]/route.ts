@@ -3,11 +3,12 @@ import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { validarCampos } from "@/lib/campos-personalizados";
 import { referenciaPropia } from "@/lib/referencias";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
 /** Editar oportunidad. Body: { titulo?, valor?, etapaId?, responsableId?, fechaCierreEstimada?, motivoPerdida? } */
-export async function PATCH(
+async function manejarPATCH(
   req: NextRequest,
   props: { params: Promise<{ id: string }> },
 ) {
@@ -78,7 +79,7 @@ export async function PATCH(
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(
+async function manejarDELETE(
   _req: NextRequest,
   props: { params: Promise<{ id: string }> },
 ) {
@@ -88,3 +89,6 @@ export async function DELETE(
   await db.oportunidad.delete({ where: { id: BigInt(params.id) } });
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = conErrores(manejarPATCH);
+export const DELETE = conErrores(manejarDELETE);

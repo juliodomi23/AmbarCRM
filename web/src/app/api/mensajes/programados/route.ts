@@ -3,11 +3,12 @@ import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { serializar } from "@/lib/serialize";
 import { paginacionListado } from "@/lib/paginacion";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
 /** Pendientes de una conversación: GET ?conversacionId=ID */
-export async function GET(req: NextRequest) {
+async function manejarGET(req: NextRequest) {
   const s = await requireSesion();
   if ("error" in s) return s.error;
 
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
 }
 
 /** Programa un mensaje. Body: { conversacionId, texto, enviarAt (ISO) } */
-export async function POST(req: NextRequest) {
+async function manejarPOST(req: NextRequest) {
   const s = await requireSesion();
   if ("error" in s) return s.error;
 
@@ -50,3 +51,6 @@ export async function POST(req: NextRequest) {
   });
   return NextResponse.json({ ok: true, programado: serializar(p) });
 }
+
+export const GET = conErrores(manejarGET);
+export const POST = conErrores(manejarPOST);

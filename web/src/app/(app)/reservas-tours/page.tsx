@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { moduloActivo } from "@/lib/modulos";
 import { LIMITE_PANEL } from "@/lib/paginacion";
 import { FormularioModulo } from "@/components/modulos/FormularioModulo";
-import { hoyMexico, LIMITE_OPCIONES, OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
+import { LIMITE_OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
+import { camposReserva, camposReservaEdicion, fechaCampo, textoCampo } from "@/lib/campos-modulos";
 
 export const dynamic = "force-dynamic";
 
@@ -23,15 +24,8 @@ export default async function ReservasToursPage() {
   });
   return <PanelListado titulo="Reservas y viajeros" descripcion="Apartados, pasajeros, salidas y saldos."
     acciones={<FormularioModulo boton="+ Nueva reserva" titulo="Nueva reserva" endpoint="/api/viajes/reservas"
-      campos={[
-        { nombre: "contactoId", etiqueta: "Viajero (contacto)", tipo: "contacto", requerido: true },
-        { nombre: "tourId", etiqueta: "Tour", tipo: "seleccion", requerido: true, opciones: opcionesDe(toursAbiertos, (t) => `${t.nombre}${t.fechaSalida ? ` · ${t.fechaSalida.toLocaleDateString("es-MX")}` : ""}`, "Elige un tour") },
-        { nombre: "viajeros", etiqueta: "Número de viajeros", tipo: "numero", requerido: true, valorInicial: "1" },
-        { nombre: "total", etiqueta: "Total", tipo: "dinero", requerido: true },
-        { nombre: "saldo", etiqueta: "Saldo pendiente", tipo: "dinero", ayuda: "Vacío = igual al total" },
-        { nombre: "estado", etiqueta: "Estado", tipo: "seleccion", opciones: OPCIONES.estadoReserva },
-        { nombre: "notas", etiqueta: "Notas", tipo: "textarea" },
-      ]} />}
+      campos={camposReserva(opcionesDe(toursAbiertos, (t) => `${t.nombre}${t.fechaSalida ? ` · ${t.fechaSalida.toLocaleDateString("es-MX")}` : ""}`, "Elige un tour"))} />}
+    edicion={{ titulo: "Editar reserva", campos: camposReservaEdicion(), eliminar: "Borrar reserva" }}
     metricas={[
       { etiqueta: "Reservas", valor: String(totales._count._all) },
       { etiqueta: "Confirmadas", valor: String(confirmadas) },
@@ -39,7 +33,7 @@ export default async function ReservasToursPage() {
       { etiqueta: "Saldo pendiente", valor: moneda(Number(totales._sum.saldo ?? 0)) },
     ]}
     items={reservas.map((reserva) => ({
-      id: String(reserva.id), titulo: `${reserva.codigo} · ${reserva.contacto.nombre}`,
+      id: String(reserva.id), edicion: { endpoint: `/api/viajes/reservas/${reserva.id}`, valores: { estado: textoCampo(reserva.estado), viajeros: textoCampo(reserva.viajeros), total: textoCampo(reserva.total), fechaSalida: fechaCampo(reserva.fechaSalida), notas: textoCampo(reserva.notas) } }, titulo: `${reserva.codigo} · ${reserva.contacto.nombre}`,
       descripcion: `${reserva.tour.nombre} · ${reserva.viajeros} viajero(s)`,
       estado: reserva.estado, dato: moneda(Number(reserva.saldo)),
     }))} />;

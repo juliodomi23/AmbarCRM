@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { FormularioModulo, type ConfigEdicion, type EdicionFila } from "@/components/modulos/FormularioModulo";
 
 export type FilaLegal = {
   id: string;
@@ -10,6 +11,7 @@ export type FilaLegal = {
   estado: string;
   fecha: string | null;
   href?: string;
+  edicion?: EdicionFila;
   importe?: number;
 };
 
@@ -19,12 +21,14 @@ export function PanelLegal({
   filas,
   metricas,
   acciones,
+  edicion,
 }: {
   titulo: string;
   descripcion: string;
   filas: FilaLegal[];
   metricas: { etiqueta: string; valor: string }[];
   acciones?: React.ReactNode;
+  edicion?: ConfigEdicion;
 }) {
   const [busqueda, setBusqueda] = useState("");
   const [estado, setEstado] = useState("");
@@ -92,12 +96,20 @@ export function PanelLegal({
               </div>
             </div>
           );
-          return fila.href ? (
-            <Link key={fila.id} href={fila.href} className="block border-b last:border-0 hover:bg-muted/40">
-              {contenido}
-            </Link>
-          ) : (
-            <article key={fila.id} className="border-b last:border-0">{contenido}</article>
+          const enlace = fila.href ? (
+            <Link href={fila.href} className="block min-w-0 flex-1 hover:bg-muted/40">{contenido}</Link>
+          ) : <div className="min-w-0 flex-1">{contenido}</div>;
+          return (
+            <div key={fila.id} className="flex items-center border-b last:border-0">
+              {enlace}
+              {edicion && fila.edicion && (
+                <div className="shrink-0 px-3">
+                  <FormularioModulo discreto boton="Editar" titulo={edicion.titulo} endpoint={fila.edicion.endpoint}
+                    campos={edicion.campos} valores={fila.edicion.valores} eliminar={edicion.eliminar}
+                    acciones={edicion.acciones} />
+                </div>
+              )}
+            </div>
           );
         })}
         {filtradas.length === 0 && (

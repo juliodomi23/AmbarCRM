@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
-export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+async function manejarPATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
@@ -15,7 +16,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+async function manejarDELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
@@ -25,3 +26,6 @@ export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: s
   await db.etapa.delete({ where: { id: BigInt(params.id) } });
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = conErrores(manejarPATCH);
+export const DELETE = conErrores(manejarDELETE);

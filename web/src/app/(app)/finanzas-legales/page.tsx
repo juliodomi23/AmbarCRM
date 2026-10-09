@@ -6,7 +6,8 @@ import { moduloActivo } from "@/lib/modulos";
 import { LIMITE_PANEL } from "@/lib/paginacion";
 import { getSesion } from "@/lib/session";
 import { FormularioModulo } from "@/components/modulos/FormularioModulo";
-import { hoyMexico, LIMITE_OPCIONES, OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
+import { LIMITE_OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
+import { camposMovimiento, fechaCampo, textoCampo } from "@/lib/campos-modulos";
 
 export const dynamic = "force-dynamic";
 
@@ -35,13 +36,8 @@ export default async function FinanzasLegalesPage() {
   });
   return <PanelLegal titulo="Honorarios y caja" descripcion="Planes, cobros, gastos, caja y diligencias."
     acciones={<FormularioModulo boton="+ Nuevo movimiento" titulo="Nuevo movimiento" endpoint="/api/legal/movimientos"
-      campos={[
-        { nombre: "tipo", etiqueta: "Tipo", tipo: "seleccion", requerido: true, opciones: OPCIONES.tipoMovimiento },
-        { nombre: "concepto", etiqueta: "Concepto", tipo: "texto", requerido: true },
-        { nombre: "monto", etiqueta: "Monto", tipo: "dinero", requerido: true, ayuda: "Los gastos pueden capturarse en negativo" },
-        { nombre: "expedienteId", etiqueta: "Expediente", tipo: "seleccion", opciones: opcionesDe(expedientesOpciones, (e) => [e.numeroInterno, e.materia, e.contacto?.nombre].filter(Boolean).join(" · "), "Sin expediente") },
-        { nombre: "fecha", etiqueta: "Fecha", tipo: "fecha", valorInicial: hoyMexico() },
-      ]} />}
+      campos={camposMovimiento(opcionesDe(expedientesOpciones, (e) => [e.numeroInterno, e.materia, e.contacto?.nombre].filter(Boolean).join(" · "), "Sin expediente"))} />}
+    edicion={{ titulo: "Editar movimiento", campos: camposMovimiento(opcionesDe(expedientesOpciones, (e) => [e.numeroInterno, e.materia, e.contacto?.nombre].filter(Boolean).join(" · "), "Sin expediente")), eliminar: "Borrar movimiento" }}
     metricas={[
       { etiqueta: "Movimientos", valor: String(cantidad) },
       { etiqueta: "Cobrado", valor: moneda(total("pago")) },
@@ -49,7 +45,7 @@ export default async function FinanzasLegalesPage() {
       { etiqueta: "Gastos", valor: moneda(total("gasto") + total("diligencia")) },
     ]}
     filas={movimientos.map((item) => ({
-      id: String(item.id), titulo: item.concepto,
+      id: String(item.id), edicion: { endpoint: `/api/legal/movimientos/${item.id}`, valores: { tipo: textoCampo(item.tipo), concepto: textoCampo(item.concepto), monto: textoCampo(item.monto), expedienteId: textoCampo(item.expedienteId), fecha: fechaCampo(item.fecha) } }, titulo: item.concepto,
       subtitulo: [item.contacto?.nombre, item.expediente?.numeroInterno, item.tipo].filter(Boolean).join(" · "),
       estado: item.estado || item.tipo, fecha: item.fecha?.toLocaleDateString("es-MX") ?? null,
       importe: Number(item.monto),

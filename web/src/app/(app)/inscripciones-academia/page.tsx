@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { moduloActivo } from "@/lib/modulos";
 import { LIMITE_PANEL } from "@/lib/paginacion";
 import { FormularioModulo } from "@/components/modulos/FormularioModulo";
-import { hoyMexico, LIMITE_OPCIONES, OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
+import { LIMITE_OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
+import { camposInscripcion, camposInscripcionEdicion, textoCampo } from "@/lib/campos-modulos";
 
 export const dynamic = "force-dynamic";
 
@@ -28,11 +29,8 @@ export default async function InscripcionesAcademiaPage() {
   });
   return <PanelListado titulo="Inscripciones" descripcion="Altas, bajas y avance por alumno y curso."
     acciones={<FormularioModulo boton="+ Inscribir" titulo="Inscribir alumno" endpoint="/api/academia/inscripciones"
-      campos={[
-        { nombre: "alumnoId", etiqueta: "Alumno", tipo: "seleccion", requerido: true, opciones: opcionesDe(alumnosActivos, (a) => `${a.contacto.nombre}${a.matricula ? ` · ${a.matricula}` : ""}`, "Elige un alumno") },
-        { nombre: "cursoId", etiqueta: "Curso", tipo: "seleccion", requerido: true, opciones: opcionesDe(cursosAbiertos, (c) => c.nombre, "Elige un curso") },
-        { nombre: "descuento", etiqueta: "Descuento (%)", tipo: "numero", valorInicial: "0" },
-      ]} />}
+      campos={camposInscripcion(opcionesDe(alumnosActivos, (a) => `${a.contacto.nombre}${a.matricula ? ` · ${a.matricula}` : ""}`, "Elige un alumno"), opcionesDe(cursosAbiertos, (c) => c.nombre, "Elige un curso"))} />}
+    edicion={{ titulo: "Editar inscripción", campos: camposInscripcionEdicion(), eliminar: "Borrar inscripción" }}
     metricas={[
       { etiqueta: "Inscripciones", valor: String(totales._count._all) },
       { etiqueta: "Activas", valor: String(activas) },
@@ -40,7 +38,7 @@ export default async function InscripcionesAcademiaPage() {
       { etiqueta: "Avance promedio", valor: `${Math.round(totales._avg.avance ?? 0)}%` },
     ]}
     items={inscripciones.map((item) => ({
-      id: String(item.id), titulo: item.alumno.contacto.nombre,
+      id: String(item.id), edicion: { endpoint: `/api/academia/inscripciones/${item.id}`, valores: { estado: textoCampo(item.estado), avance: textoCampo(item.avance), descuento: textoCampo(item.descuento), notas: textoCampo(item.notas) } }, titulo: item.alumno.contacto.nombre,
       descripcion: `${item.curso.nombre} · Alta ${item.fechaAlta.toLocaleDateString("es-MX")}`,
       estado: item.estado, dato: `${item.avance}%`,
     }))} />;

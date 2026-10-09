@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { moduloActivo } from "@/lib/modulos";
 import { LIMITE_PANEL } from "@/lib/paginacion";
 import { FormularioModulo } from "@/components/modulos/FormularioModulo";
-import { hoyMexico, LIMITE_OPCIONES, OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
+import { camposAlumno, camposAlumnoEdicion, fechaCampo, textoCampo } from "@/lib/campos-modulos";
 
 export const dynamic = "force-dynamic";
 
@@ -21,16 +21,8 @@ export default async function AlumnosPage() {
   ]);
   return <PanelListado titulo="Alumnos" descripcion="Matrículas, tutores, niveles e historial académico."
     acciones={<FormularioModulo boton="+ Nuevo alumno" titulo="Nuevo alumno" endpoint="/api/academia/alumnos"
-      campos={[
-        { nombre: "contactoId", etiqueta: "Alumno (contacto)", tipo: "contacto", requerido: true },
-        { nombre: "matricula", etiqueta: "Matrícula", tipo: "texto" },
-        { nombre: "nivel", etiqueta: "Nivel", tipo: "texto" },
-        { nombre: "fechaNacimiento", etiqueta: "Fecha de nacimiento", tipo: "fecha" },
-        { nombre: "tutorNombre", etiqueta: "Tutor", tipo: "texto" },
-        { nombre: "tutorTelefono", etiqueta: "Teléfono del tutor", tipo: "texto" },
-        { nombre: "estado", etiqueta: "Estado", tipo: "seleccion", opciones: OPCIONES.estadoAlumno },
-        { nombre: "observaciones", etiqueta: "Observaciones", tipo: "textarea" },
-      ]} />}
+      campos={camposAlumno()} />}
+    edicion={{ titulo: "Editar alumno", campos: camposAlumnoEdicion(), eliminar: "Borrar alumno" }}
     metricas={[
       { etiqueta: "Alumnos", valor: String(total) },
       { etiqueta: "Activos", valor: String(activos) },
@@ -38,7 +30,7 @@ export default async function AlumnosPage() {
       { etiqueta: "Niveles", valor: String(niveles.length) },
     ]}
     items={alumnos.map((alumno) => ({
-      id: String(alumno.id), titulo: alumno.contacto.nombre,
+      id: String(alumno.id), edicion: { endpoint: `/api/academia/alumnos/${alumno.id}`, valores: { matricula: textoCampo(alumno.matricula), nivel: textoCampo(alumno.nivel), fechaNacimiento: fechaCampo(alumno.fechaNacimiento), tutorNombre: textoCampo(alumno.tutorNombre), tutorTelefono: textoCampo(alumno.tutorTelefono), estado: textoCampo(alumno.estado), observaciones: textoCampo(alumno.observaciones) } }, titulo: alumno.contacto.nombre,
       descripcion: [alumno.matricula, alumno.nivel, alumno.tutorNombre && `Tutor: ${alumno.tutorNombre}`]
         .filter(Boolean).join(" · "),
       estado: alumno.estado, dato: `${alumno.inscripciones.length} curso(s)`,

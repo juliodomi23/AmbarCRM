@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { moduloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
+import { conErrores } from "@/lib/errores-api";
 
 const ESTADOS_BOT = ["confirmada", "cancelada"] as const;
 
@@ -23,7 +24,7 @@ async function obtenerConversacion(req: NextRequest, conversationId: string) {
   return { conversacion } as const;
 }
 
-export async function GET(
+async function manejarGET(
   req: NextRequest,
   props: { params: Promise<{ accountId: string; conversationId: string }> },
 ) {
@@ -45,7 +46,7 @@ export async function GET(
   return NextResponse.json(serializar({ citas }));
 }
 
-export async function PATCH(
+async function manejarPATCH(
   req: NextRequest,
   props: { params: Promise<{ accountId: string; conversationId: string }> },
 ) {
@@ -72,3 +73,6 @@ export async function PATCH(
   });
   return NextResponse.json(serializar({ cita: actualizada }));
 }
+
+export const GET = conErrores(manejarGET);
+export const PATCH = conErrores(manejarPATCH);

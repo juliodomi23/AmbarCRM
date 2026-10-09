@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { moduloActivo } from "@/lib/modulos";
 import { LIMITE_PANEL } from "@/lib/paginacion";
 import { FormularioModulo } from "@/components/modulos/FormularioModulo";
-import { hoyMexico, LIMITE_OPCIONES, OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
+import { LIMITE_OPCIONES, opcionesDe } from "@/lib/opciones-formularios";
+import { camposColegiatura, camposColegiaturaEdicion, fechaCampo, textoCampo } from "@/lib/campos-modulos";
 
 export const dynamic = "force-dynamic";
 
@@ -25,15 +26,8 @@ export default async function ColegiaturasPage() {
   });
   return <PanelListado titulo="Colegiaturas" descripcion="Cargos pendientes por vencimiento y cartera por cobrar."
     acciones={<FormularioModulo boton="+ Nuevo cargo" titulo="Nuevo cargo de colegiatura" endpoint="/api/academia/colegiaturas"
-      campos={[
-        { nombre: "alumnoId", etiqueta: "Alumno", tipo: "seleccion", requerido: true, opciones: opcionesDe(alumnosActivos, (a) => `${a.contacto.nombre}${a.matricula ? ` · ${a.matricula}` : ""}`, "Elige un alumno") },
-        { nombre: "concepto", etiqueta: "Concepto", tipo: "texto", valorInicial: "Colegiatura" },
-        { nombre: "periodo", etiqueta: "Periodo", tipo: "texto", ayuda: "Ej. Octubre 2026" },
-        { nombre: "monto", etiqueta: "Monto", tipo: "dinero", requerido: true },
-        { nombre: "vencimiento", etiqueta: "Vence", tipo: "fecha", requerido: true },
-        { nombre: "estado", etiqueta: "Estado", tipo: "seleccion", opciones: OPCIONES.estadoColegiatura },
-        { nombre: "metodo", etiqueta: "Método de pago", tipo: "seleccion", opciones: [{ valor: "", etiqueta: "Sin pagar" }, ...OPCIONES.metodoPago] },
-      ]} />}
+      campos={camposColegiatura(opcionesDe(alumnosActivos, (a) => `${a.contacto.nombre}${a.matricula ? ` · ${a.matricula}` : ""}`, "Elige un alumno"))} />}
+    edicion={{ titulo: "Editar colegiatura", campos: camposColegiaturaEdicion(), eliminar: "Borrar cargo" }}
     metricas={[
       { etiqueta: "Cargos", valor: String(cargos) },
       { etiqueta: "Pendientes", valor: String(pendientes._count._all) },
@@ -41,7 +35,7 @@ export default async function ColegiaturasPage() {
       { etiqueta: "Pagadas", valor: String(pagadas) },
     ]}
     items={colegiaturas.map((item) => ({
-      id: String(item.id), titulo: `${item.concepto} · ${item.alumno.contacto.nombre}`,
+      id: String(item.id), edicion: { endpoint: `/api/academia/colegiaturas/${item.id}`, valores: { concepto: textoCampo(item.concepto), periodo: textoCampo(item.periodo), monto: textoCampo(item.monto), vencimiento: fechaCampo(item.vencimiento), estado: textoCampo(item.estado), metodo: textoCampo(item.metodo) } }, titulo: `${item.concepto} · ${item.alumno.contacto.nombre}`,
       descripcion: `${item.periodo ?? "Sin periodo"} · Vence ${item.vencimiento.toLocaleDateString("es-MX")}`,
       estado: item.estado, dato: moneda(Number(item.monto)),
     }))} />;

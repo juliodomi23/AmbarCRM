@@ -4,11 +4,12 @@ import { requireSesion } from "@/lib/session";
 import { serializar } from "@/lib/serialize";
 import { enviarCsat } from "@/lib/services/csat";
 import { referenciaPropia } from "@/lib/referencias";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
 /** Detalle de la conversación: contacto, responsable y oportunidades del contacto. */
-export async function GET(
+async function manejarGET(
   _req: NextRequest,
   props: { params: Promise<{ id: string }> },
 ) {
@@ -63,7 +64,7 @@ export async function GET(
 }
 
 /** Actualiza la conversación. Body: { responsableId?, estado? } */
-export async function PATCH(
+async function manejarPATCH(
   req: NextRequest,
   props: { params: Promise<{ id: string }> },
 ) {
@@ -103,7 +104,7 @@ export async function PATCH(
 }
 
 /** Borra la conversación y sus mensajes (cascada en BD). El contacto se conserva. Solo admin. */
-export async function DELETE(
+async function manejarDELETE(
   _req: NextRequest,
   props: { params: Promise<{ id: string }> },
 ) {
@@ -121,3 +122,7 @@ export async function DELETE(
     );
   return NextResponse.json({ ok: true });
 }
+
+export const GET = conErrores(manejarGET);
+export const PATCH = conErrores(manejarPATCH);
+export const DELETE = conErrores(manejarDELETE);

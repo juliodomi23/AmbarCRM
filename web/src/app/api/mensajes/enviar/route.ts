@@ -8,6 +8,7 @@ import { serializar } from "@/lib/serialize";
 import { estadoVentana } from "@/lib/meta/ventana";
 import { motivoDeError } from "@/lib/meta/errores";
 import { referenciaAjena } from "@/lib/referencias";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ function tipoDesdeMime(mime: string): TipoMensaje {
  * Body texto: { conversacionId, texto }
  * Body media: { conversacionId, mediaBase64, mediaMime, caption? }
  */
-export async function POST(req: NextRequest) {
+async function manejarPOST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
 
@@ -148,3 +149,5 @@ export async function POST(req: NextRequest) {
   }
   return NextResponse.json({ ok: true, mensaje: serializar(mensaje) });
 }
+
+export const POST = conErrores(manejarPOST);

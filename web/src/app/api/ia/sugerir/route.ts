@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { getAjustes } from "@/lib/services/config";
 import { permitido } from "@/lib/rate-limit";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ const PROMPT_DEFAULT =
   "en español neutro, lista para enviar. Devuelve SOLO el texto del mensaje, sin comillas ni explicaciones.";
 
 /** Sugiere una respuesta para el agente con base en el historial de la conversación. */
-export async function POST(req: NextRequest) {
+async function manejarPOST(req: NextRequest) {
   const s = await requireSesion();
   if ("error" in s) return s.error;
 
@@ -85,3 +86,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "error de red" }, { status: 502 });
   }
 }
+
+export const POST = conErrores(manejarPOST);

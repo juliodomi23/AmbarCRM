@@ -17,7 +17,8 @@ function resolverSlug(host?: string, orgSlug?: string): string {
 }
 
 export const authOptions: NextAuthOptions = {
-  session: { strategy: "jwt" },
+  // 7 días en lugar de los 30 por defecto: el CRM tiene datos de clientes y expedientes.
+  session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60 },
   pages: { signIn: "/login" },
   providers: [
     CredentialsProvider({

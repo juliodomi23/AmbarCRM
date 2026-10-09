@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { FormularioModulo, type ConfigEdicion, type EdicionFila } from "@/components/modulos/FormularioModulo";
 
 export type ItemListado = {
   id: string;
@@ -10,6 +11,7 @@ export type ItemListado = {
   estado: string;
   dato?: string;
   href?: string;
+  edicion?: EdicionFila;
 };
 
 export function PanelListado({
@@ -18,12 +20,14 @@ export function PanelListado({
   items,
   metricas,
   acciones,
+  edicion,
 }: {
   titulo: string;
   descripcion: string;
   items: ItemListado[];
   metricas: { etiqueta: string; valor: string }[];
   acciones?: React.ReactNode;
+  edicion?: ConfigEdicion;
 }) {
   const [busqueda, setBusqueda] = useState("");
   const visibles = useMemo(() => {
@@ -72,11 +76,21 @@ export function PanelListado({
               </div>
             </div>
           );
-          return item.href ? (
-            <Link key={item.id} href={item.href} className="block border-b last:border-0 hover:bg-muted/40">
-              {contenido}
-            </Link>
-          ) : <article key={item.id} className="border-b last:border-0">{contenido}</article>;
+          const enlace = item.href ? (
+            <Link href={item.href} className="block min-w-0 flex-1 hover:bg-muted/40">{contenido}</Link>
+          ) : <div className="min-w-0 flex-1">{contenido}</div>;
+          return (
+            <div key={item.id} className="flex items-center border-b last:border-0">
+              {enlace}
+              {edicion && item.edicion && (
+                <div className="shrink-0 px-3">
+                  <FormularioModulo discreto boton="Editar" titulo={edicion.titulo} endpoint={item.edicion.endpoint}
+                    campos={edicion.campos} valores={item.edicion.valores} eliminar={edicion.eliminar}
+                    acciones={edicion.acciones} />
+                </div>
+              )}
+            </div>
+          );
         })}
         {!visibles.length && <p className="p-8 text-center text-sm text-muted-foreground">Sin registros.</p>}
       </section>

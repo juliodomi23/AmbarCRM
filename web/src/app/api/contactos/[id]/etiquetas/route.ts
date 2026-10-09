@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
 /** Asigna una etiqueta al contacto. Body: { etiquetaId } */
-export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+async function manejarPOST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const s = await requireSesion();
   if ("error" in s) return s.error;
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 }
 
 /** Quita una etiqueta. Body: { etiquetaId } */
-export async function DELETE(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+async function manejarDELETE(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const s = await requireSesion();
   if ("error" in s) return s.error;
@@ -35,3 +36,6 @@ export async function DELETE(req: NextRequest, props: { params: Promise<{ id: st
   });
   return NextResponse.json({ ok: true });
 }
+
+export const POST = conErrores(manejarPOST);
+export const DELETE = conErrores(manejarDELETE);

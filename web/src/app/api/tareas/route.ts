@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { referenciaAjena } from "@/lib/referencias";
+import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
 /** Crea una tarea. Body: { titulo, descripcion?, venceAt?, responsableId?, oportunidadId? } */
-export async function POST(req: NextRequest) {
+async function manejarPOST(req: NextRequest) {
   const s = await requireSesion();
   if ("error" in s) return s.error;
 
@@ -32,3 +33,5 @@ export async function POST(req: NextRequest) {
   }
   return NextResponse.json({ ok: true, id: t.id.toString() });
 }
+
+export const POST = conErrores(manejarPOST);
