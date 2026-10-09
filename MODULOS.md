@@ -66,6 +66,8 @@ física como a ventas por WhatsApp:
   mercancía conectada automáticamente con las existencias;
 - **Ventas y pedidos** registra ventas de mostrador, WhatsApp, teléfono o tienda
   en línea, con cliente opcional, descuentos, método de pago y preparación.
+- **Caja de mostrador** cobra sobre las ventas existentes, con turnos por persona
+  y caja, entradas/salidas de efectivo, cobro mixto, cortes X/Z y ticket de 58/80 mm.
 
 Cada venta o compra calcula sus importes en servidor. Los pedidos activos
 descuentan existencias dentro de una transacción y las compras recibidas las
@@ -77,6 +79,14 @@ Las existencias y partidas admiten hasta tres decimales para productos marcados
 como venta por peso (por ejemplo, `1.234 kg`). Los productos por pieza conservan
 cantidades enteras. Los cálculos se hacen con `Prisma.Decimal` en servidor y con
 milésimas o centavos enteros en la interfaz para evitar errores de punto flotante.
+
+Caja requiere Productos y Ventas activos. Una persona y una caja solo pueden tener
+un turno abierto; ambas reglas se protegen con bloqueos e índices únicos parciales.
+Cada cobro usa un `uuid_cliente` idempotente, bloquea el turno y luego los productos,
+y toda escritura de existencia ocurre dentro de `transaccionTenant()` después de
+`bloquearProductos()`. El corte X consulta sin cerrar y el Z guarda efectivo esperado,
+contado y diferencia de forma irreversible. Un Cajero no puede cancelar ventas de caja:
+la cancelación y devolución de inventario exige Encargado de tienda o Admin.
 
 ## Módulo Citas
 
@@ -229,8 +239,8 @@ ALLOW_DEMO_SEED=1 node scripts/seed-demo-retail.mjs
 
 El seed idempotente crea `demo-retail` con diez productos, tres proveedores, dos
 órdenes de compra, movimientos de inventario, seis clientes, seis ventas en
-distintos estados y un equipo formado por vendedor, cajero y encargado de
-inventario.
+distintos estados, una caja principal y un equipo formado por vendedor, cajero,
+encargado de inventario y encargado de tienda.
 
 ## Despachos legales
 

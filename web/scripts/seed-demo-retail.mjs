@@ -81,6 +81,7 @@ await prisma.$transaction(async (tx) => {
     ["Daniela Soto", "daniela@casa-ambar.demo", "Vendedor de tienda"],
     ["Mateo Ruiz", "mateo@casa-ambar.demo", "Cajero"],
     ["Elena Paz", "elena@casa-ambar.demo", "Encargado de inventario"],
+    ["Paula Vega", "paula@casa-ambar.demo", "Encargado de tienda"],
   ]) {
     equipo.push(
       await tx.usuario.upsert({
@@ -103,13 +104,22 @@ await prisma.$transaction(async (tx) => {
       marcaPreset: "retail",
     },
   });
-  for (const clave of ["clientes", "productos", "compras", "ventas"]) {
+  for (const clave of ["clientes", "productos", "compras", "ventas", "caja"]) {
     await tx.moduloOrg.upsert({
       where: { orgId_clave: { orgId: org.id, clave } },
       update: { activo: true },
       create: { clave, activo: true, config: {} },
     });
   }
+  await tx.moduloOrg.update({
+    where: { orgId_clave: { orgId: org.id, clave: "caja" } },
+    data: { config: { puestosPermitidos: ["Cajero", "Encargado de tienda"], descuentoMaximoCajero: 10 } },
+  });
+  await tx.caja.upsert({
+    where: { orgId_nombre: { orgId: org.id, nombre: "Caja principal" } },
+    update: { sucursal: "Matriz", activa: true },
+    create: { nombre: "Caja principal", sucursal: "Matriz" },
+  });
   await tx.moduloOrg.upsert({
     where: { orgId_clave: { orgId: org.id, clave: "pacientes" } },
     update: { activo: false },

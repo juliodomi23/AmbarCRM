@@ -36,6 +36,8 @@ function identificador(valor: string) {
 
 async function valorColumna(columna: Columna, tabla: string, indice: number) {
   if (columna.column_name === "org_id") return orgA.toString();
+  if (tabla === "movimientos_caja" && columna.column_name === "tipo") return "entrada";
+  if (tabla === "pagos_venta" && columna.column_name === "metodo") return "efectivo";
   if (columna.data_type === "USER-DEFINED") {
     const resultado = await admin.query<{ valor: string }>(
       `SELECT e.enumlabel AS valor

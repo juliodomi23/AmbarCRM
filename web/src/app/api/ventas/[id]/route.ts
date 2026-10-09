@@ -13,6 +13,7 @@ import {
 } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
+import { puedeCancelarVentaCaja } from "@/lib/caja";
 
 export const PATCH = conModulo(
   "ventas",
@@ -36,6 +37,13 @@ export const PATCH = conModulo(
         include: { partidas: { include: { producto: true } } },
       });
       if (!actual) throw new ErrorRetail("Venta no encontrada", 404);
+      if (
+        actual.turnoId !== null &&
+        estado === "cancelada" &&
+        !puedeCancelarVentaCaja(sesion.rol, sesion.puesto)
+      ) {
+        throw new ErrorRetail("Cancelar una venta de caja requiere Encargado de tienda o Admin", 403);
+      }
       const debeAplicar = estadoUsaInventario(estado);
       if (debeAplicar !== actual.stockAplicado) {
         await bloquearProductos(

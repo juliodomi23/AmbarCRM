@@ -1,0 +1,62 @@
+.pagina {
+  min-height: 100vh;
+  padding: 1rem;
+  background: hsl(var(--background));
+}
+
+.acciones {
+  display: flex;
+  width: min(80mm, 100%);
+  margin: 0 auto 1rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ticket {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 3mm;
+  background: white;
+  color: black;
+  box-shadow: var(--shadow-soft);
+}
+
+.ticket80 {
+  width: 80mm;
+  page: ticket-80;
+}
+
+.ticket58 {
+  width: 58mm;
+  page: ticket-58;
+}
+
+@page ticket-80 {
+  size: 80mm auto;
+  margin: 3mm;
+}
+
+@page ticket-58 {
+  size: 58mm auto;
+  margin: 2mm;
+}
+
+@media print {
+  .pagina {
+    min-height: auto;
+    padding: 0;
+    background: white;
+  }
+
+  .acciones {
+    display: none;
+  }
+
+  .ticket {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+}

@@ -184,6 +184,8 @@ model Usuario {
   ventasCreadas      Venta[]                   @relation("VentaCreadoPor")
   movimientos        MovimientoInventario[]    @relation("MovimientoUsuario")
   comprasCreadas     Compra[]                  @relation("CompraCreadoPor")
+  turnosCaja         TurnoCaja[]
+  movimientosCaja    MovimientoCaja[]          @relation("MovimientoCajaUsuario")
   expedientesLegales ExpedienteLegal[]         @relation("ExpedienteResponsable")
   registrosLegales   RegistroExpedienteLegal[] @relation("RegistroLegalUsuario")
   asesoriasLegales   AsesoriaLegal[]           @relation("AsesoriaAbogado")
@@ -791,12 +793,16 @@ model Venta {
   folio         String
   contactoId    BigInt?  @map("contacto_id")
   creadoPorId   BigInt?  @map("creado_por_id")
+  turnoId       BigInt?  @map("turno_id")
+  cajaId        BigInt?  @map("caja_id")
+  uuidCliente   String?  @map("uuid_cliente")
   estado        String   @default("pendiente")
   canal         String   @default("mostrador")
   metodoPago    String?  @map("metodo_pago")
   subtotal      Decimal  @default(0) @db.Decimal(12, 2)
   descuento     Decimal  @default(0) @db.Decimal(12, 2)
   total         Decimal  @default(0) @db.Decimal(12, 2)
+  cambio        Decimal  @default(0) @db.Decimal(12, 2)
   moneda        String   @default("MXN")
   notas         String?
   stockAplicado Boolean  @default(false) @map("stock_aplicado")
@@ -805,12 +811,18 @@ model Venta {
 
   contacto    Contacto?              @relation(fields: [contactoId], references: [id], onDelete: SetNull)
   creadoPor   Usuario?               @relation("VentaCreadoPor", fields: [creadoPorId], references: [id], onDelete: SetNull)
+  turno       TurnoCaja?             @relation(fields: [turnoId], references: [id], onDelete: SetNull)
+  caja        Caja?                  @relation(fields: [cajaId], references: [id], onDelete: SetNull)
   partidas    VentaPartida[]
+  pagos       PagoVenta[]
   movimientos MovimientoInventario[]
 
   @@unique([orgId, folio])
+  @@unique([orgId, uuidCliente])
   @@index([orgId, estado, createdAt])
   @@index([contactoId])
+  @@index([turnoId])
+  @@index([cajaId])
   @@map("ventas")
 }
 
@@ -821,6 +833,7 @@ model VentaPartida {
   productoId     BigInt  @map("producto_id")
   cantidad       Decimal @db.Decimal(12, 3)
   precioUnitario Decimal @map("precio_unitario") @db.Decimal(12, 2)
+  descuento      Decimal @default(0) @db.Decimal(12, 2)
   total          Decimal @db.Decimal(12, 2)
 
   venta    Venta    @relation(fields: [ventaId], references: [id], onDelete: Cascade)
@@ -830,6 +843,82 @@ model VentaPartida {
   @@index([productoId])
   @@index([orgId])
   @@map("venta_partidas")
+}
+
+model Caja {
+  id        BigInt   @id @default(autoincrement())
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre    String
+  sucursal  String?
+  activa    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  turnos TurnoCaja[]
+  ventas Venta[]
+
+  @@unique([orgId, nombre])
+  @@index([orgId, activa])
+  @@map("cajas")
+}
+
+model TurnoCaja {
+  id               BigInt    @id @default(autoincrement())
+  orgId            BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  cajaId           BigInt    @map("caja_id")
+  usuarioId        BigInt    @map("usuario_id")
+  fondoInicial     Decimal   @default(0) @map("fondo_inicial") @db.Decimal(12, 2)
+  abiertoAt        DateTime  @default(now()) @map("abierto_at")
+  cerradoAt        DateTime? @map("cerrado_at")
+  efectivoContado  Decimal?  @map("efectivo_contado") @db.Decimal(12, 2)
+  efectivoEsperado Decimal?  @map("efectivo_esperado") @db.Decimal(12, 2)
+  diferencia       Decimal?  @db.Decimal(12, 2)
+  estado           String    @default("abierto")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  caja        Caja             @relation(fields: [cajaId], references: [id], onDelete: Restrict)
+  usuario     Usuario          @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  movimientos MovimientoCaja[]
+  ventas      Venta[]
+
+  @@index([orgId, estado])
+  @@index([cajaId, estado])
+  @@index([usuarioId, estado])
+  @@map("turnos_caja")
+}
+
+model MovimientoCaja {
+  id        BigInt   @id @default(autoincrement())
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  turnoId   BigInt   @map("turno_id")
+  tipo      String
+  monto     Decimal  @db.Decimal(12, 2)
+  motivo    String
+  usuarioId BigInt?  @map("usuario_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  turno   TurnoCaja @relation(fields: [turnoId], references: [id], onDelete: Cascade)
+  usuario Usuario?  @relation("MovimientoCajaUsuario", fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([turnoId, createdAt])
+  @@index([orgId])
+  @@map("movimientos_caja")
+}
+
+model PagoVenta {
+  id        BigInt   @id @default(autoincrement())
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  ventaId   BigInt   @map("venta_id")
+  metodo    String
+  monto     Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  venta Venta @relation(fields: [ventaId], references: [id], onDelete: Cascade)
+
+  @@unique([ventaId, metodo])
+  @@index([orgId])
+  @@map("pagos_venta")
 }
 
 model Proveedor {

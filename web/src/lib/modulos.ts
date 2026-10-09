@@ -107,6 +107,15 @@ export const MODULOS = [
     ruta: "/ventas",
   },
   {
+    clave: "caja",
+    area: "Retail y comercio",
+    nombre: "Caja de mostrador",
+    descripcion: "Cobro rápido, turnos, movimientos de efectivo y cortes X/Z.",
+    acceso: { puestosPorDefecto: ["Cajero", "Encargado de tienda"] },
+    icono: "M3 6h18v14H3zM3 10h18M7 15h4m6 0h.01M7 3h10v3",
+    ruta: "/caja",
+  },
+  {
     clave: "legal",
     area: "Legal",
     nombre: "Expedientes legales",

@@ -246,6 +246,15 @@ export function VentasCliente({
                   ))}
                 </select>
               </label>
+              {venta.turnoId && (
+                <Link
+                  href={`/caja/ticket/${venta.id}`}
+                  target="_blank"
+                  className="rounded-lg bg-muted px-3 py-2 text-xs font-medium"
+                >
+                  Reimprimir ticket
+                </Link>
+              )}
             </div>
           </article>
         ))}

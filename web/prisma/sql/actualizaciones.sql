@@ -964,3 +964,89 @@ CREATE OR REPLACE FUNCTION resolve_org_by_cita_token(p_token text)
   RETURNS bigint LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
     SELECT org_id FROM citas WHERE token_gestion = p_token LIMIT 1
 $$;
+
+-- Caja de mostrador: turnos, movimientos, pagos desglosados e idempotencia por
+-- petición del cliente. Los índices parciales son la última barrera ante dos
+-- aperturas concurrentes del mismo usuario o de la misma caja.
+CREATE TABLE IF NOT EXISTS cajas (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  nombre TEXT NOT NULL,
+  sucursal TEXT,
+  activa BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, nombre)
+);
+CREATE INDEX IF NOT EXISTS cajas_org_activa_idx ON cajas(org_id, activa);
+
+CREATE TABLE IF NOT EXISTS turnos_caja (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  caja_id BIGINT NOT NULL REFERENCES cajas(id) ON DELETE RESTRICT,
+  usuario_id BIGINT NOT NULL REFERENCES usuarios(id) ON DELETE RESTRICT,
+  fondo_inicial NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (fondo_inicial >= 0),
+  abierto_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  cerrado_at TIMESTAMPTZ,
+  efectivo_contado NUMERIC(12,2),
+  efectivo_esperado NUMERIC(12,2),
+  diferencia NUMERIC(12,2),
+  estado TEXT NOT NULL DEFAULT 'abierto' CHECK (estado IN ('abierto', 'cerrado')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS turnos_caja_org_estado_idx ON turnos_caja(org_id, estado);
+CREATE INDEX IF NOT EXISTS turnos_caja_caja_estado_idx ON turnos_caja(caja_id, estado);
+CREATE INDEX IF NOT EXISTS turnos_caja_usuario_estado_idx ON turnos_caja(usuario_id, estado);
+CREATE UNIQUE INDEX IF NOT EXISTS turnos_caja_usuario_abierto_uq
+  ON turnos_caja(usuario_id) WHERE estado = 'abierto';
+CREATE UNIQUE INDEX IF NOT EXISTS turnos_caja_caja_abierta_uq
+  ON turnos_caja(caja_id) WHERE estado = 'abierto';
+
+CREATE TABLE IF NOT EXISTS movimientos_caja (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  turno_id BIGINT NOT NULL REFERENCES turnos_caja(id) ON DELETE CASCADE,
+  tipo TEXT NOT NULL CHECK (tipo IN ('entrada', 'salida')),
+  monto NUMERIC(12,2) NOT NULL CHECK (monto > 0),
+  motivo TEXT NOT NULL,
+  usuario_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS movimientos_caja_turno_created_idx ON movimientos_caja(turno_id, created_at);
+CREATE INDEX IF NOT EXISTS movimientos_caja_org_idx ON movimientos_caja(org_id);
+
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS turno_id BIGINT REFERENCES turnos_caja(id) ON DELETE SET NULL;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS caja_id BIGINT REFERENCES cajas(id) ON DELETE SET NULL;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS uuid_cliente TEXT;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS cambio NUMERIC(12,2) NOT NULL DEFAULT 0;
+CREATE UNIQUE INDEX IF NOT EXISTS ventas_org_uuid_cliente_uq
+  ON ventas(org_id, uuid_cliente) WHERE uuid_cliente IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ventas_turno_id_idx ON ventas(turno_id);
+CREATE INDEX IF NOT EXISTS ventas_caja_id_idx ON ventas(caja_id);
+
+ALTER TABLE venta_partidas ADD COLUMN IF NOT EXISTS descuento NUMERIC(12,2) NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS pagos_venta (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  venta_id BIGINT NOT NULL REFERENCES ventas(id) ON DELETE CASCADE,
+  metodo TEXT NOT NULL CHECK (metodo IN ('efectivo', 'tarjeta', 'transferencia')),
+  monto NUMERIC(12,2) NOT NULL CHECK (monto > 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (venta_id, metodo)
+);
+CREATE INDEX IF NOT EXISTS pagos_venta_org_idx ON pagos_venta(org_id);
+
+DO $$ DECLARE t TEXT; BEGIN
+  FOREACH t IN ARRAY ARRAY['cajas', 'turnos_caja', 'movimientos_caja', 'pagos_venta'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format(
+      'CREATE POLICY org_isolation ON %I USING (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint) WITH CHECK (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint)',
+      t
+    );
+  END LOOP;
+END $$;
+GRANT SELECT, INSERT, UPDATE, DELETE ON cajas, turnos_caja, movimientos_caja, pagos_venta TO crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;

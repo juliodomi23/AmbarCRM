@@ -38,6 +38,7 @@ export type ContactoVenta = {
 
 export type VentaRetail = {
   id: string;
+  turnoId?: string | null;
   folio: string;
   estado: string;
   canal: string;
