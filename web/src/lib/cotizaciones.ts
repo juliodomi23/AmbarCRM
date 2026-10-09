@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { cantidad } from "@/lib/cantidad";
 import { dinero } from "@/lib/dinero";
 import { CERO_DECIMAL } from "@/lib/retail";
+import { fechaLocal } from "@/lib/reservas/horarios";
 
 export const ESTADOS_COTIZACION = ["borrador", "enviada", "aceptada", "rechazada", "vencida"] as const;
 export type EstadoCotizacion = (typeof ESTADOS_COTIZACION)[number];
@@ -19,6 +20,13 @@ export type ConfigCotizaciones = {
   preciosConIva: boolean;
   plantillaCotizacion?: { name: string; language: string };
 };
+
+export const ZONA_COTIZACIONES = "America/Mexico_City";
+
+/** La fecha DATE de vigencia es inclusiva durante todo el día local del negocio. */
+export function cotizacionVencida(vigencia: Date, ahora: Date, zona = ZONA_COTIZACIONES) {
+  return vigencia.toISOString().slice(0, 10) < fechaLocal(ahora, zona);
+}
 
 function decimalDinero(valor: unknown) {
   return dinero(valor) === null ? null : new Prisma.Decimal(String(valor).trim());

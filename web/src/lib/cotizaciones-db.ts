@@ -1,8 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
-import { calcularCotizacion, configCotizaciones, type PartidaCotizacionEntrada } from "@/lib/cotizaciones";
+import { calcularCotizacion, configCotizaciones, cotizacionVencida, ZONA_COTIZACIONES, type PartidaCotizacionEntrada } from "@/lib/cotizaciones";
 import { dbRaw } from "@/lib/db";
 import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
+import { fechaLocal } from "@/lib/reservas/horarios";
+import { configReservas } from "@/lib/reservas/servidor";
 
 export class ErrorCotizacion extends ErrorRetail {}
 
@@ -182,8 +184,9 @@ async function cotizacionBloqueada(tx: Prisma.TransactionClient, token: string) 
   return tx.cotizacion.findUniqueOrThrow({ where: { id }, include: detalleCotizacion });
 }
 
-function estaVencida(vigencia: Date, ahora: Date) {
-  return vigencia.getTime() < new Date(ahora.toISOString().slice(0, 10) + "T00:00:00.000Z").getTime();
+async function zonaDeEmpresa(tx: Prisma.TransactionClient) {
+  const reservas = await tx.moduloOrg.findFirst({ where: { clave: "reservas_en_linea" }, select: { config: true } });
+  return reservas ? configReservas(reservas.config).zona : ZONA_COTIZACIONES;
 }
 
 export async function responderCotizacion(
@@ -199,8 +202,8 @@ export async function responderCotizacion(
       throw new ErrorCotizacion(`La cotización ya está ${cotizacion.estado}`, 409);
     }
     const ahora = datos.ahora ?? new Date();
-    if (estaVencida(cotizacion.vigencia, ahora)) {
-      await tx.cotizacion.update({ where: { id: cotizacion.id }, data: { estado: "vencida", version: { increment: 1 } } });
+    const zona = await zonaDeEmpresa(tx);
+    if (cotizacionVencida(cotizacion.vigencia, ahora, zona)) {
       throw new ErrorCotizacion("La cotización está vencida", 409);
     }
     let ventaId = cotizacion.ventaId;
@@ -245,8 +248,10 @@ export async function cotizacionPublica(orgId: bigint, token: string) {
 
 export async function vencerCotizaciones(orgId: bigint, ahora = new Date()) {
   return transaccionTenant(orgId, async (tx) => {
+    const zona = await zonaDeEmpresa(tx);
+    const hoyLocal = new Date(`${fechaLocal(ahora, zona)}T12:00:00.000Z`);
     const resultado = await tx.cotizacion.updateMany({
-      where: { estado: { in: ["borrador", "enviada"] }, vigencia: { lt: new Date(ahora.toISOString().slice(0, 10) + "T00:00:00.000Z") } },
+      where: { estado: { in: ["borrador", "enviada"] }, vigencia: { lt: hoyLocal } },
       data: { estado: "vencida", version: { increment: 1 } },
     });
     return resultado.count;

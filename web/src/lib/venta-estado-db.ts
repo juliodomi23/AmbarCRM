@@ -42,6 +42,13 @@ export async function cambiarEstadoVenta(
     });
     if (!actual) throw new ErrorRetail("Venta no encontrada", 404);
 
+    if (estado === "cancelada" && actual.estado !== "cancelada") {
+      const devoluciones = await tx.devolucionVenta.count({ where: { ventaOriginalId: actual.id } });
+      if (devoluciones > 0) {
+        throw new ErrorRetail("La venta ya tiene devoluciones; registra una devolución por lo que falta", 409);
+      }
+    }
+
     if (actual.turnoId !== null && estado === "cancelada") {
       if (!puedeCancelarVentaCaja(sesion.rol, sesion.puesto)) {
         throw new ErrorRetail("Cancelar una venta de caja requiere Encargado de tienda o Admin", 403);

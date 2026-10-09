@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { Prisma } from "@prisma/client";
-import { calcularCotizacion, configCotizaciones, validarCotizacion, validarRespuestaCotizacion } from "../src/lib/cotizaciones";
+import { calcularCotizacion, configCotizaciones, cotizacionVencida, validarCotizacion, validarRespuestaCotizacion } from "../src/lib/cotizaciones";
 import { canalEnvioCotizacion } from "../src/lib/cotizacion-envio";
 
 const decimal = (valor: string) => new Prisma.Decimal(valor);
@@ -29,10 +29,14 @@ assert.ok("error" in validarRespuestaCotizacion({ accion: "aceptar", nombre: "" 
 assert.equal(canalEnvioCotizacion(true), "texto");
 assert.equal(canalEnvioCotizacion(false), "sin_plantilla");
 assert.equal(canalEnvioCotizacion(false, { name: "cotizacion", language: "es_MX" }), "plantilla");
+const vigencia = new Date("2026-10-09T12:00:00.000Z");
+assert.equal(cotizacionVencida(vigencia, new Date("2026-10-10T02:00:00.000Z"), "America/Mexico_City"), false);
+assert.equal(cotizacionVencida(vigencia, new Date("2026-10-10T06:01:00.000Z"), "America/Mexico_City"), true);
 
 console.log(JSON.stringify({
   totalesMasIva: { subtotal: Number(masIva.subtotal), descuento: Number(masIva.descuento), impuestos: Number(masIva.impuestos), total: Number(masIva.total) },
   preciosConIva: { total: Number(ivaIncluido.total), impuestosIncluidos: Number(ivaIncluido.impuestos) },
   totalNavegadorIgnorado: true,
+  vigenciaMexico: { ultimoDia20h: "vigente", diaSiguiente0001: "vencida" },
   whatsapp: { ventanaAbierta: "texto", ventanaCerradaSinPlantilla: "sin_plantilla", ventanaCerradaConPlantilla: "plantilla" },
 }));

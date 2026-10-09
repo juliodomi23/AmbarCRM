@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { cancelarApartado, crearApartado, registrarDevolucion, vencerApartados } from "../../src/lib/caja-a2-db";
 import { abrirTurnoCaja, cerrarTurnoCaja, corteX, registrarVentaCaja } from "../../src/lib/caja-db";
 import { dbRaw } from "../../src/lib/db";
-import { bloquearProductos, transaccionTenant } from "../../src/lib/retail-db";
+import { bloquearProductos, ErrorRetail, transaccionTenant } from "../../src/lib/retail-db";
 import { cambiarEstadoVenta } from "../../src/lib/venta-estado-db";
 
 const { Pool } = pg;
@@ -21,11 +21,11 @@ async function preparar() {
     const usuario = await tx.usuario.create({ data: { nombre: "Encargado dinero", email: `dinero-${sufijo}@test.local`, passwordHash: "no-login", puesto: "Encargado de tienda" } });
     const caja = await tx.caja.create({ data: { nombre: `Caja dinero ${sufijo}` } });
     const contacto = await tx.contacto.create({ data: { nombre: "Cliente dinero", telefono: `961${String(Date.now()).slice(-7)}` } });
-    const productos = await Promise.all(Array.from({ length: 7 }, (_, indice) => tx.producto.create({
-      data: { sku: `DIN-${indice}-${sufijo}`, nombre: `Producto dinero ${indice}`, precio: indice < 2 ? 200 : 100, stock: 0 },
+    const productos = await Promise.all(Array.from({ length: 8 }, (_, indice) => tx.producto.create({
+      data: { sku: `DIN-${indice}-${sufijo}`, nombre: `Producto dinero ${indice}`, precio: indice < 2 ? 200 : indice === 7 ? 50 : 100, stock: 0 },
     })));
     await bloquearProductos(tx, productos.map((producto) => producto.id));
-    for (const producto of productos) await tx.producto.update({ where: { id: producto.id }, data: { stock: 1 } });
+    for (const producto of productos) await tx.producto.update({ where: { id: producto.id }, data: { stock: producto.id === productos[7].id ? 2 : 1 } });
     return { usuario, caja, contacto, productos };
   });
 }
@@ -105,6 +105,39 @@ async function main() {
   assert.equal(totalDevuelto.toString(), "180");
   await cerrarTurnoCaja(actor, turnoE.id, new Prisma.Decimal(680));
 
+  const turnoF = await abrir();
+  const ventaF = await registrarVentaCaja(actor, {
+    turnoId: turnoF.id, contactoId: base.contacto.id, uuidCliente: `venta-parcial-${sufijo}`, descuento: new Prisma.Decimal(0), notas: null,
+    partidas: [{ productoId: base.productos[7].id, cantidad: new Prisma.Decimal(2), descuento: new Prisma.Decimal(0) }],
+    pagos: [{ metodo: "efectivo", monto: new Prisma.Decimal(100) }],
+  });
+  await registrarDevolucion(actor, {
+    ventaId: ventaF.venta.id, ventaCambioId: null, tipoReembolso: "efectivo", motivo: null,
+    partidas: [{ ventaPartidaId: ventaF.venta.partidas[0].id, cantidad: new Prisma.Decimal(1) }],
+  });
+  const antesCancelar = await transaccionTenant(orgId, async (tx) => ({
+    stock: (await tx.producto.findUniqueOrThrow({ where: { id: base.productos[7].id } })).stock,
+    salidas: await tx.movimientoCaja.aggregate({ where: { turnoId: turnoF.id, tipo: "salida" }, _sum: { monto: true } }),
+  }));
+  let cancelacionParcial = { status: 0, mensaje: "" };
+  try {
+    await cambiarEstadoVenta(actor, ventaF.venta.id, "cancelada");
+  } catch (error) {
+    cancelacionParcial = { status: error instanceof ErrorRetail ? error.status : 500, mensaje: error instanceof Error ? error.message : "" };
+  }
+  const despuesCancelar = await transaccionTenant(orgId, async (tx) => ({
+    stock: (await tx.producto.findUniqueOrThrow({ where: { id: base.productos[7].id } })).stock,
+    salidas: await tx.movimientoCaja.aggregate({ where: { turnoId: turnoF.id, tipo: "salida" }, _sum: { monto: true } }),
+  }));
+  const corteF = await corteX(actor, turnoF.id);
+  assert.deepEqual(cancelacionParcial, { status: 409, mensaje: "La venta ya tiene devoluciones; registra una devolución por lo que falta" });
+  assert.equal(antesCancelar.stock.toString(), "1");
+  assert.equal(despuesCancelar.stock.toString(), "1");
+  assert.equal(antesCancelar.salidas._sum.monto?.toString(), "50");
+  assert.equal(despuesCancelar.salidas._sum.monto?.toString(), "50");
+  assert.equal(corteF.efectivoEsperado.toString(), "550");
+  await cerrarTurnoCaja(actor, turnoF.id, new Prisma.Decimal(550));
+
   const turnoCerradoA = await transaccionTenant(orgId, (tx) => tx.turnoCaja.findUniqueOrThrow({ where: { id: turnoA.id } }));
   assert.equal(turnoCerradoA.efectivoEsperado?.toString(), "500");
   const movimientoCron = await transaccionTenant(orgId, (tx) => tx.movimientoInventario.findFirstOrThrow({
@@ -119,6 +152,7 @@ async function main() {
     ventaMixtaCancelada: { fondo: 500, efectivo: 60, tarjeta: 40, salida: Number(salidaD.monto), esperado: Number(corteD.efectivoEsperado) },
     turnoCerrado: { esperadoGuardado: Number(turnoCerradoA.efectivoEsperado) },
     devolucionConDescuento: { primera: Number(primera.total), segunda: Number(segunda.total), totalDevuelto: Number(totalDevuelto), totalVenta: Number(ventaE.venta.total) },
+    cancelarConDevolucion: { status: cancelacionParcial.status, mensaje: cancelacionParcial.mensaje, esperadoAntes: 550, esperadoDespues: Number(corteF.efectivoEsperado), stockAntes: Number(antesCancelar.stock), stockDespues: Number(despuesCancelar.stock) },
   }));
 }
 
