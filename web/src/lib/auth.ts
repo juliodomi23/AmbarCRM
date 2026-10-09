@@ -2,7 +2,7 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { db, runWithOrg } from "@/lib/db";
-import { permitido } from "@/lib/rate-limit";
+import { ipCliente, permitido } from "@/lib/rate-limit";
 
 /**
  * Resuelve el slug de la org del request: subdominio (cliente.tucrm.com),
@@ -32,6 +32,8 @@ export const authOptions: NextAuthOptions = {
         const slug = resolverSlug(req?.headers?.host as string | undefined, creds.orgSlug);
         // Anti fuerza-bruta: máx 8 intentos por org+email cada 5 min.
         if (!permitido(`login:${slug}:${creds.email.toLowerCase()}`, 8, 5 * 60_000)) return null;
+        // Y por IP: sin esto, una IP prueba 8 contraseñas por cada correo distinto.
+        if (!permitido(`login-ip:${ipCliente(req?.headers as Record<string, string>)}`, 30, 15 * 60_000)) return null;
 
         const org = await db.org.findUnique({ where: { slug } });
         if (!org || !org.activo) return null;

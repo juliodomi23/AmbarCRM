@@ -836,3 +836,7 @@ CREATE OR REPLACE FUNCTION resolve_org_by_aurum_slug(p_slug text)
     WHERE clave = 'lealtad' AND config->'aurum'->>'slug' = p_slug
     ORDER BY id LIMIT 1
 $$;
+
+-- /api/media verifica que los archivos antiguos (sin prefijo de empresa) pertenezcan a un
+-- mensaje de la empresa que los pide; este índice evita recorrer toda la tabla.
+CREATE INDEX IF NOT EXISTS mensajes_media_url_idx ON mensajes(media_url) WHERE media_url IS NOT NULL;

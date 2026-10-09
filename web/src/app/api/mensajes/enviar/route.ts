@@ -41,6 +41,11 @@ export async function POST(req: NextRequest) {
       }
     : null;
 
+  // ~18 MB de archivo: arriba del límite de WhatsApp para imagen, audio y video (16 MB).
+  const MAX_BASE64 = 24_000_000;
+  if (String(mediaBase64 ?? "").length > MAX_BASE64 || String(audioBase64 ?? "").length > MAX_BASE64) {
+    return NextResponse.json({ error: "el archivo es demasiado grande (máximo 16 MB)" }, { status: 413 });
+  }
   if (!conversacionId || (!esMedia && !esAudio && !plantilla && !texto?.trim())) {
     return NextResponse.json({ error: "faltan campos" }, { status: 400 });
   }

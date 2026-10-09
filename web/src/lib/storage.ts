@@ -5,6 +5,8 @@
 import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
+import { orgActual } from "@/lib/db";
+export { orgDeArchivo } from "@/lib/media-nombre";
 
 const DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
 
@@ -38,7 +40,10 @@ export async function guardarMediaBase64(base64: string, mime: string): Promise<
   await fs.mkdir(DIR, { recursive: true });
   const limpio = base64.includes(",") ? base64.split(",")[1] : base64;
   const buf = Buffer.from(limpio, "base64");
-  const nombre = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}.${extDeMime(mime)}`;
+  // El prefijo o<empresa> permite comprobar al servirlo que el archivo es de quien lo pide.
+  const org = await orgActual();
+  const prefijo = org ? `o${org}-` : "";
+  const nombre = `${prefijo}${Date.now()}-${crypto.randomBytes(16).toString("hex")}.${extDeMime(mime)}`;
   await fs.writeFile(path.join(DIR, nombre), buf);
   return `/api/media/${nombre}`;
 }

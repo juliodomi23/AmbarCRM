@@ -59,8 +59,12 @@ export async function POST(req: NextRequest) {
   const { csv } = await req.json().catch(() => ({}));
   if (!csv || typeof csv !== "string")
     return NextResponse.json({ error: "falta el CSV" }, { status: 400 });
+  if (csv.length > 5_000_000)
+    return NextResponse.json({ error: "el CSV pesa más de 5 MB; divídelo en partes" }, { status: 413 });
 
   const filas = parseCSV(csv).filter((r) => r.some((c) => c.trim() !== ""));
+  if (filas.length > 10_001)
+    return NextResponse.json({ error: "máximo 10,000 contactos por archivo" }, { status: 400 });
   if (filas.length < 2)
     return NextResponse.json(
       { error: "el CSV no tiene datos" },
