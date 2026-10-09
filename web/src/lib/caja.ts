@@ -41,6 +41,10 @@ export function puedeCancelarVentaCaja(rol?: string, puesto?: string) {
   return puedeAutorizarDescuento(rol, puesto);
 }
 
+export function puedeGestionarTurnos(rol?: string, puesto?: string) {
+  return puedeAutorizarDescuento(rol, puesto);
+}
+
 export function validarAperturaTurno(body: Record<string, unknown>) {
   const cajaId = id(body.cajaId);
   const fondoInicial = decimalDinero(body.fondoInicial);

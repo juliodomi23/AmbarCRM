@@ -2,18 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { aBigInt } from "@/lib/ids";
 import {
   ESTADOS_VENTA,
-  estadoUsaInventario,
   type EstadoVenta,
 } from "@/lib/retail";
-import {
-  bloquearProductos,
-  bloquearVenta,
-  ErrorRetail,
-  transaccionTenant,
-} from "@/lib/retail-db";
+import { ErrorRetail } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
-import { puedeCancelarVentaCaja } from "@/lib/caja";
+import { cambiarEstadoVenta } from "@/lib/venta-estado-db";
 
 export const PATCH = conModulo(
   "ventas",
@@ -30,60 +24,7 @@ export const PATCH = conModulo(
   }
 
   try {
-    const venta = await transaccionTenant(sesion.orgId, async (tx) => {
-      await bloquearVenta(tx, id);
-      const actual = await tx.venta.findUnique({
-        where: { id },
-        include: { partidas: { include: { producto: true } } },
-      });
-      if (!actual) throw new ErrorRetail("Venta no encontrada", 404);
-      if (
-        actual.turnoId !== null &&
-        estado === "cancelada" &&
-        !puedeCancelarVentaCaja(sesion.rol, sesion.puesto)
-      ) {
-        throw new ErrorRetail("Cancelar una venta de caja requiere Encargado de tienda o Admin", 403);
-      }
-      const debeAplicar = estadoUsaInventario(estado);
-      if (debeAplicar !== actual.stockAplicado) {
-        await bloquearProductos(
-          tx,
-          actual.partidas.map((partida) => partida.productoId),
-        );
-        for (const partida of actual.partidas) {
-          const producto = await tx.producto.findUnique({ where: { id: partida.productoId } });
-          if (!producto) throw new ErrorRetail("Uno de los productos ya no existe");
-          const cambio = debeAplicar ? partida.cantidad.neg() : partida.cantidad;
-          const existenciaDespues = producto.stock.plus(cambio);
-          if (existenciaDespues.lt(0)) {
-            throw new ErrorRetail(`No hay existencias suficientes de ${producto.nombre}`);
-          }
-          await tx.producto.update({
-            where: { id: producto.id },
-            data: { stock: existenciaDespues },
-          });
-          await tx.movimientoInventario.create({
-            data: {
-              productoId: producto.id,
-              ventaId: actual.id,
-              usuarioId: sesion.userId,
-              tipo: debeAplicar ? "venta" : "devolucion",
-              cantidad: cambio,
-              existenciaAntes: producto.stock,
-              existenciaDespues,
-              motivo: debeAplicar
-                ? `Inventario aplicado a ${actual.folio}`
-                : `Inventario devuelto por ${actual.folio}`,
-            },
-          });
-        }
-      }
-      return tx.venta.update({
-        where: { id },
-        data: { estado, stockAplicado: debeAplicar },
-        include: { contacto: true, partidas: { include: { producto: true } } },
-      });
-    });
+    const venta = await cambiarEstadoVenta({ ...sesion, orgId: sesion.orgId }, id, estado);
     return NextResponse.json(serializar({ venta }));
   } catch (error) {
     if (error instanceof ErrorRetail) {

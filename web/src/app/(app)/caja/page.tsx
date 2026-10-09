@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { CajaCliente } from "@/components/caja/CajaCliente";
 import { authOptions } from "@/lib/auth";
-import { descuentoMaximoCajero } from "@/lib/caja";
+import { descuentoMaximoCajero, puedeGestionarTurnos } from "@/lib/caja";
 import { db } from "@/lib/db";
 import { moduloActivo, moduloHabilitado } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
@@ -27,7 +27,7 @@ export default async function CajaPage() {
       include: { caja: true, usuario: { select: { id: true, nombre: true } } },
     }),
     db.turnoCaja.findMany({
-      where: sesion.user.rol === "admin" ? {} : { usuarioId: userId },
+      where: puedeGestionarTurnos(sesion.user.rol, sesion.user.puesto) ? {} : { usuarioId: userId },
       include: { caja: true, usuario: { select: { id: true, nombre: true } } },
       orderBy: { abiertoAt: "desc" },
       take: 20,

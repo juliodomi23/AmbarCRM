@@ -4,18 +4,19 @@ import {
   descuentoMaximoCajero,
   puedeAutorizarDescuento,
   puedeCancelarVentaCaja,
+  puedeGestionarTurnos,
   validarAperturaTurno,
   validarCierreTurno,
   validarMovimientoCaja,
   validarVentaCaja,
 } from "../src/lib/caja.ts";
 
-const [catalogo, schema, sql, cajaDb, cancelar, pantalla, ticket, estilosTicket, estilosGlobales] = await Promise.all([
+const [catalogo, schema, sql, cajaDb, estadoVentaDb, pantalla, ticket, estilosTicket, estilosGlobales] = await Promise.all([
   readFile(new URL("../src/lib/modulos.ts", import.meta.url), "utf8"),
   readFile(new URL("../prisma/schema.prisma", import.meta.url), "utf8"),
   readFile(new URL("../prisma/sql/actualizaciones.sql", import.meta.url), "utf8"),
   readFile(new URL("../src/lib/caja-db.ts", import.meta.url), "utf8"),
-  readFile(new URL("../src/app/api/ventas/[id]/route.ts", import.meta.url), "utf8"),
+  readFile(new URL("../src/lib/venta-estado-db.ts", import.meta.url), "utf8"),
   readFile(new URL("../src/components/caja/CajaCliente.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/caja/ticket/[ventaId]/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/caja/ticket/[ventaId]/ticket.module.css", import.meta.url), "utf8"),
@@ -28,9 +29,10 @@ for (const tabla of ["cajas", "turnos_caja", "movimientos_caja", "pagos_venta"])
 assert.match(sql, /turnos_caja_usuario_abierto_uq/);
 assert.match(sql, /turnos_caja_caja_abierta_uq/);
 assert.match(sql, /ventas_org_uuid_cliente_uq/);
-assert.match(cajaDb, /bloquearTurno[\s\S]*bloquearProductos/);
+assert.match(cajaDb, /bloquearTurnoCaja[\s\S]*bloquearProductos/);
 assert.match(cajaDb, /data: \{ stock: existenciaDespues \}/);
-assert.match(cancelar, /puedeCancelarVentaCaja/);
+assert.match(estadoVentaDb, /bloquearTurnoCaja[\s\S]*bloquearVenta[\s\S]*bloquearProductos/);
+assert.match(estadoVentaDb, /Este turno ya tuvo corte; registra una devolución/);
 assert.match(pantalla, /F2/);
 assert.match(pantalla, /codigoBarras/);
 assert.match(pantalla, /normalize\("NFD"\)/);
@@ -58,5 +60,8 @@ assert.equal(descuentoMaximoCajero({ descuentoMaximoCajero: 7.5 }), 7.5);
 assert.equal(puedeAutorizarDescuento("agente", "Cajero"), false);
 assert.equal(puedeAutorizarDescuento("agente", "Encargado de tienda"), true);
 assert.equal(puedeCancelarVentaCaja("admin", "Administrador"), true);
+assert.equal(puedeGestionarTurnos("agente", "Cajero"), false);
+assert.equal(puedeGestionarTurnos("agente", "Encargado de tienda"), true);
+assert.equal(puedeGestionarTurnos("admin", "Administrador"), true);
 
 console.log("caja: turnos, cobro mixto, descuentos, cortes, ticket, lealtad y permisos OK");

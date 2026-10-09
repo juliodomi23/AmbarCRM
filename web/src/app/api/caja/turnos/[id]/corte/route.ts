@@ -10,9 +10,13 @@ type Props = { params: Promise<{ id: string }> };
 
 export const GET = conModulo("caja", {}, async (sesion, _req: NextRequest, { params }: Props) => {
   const turnoId = aBigInt((await params).id);
-  if (turnoId === null || sesion.orgId === null) return NextResponse.json({ error: "Turno inválido" }, { status: 400 });
+  if (turnoId === null || sesion.userId === null || sesion.orgId === null) {
+    return NextResponse.json({ error: "Turno o sesión inválidos" }, { status: 400 });
+  }
   try {
-    return NextResponse.json(serializar({ corte: await corteX(sesion.orgId, turnoId) }));
+    return NextResponse.json(serializar({
+      corte: await corteX({ ...sesion, userId: sesion.userId, orgId: sesion.orgId }, turnoId),
+    }));
   } catch (error) {
     if (error instanceof ErrorCaja) return NextResponse.json({ error: error.message }, { status: error.status });
     throw error;

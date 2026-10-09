@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validarAperturaTurno } from "@/lib/caja";
+import { puedeGestionarTurnos } from "@/lib/caja";
 import { abrirTurnoCaja, ErrorCaja } from "@/lib/caja-db";
 import { conModulo } from "@/lib/con-modulo";
 import { db } from "@/lib/db";
@@ -13,7 +14,7 @@ export const GET = conModulo("caja", {}, async (sesion) => {
       include: { caja: true, usuario: { select: { id: true, nombre: true } } },
     }),
     db.turnoCaja.findMany({
-      where: sesion.rol === "admin" ? {} : { usuarioId: sesion.userId },
+      where: puedeGestionarTurnos(sesion.rol, sesion.puesto) ? {} : { usuarioId: sesion.userId },
       include: { caja: true, usuario: { select: { id: true, nombre: true } } },
       orderBy: { abiertoAt: "desc" },
       take: 30,

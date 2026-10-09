@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import {
   descuentoMaximoCajero,
   puedeAutorizarDescuento,
+  puedeGestionarTurnos,
   type PagoCajaEntrada,
   type PartidaCajaEntrada,
   validarCantidadProducto,
@@ -9,11 +10,11 @@ import {
 import { CERO_DECIMAL, importePartida } from "@/lib/retail";
 import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
 
-type IdentidadCaja = { userId: bigint; orgId: bigint; rol?: string; puesto?: string };
+export type IdentidadCaja = { userId: bigint; orgId: bigint; rol?: string; puesto?: string };
 
 export class ErrorCaja extends ErrorRetail {}
 
-async function bloquearTurno(tx: Prisma.TransactionClient, turnoId: bigint) {
+export async function bloquearTurnoCaja(tx: Prisma.TransactionClient, turnoId: bigint) {
   await tx.$queryRaw<Array<{ id: bigint }>>`
     SELECT id FROM turnos_caja WHERE id = ${turnoId} FOR UPDATE
   `;
@@ -57,7 +58,7 @@ export async function movimientoCaja(
   datos: { turnoId: bigint; tipo: "entrada" | "salida"; monto: Prisma.Decimal; motivo: string },
 ) {
   return transaccionTenant(sesion.orgId, async (tx) => {
-    await bloquearTurno(tx, datos.turnoId);
+    await bloquearTurnoCaja(tx, datos.turnoId);
     const turno = await tx.turnoCaja.findUnique({ where: { id: datos.turnoId } });
     if (!turno || turno.estado !== "abierto") throw new ErrorCaja("El turno no está abierto", 409);
     if (turno.usuarioId !== sesion.userId && sesion.rol !== "admin") {
@@ -91,8 +92,17 @@ async function totalesTurno(tx: Prisma.TransactionClient, turnoId: bigint) {
   return { turno, ventasTotal, efectivoCobrado, entradas, salidas, efectivoEsperado, ventas: ventas.length };
 }
 
-export async function corteX(orgId: bigint, turnoId: bigint) {
-  return transaccionTenant(orgId, (tx) => totalesTurno(tx, turnoId));
+export async function corteX(sesion: IdentidadCaja, turnoId: bigint) {
+  return transaccionTenant(sesion.orgId, async (tx) => {
+    const totales = await totalesTurno(tx, turnoId);
+    if (
+      totales.turno.usuarioId !== sesion.userId &&
+      !puedeGestionarTurnos(sesion.rol, sesion.puesto)
+    ) {
+      throw new ErrorCaja("Turno no encontrado", 404);
+    }
+    return totales;
+  });
 }
 
 export async function cerrarTurnoCaja(
@@ -101,10 +111,13 @@ export async function cerrarTurnoCaja(
   efectivoContado: Prisma.Decimal,
 ) {
   return transaccionTenant(sesion.orgId, async (tx) => {
-    await bloquearTurno(tx, turnoId);
+    await bloquearTurnoCaja(tx, turnoId);
     const totales = await totalesTurno(tx, turnoId);
     if (totales.turno.estado !== "abierto") throw new ErrorCaja("El corte Z ya fue realizado", 409);
-    if (totales.turno.usuarioId !== sesion.userId && sesion.rol !== "admin") {
+    if (
+      totales.turno.usuarioId !== sesion.userId &&
+      !puedeGestionarTurnos(sesion.rol, sesion.puesto)
+    ) {
       throw new ErrorCaja("No puedes cerrar el turno de otra persona", 403);
     }
     const diferencia = efectivoContado.minus(totales.efectivoEsperado);
@@ -136,7 +149,7 @@ type VentaCajaDatos = {
 export async function registrarVentaCaja(sesion: IdentidadCaja, datos: VentaCajaDatos) {
   try {
     return await transaccionTenant(sesion.orgId, async (tx) => {
-      await bloquearTurno(tx, datos.turnoId);
+      await bloquearTurnoCaja(tx, datos.turnoId);
       const turno = await tx.turnoCaja.findUnique({ where: { id: datos.turnoId } });
       if (!turno || turno.estado !== "abierto") throw new ErrorCaja("Abre un turno antes de cobrar", 409);
       if (turno.usuarioId !== sesion.userId) throw new ErrorCaja("El turno pertenece a otra persona", 403);
