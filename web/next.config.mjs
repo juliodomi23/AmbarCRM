@@ -13,7 +13,9 @@ const nextConfig = {
           // No filtrar URLs internas (con IDs de conversaciones) a sitios externos.
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           // Solo pedimos micrófono (notas de voz); el resto de APIs sensibles, bloqueadas.
-          { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(self)" }
+          { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(self)" },
+          // Solo HTTPS durante un año (el navegador ignora este header en http://localhost).
+          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" }
         ]
       }
     ];

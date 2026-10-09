@@ -827,3 +827,7 @@ SELECT setval(
   GREATEST(COALESCE((SELECT MAX(id) FROM orgs), 0), (SELECT last_value FROM orgs_id_seq), 1),
   true
 );
+
+-- /api/media verifica que los archivos antiguos (sin prefijo de empresa) pertenezcan a un
+-- mensaje de la empresa que los pide; este índice evita recorrer toda la tabla.
+CREATE INDEX IF NOT EXISTS mensajes_media_url_idx ON mensajes(media_url) WHERE media_url IS NOT NULL;

@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { db } from "@/lib/db";
-import { validarWebhookUrl } from "@/lib/webhook-url";
+import { destinoPublico } from "@/lib/webhook-url";
 
 const BASE = process.env.NEXTAUTH_URL ?? "";
 
@@ -39,7 +39,10 @@ type DatosDispatch = {
 export async function dispatchABot(bot: { webhookUrl: string }, d: DatosDispatch) {
   // El valor también se valida al guardar, pero se vuelve a comprobar aquí
   // para proteger ejecuciones con datos antiguos o migrados.
-  if (validarWebhookUrl(bot.webhookUrl)) return;
+  if (!(await destinoPublico(bot.webhookUrl))) {
+    console.error(`dispatch a bot bloqueado: ${bot.webhookUrl} no es un destino público`);
+    return;
+  }
   const sender = { identifier: d.telefono, name: d.nombre, phone_number: `+${d.telefono}` };
   const attachments =
     d.mensaje.mediaUrl && d.mensaje.tipo !== "texto"

@@ -55,6 +55,11 @@ async function resolverOrg(): Promise<bigint | null> {
   }
 }
 
+/** Empresa del request actual (contexto explícito o sesión), o null. */
+export function orgActual() {
+  return resolverOrg();
+}
+
 export const db = base.$extends({
   query: {
     $allModels: {
