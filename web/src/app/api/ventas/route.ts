@@ -106,7 +106,7 @@ export const POST = conModulo("ventas", {}, async (sesion, req: NextRequest) => 
               ventaId: creada.id,
               usuarioId: sesion.userId,
               tipo: "venta",
-              cantidad: -partida.cantidad,
+              cantidad: partida.cantidad.neg(),
               existenciaAntes: producto.stock,
               existenciaDespues,
               motivo: `Venta ${creada.folio}`,

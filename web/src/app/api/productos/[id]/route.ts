@@ -21,8 +21,11 @@ export const PATCH = conModulo(
     return NextResponse.json({ error: validacion.error }, { status: 400 });
   }
 
+  // La existencia solo cambia por ventas, compras y movimientos (con bloqueo). Si la edición
+  // la guardara, regresaría a un valor viejo cualquier venta hecha mientras se editaba.
+  const { stock: _existencia, ...datos } = validacion.data;
   try {
-    const producto = await db.producto.update({ where: { id }, data: validacion.data });
+    const producto = await db.producto.update({ where: { id }, data: datos });
     return NextResponse.json(serializar({ producto }));
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
