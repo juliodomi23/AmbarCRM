@@ -32,7 +32,7 @@ export const POST = conModulo("productos", {}, async (sesion, req: NextRequest) 
   try {
     const producto = await transaccionTenant(sesion.orgId, async (tx) => {
       const creado = await tx.producto.create({ data: validacion.data });
-      if (creado.stock > 0) {
+      if (creado.stock.gt(0)) {
         await tx.movimientoInventario.create({
           data: {
             productoId: creado.id,

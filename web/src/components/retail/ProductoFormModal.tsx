@@ -14,6 +14,8 @@ const INICIAL = {
   costo: "",
   stock: "0",
   stockMinimo: "0",
+  unidad: "pieza",
+  vendePorPeso: false,
   fotoUrl: "",
   activo: true,
 };
@@ -49,6 +51,8 @@ export function ProductoFormModal({
             costo: String(producto.costo),
             stock: String(producto.stock),
             stockMinimo: String(producto.stockMinimo),
+            unidad: producto.unidad,
+            vendePorPeso: producto.vendePorPeso,
             fotoUrl: producto.fotoUrl ?? "",
             activo: producto.activo,
           }
@@ -116,6 +120,7 @@ export function ProductoFormModal({
             label="Stock mínimo"
             type="number"
             min="0"
+            step={formulario.vendePorPeso ? "0.001" : "1"}
             value={formulario.stockMinimo}
             onChange={(evento) => set("stockMinimo", evento.target.value)}
           />
@@ -124,11 +129,27 @@ export function ProductoFormModal({
               label="Existencia inicial"
               type="number"
               min="0"
+              step={formulario.vendePorPeso ? "0.001" : "1"}
               value={formulario.stock}
               onChange={(evento) => set("stock", evento.target.value)}
             />
           )}
+          <Campo
+            label="Unidad"
+            value={formulario.unidad}
+            onChange={(evento) => set("unidad", evento.target.value)}
+            placeholder="pieza, kg, m…"
+            required
+          />
         </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={formulario.vendePorPeso}
+            onChange={(evento) => set("vendePorPeso", evento.target.checked)}
+          />
+          Permitir cantidades con hasta 3 decimales
+        </label>
         <Campo
           label="URL de fotografía"
           type="url"

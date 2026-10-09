@@ -764,8 +764,10 @@ model Producto {
   descripcion  String?
   precio       Decimal  @default(0) @db.Decimal(12, 2)
   costo        Decimal  @default(0) @db.Decimal(12, 2)
-  stock        Int      @default(0)
-  stockMinimo  Int      @default(0) @map("stock_minimo")
+  stock        Decimal  @default(0) @db.Decimal(12, 3)
+  stockMinimo  Decimal  @default(0) @map("stock_minimo") @db.Decimal(12, 3)
+  unidad       String   @default("pieza")
+  vendePorPeso Boolean  @default(false) @map("vende_por_peso")
   moneda       String   @default("MXN")
   fotoUrl      String?  @map("foto_url")
   activo       Boolean  @default(true)
@@ -817,7 +819,7 @@ model VentaPartida {
   orgId          BigInt  @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   ventaId        BigInt  @map("venta_id")
   productoId     BigInt  @map("producto_id")
-  cantidad       Int
+  cantidad       Decimal @db.Decimal(12, 3)
   precioUnitario Decimal @map("precio_unitario") @db.Decimal(12, 2)
   total          Decimal @db.Decimal(12, 2)
 
@@ -880,7 +882,7 @@ model CompraPartida {
   orgId         BigInt  @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   compraId      BigInt  @map("compra_id")
   productoId    BigInt  @map("producto_id")
-  cantidad      Int
+  cantidad      Decimal @db.Decimal(12, 3)
   costoUnitario Decimal @map("costo_unitario") @db.Decimal(12, 2)
   total         Decimal @db.Decimal(12, 2)
 
@@ -901,9 +903,9 @@ model MovimientoInventario {
   compraId          BigInt?  @map("compra_id")
   usuarioId         BigInt?  @map("usuario_id")
   tipo              String
-  cantidad          Int
-  existenciaAntes   Int      @map("existencia_antes")
-  existenciaDespues Int      @map("existencia_despues")
+  cantidad          Decimal  @db.Decimal(12, 3)
+  existenciaAntes   Decimal  @map("existencia_antes") @db.Decimal(12, 3)
+  existenciaDespues Decimal  @map("existencia_despues") @db.Decimal(12, 3)
   motivo            String?
   createdAt         DateTime @default(now()) @map("created_at")
 

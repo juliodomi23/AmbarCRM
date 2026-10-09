@@ -14,7 +14,7 @@ export default async function ComprasPage() {
         proveedor: true,
         creadoPor: { select: { id: true, nombre: true } },
         partidas: {
-          include: { producto: { select: { id: true, nombre: true, sku: true } } },
+          include: { producto: { select: { id: true, nombre: true, sku: true, unidad: true } } },
         },
       },
       orderBy: { createdAt: "desc" },

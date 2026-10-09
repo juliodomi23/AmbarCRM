@@ -14,6 +14,12 @@ import {
 } from "@/components/retail/VentaFormModal";
 import { toast } from "@/components/Toaster";
 import { Boton, formatoMoneda } from "@/components/ui";
+import {
+  centavos,
+  compararCantidades,
+  formatearCantidad,
+  numeroMoneda,
+} from "@/lib/retail-calculos";
 
 const ESTADOS = [
   "borrador",
@@ -102,11 +108,12 @@ export function VentasCliente({
   const cobradasHoy = ventasHoy.filter((venta) =>
     ["pagada", "preparando", "lista", "entregada"].includes(venta.estado),
   );
-  const ingresoHoy = cobradasHoy.reduce((total, venta) => total + Number(venta.total), 0);
+  const ingresoHoy = cobradasHoy.reduce((total, venta) => total + (centavos(venta.total) ?? 0n), 0n);
   const pedidosAbiertos = ventas.filter((venta) =>
     ["pendiente", "pagada", "preparando", "lista"].includes(venta.estado),
   ).length;
-  const ticket = cobradasHoy.length ? ingresoHoy / cobradasHoy.length : 0;
+  const divisorTicket = BigInt(cobradasHoy.length || 1);
+  const ticket = cobradasHoy.length ? (ingresoHoy + divisorTicket / 2n) / divisorTicket : 0n;
 
   async function guardarVenta(formulario: VentaFormulario) {
     setGuardando(true);
@@ -160,9 +167,9 @@ export function VentasCliente({
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi etiqueta="Ventas de hoy" valor={String(ventasHoy.length)} />
-        <Kpi etiqueta="Ingreso cobrado hoy" valor={formatoMoneda(ingresoHoy)} />
+        <Kpi etiqueta="Ingreso cobrado hoy" valor={formatoMoneda(numeroMoneda(ingresoHoy))} />
         <Kpi etiqueta="Pedidos abiertos" valor={String(pedidosAbiertos)} />
-        <Kpi etiqueta="Ticket promedio hoy" valor={formatoMoneda(ticket)} />
+        <Kpi etiqueta="Ticket promedio hoy" valor={formatoMoneda(numeroMoneda(ticket))} />
       </section>
 
       <div className="flex flex-wrap gap-2">
@@ -202,7 +209,9 @@ export function VentasCliente({
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-lg font-bold">{formatoMoneda(Number(venta.total))}</p>
+                <p className="text-lg font-bold">
+                  {formatoMoneda(numeroMoneda(centavos(venta.total) ?? 0n))}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {new Date(venta.createdAt).toLocaleString("es-MX", {
                     timeZone: "America/Mexico_City",
@@ -216,11 +225,13 @@ export function VentasCliente({
               <div className="text-sm text-muted-foreground">
                 {venta.partidas.map((partida) => (
                   <span key={partida.id} className="mr-3 inline-block">
-                    {partida.cantidad} × {partida.producto.nombre}
+                    {formatearCantidad(partida.cantidad, partida.producto.unidad)} × {partida.producto.nombre}
                   </span>
                 ))}
-                {venta.descuento > 0 && (
-                  <span className="inline-block">Descuento: {formatoMoneda(venta.descuento)}</span>
+                {compararCantidades(venta.descuento, 0) > 0 && (
+                  <span className="inline-block">
+                    Descuento: {formatoMoneda(numeroMoneda(centavos(venta.descuento) ?? 0n))}
+                  </span>
                 )}
               </div>
               <label className="space-y-1 text-xs text-muted-foreground">

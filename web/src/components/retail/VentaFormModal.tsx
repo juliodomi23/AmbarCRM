@@ -3,6 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ContactoVenta, ProductoRetail } from "@/components/retail/tipos";
 import { Boton, Campo, Modal, formatoMoneda } from "@/components/ui";
+import {
+  centavos,
+  formatearCantidad,
+  numeroMoneda,
+  totalPartidaCentavos,
+} from "@/lib/retail-calculos";
 
 type PartidaForm = { productoId: string; cantidad: string };
 
@@ -61,11 +67,12 @@ export function VentaFormModal({
     () =>
       formulario.partidas.reduce((total, partida) => {
         const producto = productos.find((item) => item.id === partida.productoId);
-        return total + Number(producto?.precio ?? 0) * Number(partida.cantidad || 0);
-      }, 0),
+        return total + (producto ? totalPartidaCentavos(producto.precio, partida.cantidad || 0) : 0n);
+      }, 0n),
     [formulario.partidas, productos],
   );
-  const total = Math.max(0, subtotal - Number(formulario.descuento || 0));
+  const descuento = centavos(formulario.descuento || 0) ?? 0n;
+  const total = subtotal > descuento ? subtotal - descuento : 0n;
 
   function set(campo: keyof Omit<VentaFormulario, "partidas">, valor: string) {
     setFormulario((actual) => ({ ...actual, [campo]: valor }));
@@ -140,14 +147,15 @@ export function VentaFormModal({
                     <option value="">Selecciona un producto</option>
                     {disponibles.map((producto) => (
                       <option key={producto.id} value={producto.id}>
-                        {producto.nombre} · {formatoMoneda(Number(producto.precio))}
+                        {producto.nombre} · {formatoMoneda(numeroMoneda(centavos(producto.precio) ?? 0n))}
                       </option>
                     ))}
                   </select>
                   <input
                     type="number"
-                    min="1"
-                    max={seleccionado?.stock || undefined}
+                    min={seleccionado?.vendePorPeso ? "0.001" : "1"}
+                    step={seleccionado?.vendePorPeso ? "0.001" : "1"}
+                    max={seleccionado ? String(seleccionado.stock) : undefined}
                     value={partida.cantidad}
                     onChange={(evento) => setPartida(indice, "cantidad", evento.target.value)}
                     className="w-20 rounded-lg border border-input px-2 py-2 text-sm"
@@ -167,7 +175,7 @@ export function VentaFormModal({
                 </div>
                 {seleccionado && (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {seleccionado.stock} disponibles
+                    {formatearCantidad(seleccionado.stock, seleccionado.unidad)} disponibles
                   </p>
                 )}
               </div>
@@ -232,11 +240,11 @@ export function VentaFormModal({
         <div className="rounded-lg bg-muted p-3 text-sm">
           <div className="flex justify-between text-muted-foreground">
             <span>Subtotal</span>
-            <span>{formatoMoneda(subtotal)}</span>
+            <span>{formatoMoneda(numeroMoneda(subtotal))}</span>
           </div>
           <div className="mt-1 flex justify-between text-lg font-bold">
             <span>Total</span>
-            <span>{formatoMoneda(total)}</span>
+            <span>{formatoMoneda(numeroMoneda(total))}</span>
           </div>
         </div>
         <div className="flex justify-end gap-2">

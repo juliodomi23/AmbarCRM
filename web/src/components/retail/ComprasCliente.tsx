@@ -18,6 +18,13 @@ import type {
 } from "@/components/retail/tipos";
 import { toast } from "@/components/Toaster";
 import { Boton, formatoMoneda } from "@/components/ui";
+import {
+  centavos,
+  formatearCantidad,
+  formatearMilesimas,
+  milesimas,
+  numeroMoneda,
+} from "@/lib/retail-calculos";
 
 const ESTADOS = ["borrador", "ordenada", "recibida", "cancelada"] as const;
 const ETIQUETAS: Record<string, string> = {
@@ -55,11 +62,11 @@ export function ComprasCliente({
   const [guardando, setGuardando] = useState(false);
   const pendientes = compras.filter((compra) => compra.estado === "ordenada");
   const recibidas = compras.filter((compra) => compra.estado === "recibida");
-  const inversion = recibidas.reduce((total, compra) => total + Number(compra.total), 0);
+  const inversion = recibidas.reduce((total, compra) => total + (centavos(compra.total) ?? 0n), 0n);
   const unidadesPendientes = pendientes.reduce(
     (total, compra) =>
-      total + compra.partidas.reduce((suma, partida) => suma + partida.cantidad, 0),
-    0,
+      total + compra.partidas.reduce((suma, partida) => suma + (milesimas(partida.cantidad) ?? 0n), 0n),
+    0n,
   );
 
   async function guardarProveedor(formulario: ProveedorFormulario) {
@@ -137,12 +144,12 @@ export function ComprasCliente({
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi etiqueta="Órdenes por recibir" valor={String(pendientes.length)} />
-        <Kpi etiqueta="Unidades por recibir" valor={String(unidadesPendientes)} />
+        <Kpi etiqueta="Cantidad por recibir" valor={formatearMilesimas(unidadesPendientes)} />
         <Kpi
           etiqueta="Proveedores activos"
           valor={String(proveedores.filter((proveedor) => proveedor.activo).length)}
         />
-        <Kpi etiqueta="Compras recibidas" valor={formatoMoneda(inversion)} />
+        <Kpi etiqueta="Compras recibidas" valor={formatoMoneda(numeroMoneda(inversion))} />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
@@ -164,7 +171,9 @@ export function ComprasCliente({
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold">{formatoMoneda(Number(compra.total))}</p>
+                  <p className="text-lg font-bold">
+                    {formatoMoneda(numeroMoneda(centavos(compra.total) ?? 0n))}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {new Date(compra.createdAt).toLocaleDateString("es-MX")}
                   </p>
@@ -174,7 +183,7 @@ export function ComprasCliente({
                 <p className="text-sm text-muted-foreground">
                   {compra.partidas.map((partida) => (
                     <span key={partida.id} className="mr-3 inline-block">
-                      {partida.cantidad} × {partida.producto.nombre}
+                      {formatearCantidad(partida.cantidad, partida.producto.unidad)} × {partida.producto.nombre}
                     </span>
                   ))}
                 </p>

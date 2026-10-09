@@ -254,8 +254,10 @@ CREATE TABLE IF NOT EXISTS productos (
   descripcion TEXT,
   precio NUMERIC(12, 2) NOT NULL DEFAULT 0,
   costo NUMERIC(12, 2) NOT NULL DEFAULT 0,
-  stock INTEGER NOT NULL DEFAULT 0,
-  stock_minimo INTEGER NOT NULL DEFAULT 0,
+  stock NUMERIC(12, 3) NOT NULL DEFAULT 0,
+  stock_minimo NUMERIC(12, 3) NOT NULL DEFAULT 0,
+  unidad TEXT NOT NULL DEFAULT 'pieza',
+  vende_por_peso BOOLEAN NOT NULL DEFAULT false,
   moneda TEXT NOT NULL DEFAULT 'MXN',
   foto_url TEXT,
   activo BOOLEAN NOT NULL DEFAULT true,
@@ -308,7 +310,7 @@ CREATE TABLE IF NOT EXISTS venta_partidas (
     REFERENCES orgs(id),
   venta_id BIGINT NOT NULL REFERENCES ventas(id) ON DELETE CASCADE,
   producto_id BIGINT NOT NULL REFERENCES productos(id) ON DELETE RESTRICT,
-  cantidad INTEGER NOT NULL,
+  cantidad NUMERIC(12, 3) NOT NULL,
   precio_unitario NUMERIC(12, 2) NOT NULL,
   total NUMERIC(12, 2) NOT NULL,
   CHECK (cantidad > 0),
@@ -367,7 +369,7 @@ CREATE TABLE IF NOT EXISTS compra_partidas (
     REFERENCES orgs(id),
   compra_id BIGINT NOT NULL REFERENCES compras(id) ON DELETE CASCADE,
   producto_id BIGINT NOT NULL REFERENCES productos(id) ON DELETE RESTRICT,
-  cantidad INTEGER NOT NULL,
+  cantidad NUMERIC(12, 3) NOT NULL,
   costo_unitario NUMERIC(12, 2) NOT NULL,
   total NUMERIC(12, 2) NOT NULL,
   CHECK (cantidad > 0),
@@ -388,9 +390,9 @@ CREATE TABLE IF NOT EXISTS movimientos_inventario (
   compra_id BIGINT REFERENCES compras(id) ON DELETE SET NULL,
   usuario_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
   tipo TEXT NOT NULL,
-  cantidad INTEGER NOT NULL,
-  existencia_antes INTEGER NOT NULL,
-  existencia_despues INTEGER NOT NULL,
+  cantidad NUMERIC(12, 3) NOT NULL,
+  existencia_antes NUMERIC(12, 3) NOT NULL,
+  existencia_despues NUMERIC(12, 3) NOT NULL,
   motivo TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CHECK (cantidad <> 0),
@@ -399,6 +401,49 @@ CREATE TABLE IF NOT EXISTS movimientos_inventario (
 );
 ALTER TABLE movimientos_inventario
   ADD COLUMN IF NOT EXISTS compra_id BIGINT REFERENCES compras(id) ON DELETE SET NULL;
+
+-- Cantidades de retail: piezas enteras o hasta tres decimales para venta por peso.
+-- El bloque comprueba el tipo para poder aplicar este archivo repetidamente tanto en
+-- instalaciones nuevas como sobre las columnas INTEGER ya existentes.
+DO $$
+DECLARE
+  columna RECORD;
+BEGIN
+  FOR columna IN
+    SELECT * FROM (VALUES
+      ('productos', 'stock'),
+      ('productos', 'stock_minimo'),
+      ('venta_partidas', 'cantidad'),
+      ('compra_partidas', 'cantidad'),
+      ('movimientos_inventario', 'cantidad'),
+      ('movimientos_inventario', 'existencia_antes'),
+      ('movimientos_inventario', 'existencia_despues')
+    ) AS columnas(tabla, nombre)
+  LOOP
+    IF EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = columna.tabla
+        AND column_name = columna.nombre
+        AND (
+          data_type <> 'numeric'
+          OR numeric_precision IS DISTINCT FROM 12
+          OR numeric_scale IS DISTINCT FROM 3
+        )
+    ) THEN
+      EXECUTE format(
+        'ALTER TABLE %I ALTER COLUMN %I TYPE numeric(12,3) USING %I::numeric',
+        columna.tabla,
+        columna.nombre,
+        columna.nombre
+      );
+    END IF;
+  END LOOP;
+END $$;
+
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS unidad TEXT NOT NULL DEFAULT 'pieza';
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS vende_por_peso BOOLEAN NOT NULL DEFAULT false;
 CREATE INDEX IF NOT EXISTS movimientos_producto_created_idx
   ON movimientos_inventario(producto_id, created_at);
 CREATE INDEX IF NOT EXISTS movimientos_venta_id_idx

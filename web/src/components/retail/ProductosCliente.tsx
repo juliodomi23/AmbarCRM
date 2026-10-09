@@ -11,6 +11,15 @@ import {
 import type { ProductoRetail } from "@/components/retail/tipos";
 import { toast } from "@/components/Toaster";
 import { Boton, formatoMoneda } from "@/components/ui";
+import {
+  centavos,
+  compararCantidades,
+  formatearCantidad,
+  formatearMilesimas,
+  milesimas,
+  numeroMoneda,
+  totalPartidaCentavos,
+} from "@/lib/retail-calculos";
 
 function errorApi(payload: unknown) {
   if (payload && typeof payload === "object" && "error" in payload) {
@@ -32,10 +41,10 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
     const termino = busqueda.trim().toLowerCase();
     return productos.filter((producto) => {
       if (filtro === "activos" && !producto.activo) return false;
-      if (filtro === "bajo" && (!producto.activo || producto.stock > producto.stockMinimo)) {
+      if (filtro === "bajo" && (!producto.activo || compararCantidades(producto.stock, producto.stockMinimo) > 0)) {
         return false;
       }
-      if (filtro === "agotado" && (!producto.activo || producto.stock !== 0)) return false;
+      if (filtro === "agotado" && (!producto.activo || compararCantidades(producto.stock, 0) !== 0)) return false;
       if (!termino) return true;
       return [producto.nombre, producto.sku, producto.codigoBarras, producto.categoria]
         .filter(Boolean)
@@ -44,11 +53,11 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
   }, [busqueda, filtro, productos]);
 
   const activos = productos.filter((producto) => producto.activo);
-  const bajoStock = activos.filter((producto) => producto.stock <= producto.stockMinimo).length;
-  const unidades = activos.reduce((total, producto) => total + producto.stock, 0);
+  const bajoStock = activos.filter((producto) => compararCantidades(producto.stock, producto.stockMinimo) <= 0).length;
+  const unidades = activos.reduce((total, producto) => total + (milesimas(producto.stock) ?? 0n), 0n);
   const valorCosto = activos.reduce(
-    (total, producto) => total + producto.stock * Number(producto.costo),
-    0,
+    (total, producto) => total + totalPartidaCentavos(producto.costo, producto.stock),
+    0n,
   );
 
   function abrirNuevo() {
@@ -122,9 +131,9 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi etiqueta="Productos activos" valor={String(activos.length)} />
-        <Kpi etiqueta="Unidades disponibles" valor={unidades.toLocaleString("es-MX")} />
+        <Kpi etiqueta="Existencia acumulada" valor={formatearMilesimas(unidades)} />
         <Kpi etiqueta="Stock bajo o agotado" valor={String(bajoStock)} alerta={bajoStock > 0} />
-        <Kpi etiqueta="Valor a costo" valor={formatoMoneda(valorCosto)} />
+        <Kpi etiqueta="Valor a costo" valor={formatoMoneda(numeroMoneda(valorCosto))} />
       </section>
 
       <div className="flex flex-wrap gap-2">
@@ -161,7 +170,7 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
           </thead>
           <tbody>
             {filtrados.map((producto) => {
-              const bajo = producto.activo && producto.stock <= producto.stockMinimo;
+              const bajo = producto.activo && compararCantidades(producto.stock, producto.stockMinimo) <= 0;
               const ultimo = producto.movimientos?.[0];
               return (
                 <tr key={producto.id} className="border-t border-border">
@@ -181,7 +190,7 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
                     {producto.categoria ?? "Sin categoría"}
                   </td>
                   <td className="px-4 py-3 text-right font-medium">
-                    {formatoMoneda(Number(producto.precio), producto.moneda)}
+                    {formatoMoneda(numeroMoneda(centavos(producto.precio) ?? 0n), producto.moneda)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <span
@@ -190,16 +199,19 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
                         bajo ? "bg-warning/15 text-warning" : "bg-success/15 text-success",
                       ].join(" ")}
                     >
-                      {producto.stock}
+                      {formatearCantidad(producto.stock, producto.unidad)}
                     </span>
                     <p className="mt-1 text-[10px] text-muted-foreground">
-                      mínimo {producto.stockMinimo}
+                      mínimo {formatearCantidad(producto.stockMinimo, producto.unidad)}
                     </p>
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
                     {ultimo ? (
                       <>
-                        <p>{ultimo.cantidad > 0 ? "+" : ""}{ultimo.cantidad} · {ultimo.motivo}</p>
+                        <p>
+                          {compararCantidades(ultimo.cantidad, 0) > 0 ? "+" : ""}
+                          {formatearCantidad(ultimo.cantidad, producto.unidad)} · {ultimo.motivo}
+                        </p>
                         <p>{new Date(ultimo.createdAt).toLocaleDateString("es-MX")}</p>
                       </>
                     ) : (

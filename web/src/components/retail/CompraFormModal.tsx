@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ProductoRetail, ProveedorRetail } from "@/components/retail/tipos";
 import { Boton, Campo, Modal, formatoMoneda } from "@/components/ui";
+import { numeroMoneda, totalPartidaCentavos } from "@/lib/retail-calculos";
 
 type PartidaCompraForm = {
   productoId: string;
@@ -68,8 +69,8 @@ export function CompraFormModal({
     () =>
       formulario.partidas.reduce(
         (suma, partida) =>
-          suma + Number(partida.cantidad || 0) * Number(partida.costoUnitario || 0),
-        0,
+          suma + totalPartidaCentavos(partida.costoUnitario || 0, partida.cantidad || 0),
+        0n,
       ),
     [formulario.partidas],
   );
@@ -175,7 +176,8 @@ export function CompraFormModal({
                 <Campo
                   label="Cantidad"
                   type="number"
-                  min="1"
+                  min={productos.find((producto) => producto.id === partida.productoId)?.vendePorPeso ? "0.001" : "1"}
+                  step={productos.find((producto) => producto.id === partida.productoId)?.vendePorPeso ? "0.001" : "1"}
                   value={partida.cantidad}
                   onChange={(evento) => setPartida(indice, "cantidad", evento.target.value)}
                   required
@@ -212,7 +214,7 @@ export function CompraFormModal({
         />
         <div className="flex justify-between rounded-lg bg-muted p-3 font-bold">
           <span>Total de compra</span>
-          <span>{formatoMoneda(total)}</span>
+          <span>{formatoMoneda(numeroMoneda(total))}</span>
         </div>
         <div className="flex justify-end gap-2">
           <Boton type="button" variante="ghost" onClick={onClose}>Cancelar</Boton>

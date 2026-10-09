@@ -2,10 +2,13 @@ import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
+  CERO_DECIMAL,
   estadoUsaInventario,
   folioVenta,
+  importePartida,
   validarVenta,
 } from "@/lib/retail";
+import { cantidadValidaParaProducto } from "@/lib/cantidad";
 import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
@@ -15,7 +18,7 @@ export const GET = conModulo("ventas", {}, async (sesion) => {
     include: {
       contacto: { select: { id: true, nombre: true, telefono: true } },
       creadoPor: { select: { id: true, nombre: true } },
-      partidas: { include: { producto: { select: { id: true, nombre: true, sku: true } } } },
+      partidas: { include: { producto: { select: { id: true, nombre: true, sku: true, unidad: true } } } },
     },
     orderBy: { createdAt: "desc" },
     take: 100,
@@ -53,14 +56,18 @@ export const POST = conModulo("ventas", {}, async (sesion, req: NextRequest) => 
       const porId = new Map(productos.map((producto) => [String(producto.id), producto]));
       const subtotal = partidas.reduce((suma, partida) => {
         const producto = porId.get(String(partida.productoId));
-        return suma + Number(producto?.precio ?? 0) * partida.cantidad;
-      }, 0);
-      if (descuento > subtotal) throw new ErrorRetail("El descuento no puede superar el subtotal");
+        if (!producto) return suma;
+        if (!cantidadValidaParaProducto(partida.cantidad, producto.vendePorPeso)) {
+          throw new ErrorRetail(`${producto.nombre} se vende por piezas enteras`);
+        }
+        return suma.plus(importePartida(producto.precio, partida.cantidad));
+      }, CERO_DECIMAL);
+      if (descuento.gt(subtotal)) throw new ErrorRetail("El descuento no puede superar el subtotal");
       const aplicaStock = estadoUsaInventario(cabecera.estado);
       if (aplicaStock) {
         for (const partida of partidas) {
           const producto = porId.get(String(partida.productoId));
-          if (!producto || producto.stock < partida.cantidad) {
+          if (!producto || producto.stock.lt(partida.cantidad)) {
             throw new ErrorRetail(`No hay existencias suficientes de ${producto?.nombre ?? "un producto"}`);
           }
         }
@@ -74,7 +81,7 @@ export const POST = conModulo("ventas", {}, async (sesion, req: NextRequest) => 
           creadoPorId: sesion.userId,
           subtotal,
           descuento,
-          total: subtotal - descuento,
+          total: subtotal.minus(descuento),
           stockAplicado: aplicaStock,
         },
       });
@@ -87,11 +94,11 @@ export const POST = conModulo("ventas", {}, async (sesion, req: NextRequest) => 
             productoId: producto.id,
             cantidad: partida.cantidad,
             precioUnitario: producto.precio,
-            total: Number(producto.precio) * partida.cantidad,
+            total: importePartida(producto.precio, partida.cantidad),
           },
         });
         if (aplicaStock) {
-          const existenciaDespues = producto.stock - partida.cantidad;
+          const existenciaDespues = producto.stock.minus(partida.cantidad);
           await tx.producto.update({ where: { id: producto.id }, data: { stock: existenciaDespues } });
           await tx.movimientoInventario.create({
             data: {

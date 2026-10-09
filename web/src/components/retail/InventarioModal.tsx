@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Boton, Campo, Modal } from "@/components/ui";
 import type { ProductoRetail } from "@/components/retail/tipos";
+import { formatearCantidad } from "@/lib/retail-calculos";
 
 export function InventarioModal({
   producto,
@@ -37,7 +38,9 @@ export function InventarioModal({
       >
         <div className="rounded-lg bg-muted p-3 text-sm">
           <p className="font-semibold">{producto?.nombre}</p>
-          <p className="text-muted-foreground">Existencia actual: {producto?.stock ?? 0}</p>
+          <p className="text-muted-foreground">
+            Existencia actual: {producto ? formatearCantidad(producto.stock, producto.unidad) : "0"}
+          </p>
         </div>
         <label className="block space-y-1">
           <span className="text-sm font-medium text-muted-foreground">Movimiento</span>
@@ -53,7 +56,8 @@ export function InventarioModal({
         <Campo
           label="Cantidad"
           type="number"
-          min="1"
+          min={producto?.vendePorPeso ? "0.001" : "1"}
+          step={producto?.vendePorPeso ? "0.001" : "1"}
           value={cantidad}
           onChange={(evento) => setCantidad(evento.target.value)}
           required

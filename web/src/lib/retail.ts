@@ -1,5 +1,6 @@
 import { dinero } from "./dinero.ts";
 import { Prisma } from "@prisma/client";
+import { booleano, cantidad, cantidadValidaParaProducto } from "./cantidad.ts";
 
 export const ESTADOS_VENTA = [
   "borrador",
@@ -26,13 +27,8 @@ function texto(valor: unknown) {
   return String(valor ?? "").trim() || null;
 }
 
-function entero(valor: unknown, minimo = 0) {
-  const numero = Number(valor);
-  return Number.isInteger(numero) && numero >= minimo ? numero : null;
-}
-
 function decimal(valor: unknown) {
-  return dinero(valor);
+  return dinero(valor) === null ? null : new Prisma.Decimal(String(valor).trim());
 }
 
 function idBigInt(valor: unknown) {
@@ -44,14 +40,21 @@ export function validarProducto(body: Record<string, unknown>) {
   const nombre = texto(body.nombre);
   const precio = decimal(body.precio);
   const costo = decimal(body.costo ?? 0);
-  const stock = entero(body.stock ?? 0);
-  const stockMinimo = entero(body.stockMinimo ?? 0);
+  const vendePorPeso = booleano(body.vendePorPeso);
+  const stock = cantidad(body.stock ?? 0);
+  const stockMinimo = cantidad(body.stockMinimo ?? 0);
 
   if (!nombre) return { error: "El nombre del producto es obligatorio" } as const;
   if (precio === null) return { error: "El precio no es válido" } as const;
   if (costo === null) return { error: "El costo no es válido" } as const;
   if (stock === null) return { error: "La existencia no es válida" } as const;
   if (stockMinimo === null) return { error: "El stock mínimo no es válido" } as const;
+  if (!cantidadValidaParaProducto(stock, vendePorPeso)) {
+    return { error: "Los productos por pieza requieren una existencia entera" } as const;
+  }
+  if (!cantidadValidaParaProducto(stockMinimo, vendePorPeso)) {
+    return { error: "Los productos por pieza requieren un stock mínimo entero" } as const;
+  }
 
   const data: Prisma.ProductoUncheckedCreateInput = {
     nombre,
@@ -63,6 +66,8 @@ export function validarProducto(body: Record<string, unknown>) {
     costo,
     stock,
     stockMinimo,
+    unidad: texto(body.unidad) ?? "pieza",
+    vendePorPeso,
     moneda: texto(body.moneda) ?? "MXN",
     fotoUrl: texto(body.fotoUrl),
     activo: body.activo === undefined ? true : Boolean(body.activo),
@@ -72,12 +77,14 @@ export function validarProducto(body: Record<string, unknown>) {
 
 export function validarMovimiento(body: Record<string, unknown>) {
   const tipo = String(body.tipo ?? "") as TipoMovimiento;
-  const cantidad = entero(body.cantidad, 1);
+  const cantidadMovimiento = cantidad(body.cantidad, new Prisma.Decimal("0.001"));
   if (!TIPOS_MOVIMIENTO.includes(tipo)) {
     return { error: "El tipo de movimiento no es válido" } as const;
   }
-  if (cantidad === null) return { error: "La cantidad debe ser un entero mayor a cero" } as const;
-  return { tipo, cantidad, motivo: texto(body.motivo) } as const;
+  if (cantidadMovimiento === null) {
+    return { error: "La cantidad debe ser mayor a cero y tener máximo 3 decimales" } as const;
+  }
+  return { tipo, cantidad: cantidadMovimiento, motivo: texto(body.motivo) } as const;
 }
 
 export function validarProveedor(body: Record<string, unknown>) {
@@ -100,8 +107,8 @@ export function validarProveedor(body: Record<string, unknown>) {
   } as const;
 }
 
-export type PartidaEntrada = { productoId: bigint; cantidad: number };
-export type PartidaCompraEntrada = PartidaEntrada & { costoUnitario: number };
+export type PartidaEntrada = { productoId: bigint; cantidad: Prisma.Decimal };
+export type PartidaCompraEntrada = PartidaEntrada & { costoUnitario: Prisma.Decimal };
 
 export function validarVenta(body: Record<string, unknown>) {
   const estado = String(body.estado ?? "pendiente") as EstadoVenta;
@@ -127,15 +134,15 @@ export function validarVenta(body: Record<string, unknown>) {
     if (!valor || typeof valor !== "object") return { error: "Hay una partida inválida" } as const;
     const partida = valor as Record<string, unknown>;
     const productoId = idBigInt(partida.productoId);
-    const cantidad = entero(partida.cantidad, 1);
-    if (productoId === null || cantidad === null) {
+    const cantidadPartida = cantidad(partida.cantidad, new Prisma.Decimal("0.001"));
+    if (productoId === null || cantidadPartida === null) {
       return { error: "Revisa los productos y sus cantidades" } as const;
     }
     const clave = String(productoId);
     const anterior = acumuladas.get(clave);
     acumuladas.set(clave, {
       productoId,
-      cantidad: cantidad + (anterior?.cantidad ?? 0),
+      cantidad: cantidadPartida.plus(anterior?.cantidad ?? 0),
     });
   }
 
@@ -169,15 +176,15 @@ export function validarCompra(body: Record<string, unknown>) {
     if (!valor || typeof valor !== "object") return { error: "Hay una partida inválida" } as const;
     const partida = valor as Record<string, unknown>;
     const productoId = idBigInt(partida.productoId);
-    const cantidad = entero(partida.cantidad, 1);
+    const cantidadPartida = cantidad(partida.cantidad, new Prisma.Decimal("0.001"));
     const costoUnitario = decimal(partida.costoUnitario);
-    if (productoId === null || cantidad === null || costoUnitario === null) {
+    if (productoId === null || cantidadPartida === null || costoUnitario === null) {
       return { error: "Revisa los productos, cantidades y costos" } as const;
     }
     const clave = String(productoId);
     acumuladas.set(clave, {
       productoId,
-      cantidad: cantidad + (acumuladas.get(clave)?.cantidad ?? 0),
+      cantidad: cantidadPartida.plus(acumuladas.get(clave)?.cantidad ?? 0),
       costoUnitario,
     });
   }
@@ -194,6 +201,15 @@ export function validarCompra(body: Record<string, unknown>) {
 export function compraUsaInventario(estado: string) {
   return estado === "recibida";
 }
+
+export function importePartida(
+  precioUnitario: Prisma.Decimal,
+  cantidadPartida: Prisma.Decimal,
+) {
+  return precioUnitario.mul(cantidadPartida).toDecimalPlaces(2);
+}
+
+export const CERO_DECIMAL = new Prisma.Decimal(0);
 
 export function folioVenta() {
   return `V-${Date.now().toString(36).toUpperCase()}`;

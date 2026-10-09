@@ -1,9 +1,11 @@
+import type { DecimalSerializado } from "@/lib/retail-calculos";
+
 export type MovimientoRetail = {
   id: string;
   tipo: string;
-  cantidad: number;
-  existenciaAntes: number;
-  existenciaDespues: number;
+  cantidad: DecimalSerializado;
+  existenciaAntes: DecimalSerializado;
+  existenciaDespues: DecimalSerializado;
   motivo: string | null;
   createdAt: string;
   usuario: { nombre: string } | null;
@@ -16,10 +18,12 @@ export type ProductoRetail = {
   nombre: string;
   categoria: string | null;
   descripcion: string | null;
-  precio: number;
-  costo: number;
-  stock: number;
-  stockMinimo: number;
+  precio: DecimalSerializado;
+  costo: DecimalSerializado;
+  stock: DecimalSerializado;
+  stockMinimo: DecimalSerializado;
+  unidad: string;
+  vendePorPeso: boolean;
   moneda: string;
   fotoUrl: string | null;
   activo: boolean;
@@ -38,9 +42,9 @@ export type VentaRetail = {
   estado: string;
   canal: string;
   metodoPago: string | null;
-  subtotal: number;
-  descuento: number;
-  total: number;
+  subtotal: DecimalSerializado;
+  descuento: DecimalSerializado;
+  total: DecimalSerializado;
   moneda: string;
   notas: string | null;
   createdAt: string;
@@ -48,10 +52,10 @@ export type VentaRetail = {
   creadoPor: { id: string; nombre: string } | null;
   partidas: Array<{
     id: string;
-    cantidad: number;
-    precioUnitario: number;
-    total: number;
-    producto: { id: string; nombre: string; sku: string | null };
+    cantidad: DecimalSerializado;
+    precioUnitario: DecimalSerializado;
+    total: DecimalSerializado;
+    producto: { id: string; nombre: string; sku: string | null; unidad: string };
   }>;
 };
 
@@ -70,7 +74,7 @@ export type CompraRetail = {
   id: string;
   folio: string;
   estado: string;
-  total: number;
+  total: DecimalSerializado;
   moneda: string;
   notas: string | null;
   createdAt: string;
@@ -78,9 +82,9 @@ export type CompraRetail = {
   creadoPor: { id: string; nombre: string } | null;
   partidas: Array<{
     id: string;
-    cantidad: number;
-    costoUnitario: number;
-    total: number;
-    producto: { id: string; nombre: string; sku: string | null };
+    cantidad: DecimalSerializado;
+    costoUnitario: DecimalSerializado;
+    total: DecimalSerializado;
+    producto: { id: string; nombre: string; sku: string | null; unidad: string };
   }>;
 };

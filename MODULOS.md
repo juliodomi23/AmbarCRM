@@ -73,6 +73,11 @@ incrementan. Al cancelar o regresar a borrador, el movimiento se revierte y
 queda auditado. Los puestos operativos incluyen vendedor de tienda, cajero y
 encargado de inventario.
 
+Las existencias y partidas admiten hasta tres decimales para productos marcados
+como venta por peso (por ejemplo, `1.234 kg`). Los productos por pieza conservan
+cantidades enteras. Los cálculos se hacen con `Prisma.Decimal` en servidor y con
+milésimas o centavos enteros en la interfaz para evitar errores de punto flotante.
+
 ## Módulo Citas
 
 Cuando Citas está activo aparece en el menú lateral, la barra móvil y Ctrl+K. Su

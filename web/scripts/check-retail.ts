@@ -36,11 +36,11 @@ assert.ok(
   }),
 );
 assert.ok("error" in validarProducto({ nombre: "", precio: -1 }));
-assert.deepEqual(validarMovimiento({ tipo: "entrada", cantidad: 4, motivo: "Compra" }), {
-  tipo: "entrada",
-  cantidad: 4,
-  motivo: "Compra",
-});
+const movimiento = validarMovimiento({ tipo: "entrada", cantidad: 4, motivo: "Compra" });
+assert.ok("cantidad" in movimiento);
+assert.equal(String(movimiento.cantidad), "4");
+assert.equal(movimiento.tipo, "entrada");
+assert.equal(movimiento.motivo, "Compra");
 assert.ok("error" in validarMovimiento({ tipo: "salida", cantidad: 0 }));
 assert.ok("data" in validarProveedor({ nombre: "Proveedor demo", email: "hola@demo.test" }));
 assert.ok(

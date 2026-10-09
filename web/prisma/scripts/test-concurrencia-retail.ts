@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import pg from "pg";
+import { Prisma } from "@prisma/client";
 import { dbRaw } from "../../src/lib/db";
 import {
   registrarColegiaturaIdempotente,
@@ -28,44 +29,66 @@ function verificar(comprobacion: () => void) {
   if (!observar) comprobacion();
 }
 
-async function crearProducto(nombre: string, stock: number) {
+async function crearProducto(nombre: string, stock: Prisma.Decimal.Value, vendePorPeso = false) {
   return transaccionTenant(orgId, (tx) => tx.producto.create({
-    data: { sku: `${nombre}-${sufijo}`, nombre, precio: 100, stock },
+    data: {
+      sku: `${nombre}-${sufijo}`,
+      nombre,
+      precio: 100,
+      stock: new Prisma.Decimal(stock),
+      unidad: vendePorPeso ? "kg" : "pieza",
+      vendePorPeso,
+    },
   }));
 }
 
 async function stock(productoId: bigint) {
   return transaccionTenant(orgId, async (tx) => {
     const producto = await tx.producto.findUniqueOrThrow({ where: { id: productoId } });
-    return producto.stock;
+    return producto.stock.toNumber();
   });
 }
 
-async function vender(productoIds: bigint[], folio: string) {
+async function vender(
+  productoIds: bigint[],
+  folio: string,
+  cantidad = new Prisma.Decimal(1),
+) {
   return transaccionTenant(orgId, async (tx) => {
     await bloquearProductos(tx, productoIds);
     const productos = await tx.producto.findMany({ where: { id: { in: productoIds } } });
-    if (productos.some((producto) => producto.stock < 1)) {
+    if (productos.some((producto) => producto.stock.lt(cantidad))) {
       throw new ErrorRetail("Sin existencias");
     }
     await pausa();
     const venta = await tx.venta.create({
-      data: { folio, estado: "pagada", total: productos.length * 100, stockAplicado: true },
+      data: {
+        folio,
+        estado: "pagada",
+        total: cantidad.mul(productos.length * 100).toDecimalPlaces(2),
+        stockAplicado: true,
+      },
     });
     for (const productoId of productoIds) {
       const producto = productos.find((item) => item.id === productoId);
       if (!producto) throw new ErrorRetail("Producto no encontrado");
-      const existenciaDespues = producto.stock - 1;
+      const existenciaDespues = producto.stock.minus(cantidad);
       await tx.producto.update({ where: { id: productoId }, data: { stock: existenciaDespues } });
       await tx.ventaPartida.create({
-        data: { ventaId: venta.id, productoId, cantidad: 1, precioUnitario: 100, total: 100 },
+        data: {
+          ventaId: venta.id,
+          productoId,
+          cantidad,
+          precioUnitario: 100,
+          total: cantidad.mul(100).toDecimalPlaces(2),
+        },
       });
       await tx.movimientoInventario.create({
         data: {
           productoId,
           ventaId: venta.id,
           tipo: "venta",
-          cantidad: -1,
+          cantidad: cantidad.neg(),
           existenciaAntes: producto.stock,
           existenciaDespues,
         },
@@ -80,13 +103,14 @@ async function moverInventario(productoId: bigint, cantidad: number) {
     await bloquearProductos(tx, [productoId]);
     const producto = await tx.producto.findUniqueOrThrow({ where: { id: productoId } });
     await pausa();
-    const existenciaDespues = producto.stock + cantidad;
+    const cantidadDecimal = new Prisma.Decimal(cantidad);
+    const existenciaDespues = producto.stock.plus(cantidadDecimal);
     await tx.producto.update({ where: { id: productoId }, data: { stock: existenciaDespues } });
     return tx.movimientoInventario.create({
       data: {
         productoId,
         tipo: "entrada",
-        cantidad,
+        cantidad: cantidadDecimal,
         existenciaAntes: producto.stock,
         existenciaDespues,
       },
@@ -106,7 +130,7 @@ async function recibirCompra(compraId: bigint) {
     await pausa();
     for (const partida of compra.partidas) {
       const producto = await tx.producto.findUniqueOrThrow({ where: { id: partida.productoId } });
-      const existenciaDespues = producto.stock + partida.cantidad;
+      const existenciaDespues = producto.stock.plus(partida.cantidad);
       await tx.producto.update({
         where: { id: producto.id },
         data: { stock: existenciaDespues },
@@ -141,10 +165,10 @@ async function cambiarEstadoVenta(ventaId: bigint, estado: string, aplicaStock: 
       await bloquearProductos(tx, venta.partidas.map((partida) => partida.productoId));
       for (const partida of venta.partidas) {
         const producto = await tx.producto.findUniqueOrThrow({ where: { id: partida.productoId } });
-        const cambio = aplicaStock ? -partida.cantidad : partida.cantidad;
+        const cambio = aplicaStock ? partida.cantidad.neg() : partida.cantidad;
         await tx.producto.update({
           where: { id: producto.id },
-          data: { stock: producto.stock + cambio },
+          data: { stock: producto.stock.plus(cambio) },
         });
       await tx.movimientoInventario.create({
         data: {
@@ -153,7 +177,7 @@ async function cambiarEstadoVenta(ventaId: bigint, estado: string, aplicaStock: 
           tipo: aplicaStock ? "venta" : "devolucion",
           cantidad: cambio,
           existenciaAntes: producto.stock,
-          existenciaDespues: producto.stock + cambio,
+          existenciaDespues: producto.stock.plus(cambio),
         },
       });
       }
@@ -177,6 +201,22 @@ async function escenarioVentas() {
     assert.equal(stockFinal, 0, "el stock limitado debe terminar en cero");
   });
   return { aceptadas, stockFinal };
+}
+
+async function escenarioVentaPorPeso() {
+  const producto = await crearProducto("Granel", "2.000", true);
+  const resultados = await Promise.allSettled(
+    Array.from({ length: 3 }, (_, indice) =>
+      vender([producto.id], `PESO-${sufijo}-${indice}`, new Prisma.Decimal("0.750")),
+    ),
+  );
+  const aceptadas = resultados.filter((resultado) => resultado.status === "fulfilled").length;
+  const stockFinal = await stock(producto.id);
+  verificar(() => {
+    assert.equal(aceptadas, 2, "deben aceptarse dos ventas de 0.75 kg");
+    assert.equal(stockFinal, 0.5, "la existencia por peso debe terminar en 0.5 kg");
+  });
+  return { intentos: 3, aceptadas, stockFinal };
 }
 
 async function escenarioOrdenBloqueos() {
@@ -255,7 +295,7 @@ async function escenarioCancelarEditar() {
   }));
   verificar(() => {
     assert.equal(stockFinal, final.stockAplicado ? 9 : 10, "el stock debe coincidir con el estado final");
-    assert.equal(movimientos._sum.cantidad, final.stockAplicado ? 0 : 1);
+    assert.equal(movimientos._sum.cantidad?.toNumber(), final.stockAplicado ? 0 : 1);
   });
   return { estado: final.estado, stockFinal, movimientos: movimientos._count };
 }
@@ -329,6 +369,7 @@ async function main() {
   );
   const resultados = {
     ventas: await escenarioVentas(),
+    ventaPorPeso: await escenarioVentaPorPeso(),
     ordenBloqueos: await escenarioOrdenBloqueos(),
     movimientos: await escenarioMovimientos(),
     compra: await escenarioCompra(),

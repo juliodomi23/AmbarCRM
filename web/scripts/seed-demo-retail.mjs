@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { credencialesDemo, imprimirCredencialesDemo } from "./lib/demo-seed.mjs";
 
@@ -182,7 +182,7 @@ await prisma.$transaction(async (tx) => {
     where: { productoId: { in: [...productos.values()].map((producto) => producto.id) } },
   });
   for (const [sku, producto] of productos) {
-    const stock = Number(catalogo.find((item) => item[0] === sku)?.[5] ?? 0);
+    const stock = new Prisma.Decimal(String(catalogo.find((item) => item[0] === sku)?.[5] ?? 0));
     await tx.producto.update({ where: { id: producto.id }, data: { stock } });
     await tx.movimientoInventario.create({
       data: {
@@ -221,8 +221,8 @@ await prisma.$transaction(async (tx) => {
     const [folio, proveedorIndice, estado, partidas] = comprasDemo[indice];
     const aplicaStock = estado === "recibida";
     const total = partidas.reduce(
-      (suma, [, cantidad, costo]) => suma + Number(cantidad) * Number(costo),
-      0,
+      (suma, [, cantidad, costo]) => suma.plus(new Prisma.Decimal(String(costo)).mul(String(cantidad)).toDecimalPlaces(2)),
+      new Prisma.Decimal(0),
     );
     const compra = await tx.compra.create({
       data: {
@@ -237,20 +237,20 @@ await prisma.$transaction(async (tx) => {
     });
     for (const [sku, cantidadValor, costoValor] of partidas) {
       const producto = productos.get(sku);
-      const cantidad = Number(cantidadValor);
-      const costo = Number(costoValor);
+      const cantidad = new Prisma.Decimal(String(cantidadValor));
+      const costo = new Prisma.Decimal(String(costoValor));
       await tx.compraPartida.create({
         data: {
           compraId: compra.id,
           productoId: producto.id,
           cantidad,
           costoUnitario: costo,
-          total: costo * cantidad,
+          total: costo.mul(cantidad).toDecimalPlaces(2),
         },
       });
       if (aplicaStock) {
         const anterior = producto.stock;
-        producto.stock += cantidad;
+        producto.stock = producto.stock.plus(cantidad);
         producto.costo = costo;
         await tx.producto.update({
           where: { id: producto.id },
@@ -275,9 +275,9 @@ await prisma.$transaction(async (tx) => {
   for (let indice = 0; indice < ventasDemo.length; indice++) {
     const [folio, contactoIndice, estado, canal, metodoPago, partidas] = ventasDemo[indice];
     const aplicaStock = estado !== "borrador" && estado !== "cancelada";
-    let subtotal = 0;
+    let subtotal = new Prisma.Decimal(0);
     for (const [sku, cantidad] of partidas) {
-      subtotal += Number(productos.get(sku).precio) * Number(cantidad);
+      subtotal = subtotal.plus(productos.get(sku).precio.mul(String(cantidad)).toDecimalPlaces(2));
     }
     const venta = await tx.venta.create({
       data: {
@@ -295,19 +295,19 @@ await prisma.$transaction(async (tx) => {
     });
     for (const [sku, cantidadValor] of partidas) {
       const producto = productos.get(sku);
-      const cantidad = Number(cantidadValor);
+      const cantidad = new Prisma.Decimal(String(cantidadValor));
       await tx.ventaPartida.create({
         data: {
           ventaId: venta.id,
           productoId: producto.id,
           cantidad,
           precioUnitario: producto.precio,
-          total: Number(producto.precio) * cantidad,
+          total: producto.precio.mul(cantidad).toDecimalPlaces(2),
         },
       });
       if (aplicaStock) {
         const anterior = producto.stock;
-        producto.stock -= cantidad;
+        producto.stock = producto.stock.minus(cantidad);
         await tx.producto.update({
           where: { id: producto.id },
           data: { stock: producto.stock },

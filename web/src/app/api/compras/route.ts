@@ -1,7 +1,14 @@
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { compraUsaInventario, folioCompra, validarCompra } from "@/lib/retail";
+import {
+  CERO_DECIMAL,
+  compraUsaInventario,
+  folioCompra,
+  importePartida,
+  validarCompra,
+} from "@/lib/retail";
+import { cantidadValidaParaProducto } from "@/lib/cantidad";
 import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
@@ -11,7 +18,7 @@ export const GET = conModulo("compras", {}, async (sesion) => {
     include: {
       proveedor: true,
       creadoPor: { select: { id: true, nombre: true } },
-      partidas: { include: { producto: { select: { id: true, nombre: true, sku: true } } } },
+      partidas: { include: { producto: { select: { id: true, nombre: true, sku: true, unidad: true } } } },
     },
     orderBy: { createdAt: "desc" },
     take: 100,
@@ -45,9 +52,15 @@ export const POST = conModulo("compras", {}, async (sesion, req: NextRequest) =>
         throw new ErrorRetail("Uno de los productos no existe o está inactivo");
       }
       const porId = new Map(productos.map((producto) => [String(producto.id), producto]));
+      for (const partida of partidas) {
+        const producto = porId.get(String(partida.productoId));
+        if (producto && !cantidadValidaParaProducto(partida.cantidad, producto.vendePorPeso)) {
+          throw new ErrorRetail(`${producto.nombre} se compra por piezas enteras`);
+        }
+      }
       const total = partidas.reduce(
-        (suma, partida) => suma + partida.costoUnitario * partida.cantidad,
-        0,
+        (suma, partida) => suma.plus(importePartida(partida.costoUnitario, partida.cantidad)),
+        CERO_DECIMAL,
       );
       const aplicaStock = compraUsaInventario(cabecera.estado);
       const creada = await tx.compra.create({
@@ -69,11 +82,11 @@ export const POST = conModulo("compras", {}, async (sesion, req: NextRequest) =>
             productoId: producto.id,
             cantidad: partida.cantidad,
             costoUnitario: partida.costoUnitario,
-            total: partida.costoUnitario * partida.cantidad,
+            total: importePartida(partida.costoUnitario, partida.cantidad),
           },
         });
         if (aplicaStock) {
-          const existenciaDespues = producto.stock + partida.cantidad;
+          const existenciaDespues = producto.stock.plus(partida.cantidad);
           await tx.producto.update({
             where: { id: producto.id },
             data: { stock: existenciaDespues, costo: partida.costoUnitario },
