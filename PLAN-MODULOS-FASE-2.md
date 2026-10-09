@@ -3,7 +3,7 @@
 Plan de trabajo para Codex, con revisión de Claude al final de cada bloque. Escrito el
 2026-10-09. Ámbar Rojo Studios.
 
-- **Ahora (4):** POS / Caja · Cotizaciones · Pedidos en línea y catálogo público · Reseñas de Google
+- **Ahora (4):** POS de tienda (retail) · Cotizaciones · Pedidos en línea y catálogo público · Reseñas de Google
 - **Después (4):** Cobros con link · Facturación CFDI 4.0 · Campañas de Meta Ads · Vertical Óptica
 
 ---
@@ -75,7 +75,7 @@ Plan de trabajo para Codex, con revisión de Claude al final de cada bloque. Esc
 
 **Por qué:** hoy `venta_partidas.cantidad`, `productos.stock`, `stock_minimo`,
 `compra_partidas.cantidad` y `movimientos_inventario` (cantidad, existencia antes/después) son
-`Int`. Una verdulería vende 1.5 kg y un POS de granel pesa. Sin esto, Pedidos y POS no sirven
+`Int`. Una tienda vende 1.5 kg de granel o 2.5 m de cable, y una verdulería vende por kilo. Sin esto, Pedidos y POS no sirven
 para esos giros.
 
 - Migrar esas columnas a `NUMERIC(12,3)` con `ALTER COLUMN … TYPE numeric(12,3) USING col::numeric`
@@ -91,59 +91,92 @@ para esos giros.
   un caso nuevo: vender 0.75 kg tres veces simultáneas con 2 kg en existencia → se aceptan 2, la
   existencia queda en 0.5. Un `check` de validación (pieza 1.5 → 400; 1.234 kg → ok; 1.2345 → 400).
 
-### A. POS / Caja (a partir de `08-productos-internos/POS`)
+### A. POS de tienda (retail)
 
-Llevar el POS dentro de AmbarCRM **encima** de Productos, Ventas e Inventario: una venta de caja
-es una `venta` con `canal = 'mostrador'` y partidas normales. **No crear tablas de ventas
-paralelas.** Leer `POS/README.md` y `POS/app/` como referencia de comportamiento (no copiar su
-SQLite ni su auth por PIN tal cual).
+Punto de venta para **tiendas de retail**: abarrotes, boutiques, ferreterías, papelerías,
+farmacias pequeñas, tiendas de regalos. **No** es para restaurantes (sin mesas, meseros, comanda
+ni propina). `08-productos-internos/POS` sirve solo como referencia de turnos, corte, ticket y
+modo sin internet; no copiar su SQLite ni su auth por PIN.
+
+Se construye **encima** de Productos, Compras, Ventas e Inventario: una venta de caja es una
+`venta` con `canal = 'mostrador'` y partidas normales. **No crear tablas de ventas paralelas.**
 
 Módulo nuevo `caja` (área "Retail y comercio"), depende de `productos` y `ventas`.
-Puestos: Cajero, Mesero, Gerente.
+Puestos: Cajero, Encargado de tienda (además de los de retail que ya existen).
 
 #### A1 · Caja de mostrador, turnos y corte 🛑
 
-- **Tablas:** `turnos_caja` (usuario, sucursal o caja, fondo inicial, abierto_at, cerrado_at,
-  efectivo_contado, diferencia, estado), `movimientos_caja` (turno, tipo entrada/salida, monto,
-  motivo, usuario). En `ventas`: `turno_id`, `propina`, `pagos JSONB` (lista de {método, monto})
-  o tabla `pagos_venta` (preferida: una fila por método).
-- **Pantalla `/caja`**: buscador y botones por categoría, lector de código de barras (input que
-  recibe el escaneo + Enter), cantidad y peso, descuento, propina, cobro con varios métodos,
-  cambio calculado, botones de billetes. Pensada para tablet y teclado, rápida.
-- **Reglas:** no se cobra sin turno abierto; una persona solo tiene un turno abierto (bloqueo);
-  el corte calcula *fondo + efectivo + entradas − salidas* y guarda la diferencia; cerrar turno
-  es irreversible; cancelar una venta del turno exige rol admin o puesto Gerente y devuelve
-  inventario por la ruta existente.
-- **Venta idempotente:** cada cobro lleva un `uuid` generado en el navegador (`ventas.uuid_cliente`
-  UNIQUE por org); reenviarlo no duplica venta ni inventario. Prueba con el mismo uuid en 5
-  peticiones simultáneas → 1 venta.
-- **Ticket**: impresión de 76 mm por CSS de impresión (`@media print`), con marca del negocio.
+- **Tablas:** `cajas` (nombre, sucursal opcional, activa: "Caja 1", "Caja 2"), `turnos_caja`
+  (caja, usuario, fondo inicial, abierto_at, cerrado_at, efectivo contado, diferencia, estado),
+  `movimientos_caja` (turno, entrada/salida, monto, motivo, usuario), `pagos_venta` (venta,
+  método, monto; una fila por método para cobro mixto). En `ventas`: `turno_id`, `caja_id`,
+  `uuid_cliente` (UNIQUE por org).
+- **Pantalla `/caja`** pensada para mostrador con teclado y lector:
+  - campo de escaneo siempre enfocado (el lector manda código + Enter); buscar por nombre o SKU;
+  - producto por peso: captura de kilos (o lectura de báscula en una fase futura);
+  - cantidades, quitar renglón, descuento por renglón y por venta (con tope configurable para
+    Cajero; arriba del tope pide Encargado);
+  - cobro en efectivo, tarjeta (terminal externa: solo se registra), transferencia o mixto,
+    cambio calculado y botones de billetes;
+  - cliente opcional (búsqueda sin acentos) para ventas a crédito, apartados y lealtad;
+  - atajos de teclado (F2 cobrar, F4 buscar, Esc cancelar renglón).
+- **Reglas:** no se cobra sin turno abierto; una persona tiene un solo turno abierto y una caja
+  un solo turno a la vez (bloqueo); el corte calcula *fondo + efectivo + entradas − salidas* y
+  guarda la diferencia; cerrar turno es irreversible. Cancelar una venta del turno exige
+  Encargado o admin y devuelve inventario por la ruta existente.
+- **Corte X y Z**: X = parcial sin cerrar (consulta); Z = cierre del turno.
+- **Venta idempotente:** cada cobro lleva `uuid_cliente` generado en el navegador; reenviarlo no
+  duplica venta ni inventario. Prueba: el mismo uuid en 5 peticiones simultáneas → 1 venta.
+- **Ticket** de 58/80 mm por CSS de impresión (`@media print`), con marca, folio, cajero,
+  desglose de pagos y cambio. Reimpresión desde la venta.
+- **Lealtad:** si el módulo Lealtad está activo y la venta tiene cliente con tarjeta de Aurum,
+  botón "Sellar" al cobrar (usa `lib/aurum.ts`).
 
-#### A2 · Mesas, cuentas y meseros 🛑
+#### A2 · Devoluciones, apartados y crédito a clientes (fiado) 🛑
 
-- **Tablas:** `mesas` (nombre, zona, activa), `cuentas` (mesa, mesero, estado abierta/cobrada/
-  cancelada, `version` para control optimista), partidas de cuenta (pueden reutilizar
-  `venta_partidas` con la venta en estado `abierta` o tabla `cuenta_partidas`; justificar).
-- Dos terminales sobre la misma cuenta: guardar con `version` vieja → **409** y la pantalla
-  recarga. Prueba de concurrencia con dos guardados simultáneos.
-- Dividir la cuenta por partes (2/3/4 o libre, cada parte con su método) y por producto.
-- Reporte de ventas y propinas por mesero.
+- **Devoluciones y cambios** con referencia a la venta original: devolución parcial o total,
+  reintegra inventario, registra salida de efectivo del turno actual (o nota de crédito al
+  cliente); un cambio = devolución + venta nueva enlazadas. No se puede devolver más de lo
+  vendido (bloqueo de la venta original; prueba de concurrencia).
+- **Apartados:** venta en estado `apartado` con anticipo; separa existencias; abonos hasta
+  liquidar; cancelar con o sin reembolso; vencimiento configurable que libera el producto.
+- **Crédito a clientes (fiado):** límite de crédito por contacto, cuenta por cobrar con
+  movimientos (cargo por venta a crédito, abono), saldo y antigüedad. Vender a crédito por
+  encima del límite exige Encargado. Abonos desde la caja entran al turno. Prueba: dos ventas a
+  crédito simultáneas no rebasan el límite.
+- Recordatorio de saldo por WhatsApp (dentro de ventana como texto; fuera, plantilla aprobada).
 
-#### A3 · Extras, comanda y reportes 🛑
+#### A3 · Precios, promociones y etiquetas 🛑
 
-- **Modificadores por producto** (`modificadores_producto`: nombre, precio ± ) que viajan en la
-  partida (snapshot del nombre y precio) y salen en ticket y comanda.
-- **Comanda de cocina** imprimible para productos marcados "va a cocina".
-- **Reportes:** vendido, ticket promedio, ventas por hora, más vendidos, por método, turnos con
-  faltante; exportar CSV (con la protección de fórmulas de `lib/csv.ts`).
+- **Variantes** (talla, color, presentación): un producto "padre" con variantes que son
+  productos con su propio SKU, código y existencia (`productos.grupo_id`, `atributos JSONB`).
+- **Precios por volumen / mayoreo:** escalas por cantidad (`precios_volumen`: producto, desde
+  cantidad, precio) y lista de precios por cliente (público, mayoreo).
+- **Promociones** con vigencia: % o monto por producto o categoría, NxM (3x2), precio especial.
+  Se calculan en servidor y quedan como renglón de descuento explicado en el ticket.
+- **Etiquetas de precio** imprimibles con código de barras (Code 128 generado como SVG con una
+  función propia, sin dependencias) y nombre, precio y precio de mayoreo.
+- **Cambio de precios en lote** y "agotado/descontinuado" rápido; importar catálogo por CSV
+  (reutilizar el importador de contactos como referencia).
 
-#### A4 · Modo sin internet (después de A1–A3 y de revisión) 🛑
+#### A4 · Reportes y varias cajas 🛑
+
+- **Utilidad** bruta por producto, categoría y periodo (precio − costo al momento de la venta:
+  guardar `costo_unitario` en la partida).
+- Más vendidos, **sin movimiento** (productos que no rotan), inventario valorizado a costo y a
+  precio, alertas de mínimo, ventas por cajero, por caja y por hora, faltantes y sobrantes de
+  corte. Exportar CSV (con la protección de fórmulas de `lib/csv.ts`).
+- Varias cajas cobrando a la vez en la misma tienda: prueba de dos cajas vendiendo el último
+  producto simultáneamente.
+
+#### A5 · Modo sin internet (al final, después de revisión) 🛑
 
 - Service Worker + catálogo en almacenamiento local; la caja vende sin red y encola; al volver
-  la conexión, sube la cola. Idempotencia por `uuid_cliente` (ya hecha en A1).
-- El inventario puede quedar negativo por ventas offline: **a propósito** (no perder ventas);
-  se marca y se corrige con ajuste. Documentarlo en la pantalla.
-- Prueba: reenviar la cola dos veces no duplica; dos cajas offline no pierden ventas.
+  la conexión sube la cola. Idempotencia por `uuid_cliente` (ya hecha en A1).
+- El inventario puede quedar negativo por ventas sin red: **a propósito** (no perder ventas);
+  se marca y se corrige con ajuste. Mostrarlo claro en la pantalla.
+- Ventas a crédito y apartados **requieren conexión** (dependen de límites y existencias).
+- Prueba: reenviar la cola dos veces no duplica; dos cajas sin red no pierden ventas.
 
 ### B. Cotizaciones (a partir de `08-productos-internos/cotizador`) 🛑
 
@@ -224,13 +257,14 @@ Módulo `resenas` (área "CRM y agenda").
 ## 3. Orden de trabajo y revisión
 
 1. **Paso 0** (cantidades decimales) → 🛑 revisión
-2. **A1** Caja, turnos y corte → 🛑
-3. **B** Cotizaciones → 🛑
-4. **C** Pedidos en línea y catálogo público → 🛑
-5. **A2** Mesas y cuentas → 🛑
-6. **A3** Extras, comanda y reportes → 🛑
-7. **D** Reseñas de Google → 🛑
-8. **A4** Modo sin internet → 🛑
+2. **A1** Caja de mostrador, turnos y corte → 🛑
+3. **A2** Devoluciones, apartados y crédito a clientes → 🛑
+4. **B** Cotizaciones → 🛑
+5. **C** Pedidos en línea y catálogo público → 🛑
+6. **A3** Precios, promociones y etiquetas → 🛑
+7. **A4** Reportes y varias cajas → 🛑
+8. **D** Reseñas de Google → 🛑
+9. **A5** Modo sin internet → 🛑
 
 En cada 🛑 entrega:
 
