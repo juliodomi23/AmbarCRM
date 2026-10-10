@@ -132,6 +132,20 @@ continúa aunque falle una. Las pruebas principales son `scripts/check-cotizacio
 `prisma/scripts/test-concurrencia-cotizaciones.ts` y
 `prisma/scripts/test-cotizaciones-e2e.ts`.
 
+## Módulo Reseñas de Google
+
+Reseñas vive en `/resenas` (promedio, distribución, tendencia semanal en la zona local,
+conteo por origen y un QR por origen). La página pública `/opinion/<empresa>?o=<origen>`
+guarda la calificación y **siempre** manda al enlace de Google configurado por la empresa,
+sea 1 o 5 estrellas: Google prohíbe pedir reseñas de forma selectiva. El destino sale solo
+de la configuración (https y dominio `g.page`, `google.com` o `maps.app.goo.gl`), nunca de
+la petición. El origen se normaliza a `[a-z0-9_-]` de hasta 40 caracteres o cae en
+`directo`. `limitarIp` frena abusos; con el módulo apagado, o sin enlace válido, responde 404.
+
+Los QR los genera `src/lib/qr-svg.ts` (modo byte, corrección M, hasta 213 bytes) sin
+dependencias. Las pruebas son `scripts/check-resenas.ts` y
+`prisma/scripts/test-resenas-e2e.ts`.
+
 ## Módulo Pedidos en línea
 
 Los pedidos web pendientes reservan existencia sin descontarla hasta su confirmación.

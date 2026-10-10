@@ -47,6 +47,9 @@ async function valorColumna(columna: Columna, tabla: string, indice: number) {
   if (tabla === "movimientos_cuenta_cliente" && columna.column_name === "tipo") return "cargo";
   if (tabla === "listas_precios" && columna.column_name === "tipo") return "cliente";
   if (tabla === "promociones" && columna.column_name === "tipo") return "porcentaje";
+  if (tabla === "resenas" && columna.column_name === "calificacion") return 5;
+  if (tabla === "solicitudes_resena" && columna.column_name === "evento") return "cita";
+  if (tabla === "solicitudes_resena" && columna.column_name === "estado") return "enviada";
   if (columna.data_type === "USER-DEFINED") {
     const resultado = await admin.query<{ valor: string }>(
       `SELECT e.enumlabel AS valor

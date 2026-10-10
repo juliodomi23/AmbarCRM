@@ -1430,3 +1430,41 @@ UPDATE bots
 -- Los bots nuevos nacen con el conjunto mínimo.
 ALTER TABLE bots ALTER COLUMN permisos SET DEFAULT ARRAY['leer_perfil', 'enviar_mensaje', 'notas_internas', 'handoff'];
 ALTER TABLE bots ALTER COLUMN permisos SET NOT NULL;
+
+-- D · Reseñas de Google.
+-- resenas: calificación que deja el cliente en /opinion antes de saltar a Google (no se filtra por estrella).
+-- solicitudes_resena: una fila por intento de pedir reseña; sirve de bitácora y de candado de "una cada N días".
+CREATE TABLE IF NOT EXISTS resenas (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  calificacion SMALLINT NOT NULL CHECK (calificacion BETWEEN 1 AND 5),
+  origen TEXT NOT NULL DEFAULT 'directo' CHECK (origen ~ '^[a-z0-9_-]{1,40}$'),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS resenas_org_created_idx ON resenas(org_id, created_at);
+
+CREATE TABLE IF NOT EXISTS solicitudes_resena (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  contacto_id BIGINT NOT NULL REFERENCES contactos(id) ON DELETE CASCADE,
+  cita_id BIGINT REFERENCES citas(id) ON DELETE SET NULL,
+  venta_id BIGINT REFERENCES ventas(id) ON DELETE SET NULL,
+  evento TEXT NOT NULL CHECK (evento IN ('cita', 'venta')),
+  estado TEXT NOT NULL CHECK (estado IN ('reservada', 'enviada', 'fallida', 'omitida')),
+  detalle TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS solicitudes_resena_contacto_idx ON solicitudes_resena(org_id, contacto_id, created_at);
+
+DO $$ DECLARE t TEXT; BEGIN
+  FOREACH t IN ARRAY ARRAY['resenas', 'solicitudes_resena'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format(
+      'CREATE POLICY org_isolation ON %I USING (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint) WITH CHECK (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint)',
+      t
+    );
+  END LOOP;
+END $$;
+GRANT SELECT, INSERT, UPDATE, DELETE ON resenas, solicitudes_resena TO crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;

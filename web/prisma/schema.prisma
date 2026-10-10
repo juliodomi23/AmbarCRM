@@ -275,6 +275,7 @@ model Contacto {
   notasCredito       NotaCreditoCliente[]
   cotizaciones       Cotizacion[]
 
+  solicitudesResena SolicitudResena[]
   @@unique([orgId, telefono])
   @@index([responsableId])
   @@index([listaPrecioId])
@@ -679,6 +680,7 @@ model Cita {
   servicio     ServicioReserva?   @relation(fields: [servicioId], references: [id], onDelete: SetNull)
   evoluciones  EvolucionClinica[]
 
+  solicitudesResena SolicitudResena[]
   @@index([orgId, inicio])
   @@index([contactoId])
   @@index([doctorId])
@@ -887,6 +889,7 @@ model Venta {
   cotizacion             Cotizacion?
   reservasPedido         ReservaPedido[]
 
+  solicitudesResena SolicitudResena[]
   @@unique([orgId, folio])
   @@unique([orgId, uuidCliente])
   @@index([orgId, estado, createdAt])
@@ -1821,4 +1824,34 @@ model ExcepcionHorario {
 
   @@index([doctorId, fecha])
   @@map("excepciones_horario")
+}
+
+model Resena {
+  id           BigInt   @id @default(autoincrement())
+  orgId        BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  calificacion Int      @db.SmallInt
+  origen       String   @default("directo")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([orgId, createdAt])
+  @@map("resenas")
+}
+
+model SolicitudResena {
+  id         BigInt   @id @default(autoincrement())
+  orgId      BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contactoId BigInt   @map("contacto_id")
+  citaId     BigInt?  @map("cita_id")
+  ventaId    BigInt?  @map("venta_id")
+  evento     String
+  estado     String
+  detalle    String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  contacto Contacto @relation(fields: [contactoId], references: [id], onDelete: Cascade)
+  cita     Cita?    @relation(fields: [citaId], references: [id], onDelete: SetNull)
+  venta    Venta?   @relation(fields: [ventaId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, contactoId, createdAt])
+  @@map("solicitudes_resena")
 }

@@ -50,6 +50,15 @@ export const MODULOS = [
     ruta: "/reservas-en-linea",
   },
   {
+    clave: "resenas",
+    area: "CRM y agenda",
+    nombre: "Reseñas de Google",
+    descripcion: "Opiniones por QR con salto a Google, promedio, tendencia y solicitud automática por WhatsApp.",
+    acceso: ACCESO_TODOS,
+    icono: "M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21.1l1.5-7L2 9.3l7-.8L12 2z",
+    ruta: "/resenas",
+  },
+  {
     clave: "lealtad",
     area: "CRM y agenda",
     nombre: "Lealtad",
