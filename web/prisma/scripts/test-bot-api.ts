@@ -19,6 +19,7 @@ import {
   dispatchABot,
   escalarAHumano,
   firmarCuerpo,
+  firmarCuerpoV2,
   listarBots,
   nuevoSecretoFirma,
 } from "../../src/lib/services/bots";
@@ -307,6 +308,16 @@ async function main() {
   assert.ok(capturado, "dispatch llamó a fetch");
   const enviado = capturado as { headers: Record<string, string>; body: string };
   assert.equal(enviado.headers["X-AmbarCRM-Signature"], firmarCuerpo(secreto.plano, enviado.body));
+
+  // Firma V2 con marca de tiempo: la V1 queda igual y la V2 solo verifica con el timestamp original.
+  const ts = enviado.headers["X-AmbarCRM-Timestamp"];
+  assert.match(ts, /^\d{10}$/, "timestamp en segundos unix");
+  assert.ok(Math.abs(Date.now() / 1000 - Number(ts)) < 60, "timestamp reciente");
+  const v2 = enviado.headers["X-AmbarCRM-Signature-V2"];
+  assert.equal(v2, firmarCuerpoV2(secreto.plano, ts, enviado.body), "V2 válida verifica");
+  assert.notEqual(v2, firmarCuerpoV2(secreto.plano, String(Number(ts) + 1), enviado.body), "timestamp alterado no verifica");
+  assert.notEqual(v2, firmarCuerpoV2(secreto.plano, ts, enviado.body + " "), "cuerpo alterado no verifica");
+  assert.notEqual(v2, enviado.headers["X-AmbarCRM-Signature"], "V2 distinta de V1");
 
   // El secreto nunca sale en lo que usa la UI.
   const botConSecreto = await uno(

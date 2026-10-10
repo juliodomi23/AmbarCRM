@@ -258,12 +258,47 @@ Cada petición al webhook del bot lleva `X-AmbarCRM-Signature: sha256=<hex>`: HM
 regenerarlo (Configuración → Bots); después no se puede leer. Un bot sin secreto se envía sin firma
 hasta que generes uno.
 
+Además de `X-AmbarCRM-Signature` (que **no cambia**, para no romper los n8n que ya la verifican), cada
+petición firmada lleva dos encabezados más, que sí protegen contra reenvíos de un mensaje capturado:
+
+| Encabezado | Valor |
+|---|---|
+| `X-AmbarCRM-Timestamp` | segundos unix en que se envió |
+| `X-AmbarCRM-Signature-V2` | `sha256=<hex>`: HMAC-SHA256 de `${timestamp}.${cuerpo}` con el mismo secreto |
+
+Los reintentos del dispatch reutilizan los mismos encabezados (mismo timestamp). Verifica **V2** en los
+workflows nuevos; la V1 solo prueba que el cuerpo es auténtico, no que sea reciente.
+
 ### Verificar en n8n
 1. En el nodo **Webhook** activa *Options → Raw Body*. Hay que firmar los bytes recibidos: si n8n los
    parsea y vuelve a serializar, la firma puede no coincidir.
 2. Guarda el secreto como variable/credencial de n8n (aquí `AMBARCRM_SIGNING_SECRET`). El nodo Code
    necesita `NODE_FUNCTION_ALLOW_BUILTIN=crypto` en el servidor de n8n.
-3. Nodo **Code** justo después del Webhook (modo *Run Once for All Items*):
+3. Nodo **Code** justo después del Webhook (modo *Run Once for All Items*). Esta versión verifica la
+   **V2** y rechaza lo que tenga más de 5 minutos de diferencia:
+
+```js
+const crypto = require('crypto');
+const secreto = $env.AMBARCRM_SIGNING_SECRET;
+
+// Raw Body llega como binario (propiedad "data").
+const crudo = (await this.helpers.getBinaryDataBuffer(0, 'data')).toString('utf8');
+const headers = $input.first().json.headers;
+const timestamp = headers['x-ambarcrm-timestamp'] ?? '';
+const recibida = headers['x-ambarcrm-signature-v2'] ?? '';
+
+// Anti-repetición: rechaza si |ahora − timestamp| > 300 s (o si no es un número).
+const ahora = Math.floor(Date.now() / 1000);
+if (!/^\d+$/.test(timestamp) || Math.abs(ahora - Number(timestamp)) > 300) throw new Error('Mensaje expirado');
+
+const esperada = 'sha256=' + crypto.createHmac('sha256', secreto).update(`${timestamp}.${crudo}`).digest('hex');
+const a = Buffer.from(recibida), b = Buffer.from(esperada);
+if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) throw new Error('Firma inválida');
+
+return [{ json: JSON.parse(crudo) }];
+```
+
+   <details><summary>Versión anterior (solo V1, sin timestamp firmado)</summary>
 
 ```js
 const crypto = require('crypto');
@@ -283,7 +318,9 @@ if (Math.abs(Date.now() - Date.parse(cuerpo.created_at)) > 5 * 60 * 1000) throw 
 
 return [{ json: cuerpo }];
 ```
-> Este snippet no se probó contra una instancia real de n8n; la firma y el formato sí están cubiertos
+   </details>
+
+> Estos snippets no se probaron contra una instancia real de n8n; la firma y el formato sí están cubiertos
 > por `prisma/scripts/test-bot-api.ts`. Si `$env` está bloqueado en tu n8n, pega el secreto en una credencial.
 
 ## Probar con curl

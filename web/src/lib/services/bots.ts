@@ -29,6 +29,14 @@ export function firmarCuerpo(secretoPlano: string, cuerpo: string) {
   return `sha256=${crypto.createHmac("sha256", secretoPlano).update(cuerpo).digest("hex")}`;
 }
 
+/**
+ * Firma V2 (anti-repetición): sha256=<hex del HMAC-SHA256 de `${timestamp}.${cuerpo}`>.
+ * `timestamp` son segundos unix y viaja en X-AmbarCRM-Timestamp.
+ */
+export function firmarCuerpoV2(secretoPlano: string, timestamp: string | number, cuerpo: string) {
+  return `sha256=${crypto.createHmac("sha256", secretoPlano).update(`${timestamp}.${cuerpo}`).digest("hex")}`;
+}
+
 type BotAuditable = { id: bigint };
 
 /**
@@ -213,7 +221,12 @@ export async function dispatchABot(bot: { webhookUrl: string; signingSecret?: st
   let intentos = 2;
   if (bot.signingSecret) {
     try {
-      headers["X-AmbarCRM-Signature"] = firmarCuerpo(decryptMetaToken(bot.signingSecret), cuerpo);
+      const secreto = decryptMetaToken(bot.signingSecret);
+      const timestamp = String(Math.floor(Date.now() / 1000));
+      // La V1 no cambia (hay n8n en producción que la verifica); la V2 agrega la marca de tiempo.
+      headers["X-AmbarCRM-Signature"] = firmarCuerpo(secreto, cuerpo);
+      headers["X-AmbarCRM-Timestamp"] = timestamp;
+      headers["X-AmbarCRM-Signature-V2"] = firmarCuerpoV2(secreto, timestamp, cuerpo);
     } catch (e) {
       // No se manda sin firma: n8n la exige. Cae al aviso interno de abajo.
       console.error("no se pudo firmar el dispatch al bot:", e instanceof Error ? e.message : e);
