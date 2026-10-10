@@ -14,7 +14,8 @@ const MAX_LARGO = 40;
 /**
  * El bot manda etiquetas de la conversación.
  * - `escalado_humano` / `bot_off`: handoff (apaga el bot, deja pendiente, asigna asesor, nota interna).
- * - `bot_on`: reactiva el bot.
+ * - `bot_on`: reactiva el bot solo si la conversación no tiene responsable; si lo tiene (un humano
+ *   la atiende) responde 409 `asignada_a_humano`, el bot sigue como estaba y queda en la bitácora.
  * - Cualquier otra: se agrega al contacto (nunca quita las existentes y NO cambia el estado del bot).
  * POST /api/v1/accounts/:accountId/conversations/:conversationId/labels
  * Body: { labels: string[], motivo?: string }
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ accountI
 
     const conv = await db.conversacion.findUnique({
       where: { id: convId },
-      select: { id: true, canalId: true, contactoId: true, botActivo: true }
+      select: { id: true, canalId: true, contactoId: true, botActivo: true, responsableId: true }
     });
     if (!conv) return NextResponse.json({ error: "conversación inexistente" }, { status: 404 });
     if (!botAutorizado(bot, conv)) return NextResponse.json({ error: "el bot no opera en este canal" }, { status: 403 });
@@ -69,7 +70,29 @@ export async function POST(req: NextRequest, props: { params: Promise<{ accountI
       botActivo = false;
       handoffResultado = { escalada: r?.escalada ?? false, responsableId: r?.responsableId?.toString() ?? null };
     } else if (reactivar) {
-      await db.conversacion.update({ where: { id: conv.id }, data: { botActivo: true } });
+      // Condición en el UPDATE (no solo en la lectura): si un humano toma la conversación entre
+      // medias, tampoco se reactiva.
+      const { count } = await db.conversacion.updateMany({
+        where: { id: conv.id, responsableId: null },
+        data: { botActivo: true }
+      });
+      if (count === 0) {
+        await auditarBot(bot, conv.id, "bot_reactivado_rechazado", {
+          entidad: "conversacion",
+          entidadId: conv.id,
+          antes: { botActivo: conv.botActivo, responsableId: conv.responsableId },
+          despues: { botActivo: conv.botActivo, motivo: "asignada_a_humano" }
+        });
+        return NextResponse.json(
+          {
+            error: "la conversación está asignada a un humano; el bot no se reactiva",
+            motivo: "asignada_a_humano",
+            bot_activo: conv.botActivo,
+            etiquetas_guardadas: nombres
+          },
+          { status: 409 }
+        );
+      }
       await auditarBot(bot, conv.id, "bot_reactivado", {
         entidad: "conversacion",
         entidadId: conv.id,

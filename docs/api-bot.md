@@ -97,14 +97,15 @@ Body: `{ "labels": ["interesado"], "motivo": "pide hablar con un asesor" }`
 | Etiqueta | Efecto |
 |---|---|
 | `escalado_humano` o `bot_off` | **Handoff**: apaga el bot, conversación `pendiente`, asigna asesor, nota interna con `motivo`. Si el bot ya estaba apagado no repite nada. |
-| `bot_on` | Reactiva el bot. |
+| `bot_on` | Reactiva el bot **solo si la conversación no tiene responsable**. Si lo tiene (un humano la atiende) responde `409 { "motivo": "asignada_a_humano" }`, el bot queda como estaba y se registra `bot_reactivado_rechazado` en la bitácora. Un handoff asigna responsable, así que tras un handoff `bot_on` no sirve hasta que un humano libere la conversación. |
 | Cualquier otra | Se **agrega** al contacto (máx. 10 por petición, 40 caracteres). No quita etiquetas existentes y **no cambia el estado del bot**. |
 
 Si vienen `bot_on` y una de handoff juntas, gana el handoff.
 Respuesta: `{ "payload": [...labels recibidas], "bot_activo": false, "etiquetas_guardadas": ["interesado"], "handoff": { "escalada": true, "responsableId": "3" } }` (`handoff` solo si hubo).
 
 Asesor del handoff: el usuario fijo del bot (`asesorId`, se configura con `PATCH /api/bots/:id {"asesorId": 3}`)
-si está activo; si no, round-robin entre usuarios activos de la empresa. Si la conversación ya tiene
+si está activo; si no, round-robin entre usuarios activos que pueden atender conversaciones (el puesto
+**Cajero** nunca recibe un handoff). Si la conversación ya tiene
 responsable, se conserva.
 
 ### `POST …/{id}/tasks` — crear tarea (nueva)
@@ -249,7 +250,7 @@ Edita la oportunidad **abierta** más reciente del contacto. Body (al menos un c
 
 Cada acción del bot que cambia algo se guarda en `auditoria_bot` (empresa, bot, conversación, acción,
 entidad, antes, después, fecha): `mover_etapa`, `cita_confirmada`, `cita_cancelada`, `handoff`,
-`bot_reactivado`, `etiquetas`, `nota_interna`, `mensaje_enviado`, `tarea_creada`.
+`bot_reactivado`, `bot_reactivado_rechazado`, `etiquetas`, `nota_interna`, `mensaje_enviado`, `tarea_creada`.
 
 ## Firma de lo que el CRM manda a n8n
 

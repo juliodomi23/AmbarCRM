@@ -230,6 +230,22 @@ async function main() {
   await llamar(postLabels, token("A"), conv, { labels: ["bot_on"] });
   assert.equal((await q("SELECT bot_activo FROM conversaciones WHERE id=$1", [conv]))[0].bot_activo, true, "bot_on reactiva");
   assert.equal((await auditoria("bot_reactivado")).length, 1);
+
+  // bot_on con responsable humano: 409, el bot sigue apagado y queda en la bitácora.
+  await q("UPDATE conversaciones SET bot_activo=false, responsable_id=$2 WHERE id=$1", [conv, usuarios[0]]);
+  const rechazo = await llamar(postLabels, token("A"), conv, { labels: ["bot_on"] });
+  assert.equal(rechazo.status, 409);
+  assert.equal((await rechazo.json()).motivo, "asignada_a_humano");
+  assert.equal((await q("SELECT bot_activo FROM conversaciones WHERE id=$1", [conv]))[0].bot_activo, false, "con responsable el bot sigue apagado");
+  assert.equal((await auditoria("bot_reactivado")).length, 1, "no se registró una reactivación");
+  const rechazos = await auditoria("bot_reactivado_rechazado");
+  assert.equal(rechazos.length, 1, "el rechazo quedó en auditoria_bot");
+  assert.equal((rechazos[0].despues as { motivo: string }).motivo, "asignada_a_humano");
+  // Sin responsable vuelve a reactivar, y el estado de la conversación queda como al inicio de la prueba.
+  await q("UPDATE conversaciones SET responsable_id=NULL WHERE id=$1", [conv]);
+  assert.equal((await llamar(postLabels, token("A"), conv, { labels: ["bot_on"] })).status, 200);
+  assert.equal((await q("SELECT bot_activo FROM conversaciones WHERE id=$1", [conv]))[0].bot_activo, true, "sin responsable, bot_on reactiva");
+  assert.equal((await auditoria("bot_reactivado")).length, 2);
   assert.equal((await llamar(getConversacion, token("A"), conv).then((r) => r.json())).perfil.etiquetas.length, 2);
 
   // ---------- 4. Handoff: apaga, pendiente, asesor, nota interna, bitácora, idempotente ----------
