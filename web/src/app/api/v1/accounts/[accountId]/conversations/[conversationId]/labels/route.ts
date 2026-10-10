@@ -21,7 +21,7 @@ const MAX_LARGO = 40;
  */
 export async function POST(req: NextRequest, props: { params: Promise<{ accountId: string; conversationId: string }> }) {
   const params = await props.params;
-  return conBot(req, async (bot) => {
+  return conBot(req, "handoff", async (bot) => {
     const convId = aBigInt(params.conversationId);
     if (convId === null) return NextResponse.json({ error: "conversationId inválido" }, { status: 400 });
 

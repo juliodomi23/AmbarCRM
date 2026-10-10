@@ -60,7 +60,7 @@ function resumen(c: CotizacionVista) {
  */
 async function manejarGET(req: NextRequest, props: Props) {
   const { conversationId } = await props.params;
-  return conBot(req, async (botAutenticado) => {
+  return conBot(req, "cotizar", async (botAutenticado) => {
     const acceso = await conversacionDelBot(botAutenticado, conversationId, "cotizaciones");
     if (!acceso.conv) return acceso.respuesta;
 
@@ -86,7 +86,7 @@ async function manejarGET(req: NextRequest, props: Props) {
  */
 async function manejarPOST(req: NextRequest, props: Props) {
   const { conversationId } = await props.params;
-  return conBot(req, async (botAutenticado) => {
+  return conBot(req, "cotizar", async (botAutenticado) => {
     const acceso = await conversacionDelBot(botAutenticado, conversationId, "cotizaciones");
     if (!acceso.conv) return acceso.respuesta;
     const { bot, conv } = acceso;

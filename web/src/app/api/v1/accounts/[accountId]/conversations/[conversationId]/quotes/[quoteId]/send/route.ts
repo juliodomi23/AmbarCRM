@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: NextRequest, props: { params: Promise<{ accountId: string; conversationId: string; quoteId: string }> }) {
   const { conversationId, quoteId } = await props.params;
-  return conBot(req, async (botAutenticado) => {
+  return conBot(req, "cotizar", async (botAutenticado) => {
     const acceso = await conversacionDelBot(botAutenticado, conversationId, "cotizaciones");
     if (!acceso.conv) return acceso.respuesta;
     const { bot, conv } = acceso;

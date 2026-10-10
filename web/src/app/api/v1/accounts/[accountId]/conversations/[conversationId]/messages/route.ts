@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getProvider } from "@/lib/channel";
-import { botAutorizado, conBot } from "@/lib/bot-auth";
+import { botAutorizado, conBot, denegarSinPermiso } from "@/lib/bot-auth";
 import { auditarBot } from "@/lib/services/bots";
 import { aBigInt } from "@/lib/ids";
 
@@ -18,13 +18,15 @@ export async function POST(
   props: { params: Promise<{ accountId: string; conversationId: string }> }
 ) {
   const params = await props.params;
-  return conBot(req, async (bot) => {
+  return conBot(req, null, async (bot) => {
     const convId = aBigInt(params.conversationId);
     if (convId === null) return NextResponse.json({ error: "conversationId inválido" }, { status: 400 });
 
     const body = await req.json().catch(() => ({}));
     const content: string = (body.content ?? "").toString();
     const esPrivado = body.private === true;
+    const sinPermiso = await denegarSinPermiso(bot, esPrivado ? "notas_internas" : "enviar_mensaje", convId, req);
+    if (sinPermiso) return sinPermiso;
     if (!content.trim()) return NextResponse.json({ error: "content vacío" }, { status: 400 });
 
     const conv = await db.conversacion.findUnique({

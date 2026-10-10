@@ -24,7 +24,7 @@ type Props = { params: Promise<{ accountId: string; conversationId: string }> };
 
 async function manejarGET(req: NextRequest, props: Props) {
   const { conversationId } = await props.params;
-  return conBot(req, async (botAutenticado) => {
+  return conBot(req, "agendar_cita", async (botAutenticado) => {
     const acceso = await conversacionDelBot(botAutenticado, conversationId, "citas");
     if (!acceso.conv) return acceso.respuesta;
     const citas = await db.cita.findMany({
@@ -48,7 +48,7 @@ async function manejarGET(req: NextRequest, props: Props) {
  */
 async function manejarPOST(req: NextRequest, props: Props) {
   const { conversationId } = await props.params;
-  return conBot(req, async (botAutenticado) => {
+  return conBot(req, "agendar_cita", async (botAutenticado) => {
     const acceso = await conversacionDelBot(botAutenticado, conversationId, "citas");
     if (!acceso.conv) return acceso.respuesta;
     const { conv: conversacion, bot } = acceso;
@@ -181,7 +181,7 @@ async function reprogramar(
 
 async function manejarPATCH(req: NextRequest, props: Props) {
   const { conversationId } = await props.params;
-  return conBot(req, async (botAutenticado) => {
+  return conBot(req, "agendar_cita", async (botAutenticado) => {
     const acceso = await conversacionDelBot(botAutenticado, conversationId, "citas");
     if (!acceso.conv) return acceso.respuesta;
     const body = await req.json().catch(() => ({}));

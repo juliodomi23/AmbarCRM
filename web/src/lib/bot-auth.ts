@@ -4,6 +4,8 @@ import { db, dbRaw, runWithOrg } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { moduloHabilitado, type ClaveModulo } from "@/lib/modulos";
 import { ipCliente, permitido } from "@/lib/rate-limit";
+import type { PermisoBot } from "@/lib/bot-permisos";
+import { auditarBot } from "@/lib/services/bots";
 
 /**
  * Autentica un bot por su token mediante el header `api_access_token` o `x-bot-token`.
@@ -42,13 +44,20 @@ function limitado(ventanaMs: number) {
  * dentro de `runWithOrg(bot.orgId)` (AsyncLocalStorage.run: el tenant vale solo dentro del callback
  * y no se filtra a otras peticiones). Una ruta que no use este helper corre sin tenant y no ve datos.
  *
+ * `permiso`: lo que la ruta exige al bot (403 `permiso_faltante`, queda en la bitácora). Con `null`
+ * la ruta decide después con `denegarSinPermiso` (p. ej. mensajes: nota interna o mensaje al cliente).
+ *
  * Límites por entorno:
  *  - por token: BOT_RATE_LIMIT_MAX (300) por BOT_RATE_LIMIT_WINDOW_MS (60000)
  *  - tokens inválidos por IP: BOT_AUTH_FAIL_MAX (20) por BOT_AUTH_FAIL_WINDOW_MS (300000)
  * `ipCliente` confía en cf-connecting-ip / x-forwarded-for: sirve detrás de Cloudflare/proxy; si el
  * CRM quedara expuesto directo, un atacante podría rotar la IP declarada.
  */
-export async function conBot(req: NextRequest, handler: (bot: BotAutenticado) => Promise<Response | undefined>) {
+export async function conBot(
+  req: NextRequest,
+  permiso: PermisoBot | null,
+  handler: (bot: BotAutenticado) => Promise<Response | undefined>
+) {
   const token = tokenDe(req);
   if (token) {
     const ventanaMs = numero(process.env.BOT_RATE_LIMIT_WINDOW_MS, 60_000);
@@ -65,8 +74,36 @@ export async function conBot(req: NextRequest, handler: (bot: BotAutenticado) =>
     if (!permitido(claveIp, numero(process.env.BOT_AUTH_FAIL_MAX, 20), ventanaMs)) return limitado(ventanaMs);
     return NextResponse.json({ error: "token inválido" }, { status: 401 });
   }
-  const respuesta = await runWithOrg(bot.orgId, () => handler(bot));
+  const respuesta = await runWithOrg(bot.orgId, async () => {
+    if (permiso) {
+      const conv = /\/conversations\/(\d+)/.exec(req.nextUrl.pathname)?.[1];
+      const denegada = await denegarSinPermiso(bot, permiso, conv ? BigInt(conv) : null, req);
+      if (denegada) return denegada;
+    }
+    return handler(bot);
+  });
   return respuesta ?? NextResponse.json({ error: "sin respuesta" }, { status: 500 });
+}
+
+/**
+ * 403 `permiso_faltante` (y registro en la bitácora) si el bot no tiene `permiso`; null si lo tiene.
+ * Debe llamarse dentro de `conBot` (usa la empresa del bot).
+ */
+export async function denegarSinPermiso(
+  bot: BotAutenticado,
+  permiso: PermisoBot,
+  conversacionId: bigint | null,
+  req?: NextRequest
+) {
+  if (bot.permisos.includes(permiso)) return null;
+  await auditarBot(bot, conversacionId, "permiso_denegado", {
+    entidad: "permiso",
+    despues: { permiso, ...(req ? { metodo: req.method, ruta: req.nextUrl.pathname } : {}) }
+  });
+  return NextResponse.json(
+    { error: `el bot no tiene el permiso '${permiso}'`, motivo: "permiso_faltante", permiso },
+    { status: 403 }
+  );
 }
 
 /**
@@ -74,10 +111,10 @@ export async function conBot(req: NextRequest, handler: (bot: BotAutenticado) =>
  * usuario), valida el id y el canal del bot, y devuelve la conversación con su contacto.
  * Uso: `const a = await conversacionDelBot(bot, id, "citas"); if (!a.conv) return a.respuesta;`
  */
-export async function conversacionDelBot(bot: BotAutenticado, conversationId: string, modulo: ClaveModulo) {
+export async function conversacionDelBot(bot: BotAutenticado, conversationId: string, modulo?: ClaveModulo) {
   const error = (mensaje: string, status: number) =>
     ({ bot: null, conv: null, respuesta: NextResponse.json({ error: mensaje }, { status }) }) as const;
-  if (!(await moduloHabilitado(modulo))) return error("módulo no activo", 404);
+  if (modulo && !(await moduloHabilitado(modulo))) return error("módulo no activo", 404);
   const id = aBigInt(conversationId);
   if (id === null) return error("conversationId inválido", 400);
   const conv = await db.conversacion.findUnique({ where: { id }, include: { contacto: true } });

@@ -5,10 +5,11 @@ import { generarToken, nuevoSecretoFirma } from "@/lib/services/bots";
 import { validarWebhookUrl } from "@/lib/webhook-url";
 import { referenciaPropia } from "@/lib/referencias";
 import { conErrores } from "@/lib/errores-api";
+import { permisosValidos } from "@/lib/bot-permisos";
 
 export const dynamic = "force-dynamic";
 
-/** Edita un bot. Body: { nombre?, webhookUrl?, canalId?, activo?, asesorId?, regenerarToken?, regenerarSecreto? } */
+/** Edita un bot. Body: { nombre?, webhookUrl?, canalId?, activo?, asesorId?, permisos?, regenerarToken?, regenerarSecreto? } */
 async function manejarPATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const s = await requireSesion(true);
@@ -32,6 +33,11 @@ async function manejarPATCH(req: NextRequest, props: { params: Promise<{ id: str
     const asesorId = await referenciaPropia("usuario", body.asesorId);
     if (asesorId === false) return NextResponse.json({ error: "asesor inexistente" }, { status: 400 });
     data.asesorId = asesorId;
+  }
+  if ("permisos" in body) {
+    const permisos = permisosValidos(body.permisos);
+    if (permisos === null) return NextResponse.json({ error: "permisos inválidos" }, { status: 400 });
+    data.permisos = permisos;
   }
   if (body.regenerarToken === true) data.apiToken = generarToken();
   const secreto = body.regenerarSecreto === true ? nuevoSecretoFirma() : null;

@@ -27,7 +27,7 @@ function horaLocal(iso: string, zona: string) {
  */
 async function manejarGET(req: NextRequest, props: { params: Promise<{ accountId: string; conversationId: string }> }) {
   const { conversationId } = await props.params;
-  return conBot(req, async (botAutenticado) => {
+  return conBot(req, "agendar_cita", async (botAutenticado) => {
     const acceso = await conversacionDelBot(botAutenticado, conversationId, "citas");
     if (!acceso.conv) return acceso.respuesta;
 

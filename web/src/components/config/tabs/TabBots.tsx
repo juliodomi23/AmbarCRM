@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Boton, Campo } from "@/components/ui";
 import { api } from "@/components/config/tabs/shared";
 import { toast } from "@/components/Toaster";
+import { ETIQUETAS_PERMISO, PERMISOS_BOT, type PermisoBot } from "@/lib/bot-permisos";
 
 export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
   const router = useRouter();
@@ -52,6 +53,11 @@ export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
       return;
     if (await api(`/api/bots/${b.id}`, "PATCH", { regenerarToken: true }))
       router.refresh();
+  }
+  async function cambiarPermiso(b: any, permiso: PermisoBot, activo: boolean) {
+    const actuales: string[] = b.permisos ?? [];
+    const permisos = activo ? [...new Set([...actuales, permiso])] : actuales.filter((p) => p !== permiso);
+    if (await api(`/api/bots/${b.id}`, "PATCH", { permisos })) router.refresh();
   }
   async function borrar(b: any) {
     if (!confirm(`¿Borrar el bot "${b.nombre}"?`)) return;
@@ -168,6 +174,22 @@ export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
               <code className="block break-all text-foreground">
                 {b.apiToken}
               </code>
+            </div>
+
+            <div className="rounded-lg bg-background p-3 text-xs">
+              <p className="mb-1 text-muted-foreground">Permisos del bot:</p>
+              <div className="grid gap-1 sm:grid-cols-2">
+                {PERMISOS_BOT.map((permiso) => (
+                  <label key={permiso} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={(b.permisos ?? []).includes(permiso)}
+                      onChange={(e) => cambiarPermiso(b, permiso, e.target.checked)}
+                    />
+                    <span className="text-foreground">{ETIQUETAS_PERMISO[permiso]}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             <div className="rounded-lg bg-background p-3 text-xs">
