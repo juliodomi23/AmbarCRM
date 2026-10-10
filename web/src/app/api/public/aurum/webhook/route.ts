@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { db, dbRaw, runWithOrg } from "@/lib/db";
 import { clientesAurum, conexionDe, moduloLealtad } from "@/lib/aurum";
@@ -15,17 +15,22 @@ import { estadoVentana } from "@/lib/meta/ventana";
 
 export const dynamic = "force-dynamic";
 
+/** Compara hashes (misma longitud siempre) para que el tiempo no dependa del largo ni del contenido. */
 function secretoValido(recibido: string | null) {
   const esperado = process.env.AURUM_WEBHOOK_SECRET ?? "";
   if (!esperado || !recibido) return false;
-  const a = Buffer.from(recibido);
-  const b = Buffer.from(esperado);
-  return a.length === b.length && timingSafeEqual(a, b);
+  const hash = (valor: string) => createHash("sha256").update(valor).digest();
+  return timingSafeEqual(hash(recibido), hash(esperado));
 }
 
-/** Aurum avisa cuando un cliente gana premio (WEBHOOK_URL apunta aquí con ?clave=secreto). */
+/**
+ * Aurum avisa cuando un cliente gana premio. El secreto va preferentemente en el header
+ * `x-aurum-clave` (la URL queda en los logs de proxies); se sigue aceptando `?clave=` para no
+ * romper integraciones ya configuradas.
+ */
 export async function POST(req: NextRequest) {
-  if (!secretoValido(req.nextUrl.searchParams.get("clave"))) {
+  const clave = req.headers.get("x-aurum-clave") ?? req.nextUrl.searchParams.get("clave");
+  if (!secretoValido(clave)) {
     return NextResponse.json({ error: "no autorizado" }, { status: 401 });
   }
   const body = await req.json().catch(() => ({}));

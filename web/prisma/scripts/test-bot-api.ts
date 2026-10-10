@@ -186,10 +186,13 @@ async function main() {
     );
   const conv = await conversacion(0);
   const contactoId = (await q<{ contacto_id: string }>("SELECT contacto_id::text FROM conversaciones WHERE id=$1", [conv]))[0].contacto_id;
+  // Timestamps explícitos y distintos (1 s entre mensajes): con el default now() dos inserts seguidos
+  // podían empatar en el mismo milisegundo y el orden "últimos 20" dejaba de ser determinista.
+  const inicio = Date.now() - 60_000;
   for (let i = 1; i <= 25; i++) {
     await q(
-      `INSERT INTO mensajes (org_id, conversacion_id, direccion, contenido, interna) VALUES ($1,$2,$3,$4,$5)`,
-      [o, conv, i % 2 ? "entrante" : "saliente", `m${i}`, i === 25],
+      `INSERT INTO mensajes (org_id, conversacion_id, direccion, contenido, interna, "timestamp") VALUES ($1,$2,$3,$4,$5,$6)`,
+      [o, conv, i % 2 ? "entrante" : "saliente", `m${i}`, i === 25, new Date(inicio + i * 1000)],
     );
   }
   const auditoria = (accion: string) =>

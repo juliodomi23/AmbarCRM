@@ -96,16 +96,16 @@ export function registrarPagoTourConSaldo(
 
     const reserva = await tx.reservaTour.findUnique({ where: { id: BigInt(data.reservaId) } });
     if (!reserva) throw new ErrorCupo("Reserva no encontrada", 404);
-    const monto = Number(data.monto);
-    if (monto > Number(reserva.saldo)) {
+    const monto = new Prisma.Decimal(String(data.monto));
+    if (monto.gt(reserva.saldo)) {
       throw new ErrorCupo("El pago supera el saldo pendiente", 400);
     }
 
     const pago = await tx.pagoTour.create({ data });
-    const saldo = Number(reserva.saldo) - monto;
+    const saldo = reserva.saldo.minus(monto);
     await tx.reservaTour.update({
       where: { id: reserva.id },
-      data: { saldo, estado: saldo === 0 ? "liquidada" : reserva.estado },
+      data: { saldo, estado: saldo.isZero() ? "liquidada" : reserva.estado },
     });
     return pago;
   });

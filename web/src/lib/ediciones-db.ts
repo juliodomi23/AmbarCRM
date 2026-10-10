@@ -51,14 +51,14 @@ export function actualizarReserva(
       if (ocupados + viajeros > actual.tour.capacidad) throw new ErrorCupo("No hay cupo suficiente");
     }
     const pagado = await tx.pagoTour.aggregate({ where: { reservaId: id, estado: "aplicado" }, _sum: { monto: true } });
-    const totalPagado = Number(pagado._sum.monto ?? 0);
-    const total = cambios.total ?? Number(actual.total);
-    if (total < totalPagado) throw new ErrorCupo(`El total no puede ser menor a lo ya pagado ($${totalPagado})`, 400);
-    const saldo = Math.round((total - totalPagado) * 100) / 100;
+    const totalPagado = pagado._sum.monto ?? new Prisma.Decimal(0);
+    const total = cambios.total === undefined ? actual.total : new Prisma.Decimal(cambios.total.toFixed(2));
+    if (total.lt(totalPagado)) throw new ErrorCupo(`El total no puede ser menor a lo ya pagado ($${totalPagado.toFixed(2)})`, 400);
+    const saldo = total.minus(totalPagado);
     return tx.reservaTour.update({
       where: { id },
       data: {
-        estado: saldo === 0 && estado !== "cancelada" && totalPagado > 0 ? "liquidada" : estado,
+        estado: saldo.isZero() && estado !== "cancelada" && totalPagado.gt(0) ? "liquidada" : estado,
         viajeros,
         total,
         saldo,
@@ -92,7 +92,7 @@ export function cancelarPagoTour(orgId: bigint, id: bigint) {
     return tx.reservaTour.update({
       where: { id: reserva.id },
       data: {
-        saldo: Math.round((Number(reserva.saldo) + Number(vigente.monto)) * 100) / 100,
+        saldo: reserva.saldo.plus(vigente.monto),
         estado: reserva.estado === "liquidada" ? "confirmada" : reserva.estado,
       },
     });

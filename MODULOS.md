@@ -326,7 +326,12 @@ por su API, sin cambios en Aurum.
   hasta reconectar.
 
 Variables de entorno en AmbarCRM: `AURUM_URL` (fija; ninguna empresa la elige) y
-`AURUM_WEBHOOK_SECRET`. En Aurum: `WEBHOOK_URL=https://<crm>/api/public/aurum/webhook?clave=<AURUM_WEBHOOK_SECRET>`.
+`AURUM_WEBHOOK_SECRET`. El webhook acepta el secreto de dos formas:
+
+- **Preferida:** el header `x-aurum-clave: <AURUM_WEBHOOK_SECRET>` (no queda en los logs de proxies).
+  En Aurum: `WEBHOOK_URL=https://<crm>/api/public/aurum/webhook` y el header en su configuración, si lo permite.
+- **Compatible:** `WEBHOOK_URL=https://<crm>/api/public/aurum/webhook?clave=<AURUM_WEBHOOK_SECRET>`.
+  Sigue funcionando, pero la URL (y el secreto) quedan en los logs de proxies; si ambos vienen, manda el header.
 
 Prueba contra un Aurum de pruebas (nunca producción), con una clienta `9611234567` y una
 meta de 1 sello: `AURUM_URL=… AURUM_SLUG=… AURUM_CLAVE=… AURUM_WEBHOOK_SECRET=…
