@@ -20,7 +20,7 @@ no se toca ni se despliega hasta que Meta apruebe la App Review.
 | A4 · reportes y varias cajas | ✅ (falta 1 fix, ver 3.1) | 0805888, 8480e9e |
 | API del bot (rama `bot-api-v1`) | ✅ integrada | merge b1a36d0 |
 | **Fix de A4 (envío)** | ✅ | 75bc943 |
-| **D · reseñas de Google** | ✅ | b9ac2f6, bc91dcd y el commit de los fixes de revisión |
+| **D · reseñas de Google** | ✅ | b9ac2f6, bc91dcd, 64a5eb4 |
 | **A5 · modo sin internet** | ⏳ | — |
 | **Revisión final + despliegue** | ⏳ (despliegue espera a Meta) | — |
 
