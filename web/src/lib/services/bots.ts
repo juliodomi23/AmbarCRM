@@ -5,6 +5,7 @@ import { destinoPublico } from "@/lib/webhook-url";
 import { decryptMetaToken, encryptMetaToken } from "@/lib/meta/credentials";
 import { transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
+import { puestoPuedeAtenderConversaciones } from "@/lib/modulos";
 
 const BASE = process.env.NEXTAUTH_URL ?? "";
 
@@ -69,7 +70,9 @@ export async function auditarBot(
 
 /**
  * Asesor para un handoff: el fijo del bot si está activo; si no, round-robin entre usuarios activos
- * (el siguiente al último asesor asignado por handoff, según auditoria_bot).
+ * que puedan atender conversaciones (el Cajero nunca recibe un handoff; ver
+ * `puestoPuedeAtenderConversaciones`), tomando el siguiente al último asesor asignado por handoff,
+ * según auditoria_bot.
  * `bloquear` (FOR NO KEY UPDATE sobre los usuarios) serializa handoffs simultáneos; solo se
  * desactiva en la prueba de concurrencia para mostrar qué pasa sin protección.
  */
@@ -85,10 +88,17 @@ export async function elegirAsesor(
     });
     if (fijo) return fijo;
   }
-  const usuarios = bloquear
-    ? await tx.$queryRaw<{ id: bigint; nombre: string }[]>`
-        SELECT id, nombre FROM usuarios WHERE activo ORDER BY id FOR NO KEY UPDATE`
-    : await tx.usuario.findMany({ where: { activo: true }, orderBy: { id: "asc" }, select: { id: true, nombre: true } });
+  const activos = bloquear
+    ? await tx.$queryRaw<{ id: bigint; nombre: string; puesto: string; rol: string }[]>`
+        SELECT id, nombre, puesto, rol::text AS rol FROM usuarios WHERE activo ORDER BY id FOR NO KEY UPDATE`
+    : await tx.usuario.findMany({
+        where: { activo: true },
+        orderBy: { id: "asc" },
+        select: { id: true, nombre: true, puesto: true, rol: true }
+      });
+  const usuarios = activos
+    .filter((u) => puestoPuedeAtenderConversaciones(u.puesto, u.rol))
+    .map(({ id, nombre }) => ({ id, nombre }));
   if (usuarios.length === 0) return null;
 
   const ultimo = await tx.auditoriaBot.findFirst({
