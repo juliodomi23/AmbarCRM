@@ -103,8 +103,17 @@ export interface ChannelProvider {
   /** Envía una plantilla oficial previamente aprobada por WhatsApp. */
   enviarPlantilla?(telefono: string, plantilla: PlantillaOficial, variables?: string[]): Promise<ResultadoEnvio>;
 
-  /** Lista las plantillas oficiales disponibles en el proveedor. */
+  /** Lista las plantillas oficiales disponibles en el proveedor ([] si no se pudo consultar). */
   listarPlantillas?(): Promise<PlantillaOficial[]>;
+
+  /**
+   * Como listarPlantillas, pero distingue por qué falló: `no_disponible` (red o 5xx del proveedor),
+   * `rechazado` (4xx, p. ej. credencial vencida) o `sin_waba` (el canal no tiene wabaId configurado).
+   */
+  consultarPlantillas?(): Promise<
+    | { ok: true; plantillas: PlantillaOficial[] }
+    | { ok: false; motivo: "no_disponible" | "rechazado" | "sin_waba"; error: string }
+  >;
 
   enviarMedia(
     telefono: string,
