@@ -4,7 +4,9 @@ export function toCSV(headers: string[], rows: (string | number | null | undefin
     // Un apóstrofo evita que Excel ejecute como fórmula valores que vienen de clientes
     // (p. ej. un nombre de perfil de WhatsApp que empieza con "=").
     const crudo = v == null ? "" : String(v);
-    const s = /^[=+\-@\t\r]/.test(crudo) ? `'${crudo}` : crudo;
+    // Los números (incluidos los negativos, p. ej. un faltante de caja) no son fórmulas.
+    const esNumero = /^-\d+(\.\d+)?$/.test(crudo);
+    const s = !esNumero && /^[=+\-@\t\r]/.test(crudo) ? `'${crudo}` : crudo;
     return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const cuerpo = [headers, ...rows].map((r) => r.map(esc).join(",")).join("\n");

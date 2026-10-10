@@ -12,6 +12,8 @@ assert.match(svg, /ABC123/);
 
 const csv = toCSV(["nombre"], [["=SUM(1,1)"]]);
 assert.match(csv, /'=SUM\(1,1\)/, "la exportación debe neutralizar fórmulas");
+const negativos = toCSV(["n"], [[-12.5], ["-3.00"], ["-5"], ["-x"], ["-1+2"], ["+5"], ["@a"]]).split("\n").slice(1);
+assert.deepEqual(negativos, ["-12.5", "-3.00", "-5", "'-x", "'-1+2", "'+5", "'@a"], "los números negativos quedan como número; el resto sigue neutralizado");
 
 const [schema, migracion, importador, lote] = await Promise.all([
   readFile("prisma/schema.prisma", "utf8"),

@@ -70,6 +70,6 @@ for (const ruta of ["src/app/api/citas/[id]/route.ts", "src/app/api/ventas/[id]/
 const envio = await readFile("src/lib/resenas-envio.ts", "utf8");
 assert.match(envio, /FOR UPDATE/);
 const proxy = await readFile("src/proxy.ts", "utf8");
-assert.match(proxy, /\|opinion\|/);
+assert.match(proxy, /\|opinion\/\|/);
 
 console.log("resenas: enlace de Google, origen, estrellas, config, semana local, QR y ruta pública OK");
