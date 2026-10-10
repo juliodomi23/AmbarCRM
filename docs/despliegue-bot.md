@@ -31,6 +31,7 @@ Todo el SQL se corre con el usuario **dueño** (no `crm_app`) y con `-v ON_ERROR
 | 1 | `psql "$DATABASE_URL_DUENO" -v ON_ERROR_STOP=1 -f web/prisma/sql/multi-tenant.sql` | **Solo** si la base aún no es multi-tenant (PARTES A→B→C; ver `MULTI-TENANT.md`). Una producción que ya corre con `crm_app` **no** lo necesita: sáltalo. |
 | 2 | `psql "$DATABASE_URL_DUENO" -v ON_ERROR_STOP=1 -f web/prisma/sql/actualizaciones.sql` | Siempre. Crea `bots.signing_secret`, `bots.asesor_id`, `auditoria_bot` y todo lo de fase 2. Con Docker lo corre el servicio `db-migrate`. |
 | 3 | Si en el paso 1 corriste `multi-tenant.sql`: **vuelve a correr `actualizaciones.sql`** (paso 2) | La PARTE C de `multi-tenant.sql` hace `GRANT … ON ALL TABLES` y `ALTER DEFAULT PRIVILEGES`, que devuelven `UPDATE`/`DELETE` a `crm_app` sobre `auditoria_bot`. `actualizaciones.sql` los revoca (`REVOKE UPDATE, DELETE, TRUNCATE`). El orden **multi-tenant.sql → actualizaciones.sql** es obligatorio; repetirlo es seguro. |
+| 3b | Revisa los permisos (bloque **E** del mismo archivo, ya incluido en el paso 2) | `bots.permisos` queda así: los bots que ya existían reciben `leer_perfil`, `enviar_mensaje`, `notas_internas`, `mover_embudo`, `crear_tarea`, `handoff`, `agendar_cita` y `cotizar` (lo que hacen hoy); los nuevos nacen con `leer_perfil`, `enviar_mensaje`, `notas_internas` y `handoff`. La migración solo toca filas con `permisos` NULL: volver a correr el archivo no pisa lo que el admin edite. |
 | 4 | Agrega las variables de entorno (sección 3) | Antes de arrancar la app. |
 | 5 | Construye y despliega la app | `npm run build` ejecuta `prisma generate`. La app **no** corre DDL (`crm_app` no puede). |
 | 6 | Verificaciones (sección 4) | Después del despliegue. |
@@ -63,8 +64,13 @@ El límite por IP depende de `cf-connecting-ip` / `x-forwarded-for` (ver `api-bo
 3. **Columnas y tabla:**
    ```sql
    SELECT column_name FROM information_schema.columns
-   WHERE table_name = 'bots' AND column_name IN ('signing_secret', 'asesor_id');   -- 2 filas
-   SELECT relrowsecurity FROM pg_class WHERE relname = 'auditoria_bot';           -- t
+   WHERE table_name = 'bots' AND column_name IN ('signing_secret', 'asesor_id', 'permisos');   -- 3 filas
+   SELECT relrowsecurity FROM pg_class WHERE relname = 'auditoria_bot';                       -- t
+   ```
+   **Permisos de los bots existentes** (ninguno debe quedar en NULL ni con el mínimo por error):
+   ```sql
+   SELECT id, nombre, permisos FROM bots ORDER BY id;
+   SELECT count(*) FROM bots WHERE permisos IS NULL;   -- 0
    ```
 4. **Aislamiento** (en una base desechable o de staging, nunca en producción):
    `DATABASE_URL=<crm_app> ADMIN_DATABASE_URL=<dueño> npx tsx prisma/scripts/test-aislamiento.ts`.
@@ -87,7 +93,12 @@ y los secretos de firma (los bots dejarán de firmar):
 DROP TABLE IF EXISTS auditoria_bot;
 ALTER TABLE bots DROP COLUMN IF EXISTS signing_secret;
 ALTER TABLE bots DROP COLUMN IF EXISTS asesor_id;
+ALTER TABLE bots DROP COLUMN IF EXISTS permisos;
 ```
+
+Revertir solo los permisos (el código anterior los ignora y los bots dejan de estar limitados) es solo
+`ALTER TABLE bots DROP COLUMN IF EXISTS permisos;`. Para restaurar el comportamiento previo sin borrar la
+columna: `UPDATE bots SET permisos = ARRAY['leer_perfil','enviar_mensaje','notas_internas','mover_embudo','crear_tarea','handoff','agendar_cita','cotizar'];`
 
 No hay reversión parcial del resto de `actualizaciones.sql` (fase 2): si hay que volver a un esquema anterior,
 restaura el respaldo.
@@ -96,6 +107,12 @@ restaura el respaldo.
 
 - **Orden de SQL:** nunca dejes `multi-tenant.sql` como último paso. Después de correrlo (o de cualquier
   `GRANT … ON ALL TABLES` manual), vuelve a correr `actualizaciones.sql`.
+- **No uses `prisma db push` en una base con bots existentes sin haber corrido antes `actualizaciones.sql`:**
+  `permisos` nace con el conjunto mínimo como valor por defecto y los bots que ya existían quedarían limitados
+  y dejarían de funcionar. En producción la app no corre DDL (`crm_app`), así que esto solo aplica a bases de
+  desarrollo o staging.
+- **Rutas nuevas apagadas por defecto para bots existentes:** `products`, `opportunity` y `contacts` responden
+  `403 permiso_faltante` hasta que el admin active `ver_productos`, `editar_oportunidad` y `gestionar_contactos`.
 - **Un solo proceso:** los límites de peticiones viven en memoria; con varias instancias del CRM el tope se multiplica.
 - **Sin proxy:** si el CRM no está detrás de Cloudflare o de un proxy que fije la IP, el límite por IP es evadible.
 - **Limitación conocida:** si Meta acepta un envío y falla el registro local, la ruta responde `502` (ver `api-bot.md`).

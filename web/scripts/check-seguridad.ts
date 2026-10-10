@@ -3,6 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { destinoPublico, esIpInterna, validarWebhookUrl } from "../src/lib/webhook-url.ts";
 import { orgDeArchivo } from "../src/lib/media-nombre.ts";
 import { ipCliente, permitido } from "../src/lib/rate-limit.ts";
+import { PERMISOS_BOT } from "../src/lib/bot-permisos.ts";
 
 // SSRF: el administrador de cualquier empresa configura la URL del bot.
 for (const interna of ["127.0.0.1", "10.0.0.5", "172.20.1.1", "192.168.1.10", "169.254.169.254", "100.64.0.1",
@@ -61,11 +62,18 @@ async function rutasV1(dir: string): Promise<string[]> {
   return hijos.flat();
 }
 const rutasBot = await rutasV1("src/app/api/v1");
-assert.ok(rutasBot.length >= 9, "se esperaban las rutas del bot");
+assert.ok(rutasBot.length >= 12, "se esperaban las rutas del bot");
 for (const ruta of rutasBot) {
   const codigo = await readFile(ruta, "utf8");
   assert.match(codigo, /\bconBot\(/, `${ruta}: debe usar conBot`);
   assert.doesNotMatch(codigo, /\bsetOrg\(|\brequireBot\(|\bautenticarBot\(/, `${ruta}: no debe fijar el tenant a mano`);
+  // Cada conBot declara el permiso que exige (o null si la ruta lo decide con denegarSinPermiso).
+  const llamadas = codigo.match(/\bconBot\(/g)?.length ?? 0;
+  const permisos = [...codigo.matchAll(/\bconBot\(req, (?:null|"([a-z_]+)"),/g)];
+  assert.equal(permisos.length, llamadas, `${ruta}: todo conBot debe declarar su permiso`);
+  for (const [, permiso] of permisos) {
+    if (permiso) assert.ok((PERMISOS_BOT as readonly string[]).includes(permiso), `${ruta}: permiso desconocido ${permiso}`);
+  }
 }
 console.log(`bot: ${rutasBot.length} rutas /api/v1 pasan por conBot`);
 

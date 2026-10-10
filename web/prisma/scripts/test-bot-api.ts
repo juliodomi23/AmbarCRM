@@ -40,9 +40,18 @@ import {
   POST as postCotizaciones,
 } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/quotes/route";
 import { POST as postEnviarCotizacion } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/quotes/[quoteId]/send/route";
+import { GET as getProductos } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/products/route";
+import { PATCH as patchOportunidad } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/opportunity/route";
+import {
+  GET as getContactos,
+  POST as postContactos,
+} from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/contacts/route";
+import { PERMISOS_BOT, PERMISOS_MINIMOS, permisosValidos } from "../../src/lib/bot-permisos";
+import { readFile } from "node:fs/promises";
 import { fechaLocal, instanteLocal, sumarDias } from "../../src/lib/reservas/horarios";
 import { reprogramarCita, reservarCita } from "../../src/lib/reservas/servidor";
 
+const TODOS_SQL = `ARRAY[${PERMISOS_BOT.map((p) => `'${p}'`).join(",")}]::text[]`;
 const adminUrl = process.env.ADMIN_DATABASE_URL;
 if (!adminUrl || !process.env.DATABASE_URL || !process.env.META_TOKEN_ENCRYPTION_KEY) {
   throw new Error("Define ADMIN_DATABASE_URL, DATABASE_URL (crm_app) y META_TOKEN_ENCRYPTION_KEY");
@@ -109,7 +118,7 @@ function llamar(
       {
         host: "127.0.0.1",
         port: (servidor.address() as AddressInfo).port,
-        path: `/api/v1/x${opciones.query ?? ""}`,
+        path: `/api/v1/accounts/1/conversations/${conversacionId}/x${opciones.query ?? ""}`,
         method: opciones.metodo ?? (cuerpo === undefined ? "GET" : "POST"),
         agent: agente,
         headers: {
@@ -147,7 +156,7 @@ async function main() {
   const token = (n: string) => `t-${n}-${sufijo}`;
   const bot = async (n: string, canal: string | null) =>
     uno(
-      `INSERT INTO bots (org_id, nombre, webhook_url, api_token, canal_id) VALUES ($1,$2,'https://8.8.8.8/hook',$3,$4) RETURNING id::text AS id`,
+      `INSERT INTO bots (org_id, nombre, webhook_url, api_token, canal_id, permisos) VALUES ($1,$2,'https://8.8.8.8/hook',$3,$4,${TODOS_SQL}) RETURNING id::text AS id`,
       [o, n, token(n), canal],
     );
   const botA = await bot("A", canalA);
@@ -301,7 +310,7 @@ async function main() {
 
   // El secreto nunca sale en lo que usa la UI.
   const botConSecreto = await uno(
-    "INSERT INTO bots (org_id, nombre, webhook_url, api_token, signing_secret) VALUES ($1,'firma','https://8.8.8.8/h',$2,$3) RETURNING id::text AS id",
+    `INSERT INTO bots (org_id, nombre, webhook_url, api_token, signing_secret, permisos) VALUES ($1,'firma','https://8.8.8.8/h',$2,$3,${TODOS_SQL}) RETURNING id::text AS id`,
     [o, token("firma"), secreto.cifrado],
   );
   const lista = await runWithOrg(orgId, () => listarBots());
@@ -331,6 +340,7 @@ async function main() {
 
   await bloque3(o, { canalA, canalB, token, conv, contactoId, botA });
   await bloque4(token, conv, botA);
+  await bloque5(o, { canalA, canalB, token, conv, contactoId, botA });
   console.log("OK · API del bot");
 }
 
@@ -363,7 +373,7 @@ async function bloque4(token: (n: string) => string, conv: string, botA: string)
     const marca = i === 0 ? "P" : "Q";
     await q("INSERT INTO orgs (id, nombre, slug) VALUES ($1,$2,$3)", [org.toString(), `Concurrente ${marca}`, `conc-${marca}-${sufijo}`.toLowerCase()]);
     await q(`INSERT INTO modulos_org (org_id, clave, activo) VALUES ($1,'citas',true)`, [org.toString()]);
-    await q(`INSERT INTO bots (org_id, nombre, webhook_url, api_token) VALUES ($1,$2,'https://8.8.8.8/h',$3)`, [org.toString(), `bot-${marca}`, `t-conc-${marca}-${sufijo}`]);
+    await q(`INSERT INTO bots (org_id, nombre, webhook_url, api_token, permisos) VALUES ($1,$2,'https://8.8.8.8/h',$3,${TODOS_SQL})`, [org.toString(), `bot-${marca}`, `t-conc-${marca}-${sufijo}`]);
     const contacto = await uno(`INSERT INTO contactos (org_id, nombre, telefono) VALUES ($1,$2,$3) RETURNING id::text AS id`, [org.toString(), `Contacto-${marca}`, `54${Date.now()}${i}`]);
     const c = await uno(`INSERT INTO conversaciones (org_id, contacto_id) VALUES ($1,$2) RETURNING id::text AS id`, [org.toString(), contacto]);
     for (let m = 1; m <= 3; m++) {
@@ -435,7 +445,7 @@ async function bloque4(token: (n: string) => string, conv: string, botA: string)
   await assert.rejects(() => dbRaw.$executeRawUnsafe(`DELETE FROM auditoria_bot`), /permission denied|denegado/i, "crm_app no puede DELETE");
   // Borrar un bot con filas de bitácora funciona (FK ON DELETE SET NULL corre como dueño) y la fila se conserva.
   const efimero = await uno(
-    `INSERT INTO bots (org_id, nombre, webhook_url, api_token) VALUES ($1,'efimero','https://8.8.8.8/h',$2) RETURNING id::text AS id`,
+    `INSERT INTO bots (org_id, nombre, webhook_url, api_token, permisos) VALUES ($1,'efimero','https://8.8.8.8/h',$2,${TODOS_SQL}) RETURNING id::text AS id`,
     [o, `t-ef-${sufijo}`],
   );
   await runWithOrg(orgId, () => auditarBot({ id: BigInt(efimero) }, BigInt(conv), "prueba_fk", {}));
@@ -474,7 +484,7 @@ async function bloque3(o: string, ctx: Ctx) {
   const org2 = orgId + 1n;
   await q("INSERT INTO orgs (id, nombre, slug) VALUES ($1,'Bot API 2',$2)", [org2.toString(), `bot-api2-${sufijo}`]);
   const canal2 = await uno(`INSERT INTO canales_whatsapp (org_id, nombre) VALUES ($1,'C2') RETURNING id::text AS id`, [org2.toString()]);
-  await q(`INSERT INTO bots (org_id, nombre, webhook_url, api_token, canal_id) VALUES ($1,'bot2','https://8.8.8.8/h',$2,$3)`, [org2.toString(), token("org2"), canal2]);
+  await q(`INSERT INTO bots (org_id, nombre, webhook_url, api_token, canal_id, permisos) VALUES ($1,'bot2','https://8.8.8.8/h',$2,$3,${TODOS_SQL})`, [org2.toString(), token("org2"), canal2]);
   await modulo("citas", true);
   await modulo("cotizaciones", true);
   await q(`INSERT INTO modulos_org (org_id, clave, activo) VALUES ($1,'citas',true),($1,'cotizaciones',true)`, [org2.toString()]);
@@ -852,3 +862,297 @@ main()
     servidor.close();
     await Promise.all([admin.end(), dbRaw.$disconnect()]);
   });
+
+// ---------------------------------------------------------------------------------------------
+// Bloque 4: permisos por bot, productos, oportunidad y contactos
+// ---------------------------------------------------------------------------------------------
+async function bloque5(o: string, ctx: Ctx) {
+  const { canalA, canalB, token, conv } = ctx;
+  const org2 = (orgId + 1n).toString();
+  let seq = 0;
+  const nueva = async (canal: string, org = o) => {
+    const c = await uno(
+      `INSERT INTO contactos (org_id, nombre, telefono) VALUES ($1,$2,$3) RETURNING id::text AS id`,
+      [org, `B4-${seq}`, `55${Date.now()}${seq++}`],
+    );
+    return {
+      contacto: c,
+      id: await uno(`INSERT INTO conversaciones (org_id, contacto_id, canal_id) VALUES ($1,$2,$3) RETURNING id::text AS id`, [org, c, canal]),
+    };
+  };
+  const bot = (nombre: string, permisos: string[] | null, canal: string | null = canalA, org = o) =>
+    q(
+      permisos === null
+        ? `INSERT INTO bots (org_id, nombre, webhook_url, api_token, canal_id) VALUES ($1,$2,'https://8.8.8.8/h',$3,$4)`
+        : `INSERT INTO bots (org_id, nombre, webhook_url, api_token, canal_id, permisos) VALUES ($1,$2,'https://8.8.8.8/h',$3,$4,$5::text[])`,
+      permisos === null ? [org, nombre, token(nombre), canal] : [org, nombre, token(nombre), canal, permisos],
+    );
+  const permisosDe = async (nombre: string) =>
+    (await q<{ permisos: string[] }>("SELECT permisos FROM bots WHERE org_id=$1 AND api_token=$2", [o, token(nombre)]))[0].permisos;
+  const modulo = (clave: string, activo: boolean) =>
+    q(
+      `INSERT INTO modulos_org (org_id, clave, activo) VALUES ($1,$2,$3)
+       ON CONFLICT (org_id, clave) DO UPDATE SET activo = EXCLUDED.activo`,
+      [o, clave, activo],
+    );
+  const auditoria = (accion: string) =>
+    q<{ conversacion_id: string | null; despues: Record<string, unknown> }>(
+      "SELECT conversacion_id::text, despues FROM auditoria_bot WHERE org_id=$1 AND accion=$2 ORDER BY id",
+      [o, accion],
+    );
+
+  // ---------- 4A. Permisos ----------
+  assert.deepEqual(permisosValidos(["handoff", "handoff", "cotizar"]), ["handoff", "cotizar"]);
+  assert.equal(permisosValidos(["handoff", "volar"]), null);
+  assert.equal(permisosValidos("handoff"), null);
+
+  await bot("min", null); // nace con el conjunto mínimo (DEFAULT de la base)
+  assert.deepEqual([...(await permisosDe("min"))].sort(), [...PERMISOS_MINIMOS].sort(), "un bot nuevo nace con el mínimo");
+  const C = await nueva(canalA);
+  const cuerpoCita = { fecha: sumarDias(fechaLocal(new Date(), "America/Mexico_City"), 3), hora: "09:00", servicioId: 1 };
+
+  assert.equal((await llamar(getConversacion, token("min"), C.id)).status, 200, "con permiso mínimo lee el perfil");
+  const sinCita = await llamar(postCitas, token("min"), C.id, cuerpoCita);
+  assert.equal(sinCita.status, 403);
+  const denegado = await sinCita.json();
+  assert.equal(denegado.motivo, "permiso_faltante");
+  assert.equal(denegado.permiso, "agendar_cita");
+  const filas = await auditoria("permiso_denegado");
+  assert.ok(filas.some((f) => f.conversacion_id === C.id && f.despues.permiso === "agendar_cita"), "la denegación queda en la bitácora");
+  // El perfil sigue disponible aunque otra acción esté denegada.
+  assert.equal((await llamar(getConversacion, token("min"), C.id)).status, 200);
+
+  const denegadas: [string, Handler, unknown, Opciones, string][] = [
+    ["mover_embudo", postFunnel, { etapa: "Nuevo" }, {}, "funnel"],
+    ["crear_tarea", postTasks, { titulo: "x" }, {}, "tasks"],
+    ["cotizar", postCotizaciones, { partidas: [{ concepto: "x", cantidad: 1, precio: 1 }] }, {}, "quotes POST"],
+    ["cotizar", getCotizaciones, undefined, {}, "quotes GET"],
+    ["agendar_cita", getCitas, undefined, {}, "appointments GET"],
+    ["agendar_cita", getDisponibilidad, undefined, { query: "?fecha=2030-01-01" }, "availability"],
+    ["ver_productos", getProductos, undefined, {}, "products"],
+    ["editar_oportunidad", patchOportunidad, { valor: 10 }, { metodo: "PATCH" }, "opportunity"],
+    ["gestionar_contactos", getContactos, undefined, { query: "?phone=5599999999" }, "contacts GET"],
+    ["gestionar_contactos", postContactos, { nombre: "x", telefono: "5599999999" }, {}, "contacts POST"],
+  ];
+  for (const [permiso, handler, cuerpo, opciones, nombre] of denegadas) {
+    const r = await llamar(handler, token("min"), C.id, cuerpo, opciones);
+    assert.equal(r.status, 403, `${nombre} sin ${permiso}`);
+    assert.equal((await r.json()).permiso, permiso, nombre);
+  }
+  // Con el mínimo sí puede: nota interna, handoff y etiquetas.
+  assert.equal((await llamar(postMessages, token("min"), C.id, { content: "nota", private: true })).status, 200);
+  assert.equal((await llamar(postLabels, token("min"), C.id, { labels: ["vip"] })).status, 200);
+  // Mensaje y nota son permisos distintos.
+  await bot("soloperfil", ["leer_perfil"]);
+  const msg = await llamar(postMessages, token("soloperfil"), C.id, { content: "hola" });
+  assert.equal(msg.status, 403);
+  assert.equal((await msg.json()).permiso, "enviar_mensaje");
+  const nota = await llamar(postMessages, token("soloperfil"), C.id, { content: "n", private: true });
+  assert.equal(nota.status, 403);
+  assert.equal((await nota.json()).permiso, "notas_internas");
+  // El admin activa un permiso y funciona (la columna es la fuente de verdad).
+  assert.equal((await llamar(getCotizaciones, token("soloperfil"), C.id)).status, 403);
+  await q("UPDATE bots SET permisos = array_append(permisos, 'cotizar') WHERE api_token=$1", [token("soloperfil")]);
+  assert.equal((await llamar(getCotizaciones, token("soloperfil"), C.id)).status, 200);
+  // El permiso no sustituye al canal: con permiso pero en otro canal, 403 de canal.
+  await bot("canalB-todo", [...PERMISOS_BOT], canalB);
+  const otroCanal = await llamar(getConversacion, token("canalB-todo"), C.id);
+  assert.equal(otroCanal.status, 403);
+  assert.equal((await otroCanal.json()).motivo, undefined, "es el 403 de canal, no el de permiso");
+
+  // ---------- 4A. Migración: los bots existentes conservan su comportamiento ----------
+  const sql = await readFile("prisma/sql/actualizaciones.sql", "utf8");
+  const bloqueE = sql.slice(sql.indexOf("-- E · Permisos por bot."));
+  assert.ok(bloqueE.includes("ALTER TABLE bots ADD COLUMN IF NOT EXISTS permisos"), "bloque de migración encontrado");
+  // Simula la base anterior: columna sin default y sin NOT NULL, con un bot que ya existía.
+  await q("ALTER TABLE bots ALTER COLUMN permisos DROP NOT NULL");
+  await q("ALTER TABLE bots ALTER COLUMN permisos DROP DEFAULT");
+  await bot("legado", null);
+  await q("UPDATE bots SET permisos = NULL WHERE api_token=$1", [token("legado")]);
+  await q(bloqueE);
+  const esperados = ["leer_perfil", "enviar_mensaje", "notas_internas", "mover_embudo", "crear_tarea", "handoff", "agendar_cita", "cotizar"];
+  assert.deepEqual([...(await permisosDe("legado"))].sort(), [...esperados].sort(), "el bot existente conserva sus acciones actuales");
+  assert.equal(
+    (await q<{ is_nullable: string }>("SELECT is_nullable FROM information_schema.columns WHERE table_name='bots' AND column_name='permisos'"))[0].is_nullable,
+    "NO",
+  );
+  // Idempotente: lo que el admin edite no se pisa al volver a correr el archivo.
+  await q("UPDATE bots SET permisos = ARRAY['leer_perfil'] WHERE api_token=$1", [token("legado")]);
+  await q(bloqueE);
+  assert.deepEqual(await permisosDe("legado"), ["leer_perfil"]);
+  await q("UPDATE bots SET permisos = ARRAY[" + esperados.map((p) => `'${p}'`).join(",") + "] WHERE api_token=$1", [token("legado")]);
+  // Comportamiento anterior intacto con el bot migrado (las 9 rutas vigentes):
+  const L = await nueva(canalA);
+  await q("INSERT INTO mensajes (org_id, conversacion_id, direccion, contenido) VALUES ($1,$2,'entrante','hola')", [o, L.id]);
+  const dia = sumarDias(fechaLocal(new Date(), "America/Mexico_City"), 3);
+  const vigentes: [string, Handler, unknown, Opciones][] = [
+    ["GET conversación", getConversacion, undefined, {}],
+    ["messages", postMessages, { content: "n", private: true }, {}],
+    ["funnel", postFunnel, { etapa: "Nuevo" }, {}],
+    ["labels", postLabels, { labels: ["x"] }, {}],
+    ["tasks", postTasks, { titulo: "t" }, {}],
+    ["availability", getDisponibilidad, undefined, { query: `?fecha=${dia}` }],
+    ["appointments GET", getCitas, undefined, {}],
+    ["quotes GET", getCotizaciones, undefined, {}],
+    ["quotes POST", postCotizaciones, { partidas: [{ concepto: "x", cantidad: 1, precio: 10 }] }, {}],
+  ];
+  for (const [nombre, handler, cuerpo, opciones] of vigentes) {
+    const r = await llamar(handler, token("legado"), L.id, cuerpo, opciones);
+    assert.notEqual(r.status, 403, `${nombre} con el bot migrado`);
+    assert.ok(r.status < 500, `${nombre}: ${r.status}`);
+  }
+  // …y no hereda las rutas nuevas:
+  assert.equal((await llamar(getProductos, token("legado"), L.id)).status, 403);
+  assert.equal((await llamar(getContactos, token("legado"), L.id, undefined, { query: "?phone=5599999999" })).status, 403);
+
+  // ---------- 4B. Productos ----------
+  await modulo("productos", true);
+  const P = await nueva(canalA);
+  const producto = (nombre: string, precio: number, stock: number, org = o, extra = "") =>
+    uno(
+      `INSERT INTO productos (org_id, nombre, precio, stock, sku, descripcion, activo) VALUES ($1,$2,$3,$4,$5,$6,true) RETURNING id::text AS id`,
+      [org, nombre, precio, stock, `sku-${sufijo}-${seq++}${extra}`, `desc ${nombre}`],
+    );
+  const lampara = await producto("Lámpara LED", 120, 5);
+  const mesa = await producto("Mesa de centro", 900, 0);
+  const silla = await producto("Silla Nórdica", 450, 7);
+  await producto("Lámpara ajena", 1, 99, org2);
+  // 3 piezas de la silla en un apartado activo (el stock de 7 ya las descontó).
+  const venta = await uno(`INSERT INTO ventas (org_id, folio) VALUES ($1,$2) RETURNING id::text AS id`, [o, `V-AP-${sufijo}`]);
+  await q(`INSERT INTO venta_partidas (org_id, venta_id, producto_id, cantidad, precio_unitario, total) VALUES ($1,$2,$3,3,450,1350)`, [o, venta, silla]);
+  await q(`INSERT INTO apartados (org_id, venta_id, contacto_id, anticipo, saldo, vence_at, estado) VALUES ($1,$2,$3,100,1250, now() + interval '5 days','activo')`, [o, venta, P.contacto]);
+
+  const buscar = async (query: string, tk = "A", c = P.id) => llamar(getProductos, token(tk), c, undefined, { query });
+  const r1 = await (await buscar("?q=lampara")).json();
+  assert.deepEqual(r1.productos.map((x: { nombre: string }) => x.nombre), ["Lámpara LED"], "sin acentos y solo de la empresa");
+  assert.equal(r1.productos[0].existencia, 5);
+  assert.equal(r1.productos[0].precio, 120);
+  assert.equal(r1.productos[0].disponible, true);
+  const r2 = await (await buscar("?q=silla")).json();
+  assert.equal(r2.productos[0].existencia, 7, "el stock ya descuenta lo apartado");
+  assert.equal(r2.productos[0].apartada, 3);
+  const r3 = await (await buscar("?q=mesa")).json();
+  assert.equal(r3.productos[0].disponible, false);
+  const todos = await (await buscar("?limit=2")).json();
+  assert.equal(todos.productos.length, 2);
+  for (const mala of ["?limit=0", "?limit=51", "?limit=abc"]) assert.equal((await buscar(mala)).status, 400, mala);
+  assert.equal((await buscar("?q=lampara", "B")).status, 403, "otro canal");
+  assert.equal((await buscar("?q=lampara", "org2")).status, 404, "otra empresa no ve la conversación");
+  await modulo("productos", false);
+  assert.equal((await buscar("?q=lampara")).status, 404, "módulo apagado");
+  await modulo("productos", true);
+  void lampara;
+  void mesa;
+
+  // ---------- 4B. Oportunidad ----------
+  const O = await nueva(canalA);
+  const usuarios = await q<{ id: string }>("SELECT id::text FROM usuarios WHERE org_id=$1 ORDER BY id", [o]);
+  const activo = usuarios[0].id;
+  const inactivo = await uno(`INSERT INTO usuarios (org_id, nombre, email, password_hash, activo) VALUES ($1,'off',$2,'x',false) RETURNING id::text AS id`, [o, `off-${sufijo}@x.test`]);
+  const ajeno = await uno(`INSERT INTO usuarios (org_id, nombre, email, password_hash) VALUES ($1,'otra',$2,'x') RETURNING id::text AS id`, [org2, `otra-${sufijo}@x.test`]);
+  const embudoPpal = (await q<{ id: string }>("SELECT id::text FROM embudos WHERE org_id=$1 AND activo ORDER BY orden, id LIMIT 1", [o]))[0].id;
+  void embudoPpal;
+  const postventa = await uno(`INSERT INTO embudos (org_id, nombre, orden) VALUES ($1,'Postventa',50) RETURNING id::text AS id`, [o]);
+  await q(`INSERT INTO etapas (org_id, embudo_id, nombre, orden, tipo) VALUES ($1,$2,'Seguimiento',0,'normal'),($1,$2,'Resuelto',1,'ganado')`, [o, postventa]);
+  const patch = (cuerpo: unknown, tk = "A", c = O.id) => llamar(patchOportunidad, token(tk), c, cuerpo, { metodo: "PATCH" });
+
+  assert.equal((await patch({ valor: 100 })).status, 404, "sin oportunidad abierta");
+  await llamar(postFunnel, token("A"), O.id, { etapa: "Nuevo" }); // crea la oportunidad
+  const oportunidadId = (await q<{ id: string }>("SELECT id::text FROM oportunidades WHERE contacto_id=$1", [O.contacto]))[0].id;
+
+  const v = await patch({ valor: "1500.50" });
+  assert.equal(v.status, 200);
+  assert.equal((await v.json()).oportunidad.valor, 1500.5);
+  const r = await patch({ responsableId: activo });
+  assert.equal((await r.json()).oportunidad.responsableId, activo);
+  assert.equal((await patch({ responsableId: inactivo })).status, 400, "usuario inactivo");
+  assert.equal((await patch({ responsableId: ajeno })).status, 400, "usuario de otra empresa");
+  assert.equal((await patch({ responsableId: "abc" })).status, 400);
+  assert.equal((await (await patch({ responsableId: null })).json()).oportunidad.responsableId, null);
+  assert.equal((await patch({})).status, 400);
+  for (const malo of [{ valor: "abc" }, { valor: -5 }, { valor: "1.234" }]) assert.equal((await patch(malo)).status, 400, JSON.stringify(malo));
+
+  const cambio = await patch({ embudo: "postventa", etapa: "resuelto" });
+  assert.equal(cambio.status, 200);
+  const cj = (await cambio.json()).oportunidad;
+  assert.equal(cj.embudo, "Postventa");
+  assert.equal(cj.etapa, "Resuelto");
+  assert.equal(cj.estado, "ganado", "la etapa de tipo ganado cierra la oportunidad como funnel");
+  // Una oportunidad cerrada ya no es "abierta": el siguiente PATCH da 404 (igual que funnel).
+  assert.equal((await patch({ valor: 1 })).status, 404);
+
+  const O2 = await nueva(canalA);
+  await llamar(postFunnel, token("A"), O2.id, { etapa: "Nuevo" });
+  const soloEmbudo = await patch({ embudo: "Postventa" }, "A", O2.id);
+  assert.equal((await soloEmbudo.json()).oportunidad.etapa, "Seguimiento", "sin etapa: la primera del embudo");
+  const raro = await patch({ embudo: "NoExiste" }, "A", O2.id);
+  assert.equal(raro.status, 400);
+  assert.ok((await raro.json()).embudos.includes("Postventa"));
+  const sinEtapa = await patch({ embudo: "Postventa", etapa: "Nada" }, "A", O2.id);
+  assert.equal(sinEtapa.status, 400);
+  assert.ok((await sinEtapa.json()).etapas.includes("Seguimiento"));
+  // El valor y el responsable no se aplican si la etapa pedida es inválida (no hay cambios a medias).
+  await patch({ valor: 999, embudo: "Postventa", etapa: "Nada" }, "A", O2.id);
+  assert.notEqual(
+    (await q<{ valor: string }>("SELECT valor::text FROM oportunidades WHERE contacto_id=$1", [O2.contacto]))[0].valor,
+    "999.00",
+  );
+
+  const eventos = await q<{ tipo: string; payload: { campo?: string } }>(
+    "SELECT tipo::text, payload FROM eventos WHERE oportunidad_id=$1 ORDER BY id",
+    [oportunidadId],
+  );
+  assert.ok(eventos.some((e) => e.tipo === "nota" && e.payload.campo === "valor"), "cambio de valor como evento");
+  assert.ok(eventos.some((e) => e.tipo === "asignacion" && e.payload.campo === "responsable"), "cambio de responsable como evento");
+  assert.ok(eventos.some((e) => e.tipo === "etapa_cambio"), "cambio de etapa como evento");
+  const aud = await auditoria("oportunidad_editada");
+  assert.ok(aud.length >= 4, "cada PATCH exitoso queda en la bitácora");
+  assert.equal((await patch({ valor: 5 }, "B", O2.id)).status, 403, "otro canal");
+  assert.equal((await patch({ valor: 5 }, "org2", O2.id)).status, 404, "otra empresa");
+
+  // ---------- 4C. Contactos ----------
+  const K = await nueva(canalA);
+  const canalOrg2 = (await q<{ canal_id: string }>("SELECT canal_id::text FROM bots WHERE api_token=$1", [token("org2")]))[0].canal_id;
+  const k2 = await nueva(canalOrg2, org2);
+  const telefono = `55${String(Date.now()).slice(-8)}`; // 10 dígitos
+  await q(`INSERT INTO contactos (org_id, nombre, telefono) VALUES ($1,'Otra empresa',$2)`, [org2, `52${telefono}`]);
+  const buscarTel = (valor: string, tk = "A", c = K.id) => llamar(getContactos, token(tk), c, undefined, { query: `?phone=${encodeURIComponent(valor)}` });
+  assert.deepEqual(await (await buscarTel(telefono)).json(), { encontrado: false, contacto: null }, "el contacto de otra empresa no se ve");
+  assert.equal((await buscarTel("123")).status, 400);
+  const crear = (cuerpo: unknown, tk = "A", c = K.id) => llamar(postContactos, token(tk), c, cuerpo);
+  const nuevo = await crear({ nombre: "  Ana Pérez ", telefono: `+52 ${telefono.slice(0, 2)} ${telefono.slice(2, 6)} ${telefono.slice(6)}`, correo: "ana@example.com" });
+  assert.equal(nuevo.status, 201);
+  const nj = await nuevo.json();
+  assert.equal(nj.repetida, false);
+  assert.equal(nj.contacto.nombre, "Ana Pérez");
+  assert.equal(nj.contacto.telefono, `52${telefono}`, "se guarda como 52 + 10 dígitos");
+  assert.equal(nj.contacto.email, "ana@example.com");
+  const dup = await crear({ nombre: "Otra Ana", telefono: `521${telefono}` }); // formato 521…
+  assert.equal(dup.status, 200);
+  const dj = await dup.json();
+  assert.equal(dj.repetida, true);
+  assert.equal(dj.contacto.id, nj.contacto.id);
+  assert.equal((await q("SELECT count(*)::int n FROM contactos WHERE org_id=$1 AND telefono LIKE $2", [o, `%${telefono}`]))[0].n, 1);
+  const hallado = await (await buscarTel(`521${telefono}`)).json();
+  assert.equal(hallado.encontrado, true);
+  assert.equal(hallado.contacto.id, nj.contacto.id);
+  // Un contacto que llegó de WhatsApp con 521… también se encuentra por sus 10 dígitos.
+  const tel521 = `55${String(Date.now()).slice(-7)}1`;
+  await q(`INSERT INTO contactos (org_id, nombre, telefono) VALUES ($1,'Legado 521',$2)`, [o, `521${tel521}`]);
+  assert.equal((await (await buscarTel(tel521)).json()).contacto.nombre, "Legado 521");
+  assert.equal((await crear({ nombre: "x", telefono: "123" })).status, 400);
+  assert.equal((await crear({ nombre: "", telefono: telefono })).status, 400);
+  assert.equal((await crear({ nombre: "x", telefono: "5512345678", correo: "no-es-correo" })).status, 400);
+  // Crear simultáneo del mismo teléfono: uno solo se crea.
+  const telCarrera = `55${String(Date.now()).slice(-6)}77`;
+  const carrera = await Promise.all([1, 2, 3, 4, 5].map((n) => crear({ nombre: `Carrera ${n}`, telefono: telCarrera })));
+  const estados = carrera.map((c) => c.status).sort();
+  assert.deepEqual(estados, [200, 200, 200, 200, 201]);
+  assert.equal((await q("SELECT count(*)::int n FROM contactos WHERE org_id=$1 AND telefono = $2", [o, `52${telCarrera}`]))[0].n, 1);
+  // Aislamiento
+  assert.equal((await buscarTel(telefono, "B")).status, 403, "otro canal");
+  assert.equal((await buscarTel(telefono, "org2", K.id)).status, 404, "otra empresa sobre mi conversación");
+  const propio2 = await (await buscarTel(telefono, "org2", k2.id)).json();
+  assert.equal(propio2.contacto.nombre, "Otra empresa", "el bot de la otra empresa solo ve lo suyo");
+  assert.equal((await auditoria("contacto_creado")).length >= 2, true);
+}

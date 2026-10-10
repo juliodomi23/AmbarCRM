@@ -10,6 +10,7 @@ Las respuestas existentes **solo ganan campos**; ninguno se quitó ni cambió de
 |---|---|
 | Token inexistente | `401 {"error":"token inválido"}` |
 | Bot atado a otro canal | `403 {"error":"el bot no opera en este canal"}` |
+| Bot sin el permiso que exige la ruta | `403 {"error":"…","motivo":"permiso_faltante","permiso":"agendar_cita"}` (queda en la bitácora como `permiso_denegado`) |
 | `conversationId` no numérico | `400` |
 | Conversación inexistente (o de otra empresa) | `404` |
 | Más de `BOT_RATE_LIMIT_MAX` peticiones por token en `BOT_RATE_LIMIT_WINDOW_MS` | `429` + `Retry-After` (segundos) |
@@ -25,10 +26,36 @@ Límites (en memoria de cada instancia del CRM; con varias instancias, mover el 
   declarada para evadir el límite (el límite por token no depende de la IP). Sin ninguno de los tres, todas las
   peticiones comparten la clave `desconocida`.
 
+## Permisos por bot
+
+Cada bot tiene una lista de permisos (Configuración → Bots → casillas, o `PATCH /api/bots/:id {"permisos": [...]}`).
+`conBot(req, "<permiso>", …)` lo comprueba antes de ejecutar la ruta; la comprobación del canal (`botAutorizado`)
+sigue aplicando aparte. Un bot **nuevo** nace con `leer_perfil`, `enviar_mensaje`, `notas_internas` y `handoff`.
+Los bots que ya existían al migrar conservaron lo que hacían: `leer_perfil`, `enviar_mensaje`, `notas_internas`,
+`mover_embudo`, `crear_tarea`, `handoff`, `agendar_cita` y `cotizar`; **no** reciben `editar_oportunidad`,
+`ver_productos` ni `gestionar_contactos` hasta que el admin los active.
+
+| Permiso | Rutas |
+|---|---|
+| `leer_perfil` | `GET …/{id}` |
+| `enviar_mensaje` | `POST …/messages` (mensaje al cliente) |
+| `notas_internas` | `POST …/messages` con `private: true` |
+| `mover_embudo` | `POST …/funnel` |
+| `editar_oportunidad` | `PATCH …/opportunity` |
+| `crear_tarea` | `POST …/tasks` |
+| `handoff` | `POST …/labels` (etiquetas, `bot_on`, `escalado_humano`/`bot_off`) |
+| `agendar_cita` | `GET …/appointments`, `GET …/appointments/availability`, `POST` y `PATCH …/appointments` |
+| `cotizar` | `GET` y `POST …/quotes`, `POST …/quotes/{quoteId}/send` |
+| `ver_productos` | `GET …/products` |
+| `gestionar_contactos` | `GET` y `POST …/contacts` |
+
+Orden de las comprobaciones: token (401/429) → permiso (403 `permiso_faltante`) → módulo (404) → conversación
+(404) → canal (403).
+
 ## Cómo se aísla cada empresa (para quien agregue rutas)
 
-Toda ruta de `/api/v1` entra por `conBot(req, async (bot) => { … })` (`src/lib/bot-auth.ts`): limita,
-autentica y ejecuta el handler dentro de `runWithOrg(bot.orgId)`. Dentro de `conversacionDelBot(bot, id, "modulo")`
+Toda ruta de `/api/v1` entra por `conBot(req, "<permiso>", async (bot) => { … })` (`src/lib/bot-auth.ts`): limita,
+autentica, comprueba el permiso y ejecuta el handler dentro de `runWithOrg(bot.orgId)`. Dentro de `conversacionDelBot(bot, id, "modulo")`
 valida módulo activo, id y canal. Una ruta que no use `conBot` corre **sin empresa** y RLS le devuelve 0 filas
 (las escrituras fallan); `scripts/check-seguridad.ts` falla si una ruta de `/api/v1` no usa `conBot` o vuelve a
 fijar el tenant con `setOrg`.
@@ -167,9 +194,50 @@ Dentro de la ventana de 24 h va como texto libre; fuera de ella, como plantilla 
 aunque el cron aún no la haya marcado (`estado_guardado` es el de la base). Filtros: `borrador`, `enviada`,
 `aceptada`, `rechazada`, `vencida`.
 
+## Productos, oportunidad y contactos
+
+### `GET …/{id}/products?q=&limit=` — permiso `ver_productos`
+Busca productos por nombre, SKU o categoría (sin importar acentos ni mayúsculas); `limit` de 1 a 50 (default 10).
+Solo lectura. Requiere el módulo **Productos e inventario** activo (`404` si no).
+```json
+{ "productos": [ { "id": 12, "nombre": "Lámpara LED", "sku": "LED-1", "categoria": null,
+                   "descripcion": "…", "precio": 120, "moneda": "MXN", "unidad": "pieza",
+                   "existencia": 5, "apartada": 0, "disponible": true } ],
+  "servicios": [ { "id": 3, "nombre": "Consulta", "descripcion": null, "precio": 0, "duracionMin": 30 } ] }
+```
+- **`existencia` es lo vendible ahora.** El stock del CRM ya descuenta los apartados (crear un apartado baja el
+  stock y cancelarlo o vencerlo lo devuelve), así que no se vuelve a restar. `apartada` solo informa cuántas
+  piezas están comprometidas en apartados activos.
+- `servicios`: servicios agendables (Reservas en línea) cuyo nombre coincide con `q`; solo si el módulo Citas está activo.
+- Errores: `400` limit inválido · `404` módulo apagado.
+
+### `PATCH …/{id}/opportunity` — permiso `editar_oportunidad`
+Edita la oportunidad **abierta** más reciente del contacto. Body (al menos un campo):
+`{ "valor": 2500.50, "responsableId": 7, "embudo": "Postventa", "etapa": "Seguimiento" }`
+- `valor`: número no negativo, máx. 2 decimales. `responsableId`: usuario **activo** de la misma empresa, o `null`
+  para quitarlo. `embudo` y `etapa` por nombre (sin importar mayúsculas); con `embudo` sin `etapa` pasa a la
+  primera etapa de ese embudo; una etapa de tipo ganado/perdido cierra la oportunidad.
+- Si la etapa o el embudo no existen no se aplica nada (`400` con `embudos`/`etapas` válidos).
+- Cada cambio queda como evento de la oportunidad (`nota` con `payload.campo = "valor"`, `asignacion`,
+  `etapa_cambio`) y en la bitácora (`oportunidad_editada`, con antes y después).
+- Respuesta: `{ "oportunidad": { id, titulo, valor, moneda, estado, embudo, etapa, responsableId } }`.
+- Errores: `400` valor, responsable o etapa inválidos · `404` el contacto no tiene oportunidad abierta (no crea
+  una; para eso está `funnel`).
+
+### `GET …/{id}/contacts?phone=` y `POST …/{id}/contacts` — permiso `gestionar_contactos`
+- GET: `200 { "encontrado": true|false, "contacto": {…} | null }`. `400` si `phone` no tiene 10 a 15 dígitos.
+- POST body: `{ "nombre": "Ana Pérez", "telefono": "+52 55 1234 5678", "correo": "ana@example.com" }` (`correo` opcional).
+  `201 { "contacto": {…}, "repetida": false }`; si ya existe, `200 { "contacto": {…}, "repetida": true }` sin crear otro.
+- Normalización: solo dígitos; un número mexicano de 10 dígitos (o con `52`/`521`) se guarda como `52` + 10
+  dígitos, igual que Reservas en línea. La búsqueda de duplicados usa los últimos 10 dígitos, así que encuentra
+  contactos que llegaron de WhatsApp como `521…` o `52…`. Dos peticiones simultáneas con el mismo teléfono crean uno solo.
+- Solo ve y crea contactos de la empresa del bot. El contacto nace con fuente `whatsapp`.
+- Contacto devuelto: `{ id, nombre, telefono, email, empresa, creado }`.
+
 ## Bitácora (ampliada)
-`cita_agendada`, `cita_reprogramada`, `cotizacion_creada`, `cotizacion_enviada`. Las consultas
-(`availability`, `GET quotes`, `GET appointments`) no se registran.
+`cita_agendada`, `cita_reprogramada`, `cotizacion_creada`, `cotizacion_enviada`, `oportunidad_editada`,
+`contacto_creado` y `permiso_denegado` (con el permiso y la ruta). Las consultas (`availability`, `GET quotes`,
+`GET appointments`, `products`, `GET contacts`) no se registran.
 `auditoria_bot` es de solo agregar: el rol de la app (`crm_app`) puede leer e insertar, no editar ni borrar.
 
 ## Bitácora (acciones del bot)
@@ -227,6 +295,12 @@ curl -s -X PATCH -H "$H" -H 'Content-Type: application/json' -d '{"citaId":5,"es
 curl -s -H "$H" "$CRM/api/v1/accounts/1/conversations/$C/appointments/availability?fecha=2026-10-14&servicioId=3"
 curl -s -H "$H" -H 'Content-Type: application/json' -d '{"fecha":"2026-10-14","hora":"09:00","servicioId":3,"profesionalId":5}' $CRM/api/v1/accounts/1/conversations/$C/appointments
 curl -s -X PATCH -H "$H" -H 'Content-Type: application/json' -d '{"citaId":5,"fecha":"2026-10-15","hora":"10:30"}' $CRM/api/v1/accounts/1/conversations/$C/appointments
+# productos, oportunidad y contactos
+curl -s -H "$H" "$CRM/api/v1/accounts/1/conversations/$C/products?q=lampara&limit=5"
+curl -s -X PATCH -H "$H" -H 'Content-Type: application/json' -d '{"valor":2500.5,"responsableId":7,"embudo":"Postventa","etapa":"Seguimiento"}' $CRM/api/v1/accounts/1/conversations/$C/opportunity
+curl -s -H "$H" "$CRM/api/v1/accounts/1/conversations/$C/contacts?phone=5512345678"
+curl -s -H "$H" -H 'Content-Type: application/json' -d '{"nombre":"Ana Pérez","telefono":"+52 55 1234 5678","correo":"ana@example.com"}' $CRM/api/v1/accounts/1/conversations/$C/contacts
+# un bot sin el permiso recibe 403 {"motivo":"permiso_faltante","permiso":"ver_productos"}
 # cotizaciones
 curl -s -H "$H" -H 'Content-Type: application/json' -d '{"partidas":[{"productoId":12,"cantidad":2},{"concepto":"Instalación","cantidad":1,"precio":50}],"vigenciaDias":15}' $CRM/api/v1/accounts/1/conversations/$C/quotes
 curl -s -X POST -H "$H" $CRM/api/v1/accounts/1/conversations/$C/quotes/41/send
@@ -243,5 +317,9 @@ curl -s -H "$H" "$CRM/api/v1/accounts/1/conversations/$C/quotes?estado=enviada"
   instancias el tope efectivo se multiplica. Mover el contador a Redis si se escala horizontalmente.
 - **Lecturas sin bitácora.** `availability`, `GET quotes` y `GET appointments` no se registran en `auditoria_bot`.
 - **Citas sin profesional** no se pueden reprogramar por el bot (no hay con qué validar disponibilidad).
+- **Etiquetas y permisos.** `POST …/labels` se gobierna con `handoff` completo: un bot con `handoff` puede
+  también guardar etiquetas del contacto. Hay etiquetas con efectos propios (`bot_on`, `escalado_humano`,
+  `bot_off`); las demás solo se agregan.
+- **Los permisos se leen del bot en cada petición**; un cambio del admin aplica de inmediato.
 - **Disponibilidad** usa servicios y horarios de Reservas en línea; sin servicios configurados responde `404`.
 - Despliegue y reversión: [despliegue-bot.md](despliegue-bot.md).
