@@ -21,7 +21,7 @@ no se toca ni se despliega hasta que Meta apruebe la App Review.
 | API del bot (rama `bot-api-v1`) | ✅ integrada | merge b1a36d0 |
 | **Fix de A4 (envío)** | ✅ | 75bc943 |
 | **D · reseñas de Google** | ✅ | b9ac2f6, bc91dcd, 64a5eb4 |
-| **A5 · modo sin internet** | ⏳ | — |
+| **A5 · modo sin internet** | ✅ | 50a958d, f7893a3, e62d069, 012eb0d |
 | **Revisión final + despliegue** | ⏳ (despliegue espera a Meta) | — |
 
 Estado de pruebas en b1a36d0 (BD desechable): tsc, eslint y build OK; `actualizaciones.sql` 3 veces OK;
@@ -131,14 +131,14 @@ Especificación en `PLAN-MODULOS-FASE-2.md` §A5. Reglas clave:
 - Commits: (1) SW y catálogo en caché; (2) cola y subida idempotente; (3) inventario negativo
   marcado y UI.
 
-### 3.4 Pendientes menores (decidir; no bloquean)
+### 3.4 Pendientes menores (no bloquean)
 
-| Tema | Detalle | Sugerencia |
+| Tema | Detalle | Estado |
 |---|---|---|
-| Firma HMAC sin marca de tiempo | `X-AmbarCRM-Signature` firma solo el cuerpo; un mensaje capturado se puede reenviar | Agregar `X-AmbarCRM-Timestamp` dentro de lo firmado y rechazar en n8n los mayores a 5 min |
-| Round-robin del handoff | Reparte entre **todos** los usuarios activos (incluye Cajeros) | Limitar a quienes tienen acceso a Conversaciones |
-| `bot_on` | El bot puede reactivarse en una conversación que un humano apagó | Aceptarlo solo si el responsable no es humano, o quitarlo |
-| Reportes en memoria | Cargan todas las ventas del rango (máx. 1 año) | Bien para negocios chicos; pasar a SQL agregado si una empresa crece |
+| Firma HMAC sin marca de tiempo | `X-AmbarCRM-Signature` firmaba solo el cuerpo; un mensaje capturado se podía reenviar | ✅ cc7b961 · `X-AmbarCRM-Timestamp` + `X-AmbarCRM-Signature-V2` (la V1 no cambia); nodo Code de n8n en `docs/api-bot.md` |
+| Round-robin del handoff | Repartía entre **todos** los usuarios activos (incluía Cajeros) | ✅ 91a930e · solo entre quienes pueden atender conversaciones (el puesto Cajero queda fuera; `puestoPuedeAtenderConversaciones`, porque Conversaciones no es un módulo con permiso por puesto) |
+| `bot_on` | El bot podía reactivarse en una conversación que un humano atendía | ✅ 42bc22a · con responsable responde 409 `asignada_a_humano`, el bot sigue apagado y queda en `auditoria_bot` |
+| Reportes en memoria | Cargan todas las ventas del rango (máx. 1 año) | **Límite aceptado**: bien para negocios chicos; pasar a SQL agregado si una empresa crece |
 | `test-lealtad-aurum.ts` | Necesita un Aurum de pruebas real | Correrlo antes de desplegar |
 
 ### 3.5 Revisión final y despliegue (después de D y A5)
@@ -170,6 +170,7 @@ Especificación en `PLAN-MODULOS-FASE-2.md` §A5. Reglas clave:
    firma, regenerar el secreto en Configuración → Bots y verificar en n8n (ver `docs/api-bot.md`).
 7. Prueba de humo en producción (DESPLIEGUE.md §5) más: venta de caja, pedido web, cotización
    pública y una llamada del bot.
+8. Activar `ventasSinRed` solo a clientes que lo necesiten; el panel `/caja/revision` es el control.
 
 ## 4. Estimación
 
