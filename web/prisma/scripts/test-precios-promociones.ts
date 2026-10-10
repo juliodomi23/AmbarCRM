@@ -5,11 +5,12 @@ import { Prisma } from "@prisma/client";
 import { registrarVentaCaja } from "../../src/lib/caja-db";
 import { crearApartado, registrarDevolucion, registrarVentaCredito } from "../../src/lib/caja-a2-db";
 import { calcularPrecios } from "../../src/lib/precios-db";
-import { crearCotizacion } from "../../src/lib/cotizaciones-db";
+import { crearCotizacion, responderCotizacion } from "../../src/lib/cotizaciones-db";
 import { crearPedido } from "../../src/lib/pedidos-db";
 import { configPedidos } from "../../src/lib/pedidos";
 import { dbRaw } from "../../src/lib/db";
 import { transaccionTenant } from "../../src/lib/retail-db";
+import { cambiarEstadoVenta } from "../../src/lib/venta-estado-db";
 
 const { Pool } = pg;
 const adminUrl = process.env.ADMIN_DATABASE_URL;
@@ -28,7 +29,7 @@ async function preparar() {
     const caja = await tx.caja.create({ data: { nombre: `Caja ${sufijo}` } });
     const turno = await tx.turnoCaja.create({ data: { cajaId: caja.id, usuarioId: usuario.id, fondoInicial: 0 } });
     const contacto = await tx.contacto.create({ data: { nombre: "Cliente mayoreo", telefono: `55${String(Date.now()).slice(-8)}` } });
-    const promo = await tx.producto.create({ data: { sku: `3X2-${sufijo}`, nombre: "Producto 3x2", categoria: "Promo", precio: 100, stock: 30, visibleEnLinea: true } });
+    const promo = await tx.producto.create({ data: { sku: `3X2-${sufijo}`, nombre: "Producto 3x2", categoria: "Promo", precio: 100, costo: 40, stock: 30, visibleEnLinea: true } });
     const promoZona = await tx.producto.create({ data: { sku: `ZONA-${sufijo}`, nombre: "Promoción de un día", categoria: "Promo", precio: 100, stock: 30 } });
     const escalas = await tx.producto.create({ data: { sku: `ESC-${sufijo}`, nombre: "Producto escalas", precio: 120, stock: 30, visibleEnLinea: true } });
     const lista = await tx.listaPrecio.create({ data: { nombre: `Mayoreo ${sufijo}`, tipo: "mayoreo" } });
@@ -76,6 +77,7 @@ async function main() {
   assert.equal(venta.venta.total.toFixed(2), "200.00");
   assert.equal(partida.descuentoPromocion.toFixed(2), "100.00");
   assert.equal(partida.promocionDescripcion, "3x2 octubre");
+  assert.equal(partida.costoUnitario?.toFixed(2), "40.00");
   const devoluciones = [await devolverUna(venta.venta.id, partida.id), await devolverUna(venta.venta.id, partida.id), await devolverUna(venta.venta.id, partida.id)];
   const totalDevuelto = devoluciones.reduce((suma, devolucion) => suma.plus(devolucion.total), new Prisma.Decimal(0));
   assert.equal(totalDevuelto.toFixed(2), "200.00");
@@ -91,10 +93,12 @@ async function main() {
   await crearApartado(actor, { turnoId: base.turno.id, contactoId: base.contacto.id, uuidCliente: uuidApartado, anticipo: new Prisma.Decimal(50), metodo: "efectivo", notas: null, partidas: [{ productoId: base.promo.id, cantidad: new Prisma.Decimal(3), descuento: new Prisma.Decimal(0) }] });
   const apartado = await transaccionTenant(orgId, (tx) => tx.venta.findFirstOrThrow({ where: { uuidCliente: uuidApartado }, include: { partidas: true } }));
   assert.equal(apartado.total.toFixed(2), "200.00");
+  assert.equal(apartado.partidas[0].costoUnitario?.toFixed(2), "40.00");
 
   await transaccionTenant(orgId, (tx) => tx.cuentaCliente.create({ data: { contactoId: base.contacto.id, limiteCredito: 1000 } }));
   const credito = await registrarVentaCredito(actor, { turnoId: base.turno.id, contactoId: base.contacto.id, uuidCliente: randomUUID(), descuento: new Prisma.Decimal(0), notas: null, partidas: [{ productoId: base.promo.id, cantidad: new Prisma.Decimal(3), descuento: new Prisma.Decimal(0) }] });
   assert.equal(credito.venta.total.toFixed(2), "200.00");
+  assert.equal(credito.venta.partidas[0].costoUnitario?.toFixed(2), "40.00");
 
   const cotizacion = await crearCotizacion(orgId, actor.userId, { contactoId: base.contacto.id, oportunidadId: null, vigencia: new Date("2026-10-15T12:00:00Z"), descuentoGeneral: new Prisma.Decimal(0), convertirVenta: false, notas: null, condiciones: null, partidas: [{ productoId: base.promo.id, concepto: "ignorado", cantidad: new Prisma.Decimal(3), precio: null, descuento: new Prisma.Decimal(0) }] });
   assert.equal(cotizacion.total.toFixed(2), "200.00");
@@ -104,8 +108,18 @@ async function main() {
   assert.equal(cotizacionConPrecioConservado.total.toFixed(2), "200.00", "una cotización creada conserva sus precios");
   await transaccionTenant(orgId, (tx) => tx.promocion.updateMany({ where: { productoId: base.promo.id }, data: { activa: true } }));
 
+  const cotizacionVenta = await crearCotizacion(orgId, actor.userId, { contactoId: base.contacto.id, oportunidadId: null, vigencia: new Date("2026-12-31T12:00:00Z"), descuentoGeneral: new Prisma.Decimal(0), convertirVenta: true, notas: null, condiciones: null, partidas: [{ productoId: base.promo.id, concepto: "ignorado", cantidad: new Prisma.Decimal(3), precio: null, descuento: new Prisma.Decimal(0) }] });
+  const aceptada = await responderCotizacion(orgId, cotizacionVenta.tokenPublico, { accion: "aceptar", nombre: "Cliente", ip: "127.0.0.1", ahora: new Date("2026-10-10T12:00:00Z") });
+  const partidaCotizacion = await transaccionTenant(orgId, (tx) => tx.ventaPartida.findFirstOrThrow({ where: { ventaId: aceptada.cotizacion.ventaId! } }));
+  assert.equal(partidaCotizacion.costoUnitario?.toFixed(2), "40.00");
+
   const pedido = await crearPedido(orgId, configPedidos({ maxPorTelefono: 10, maxPorIp: 10 }), { uuidCliente: randomUUID(), nombre: "Cliente web", telefono10: "5551234567", ip: "127.0.0.55", tipoEntrega: "recoger", direccion: null, horarioDeseado: null, notas: null, partidas: [{ productoId: base.promo.id, cantidad: new Prisma.Decimal(3) }] });
   assert.equal(pedido.venta.total.toFixed(2), "200.00");
+  const pedidoPendiente = await transaccionTenant(orgId, (tx) => tx.ventaPartida.findFirstOrThrow({ where: { ventaId: pedido.venta.id } }));
+  assert.equal(pedidoPendiente.costoUnitario, null);
+  await cambiarEstadoVenta(actor, pedido.venta.id, "preparando");
+  const pedidoConfirmado = await transaccionTenant(orgId, (tx) => tx.ventaPartida.findFirstOrThrow({ where: { ventaId: pedido.venta.id } }));
+  assert.equal(pedidoConfirmado.costoUnitario?.toFixed(2), "40.00");
 
   console.log(JSON.stringify({
     prioridad: { listaCliente: reglas.lista.precioUnitario.toFixed(2), volumen: reglas.volumen.precioUnitario.toFixed(2) },
@@ -113,6 +127,7 @@ async function main() {
     tresPorDos: { cobrado: venta.venta.total.toFixed(2), devoluciones: devoluciones.map((d) => d.total.toFixed(2)), totalDevuelto: totalDevuelto.toFixed(2) },
     promocionMasDescuentoGeneral: { cobrado: combinada.venta.total.toFixed(2), totalDevuelto: totalCombinado.toFixed(2), noSuperaCobrado: totalCombinado.lte(combinada.venta.total) },
     caminos: { caja: venta.venta.total.toFixed(2), apartado: apartado.total.toFixed(2), credito: credito.venta.total.toFixed(2), cotizacion: cotizacion.total.toFixed(2), cotizacionConservada: cotizacionConPrecioConservado.total.toFixed(2), tienda: pedido.venta.total.toFixed(2) },
+    costosHistoricos: { caja: partida.costoUnitario?.toFixed(2), apartado: apartado.partidas[0].costoUnitario?.toFixed(2), credito: credito.venta.partidas[0].costoUnitario?.toFixed(2), cotizacionAceptada: partidaCotizacion.costoUnitario?.toFixed(2), pedidoAntes: null, pedidoConfirmado: pedidoConfirmado.costoUnitario?.toFixed(2) },
   }));
 }
 

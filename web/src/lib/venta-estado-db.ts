@@ -103,6 +103,9 @@ export async function cambiarEstadoVenta(
           where: { id: producto.id },
           data: { stock: existenciaDespues },
         });
+        if (debeAplicar) {
+          await tx.ventaPartida.update({ where: { id: partida.id }, data: { costoUnitario: producto.costo } });
+        }
         await tx.movimientoInventario.create({
           data: {
             productoId: producto.id,

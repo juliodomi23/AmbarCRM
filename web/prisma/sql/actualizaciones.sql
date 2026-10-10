@@ -1385,3 +1385,6 @@ DO $$ BEGIN
   END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS productos_grupo_id_idx ON productos(grupo_id);
+
+-- A4 · Costo histórico al aplicar inventario.
+ALTER TABLE venta_partidas ADD COLUMN IF NOT EXISTS costo_unitario NUMERIC(12,2);

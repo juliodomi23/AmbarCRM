@@ -108,6 +108,7 @@ export async function crearPedido(orgId: bigint, config: ConfigPedidos, datos: C
           productoId: producto.id,
           cantidad,
           precioUnitario: precio.precioUnitario,
+          costoUnitario: null,
           descuento: precio.descuentoPromocion,
           descuentoPromocion: precio.descuentoPromocion,
           promocionDescripcion: precio.promocionDescripcion,

@@ -12,6 +12,7 @@ import { cantidadValidaParaProducto } from "@/lib/cantidad";
 import { CERO_DECIMAL } from "@/lib/retail";
 import { calcularPrecios } from "@/lib/precios-db";
 import { bloquearProductos, bloquearVenta, ErrorRetail, reservasActivasPorProducto, transaccionTenant } from "@/lib/retail-db";
+import { importeAcumuladoPorCantidad, ingresosNetosPorPartida } from "@/lib/venta-importes";
 
 export class ErrorCajaA2 extends ErrorRetail {}
 
@@ -93,6 +94,7 @@ async function guardarPartidasYDescontar(
         productoId: producto.id,
         cantidad: partida.cantidad,
         precioUnitario: calculo.precioUnitario,
+        costoUnitario: producto.costo,
         descuento: partida.descuento.plus(calculo.descuentoPromocion),
         descuentoPromocion: calculo.descuentoPromocion,
         promocionDescripcion: calculo.promocionDescripcion,
@@ -172,18 +174,8 @@ export async function registrarDevolucion(
       });
     }
 
-    const partidasOrdenadas = [...venta.partidas].sort((a, b) => (a.id < b.id ? -1 : 1));
-    const baseTrasDescuentosPartida = partidasOrdenadas.reduce((suma, partida) => suma.plus(partida.total), CERO_DECIMAL);
-    if (baseTrasDescuentosPartida.lte(0)) throw new ErrorCajaA2("La venta no tiene un importe reembolsable", 409);
-    const montoTotalPorPartida = new Map<string, Prisma.Decimal>();
-    let asignado = CERO_DECIMAL;
-    for (const [indice, partida] of partidasOrdenadas.entries()) {
-      const monto = indice === partidasOrdenadas.length - 1
-        ? venta.total.minus(asignado)
-        : partida.total.mul(venta.total).div(baseTrasDescuentosPartida).toDecimalPlaces(2);
-      montoTotalPorPartida.set(String(partida.id), monto);
-      asignado = asignado.plus(monto);
-    }
+    const montoTotalPorPartida = ingresosNetosPorPartida(venta.partidas, venta.total);
+    if (montoTotalPorPartida.size === 0) throw new ErrorCajaA2("La venta no tiene un importe reembolsable", 409);
 
     const calculadas = datos.partidas.map((solicitada) => {
       const partida = partidasVenta.find((item) => item.id === solicitada.ventaPartidaId)!;
@@ -195,10 +187,7 @@ export async function registrarDevolucion(
         throw new ErrorCajaA2(`Solo quedan ${disponible.toString()} por devolver de ${partida.producto.nombre}`, 409);
       }
       const cantidadAcumulada = cantidadAnterior.plus(solicitada.cantidad);
-      const montoAcumulado = montoTotalPorPartida.get(String(partida.id))!
-        .mul(cantidadAcumulada)
-        .div(partida.cantidad)
-        .toDecimalPlaces(2);
+      const montoAcumulado = importeAcumuladoPorCantidad(montoTotalPorPartida.get(String(partida.id))!, cantidadAcumulada, partida.cantidad);
       const monto = montoAcumulado.minus(montoAnterior);
       if (monto.lte(0)) throw new ErrorCajaA2("No se puede reembolsar una partida sin importe");
       return { partida, cantidad: solicitada.cantidad, monto };

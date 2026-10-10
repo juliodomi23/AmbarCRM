@@ -279,6 +279,7 @@ export async function registrarVentaCaja(sesion: IdentidadCaja, datos: VentaCaja
             productoId: producto.id,
             cantidad: partida.cantidad,
             precioUnitario: calculo.precioUnitario,
+            costoUnitario: producto.costo,
             descuento: partida.descuento.plus(calculo.descuentoPromocion),
             descuentoPromocion: calculo.descuentoPromocion,
             promocionDescripcion: calculo.promocionDescripcion,

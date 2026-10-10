@@ -161,6 +161,7 @@ async function convertirEnVenta(tx: Prisma.TransactionClient, cotizacion: Awaite
         productoId: partida.productoId!,
         cantidad: partida.cantidad,
         precioUnitario: partida.precio,
+        costoUnitario: porId.get(String(partida.productoId!))!.costo,
         descuento: partida.descuento,
         descuentoPromocion: partida.descuentoPromocion,
         promocionDescripcion: partida.promocionDescripcion,

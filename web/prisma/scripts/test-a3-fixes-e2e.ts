@@ -63,7 +63,7 @@ async function preparar() {
     const turno = await tx.turnoCaja.create({ data: { cajaId: caja.id, usuarioId: usuario.id, fondoInicial: 0 } });
     const contacto = await tx.contacto.create({ data: { nombre: "Cliente sin lista", telefono: `55${String(Date.now()).slice(-8)}` } });
     const promo = await tx.producto.create({ data: { sku: `PROMO-${sufijo}`, nombre: "Producto 3x2", precio: 100, stock: 20 } });
-    const publico = await tx.producto.create({ data: { sku: `PUBLICO-${sufijo}`, nombre: "Precio público", precio: 120, stock: 20, visibleEnLinea: true } });
+    const publico = await tx.producto.create({ data: { sku: `PUBLICO-${sufijo}`, nombre: "Precio público", precio: 120, costo: 30, stock: 20, visibleEnLinea: true } });
     const lista = await tx.listaPrecio.create({ data: { nombre: `Público ${sufijo}`, tipo: "publico", activa: true } });
     await tx.listaPrecioProducto.create({ data: { listaId: lista.id, productoId: publico.id, precio: 80 } });
     await tx.promocion.create({ data: { nombre: "3x2", tipo: "nxm", productoId: promo.id, cantidadCompra: 3, cantidadPaga: 2, inicia: new Date("2020-01-01T12:00:00Z"), termina: new Date("2099-12-31T12:00:00Z") } });
@@ -99,10 +99,19 @@ async function main() {
   const tienda = await json(`/api/public/tienda/${slug}`, "POST", { uuidCliente: randomUUID(), nombre: "Cliente web", telefono: "5512345678", tipoEntrega: "recoger", partidas: [{ productoId: String(base.publico.id), cantidad: "1" }] });
   assert.deepEqual([caja.respuesta.status, cajaClienteSinLista.respuesta.status, ventas.respuesta.status, tienda.respuesta.status], [201, 201, 201, 201]);
   assert.deepEqual([caja.data.venta.total, cajaClienteSinLista.data.venta.total, ventas.data.venta.total, tienda.data.total], ["80", "80", "80", "80.00"]);
+  const costos = await transaccionTenant(orgId, async (tx) => ({
+    caja: await tx.ventaPartida.findFirstOrThrow({ where: { ventaId: BigInt(caja.data.venta.id) }, select: { costoUnitario: true } }),
+    ventas: await tx.ventaPartida.findFirstOrThrow({ where: { ventaId: BigInt(ventas.data.venta.id) }, select: { costoUnitario: true } }),
+    pedidoPendiente: await tx.ventaPartida.findFirstOrThrow({ where: { venta: { tokenSeguimiento: tienda.data.token } }, select: { costoUnitario: true } }),
+  }));
+  assert.equal(costos.caja.costoUnitario?.toFixed(2), "30.00");
+  assert.equal(costos.ventas.costoUnitario?.toFixed(2), "30.00");
+  assert.equal(costos.pedidoPendiente.costoUnitario, null);
 
   console.log(JSON.stringify({
     descuentoCajero: { promocionSinManual: promoSinManual.respuesta.status, promocionMasQuinceManual: promoConQuince.respuesta.status },
     listaPublica: { caja: caja.data.venta.total, cajaClienteSinLista: cajaClienteSinLista.data.venta.total, ventas: ventas.data.venta.total, tienda: tienda.data.total },
+    costoUnitario: { caja: costos.caja.costoUnitario?.toFixed(2), ventas: costos.ventas.costoUnitario?.toFixed(2), pedidoPendiente: null },
   }));
 }
 

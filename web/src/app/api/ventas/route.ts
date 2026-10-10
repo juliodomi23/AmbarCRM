@@ -93,6 +93,7 @@ export const POST = conModulo("ventas", {}, async (sesion, req: NextRequest) => 
             productoId: producto.id,
             cantidad: partida.cantidad,
             precioUnitario: calculo.precioUnitario,
+            costoUnitario: aplicaStock ? producto.costo : null,
             descuento: calculo.descuentoPromocion,
             descuentoPromocion: calculo.descuentoPromocion,
             promocionDescripcion: calculo.promocionDescripcion,

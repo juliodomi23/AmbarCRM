@@ -165,6 +165,14 @@ precio, costo, SKU y códigos por renglón, es atómica y nunca escribe existenc
 exportación neutraliza valores que Excel interpretaría como fórmulas. Los cambios en lote
 solo permiten precio, estado activo y agotado manual.
 
+## Reportes retail
+
+`venta_partidas.costo_unitario` conserva el costo vigente cuando se descuenta inventario.
+Los pedidos web lo dejan vacío mientras solo reservan y lo capturan al confirmarse. Las
+ventas históricas sin costo permanecen como "sin costo" y no se presentan como utilidad
+del 100 %. El ingreso neto por partida prorratea promociones y descuento general con la
+misma función que usan las devoluciones, incluido el ajuste del último centavo.
+
 ## Módulo Citas
 
 Cuando Citas está activo aparece en el menú lateral, la barra móvil y Ctrl+K. Su
