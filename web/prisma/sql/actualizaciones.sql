@@ -1517,3 +1517,12 @@ DO $$ DECLARE t TEXT; BEGIN
 END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON cola_caja_rechazos TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+-- A5 · Las ventas sin internet (cola local) pueden dejar la existencia en negativo a propósito;
+-- queda marcada (ventas.revision_motivos, movimientos_inventario.sin_red) y se corrige con una
+-- entrada de inventario. Por eso estas tres columnas ya no exigen >= 0. stock_minimo sí.
+-- (Las ventas de caja normal y los pedidos en línea siguen rechazando la sobreventa en código.)
+ALTER TABLE productos DROP CONSTRAINT IF EXISTS productos_stock_check;
+ALTER TABLE movimientos_inventario
+  DROP CONSTRAINT IF EXISTS movimientos_inventario_existencia_antes_check,
+  DROP CONSTRAINT IF EXISTS movimientos_inventario_existencia_despues_check;
