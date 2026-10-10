@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { AbrirTicket } from "@/components/caja/BotonImprimir";
 import { OperacionesCajaA2 } from "@/components/caja/OperacionesCajaA2";
 import { TarjetaLealtad } from "@/components/lealtad/TarjetaLealtad";
@@ -93,6 +94,7 @@ export function CajaCliente({
   const total = Math.max(0, subtotal - descuentoLineas - dinero(descuento));
   const pagado = Object.values(pagos).reduce((suma, monto) => suma + dinero(monto), 0);
   const cambio = Math.max(0, pagado - total);
+  const puedeVerReportes = usuario.rol === "admin" || usuario.puesto.trim().toLocaleLowerCase("es-MX") === "encargado de tienda";
 
   useEffect(() => busquedaRef.current?.focus(), [turno]);
   useEffect(() => {
@@ -249,7 +251,7 @@ export function CajaCliente({
 
   if (!turno) return (
     <div className="mx-auto max-w-3xl space-y-5 p-4 md:p-6">
-      <header><h1 className="text-2xl font-bold">Caja de mostrador</h1><p className="text-sm text-muted-foreground">Abre un turno para comenzar a cobrar.</p></header>
+      <header className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-2xl font-bold">Caja de mostrador</h1><p className="text-sm text-muted-foreground">Abre un turno para comenzar a cobrar.</p></div>{puedeVerReportes && <Link className="rounded-lg bg-muted px-4 py-2 text-sm font-medium" href="/reportes-retail">Ver reportes</Link>}</header>
       <section className="surface space-y-4 p-5">
         {cajas.length ? <><label className="block text-sm font-medium">Caja<select id="caja-apertura" className="mt-1 w-full rounded-lg border bg-card p-2">{cajas.map((caja) => <option key={caja.id} value={caja.id}>{caja.nombre}{caja.sucursal ? ` · ${caja.sucursal}` : ""}</option>)}</select></label><Boton disabled={ocupado} onClick={abrirTurno}>Abrir turno</Boton></> : usuario.rol === "admin" ? <div className="space-y-2"><p className="text-sm">Crea la primera caja para comenzar.</p><Boton onClick={crearCaja}>+ Crear caja</Boton></div> : <p className="text-sm">No hay cajas activas. Pide a un Admin que cree la primera.</p>}
       </section>
@@ -259,7 +261,7 @@ export function CajaCliente({
 
   return (
     <div className="space-y-4 p-4 md:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold">Caja · {turno.caja.nombre}</h1><p className="text-sm text-muted-foreground">Turno de {turno.usuario.nombre} · F2 cobrar · F4 buscar · Esc quitar última línea</p></div><div className="flex gap-2"><Boton variante="ghost" onClick={() => mover("entrada")}>+ Entrada</Boton><Boton variante="ghost" onClick={() => mover("salida")}>− Salida</Boton><Boton variante="ghost" onClick={verCorte}>Corte X</Boton><Boton variante="danger" onClick={cerrarTurno}>Corte Z</Boton></div></header>
+      <header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold">Caja · {turno.caja.nombre}</h1><p className="text-sm text-muted-foreground">Turno de {turno.usuario.nombre} · F2 cobrar · F4 buscar · Esc quitar última línea</p></div><div className="flex flex-wrap gap-2">{puedeVerReportes && <Link className="rounded-lg bg-muted px-4 py-2 text-sm font-medium" href="/reportes-retail">Reportes</Link>}<Boton variante="ghost" onClick={() => mover("entrada")}>+ Entrada</Boton><Boton variante="ghost" onClick={() => mover("salida")}>− Salida</Boton><Boton variante="ghost" onClick={verCorte}>Corte X</Boton><Boton variante="danger" onClick={cerrarTurno}>Corte Z</Boton></div></header>
       <div className="grid gap-4 xl:grid-cols-[1fr_420px]">
         <section className="space-y-3">
           <input ref={busquedaRef} value={busqueda} onChange={(e) => setBusqueda(e.target.value)} onKeyDown={escanear} placeholder="Escanea código + Enter o busca nombre / SKU (F4)" className="w-full rounded-xl border bg-card px-4 py-3 text-base shadow-soft" />

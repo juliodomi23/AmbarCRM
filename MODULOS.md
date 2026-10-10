@@ -173,6 +173,12 @@ ventas históricas sin costo permanecen como "sin costo" y no se presentan como 
 del 100 %. El ingreso neto por partida prorratea promociones y descuento general con la
 misma función que usan las devoluciones, incluido el ajuste del último centavo.
 
+`/reportes-retail` exige un rango máximo de un año y acceso de Admin o Encargado de
+tienda. Excluye canceladas, borradores y pedidos aún reservados; las devoluciones restan
+ingreso y costo en la fecha local en que suceden. Permite comparar variantes o agruparlas
+por producto padre, muestra rotación, inventario valorizado, mínimos, ventas por día,
+hora, cajero y caja, y diferencias de cortes. El CSV usa la protección de fórmulas común.
+
 ## Módulo Citas
 
 Cuando Citas está activo aparece en el menú lateral, la barra móvil y Ctrl+K. Su
