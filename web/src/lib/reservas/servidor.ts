@@ -2,7 +2,16 @@ import crypto from "node:crypto";
 import { Prisma, type EstadoCita, type ServicioReserva } from "@prisma/client";
 import { db, dbRaw, runWithOrg } from "@/lib/db";
 import { transaccionTenant } from "@/lib/retail-db";
-import { calcularHorarios, diaSemana, instanteLocal, sumarDias, ventanasDelDia } from "@/lib/reservas/horarios";
+import {
+  calcularHorarios,
+  diaSemana,
+  fechaLocal,
+  fechaValida,
+  instanteLocal,
+  minutosDeHora,
+  sumarDias,
+  ventanasDelDia,
+} from "@/lib/reservas/horarios";
 
 /** Estados de cita que ocupan el horario del especialista. */
 export const ESTADOS_OCUPAN: EstadoCita[] = ["programada", "confirmada", "en_sala", "completada"];
@@ -32,6 +41,19 @@ export function configReservas(config: unknown): ConfigReservas {
     granularidadMin: entre(c.granularidadMin, 5, 120, 30),
     maxPorTelefono: entre(c.maxPorTelefono, 1, 20, 3),
   };
+}
+
+/** La fecha cae entre hoy y el último día agendable (zona del negocio). */
+export function fechaEnAgenda(cfg: ConfigReservas, fecha: unknown, ahora = new Date()): fecha is string {
+  if (!fechaValida(fecha)) return false;
+  const hoy = fechaLocal(ahora, cfg.zona);
+  return fecha >= hoy && fecha <= sumarDias(hoy, cfg.ventanaDias - 1);
+}
+
+/** Instante UTC de una fecha AAAA-MM-DD y hora HH:MM locales del negocio, o null si la hora es inválida. */
+export function inicioDeFechaHora(cfg: ConfigReservas, fecha: string, hora: unknown) {
+  const minutos = minutosDeHora(hora);
+  return minutos === null || minutos >= 1440 ? null : instanteLocal(fecha, minutos, cfg.zona);
 }
 
 function zonaValida(zona: string) {
@@ -70,6 +92,8 @@ export async function horariosDeDoctor(
   doctorId: bigint,
   fecha: string,
   ahora = new Date(),
+  /** Al reprogramar: la cita que se mueve no debe bloquearse a sí misma. */
+  excluirCitaId?: bigint,
 ) {
   const [reglas, excepciones] = await Promise.all([
     db.horarioDoctor.findMany({ where: { doctorId, diaSemana: diaSemana(fecha) } }),
@@ -81,7 +105,13 @@ export async function horariosDeDoctor(
   const desde = instanteLocal(sumarDias(fecha, -1), 0, cfg.zona);
   const hasta = instanteLocal(sumarDias(fecha, 2), 0, cfg.zona);
   const ocupados = await db.cita.findMany({
-    where: { doctorId, estado: { in: ESTADOS_OCUPAN }, inicio: { lt: hasta }, fin: { gt: desde } },
+    where: {
+      doctorId,
+      estado: { in: ESTADOS_OCUPAN },
+      inicio: { lt: hasta },
+      fin: { gt: desde },
+      ...(excluirCitaId !== undefined ? { id: { not: excluirCitaId } } : {}),
+    },
     select: { inicio: true, fin: true },
   });
   return calcularHorarios({
@@ -116,6 +146,32 @@ export async function candidatos(cfg: ConfigReservas, porDoctor: Map<string, str
   return libres.sort((a, b) => (cuenta.get(a) ?? 0) - (cuenta.get(b) ?? 0));
 }
 
+/** Configuración de reservas de la empresa actual (valores por defecto si el módulo no está configurado). */
+export async function configReservasEmpresa() {
+  const modulo = await db.moduloOrg.findFirst({ where: { clave: "reservas_en_linea" }, select: { config: true } });
+  return configReservas(modulo?.config);
+}
+
+/**
+ * Quién puede tomar `inicio`: con profesional pedido, solo él (null si no da el servicio);
+ * sin preferencia, los que tengan libre ese horario, del menos al más ocupado.
+ */
+export async function candidatosParaHorario(
+  cfg: ConfigReservas,
+  servicio: ServicioReserva,
+  elegibles: bigint[],
+  doctorId: bigint | null,
+  fecha: string,
+  inicio: Date,
+) {
+  if (doctorId === null) {
+    return candidatos(cfg, await horariosPorDoctor(cfg, servicio, fecha, elegibles), inicio.toISOString(), fecha);
+  }
+  if (!elegibles.includes(doctorId)) return null;
+  const libres = await horariosDeDoctor(cfg, servicio, doctorId, fecha);
+  return libres.includes(inicio.toISOString()) ? [String(doctorId)] : [];
+}
+
 /** Contacto por los últimos 10 dígitos del teléfono; si no existe, se crea. */
 export async function contactoPorTelefono(telefono10: string, nombre: string) {
   const existente = await db.contacto.findFirst({ where: { telefono: { endsWith: telefono10 } } });
@@ -130,12 +186,24 @@ export async function contactoPorTelefono(telefono10: string, nombre: string) {
  */
 export async function reservarCita(
   orgId: bigint,
-  datos: { servicio: ServicioReserva; candidatos: bigint[]; inicio: Date; contactoId: bigint; notas: string | null },
+  datos: {
+    servicio: ServicioReserva;
+    candidatos: bigint[];
+    inicio: Date;
+    contactoId: bigint;
+    notas: string | null;
+    origen?: string;
+    conversacionId?: bigint | null;
+    /** Solo la prueba de concurrencia lo apaga, para mostrar qué pasa sin el bloqueo. */
+    bloquear?: boolean;
+  },
 ) {
   const fin = new Date(datos.inicio.getTime() + (datos.servicio.duracionMin + datos.servicio.bufferMin) * 60_000);
   for (const doctorId of datos.candidatos) {
     const cita = await transaccionTenant(orgId, async (tx) => {
-      const bloqueado = await tx.$queryRaw<{ id: bigint }[]>(Prisma.sql`SELECT id FROM doctores WHERE id = ${doctorId} AND activo FOR UPDATE`);
+      const bloqueado = datos.bloquear === false
+        ? await tx.$queryRaw<{ id: bigint }[]>(Prisma.sql`SELECT id FROM doctores WHERE id = ${doctorId} AND activo`)
+        : await tx.$queryRaw<{ id: bigint }[]>(Prisma.sql`SELECT id FROM doctores WHERE id = ${doctorId} AND activo FOR UPDATE`);
       if (bloqueado.length === 0) return null;
       const choque = await tx.cita.count({
         where: { doctorId, estado: { in: ESTADOS_OCUPAN }, inicio: { lt: fin }, fin: { gt: datos.inicio } },
@@ -144,13 +212,14 @@ export async function reservarCita(
       return tx.cita.create({
         data: {
           contactoId: datos.contactoId,
+          conversacionId: datos.conversacionId ?? null,
           doctorId,
           servicioId: datos.servicio.id,
           titulo: datos.servicio.nombre,
           notas: datos.notas,
           inicio: datos.inicio,
           fin,
-          origen: "en_linea",
+          origen: datos.origen ?? "en_linea",
           tokenGestion: crypto.randomBytes(16).toString("hex"),
         },
         include: { doctor: { select: { nombre: true } } },
@@ -159,6 +228,41 @@ export async function reservarCita(
     if (cita) return cita;
   }
   return null;
+}
+
+/**
+ * Mueve una cita a otro inicio conservando su duración, con el mismo bloqueo del especialista
+ * y revisión de empalmes que reservarCita (la propia cita no cuenta). null = horario ocupado.
+ */
+export async function reprogramarCita(
+  orgId: bigint,
+  cita: { id: bigint; doctorId: bigint; inicio: Date; fin: Date },
+  nuevoInicio: Date,
+  bloquear = true,
+) {
+  const fin = new Date(nuevoInicio.getTime() + (cita.fin.getTime() - cita.inicio.getTime()));
+  return transaccionTenant(orgId, async (tx) => {
+    const bloqueado = bloquear
+      ? await tx.$queryRaw<{ id: bigint }[]>(Prisma.sql`SELECT id FROM doctores WHERE id = ${cita.doctorId} AND activo FOR UPDATE`)
+      : await tx.$queryRaw<{ id: bigint }[]>(Prisma.sql`SELECT id FROM doctores WHERE id = ${cita.doctorId} AND activo`);
+    if (bloqueado.length === 0) return null;
+    const choque = await tx.cita.count({
+      where: {
+        doctorId: cita.doctorId,
+        id: { not: cita.id },
+        estado: { in: ESTADOS_OCUPAN },
+        inicio: { lt: fin },
+        fin: { gt: nuevoInicio },
+      },
+    });
+    if (choque > 0) return null;
+    // recordatorioEnviadoAt = null: el aviso de la hora nueva debe volver a salir.
+    return tx.cita.update({
+      where: { id: cita.id },
+      data: { inicio: nuevoInicio, fin, recordatorioEnviadoAt: null },
+      include: { doctor: { select: { nombre: true } } },
+    });
+  });
 }
 
 /** Empresa dueña de una cita por el token de su enlace público, o null. */

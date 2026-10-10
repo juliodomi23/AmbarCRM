@@ -1,4 +1,10 @@
 export const ZONA_CITAS = "America/Mexico_City";
+
+/** Enlace público para ver/cancelar una cita (página /reservar/cita/[token]); null sin NEXTAUTH_URL. */
+export function enlacePublicoGestion(token: string) {
+  const base = (process.env.NEXTAUTH_URL ?? "").replace(/\/+$/, "");
+  return base ? `${base}/reservar/cita/${token}` : null;
+}
 export type VariableRecordatorio =
   | "nombre_contacto"
   | "fecha_hora"
