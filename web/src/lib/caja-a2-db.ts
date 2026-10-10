@@ -56,6 +56,8 @@ async function prepararPartidas(
   const reservadas = await reservasActivasPorProducto(tx, partidas.map((partida) => partida.productoId));
   let subtotal = CERO_DECIMAL;
   let descuentosPartidas = CERO_DECIMAL;
+  let descuentosPromocion = CERO_DECIMAL;
+  let descuentosManualesPartidas = CERO_DECIMAL;
   for (const partida of partidas) {
     const calculo = porId.get(String(partida.productoId));
     if (!calculo) throw new ErrorCajaA2("Producto no encontrado", 404);
@@ -67,8 +69,10 @@ async function prepararPartidas(
     if (partida.descuento.gt(calculo.total)) throw new ErrorCajaA2(`El descuento de ${producto.nombre} supera su importe`);
     subtotal = subtotal.plus(calculo.bruto);
     descuentosPartidas = descuentosPartidas.plus(partida.descuento).plus(calculo.descuentoPromocion);
+    descuentosPromocion = descuentosPromocion.plus(calculo.descuentoPromocion);
+    descuentosManualesPartidas = descuentosManualesPartidas.plus(partida.descuento);
   }
-  return { porId, subtotal, descuentosPartidas };
+  return { porId, subtotal, descuentosPartidas, descuentosPromocion, descuentosManualesPartidas };
 }
 
 async function guardarPartidasYDescontar(
@@ -449,13 +453,15 @@ export async function registrarVentaCredito(
     if (!cuentaInicial) throw new ErrorCajaA2("Configura el límite de crédito del cliente", 409);
     await bloquearCuenta(tx, cuentaInicial.id);
     const cuenta = await tx.cuentaCliente.findUniqueOrThrow({ where: { id: cuentaInicial.id } });
-    const { porId, subtotal, descuentosPartidas } = await prepararPartidas(tx, datos.partidas, datos.contactoId);
+    const { porId, subtotal, descuentosPartidas, descuentosPromocion, descuentosManualesPartidas } = await prepararPartidas(tx, datos.partidas, datos.contactoId);
     const base = subtotal.minus(descuentosPartidas);
     if (datos.descuento.gt(base)) throw new ErrorCajaA2("El descuento general supera el subtotal");
     const descuentoTotal = descuentosPartidas.plus(datos.descuento);
     const total = subtotal.minus(descuentoTotal);
     const modulo = await tx.moduloOrg.findFirst({ where: { clave: "caja", activo: true }, select: { config: true } });
-    const porcentaje = subtotal.isZero() ? CERO_DECIMAL : descuentoTotal.mul(100).div(subtotal);
+    const baseTrasPromocion = subtotal.minus(descuentosPromocion);
+    const descuentoManual = descuentosManualesPartidas.plus(datos.descuento);
+    const porcentaje = baseTrasPromocion.isZero() ? CERO_DECIMAL : descuentoManual.mul(100).div(baseTrasPromocion);
     const maximo = descuentoMaximoCajero(modulo?.config);
     if (!puedeAutorizarDescuento(sesion.rol, sesion.puesto) && porcentaje.gt(maximo)) {
       throw new ErrorCajaA2(`El descuento supera el ${maximo}% permitido para Cajero`, 403);

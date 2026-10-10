@@ -206,6 +206,8 @@ export async function registrarVentaCaja(sesion: IdentidadCaja, datos: VentaCaja
       const reservadas = await reservasActivasPorProducto(tx, datos.partidas.map((partida) => partida.productoId));
       let subtotal = CERO_DECIMAL;
       let descuentosPartidas = CERO_DECIMAL;
+      let descuentosPromocion = CERO_DECIMAL;
+      let descuentosManualesPartidas = CERO_DECIMAL;
       for (const partida of datos.partidas) {
         const calculo = porId.get(String(partida.productoId));
         if (!calculo) throw new ErrorCaja("Producto no encontrado");
@@ -217,6 +219,8 @@ export async function registrarVentaCaja(sesion: IdentidadCaja, datos: VentaCaja
         if (partida.descuento.gt(calculo.total)) throw new ErrorCaja(`El descuento de ${producto.nombre} supera su importe`);
         subtotal = subtotal.plus(calculo.bruto);
         descuentosPartidas = descuentosPartidas.plus(partida.descuento).plus(calculo.descuentoPromocion);
+        descuentosPromocion = descuentosPromocion.plus(calculo.descuentoPromocion);
+        descuentosManualesPartidas = descuentosManualesPartidas.plus(partida.descuento);
       }
       const baseTrasPartidas = subtotal.minus(descuentosPartidas);
       if (datos.descuento.gt(baseTrasPartidas)) throw new ErrorCaja("El descuento general supera el subtotal");
@@ -224,7 +228,9 @@ export async function registrarVentaCaja(sesion: IdentidadCaja, datos: VentaCaja
       const total = subtotal.minus(descuentoTotal);
       const modulo = await tx.moduloOrg.findFirst({ where: { clave: "caja", activo: true }, select: { config: true } });
       const maximo = descuentoMaximoCajero(modulo?.config);
-      const porcentaje = subtotal.isZero() ? CERO_DECIMAL : descuentoTotal.mul(100).div(subtotal);
+      const baseTrasPromocion = subtotal.minus(descuentosPromocion);
+      const descuentoManual = descuentosManualesPartidas.plus(datos.descuento);
+      const porcentaje = baseTrasPromocion.isZero() ? CERO_DECIMAL : descuentoManual.mul(100).div(baseTrasPromocion);
       if (!puedeAutorizarDescuento(sesion.rol, sesion.puesto) && porcentaje.gt(maximo)) {
         throw new ErrorCaja(`El descuento supera el ${maximo}% permitido para Cajero`, 403);
       }

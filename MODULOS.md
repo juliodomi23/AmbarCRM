@@ -143,7 +143,8 @@ falla, el cron continúa con las demás.
 ## Precios y promociones
 
 `calcularPrecios()` es el único motor de precios del servidor. Busca primero una escala
-por volumen; si no aplica, usa la lista asignada al cliente o la lista pública; después
+por volumen; si no aplica, usa la lista asignada al cliente o la lista pública como
+respaldo también en caja y ventas sin cliente; después
 elige la promoción vigente más favorable. La vigencia se evalúa con la zona de Reservas
 o `America/Mexico_City`. Caja, Ventas, apartados, crédito, cotizaciones y tienda usan el
 mismo motor. Las cotizaciones conservan el precio calculado al crearse.
@@ -151,6 +152,8 @@ mismo motor. Las cotizaciones conservan el precio calculado al crearse.
 El descuento promocional y su descripción se guardan en cada partida. Las devoluciones
 prorratean el importe efectivamente cobrado, incluido el descuento general, y ajustan el
 último centavo para que la suma nunca rebase el total de la venta.
+El tope de descuento del Cajero mide únicamente descuentos manuales contra el subtotal
+posterior a promociones; una promoción automática nunca consume ese tope.
 
 Las variantes son productos independientes enlazados por `productos.grupo_id`; cada una
 tiene SKU, código, atributos JSON y existencia propios, por lo que participa en las mismas

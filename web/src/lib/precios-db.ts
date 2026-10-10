@@ -65,7 +65,8 @@ export async function calcularPrecios(
   let listaId: bigint | null = null;
   if (opciones.contactoId) {
     listaId = (await tx.contacto.findUnique({ where: { id: opciones.contactoId }, select: { listaPrecioId: true } }))?.listaPrecioId ?? null;
-  } else if (opciones.publico) {
+  }
+  if (listaId === null) {
     listaId = (await tx.listaPrecio.findFirst({ where: { tipo: "publico", activa: true }, orderBy: { id: "asc" }, select: { id: true } }))?.id ?? null;
   }
   const [escalas, preciosLista, promociones, zona] = await Promise.all([
