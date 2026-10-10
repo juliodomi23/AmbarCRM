@@ -1272,3 +1272,15 @@ CREATE POLICY org_isolation ON auditoria_bot
 GRANT SELECT, INSERT ON auditoria_bot TO crm_app;
 REVOKE UPDATE, DELETE, TRUNCATE ON auditoria_bot FROM crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+-- E · Permisos por bot.
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS permisos TEXT[];
+-- Los bots que ya existen conservan lo que hacen hoy (acciones de las rutas vigentes).
+-- Solo toca filas con permisos NULL: volver a correr el archivo no pisa lo que el admin edite.
+UPDATE bots
+   SET permisos = ARRAY['leer_perfil', 'enviar_mensaje', 'notas_internas', 'mover_embudo',
+                        'crear_tarea', 'handoff', 'agendar_cita', 'cotizar']
+ WHERE permisos IS NULL;
+-- Los bots nuevos nacen con el conjunto mínimo.
+ALTER TABLE bots ALTER COLUMN permisos SET DEFAULT ARRAY['leer_perfil', 'enviar_mensaje', 'notas_internas', 'handoff'];
+ALTER TABLE bots ALTER COLUMN permisos SET NOT NULL;

@@ -417,6 +417,8 @@ model Bot {
   signingSecret String? @map("signing_secret")
   /// Asesor fijo para el handoff de este bot. null = round-robin entre usuarios activos.
   asesorId   BigInt?  @map("asesor_id")
+  /// Lo que este bot puede hacer por /api/v1 (ver src/lib/bot-permisos.ts).
+  permisos   String[] @default(["leer_perfil", "enviar_mensaje", "notas_internas", "handoff"])
 
   canal     CanalWhatsapp? @relation(fields: [canalId], references: [id], onDelete: SetNull)
   asesor    Usuario?       @relation("BotAsesor", fields: [asesorId], references: [id], onDelete: SetNull)
