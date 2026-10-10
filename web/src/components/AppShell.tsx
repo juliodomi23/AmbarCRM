@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { Toaster } from "@/components/Toaster";
 import { PushSetup } from "@/components/PushSetup";
+import { IdentidadOffline, limpiarCajaLocal } from "@/components/caja/IdentidadOffline";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CommandPalette } from "@/components/CommandPalette";
 import type { BrandConfig } from "@/lib/brand";
@@ -136,11 +137,13 @@ export function AppShell({
   usuario,
   marca,
   contadoresIniciales,
+  identidad,
 }: {
   children: React.ReactNode;
   usuario: { nombre: string; rol: "admin" | "agente" };
   marca: BrandConfig;
   contadoresIniciales: Contadores;
+  identidad?: { orgId: string; userId: string };
 }) {
   const pathname = usePathname();
   const [drawer, setDrawer] = useState(false);
@@ -353,7 +356,10 @@ export function AppShell({
           <div className="mt-2 rounded-xl bg-card p-1 text-foreground shadow-pop">
             <ThemeToggle />
             <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={async () => {
+                if (identidad) await limpiarCajaLocal(identidad);
+                await signOut({ callbackUrl: "/login" });
+              }}
               className={[
                 "flex min-h-10 w-full items-center rounded-lg px-3 text-sm",
                 "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -481,6 +487,7 @@ export function AppShell({
       <CommandPalette abierto={paleta} onClose={() => setPaleta(false)} />
       <Toaster />
       <PushSetup />
+      {identidad && <IdentidadOffline orgId={identidad.orgId} userId={identidad.userId} />}
     </div>
   );
 }

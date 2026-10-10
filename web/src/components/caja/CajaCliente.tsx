@@ -9,6 +9,9 @@ import { TarjetaLealtad } from "@/components/lealtad/TarjetaLealtad";
 import type { ContactoVenta, ProductoRetail } from "@/components/retail/tipos";
 import { toast } from "@/components/Toaster";
 import { Boton, formatoMoneda } from "@/components/ui";
+import { almacenIndexedDB } from "@/lib/caja-offline/almacen";
+import { calcularLineaLocal, horasDeCatalogo, leerCatalogoLocal, sincronizarCatalogo, type CatalogoLocal } from "@/lib/caja-offline/catalogo";
+import type { ProductoCatalogoCaja } from "@/lib/caja-offline/tipos";
 
 type Caja = { id: string; nombre: string; sucursal: string | null };
 type Turno = {
@@ -50,6 +53,17 @@ async function api(url: string, method = "GET", body?: unknown) {
   return payload;
 }
 
+function aProductoRetail(producto: ProductoCatalogoCaja): ProductoRetail {
+  return {
+    id: producto.id, grupoId: null, atributos: {}, sku: producto.sku, codigoBarras: producto.codigoBarras,
+    nombre: producto.nombre, categoria: producto.categoria, descripcion: null, precio: Number(producto.precio),
+    costo: 0, stock: Number(producto.stock), stockMinimo: 0, unidad: producto.unidad, vendePorPeso: producto.vendePorPeso,
+    moneda: "MXN", fotoUrl: null, visibleEnLinea: false, agotadoManual: false, etiquetasEnLinea: [], activo: true,
+  } as unknown as ProductoRetail;
+}
+
+const MINUTOS_REFRESCO_CATALOGO = 10;
+
 export function CajaCliente({
   cajas,
   productos,
@@ -57,6 +71,8 @@ export function CajaCliente({
   turnosRecientes,
   descuentoMaximo,
   usuario,
+  identidad,
+  ventasSinRed,
 }: {
   cajas: Caja[];
   productos: ProductoRetail[];
@@ -64,6 +80,8 @@ export function CajaCliente({
   turnosRecientes: Turno[];
   descuentoMaximo: number;
   usuario: { rol: string; puesto: string };
+  identidad: { orgId: string; userId: string };
+  ventasSinRed: boolean;
 }) {
   const router = useRouter();
   const busquedaRef = useRef<HTMLInputElement>(null);
@@ -79,18 +97,65 @@ export function CajaCliente({
   const [ocupado, setOcupado] = useState(false);
   const [corte, setCorte] = useState<Corte | null>(null);
   const [venta, setVenta] = useState<VentaResultado | null>(null);
+  const [catalogoLocal, setCatalogoLocal] = useState<CatalogoLocal | null>(null);
+  const [enLinea, setEnLinea] = useState(true);
+  const [modoSinRed, setModoSinRed] = useState(ventasSinRed);
+
+  useEffect(() => {
+    if (!ventasSinRed) return;
+    const almacen = almacenIndexedDB();
+    let activo = true;
+    const sincronizar = async () => {
+      const resultado = await sincronizarCatalogo(almacen, identidad);
+      if (!activo) return;
+      if (resultado.estado === "actualizado" || resultado.estado === "local") setCatalogoLocal(resultado.datos);
+      if (resultado.estado === "apagado") { setCatalogoLocal(null); setModoSinRed(false); }
+    };
+    void leerCatalogoLocal(almacen, identidad).then((local) => { if (activo && local) setCatalogoLocal(local); });
+    void sincronizar();
+    const alVolver = () => { setEnLinea(true); void sincronizar(); };
+    const alPerder = () => setEnLinea(false);
+    setEnLinea(navigator.onLine);
+    window.addEventListener("online", alVolver);
+    window.addEventListener("offline", alPerder);
+    const intervalo = window.setInterval(() => { if (navigator.onLine) void sincronizar(); }, MINUTOS_REFRESCO_CATALOGO * 60_000);
+    return () => {
+      activo = false;
+      window.removeEventListener("online", alVolver);
+      window.removeEventListener("offline", alPerder);
+      window.clearInterval(intervalo);
+    };
+  }, [ventasSinRed, identidad]);
+
+  const productosCaja = useMemo(
+    () => (catalogoLocal ? catalogoLocal.catalogo.productos.map(aProductoRetail) : productos),
+    [catalogoLocal, productos],
+  );
 
   const filtrados = useMemo(() => {
     const termino = normalizar(busqueda.trim());
-    if (!termino) return productos.slice(0, 18);
-    return productos.filter((producto) =>
+    if (!termino) return productosCaja.slice(0, 18);
+    return productosCaja.filter((producto) =>
       [producto.nombre, producto.sku, producto.codigoBarras]
         .filter(Boolean)
         .some((valor) => normalizar(String(valor)).includes(termino)),
     ).slice(0, 18);
-  }, [busqueda, productos]);
-  const subtotal = lineas.reduce((suma, linea) => suma + Number(linea.producto.precio) * Number(linea.cantidad || 0), 0);
-  const descuentoLineas = lineas.reduce((suma, linea) => suma + dinero(linea.descuento), 0);
+  }, [busqueda, productosCaja]);
+  const calculoLineas = useMemo(() => {
+    if (!catalogoLocal) return null;
+    const porId = new Map(catalogoLocal.catalogo.productos.map((producto) => [producto.id, producto]));
+    return lineas.map((linea) => {
+      const producto = porId.get(linea.producto.id);
+      return producto && Number(linea.cantidad) > 0 ? calcularLineaLocal(catalogoLocal.catalogo, producto, linea.cantidad) : null;
+    });
+  }, [catalogoLocal, lineas]);
+  const subtotal = calculoLineas
+    ? lineas.reduce((suma, linea, indice) => suma + Number(calculoLineas[indice]?.bruto ?? Number(linea.producto.precio) * Number(linea.cantidad || 0)), 0)
+    : lineas.reduce((suma, linea) => suma + Number(linea.producto.precio) * Number(linea.cantidad || 0), 0);
+  const descuentoPromociones = calculoLineas
+    ? calculoLineas.reduce((suma, calculo) => suma + Number(calculo?.descuentoPromocion ?? 0), 0)
+    : 0;
+  const descuentoLineas = lineas.reduce((suma, linea) => suma + dinero(linea.descuento), 0) + descuentoPromociones;
   const total = Math.max(0, subtotal - descuentoLineas - dinero(descuento));
   const pagado = Object.values(pagos).reduce((suma, monto) => suma + dinero(monto), 0);
   const cambio = Math.max(0, pagado - total);
@@ -152,7 +217,7 @@ export function CajaCliente({
   function escanear(evento: React.KeyboardEvent<HTMLInputElement>) {
     if (evento.key !== "Enter") return;
     evento.preventDefault();
-    const exacto = productos.find((producto) => producto.codigoBarras === busqueda.trim() || producto.sku?.toLowerCase() === busqueda.trim().toLowerCase());
+    const exacto = productosCaja.find((producto) => producto.codigoBarras === busqueda.trim() || producto.sku?.toLowerCase() === busqueda.trim().toLowerCase());
     if (exacto) agregar(exacto);
     else if (filtrados.length === 1) agregar(filtrados[0]);
     else toast("Código no encontrado; elige un resultado", "error");
@@ -251,16 +316,21 @@ export function CajaCliente({
 
   if (!turno) return (
     <div className="mx-auto max-w-3xl space-y-5 p-4 md:p-6">
+      <div hidden data-caja-identidad={`${identidad.orgId}:${identidad.userId}`} />
+      {modoSinRed && <EstadoSinRed enLinea={enLinea} catalogo={catalogoLocal} />}
       <header className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-2xl font-bold">Caja de mostrador</h1><p className="text-sm text-muted-foreground">Abre un turno para comenzar a cobrar.</p></div>{puedeVerReportes && <Link className="rounded-lg bg-muted px-4 py-2 text-sm font-medium" href="/reportes-retail">Ver reportes</Link>}</header>
       <section className="surface space-y-4 p-5">
         {cajas.length ? <><label className="block text-sm font-medium">Caja<select id="caja-apertura" className="mt-1 w-full rounded-lg border bg-card p-2">{cajas.map((caja) => <option key={caja.id} value={caja.id}>{caja.nombre}{caja.sucursal ? ` · ${caja.sucursal}` : ""}</option>)}</select></label><Boton disabled={ocupado} onClick={abrirTurno}>Abrir turno</Boton></> : usuario.rol === "admin" ? <div className="space-y-2"><p className="text-sm">Crea la primera caja para comenzar.</p><Boton onClick={crearCaja}>+ Crear caja</Boton></div> : <p className="text-sm">No hay cajas activas. Pide a un Admin que cree la primera.</p>}
       </section>
+      {usuario.rol === "admin" && <AjusteSinRed activo={ventasSinRed} />}
       <Historial turnos={turnosRecientes} />
     </div>
   );
 
   return (
     <div className="space-y-4 p-4 md:p-6">
+      <div hidden data-caja-identidad={`${identidad.orgId}:${identidad.userId}`} />
+      {modoSinRed && <EstadoSinRed enLinea={enLinea} catalogo={catalogoLocal} />}
       <header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold">Caja · {turno.caja.nombre}</h1><p className="text-sm text-muted-foreground">Turno de {turno.usuario.nombre} · F2 cobrar · F4 buscar · Esc quitar última línea</p></div><div className="flex flex-wrap gap-2">{puedeVerReportes && <Link className="rounded-lg bg-muted px-4 py-2 text-sm font-medium" href="/reportes-retail">Reportes</Link>}<Boton variante="ghost" onClick={() => mover("entrada")}>+ Entrada</Boton><Boton variante="ghost" onClick={() => mover("salida")}>− Salida</Boton><Boton variante="ghost" onClick={verCorte}>Corte X</Boton><Boton variante="danger" onClick={cerrarTurno}>Corte Z</Boton></div></header>
       <div className="grid gap-4 xl:grid-cols-[1fr_420px]">
         <section className="space-y-3">
@@ -284,6 +354,29 @@ export function CajaCliente({
       <p className="text-xs text-muted-foreground">Perfil: {usuario.puesto}{usuario.rol === "admin" ? " · Admin" : ""}</p>
     </div>
   );
+}
+
+function EstadoSinRed({ enLinea, catalogo }: { enLinea: boolean; catalogo: CatalogoLocal | null }) {
+  const horas = catalogo ? horasDeCatalogo(catalogo) : null;
+  return <p className={`rounded-lg border px-3 py-2 text-xs ${enLinea ? "text-muted-foreground" : "border-amber-500 bg-amber-50 text-amber-900"}`}>
+    {enLinea ? "Con internet" : "Sin internet"} · {catalogo ? `catálogo ${catalogo.catalogo.version} de hace ${horas! < 1 ? "menos de 1 h" : `${Math.floor(horas!)} h`}${horas! > 24 ? " (desactualizado: conéctate para refrescarlo)" : ""}` : "catálogo no descargado: conéctate una vez para usar la caja sin internet"}
+  </p>;
+}
+
+function AjusteSinRed({ activo }: { activo: boolean }) {
+  const router = useRouter();
+  async function cambiar(valor: boolean) {
+    try {
+      await api("/api/modulos", "PATCH", { clave: "caja", config: { ventasSinRed: valor } });
+      toast(valor ? "Ventas sin internet activadas" : "Ventas sin internet apagadas");
+      router.refresh();
+    } catch (error) { toast((error as Error).message, "error"); }
+  }
+  return <section className="surface space-y-2 p-4 text-sm">
+    <h2 className="font-bold">Ventas sin internet</h2>
+    <p className="text-xs text-muted-foreground">Apagado por defecto. Al activarlo, las cajas guardan las ventas si se cae la red y las suben después, respetando lo cobrado y sin exigir existencia. Las ventas quedan marcadas para revisión.</p>
+    <label className="flex items-center gap-2"><input type="checkbox" checked={activo} onChange={(e) => void cambiar(e.target.checked)} />Permitir ventas sin internet en esta empresa</label>
+  </section>;
 }
 
 function Historial({ turnos }: { turnos: Turno[] }) {

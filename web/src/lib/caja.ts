@@ -130,3 +130,8 @@ export function validarVentaCaja(body: Record<string, unknown>) {
 export function validarCantidadProducto(cantidadPartida: Prisma.Decimal, vendePorPeso: boolean) {
   return cantidadValidaParaProducto(cantidadPartida, vendePorPeso);
 }
+
+/** El modo sin internet es opcional por empresa y viene apagado; solo `true` lo enciende. */
+export function ventasSinRedActivas(config: unknown) {
+  return (config as { ventasSinRed?: unknown } | null)?.ventasSinRed === true;
+}

@@ -22,6 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       }}
       contadoresIniciales={contadoresIniciales}
       marca={marca}
+      identidad={session.user.orgId && session.user.id ? { orgId: String(session.user.orgId), userId: String(session.user.id) } : undefined}
     >
       {children}
     </AppShell>

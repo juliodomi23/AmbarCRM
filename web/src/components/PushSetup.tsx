@@ -22,7 +22,7 @@ export function PushSetup() {
 
     (async () => {
       try {
-        const reg = await navigator.serviceWorker.register("/sw.js");
+        const reg = await navigator.serviceWorker.register(`/sw.js?v=${process.env.NEXT_PUBLIC_BUILD_ID ?? "dev"}`);
         if (Notification.permission !== "granted") return;
 
         const { configurado, publicKey } = await fetch("/api/push/suscribir").then((r) => r.json());

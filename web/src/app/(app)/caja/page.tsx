@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { CajaCliente } from "@/components/caja/CajaCliente";
 import { authOptions } from "@/lib/auth";
-import { descuentoMaximoCajero, puedeGestionarTurnos } from "@/lib/caja";
+import { descuentoMaximoCajero, puedeGestionarTurnos, ventasSinRedActivas } from "@/lib/caja";
 import { db } from "@/lib/db";
 import { moduloActivo, moduloHabilitado } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
@@ -42,6 +42,8 @@ export default async function CajaPage() {
       turnosRecientes={serializar(recientes)}
       descuentoMaximo={descuentoMaximoCajero(modulo?.config)}
       usuario={{ rol: sesion.user.rol ?? "agente", puesto: sesion.user.puesto ?? "Agente" }}
+      identidad={{ orgId: String(sesion.user.orgId), userId: String(sesion.user.id) }}
+      ventasSinRed={ventasSinRedActivas(modulo?.config)}
     />
   );
 }
