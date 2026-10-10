@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { calificacionValida, configResenas, enlaceGoogleValido, origenValido, resumenResenas, semanaLocal } from "../src/lib/resenas";
+import { calificacionValida, configResenas, destinoTrasGuardar, enlaceGoogleValido, origenValido, resumenResenas, semanaLocal } from "../src/lib/resenas";
 import { matrizQr, qrSvg } from "../src/lib/qr-svg";
 
 // Solo https y dominios de Google: nada de open redirect.
@@ -23,6 +23,15 @@ assert.deepEqual(configResenas({}), { enlaceGoogle: null, diasEntreSolicitudes: 
 assert.equal(configResenas({ enlaceGoogle: "http://evil.test", diasEntreSolicitudes: 0 }).enlaceGoogle, null);
 assert.equal(configResenas({ diasEntreSolicitudes: 30 }).diasEntreSolicitudes, 30);
 assert.equal(configResenas({ diasEntreSolicitudes: 4000 }).diasEntreSolicitudes, 90);
+
+// El cliente llega siempre al enlace configurado, falle o no el guardado.
+const enlaceConfigurado = "https://g.page/r/CabC123/review";
+for (const resultado of [{ status: 200 }, { status: 429 }, { status: 500 }, new TypeError("Failed to fetch"), new DOMException("timeout", "TimeoutError")]) {
+  assert.equal(destinoTrasGuardar(resultado, enlaceConfigurado), enlaceConfigurado);
+}
+const componente = await readFile("src/components/resenas/OpinionPublica.tsx", "utf8");
+assert.match(componente, /AbortSignal\.timeout\(/);
+assert.match(componente, /destinoTrasGuardar\(/);
 
 // La semana empieza en lunes y respeta la zona: 2026-10-12 02:00Z sigue siendo domingo 11 en Ciudad de México.
 assert.equal(semanaLocal(new Date("2026-10-12T02:00:00Z"), "America/Mexico_City"), "2026-10-05");

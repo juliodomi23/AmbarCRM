@@ -25,8 +25,16 @@ async function reservar(orgId: bigint, evento: EventoResena) {
     if (!config?.enlaceGoogle) return null;
     await tx.$queryRaw`SELECT id FROM contactos WHERE id = ${evento.contactoId} FOR UPDATE`;
     const desde = new Date(Date.now() - config.diasEntreSolicitudes * 86_400_000);
+    const haceUnaHora = new Date(Date.now() - 60 * 60_000);
     const vigente = await tx.solicitudResena.findFirst({
-      where: { contactoId: evento.contactoId, estado: { in: ["reservada", "enviada"] }, createdAt: { gte: desde } },
+      where: {
+        contactoId: evento.contactoId,
+        OR: [
+          { estado: "enviada", createdAt: { gte: desde } },
+          // Una reserva de más de 1 h se considera abandonada (el proceso murió antes de resolverla).
+          { estado: "reservada", createdAt: { gte: haceUnaHora } },
+        ],
+      },
       select: { id: true },
     });
     if (vigente) return null;

@@ -19,8 +19,8 @@ no se toca ni se despliega hasta que Meta apruebe la App Review.
 | A3 · precios, promociones, etiquetas | ✅ | 87a7089, 64b6d1b, c602e86 |
 | A4 · reportes y varias cajas | ✅ (falta 1 fix, ver 3.1) | 0805888, 8480e9e |
 | API del bot (rama `bot-api-v1`) | ✅ integrada | merge b1a36d0 |
-| **Fix de A4 (envío)** | ⏳ | — |
-| **D · reseñas de Google** | ⏳ | — |
+| **Fix de A4 (envío)** | ✅ | 75bc943 |
+| **D · reseñas de Google** | ✅ | b9ac2f6, bc91dcd y el commit de los fixes de revisión |
 | **A5 · modo sin internet** | ⏳ | — |
 | **Revisión final + despliegue** | ⏳ (despliegue espera a Meta) | — |
 
@@ -150,6 +150,11 @@ Especificación en `PLAN-MODULOS-FASE-2.md` §A5. Reglas clave:
    - que los bots existentes quedan con permisos `leer_perfil, enviar_mensaje, notas_internas,
      mover_embudo, handoff`;
    - que `test-aislamiento.ts` pasa.
+   - **Zona horaria de columnas:** la BD de pruebas creada con `db push` usa `timestamp` SIN zona y
+     producción usa `timestamptz`; verificar en el ensayo con la copia de producción que reportes,
+     vigencias y tendencias (cotizaciones, promociones, reseñas) den igual.
+   - **Operativo (Meta):** crear y aprobar, por cliente, la plantilla de reseña (`{{1}}` nombre,
+     `{{2}}` enlace); sin ella la solicitud fuera de la ventana de 24 h queda omitida.
 3. **Sólo con la App Review aprobada:** merge a `meta-tech-provider` y despliegue.
 4. Variables nuevas en EasyPanel:
    - `IP_HEADER`: `x-real-ip` por defecto. Si el dominio pasa por Cloudflare con nube naranja, usar

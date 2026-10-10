@@ -118,6 +118,24 @@ async function main() {
     const tercera = await solicitarResena(orgId, { evento: "cita", citaId: base.citas[6].id, contactoId: carla.id });
     assert.equal(tercera?.estado, "omitida", "sin canal real queda omitida, y la cita ya había cambiado de estado");
 
+    // 5b) Una "reservada" de más de 1 h se considera abandonada; una reciente sigue bloqueando.
+    const [vieja, reciente] = await transaccionTenant(orgId, async (tx) => [
+      await tx.contacto.create({ data: { nombre: "Reserva vieja", telefono: `55${Math.floor(10_000_000 + Math.random() * 89_999_999)}`, fuente: "web" } }),
+      await tx.contacto.create({ data: { nombre: "Reserva reciente", telefono: `55${Math.floor(10_000_000 + Math.random() * 89_999_999)}`, fuente: "web" } }),
+    ]);
+    for (const [contacto, intervalo] of [[vieja, "2 hours"], [reciente, "10 minutes"]] as const) {
+      await admin.query(
+        `INSERT INTO solicitudes_resena (org_id, contacto_id, evento, estado, created_at) VALUES ($1, $2, 'cita', 'reservada', now() - interval '${intervalo}')`,
+        [String(orgId), String(contacto.id)],
+      );
+    }
+    envios = 0;
+    const tomada = await pedir(vieja.id, { citaId: base.citas[0].id });
+    assert.equal(tomada?.estado, "enviada", "la reservada de hace 2 h está abandonada y no bloquea");
+    assert.equal(await pedir(reciente.id, { citaId: base.citas[0].id }), null, "la reservada de hace 10 min sí bloquea");
+    assert.equal(envios, 1);
+    resultado.reservadaAbandonada = { hace2h: tomada?.estado, hace10min: "bloquea" };
+
     // 6) Módulo apagado o sin enlace: no hace nada.
     await admin.query("UPDATE modulos_org SET activo = false WHERE org_id = $1 AND clave = 'resenas'", [String(orgId)]);
     assert.equal(await pedir(dani.id, { citaId: base.citas[7].id }), null);

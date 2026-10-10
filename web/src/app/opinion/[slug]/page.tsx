@@ -23,7 +23,7 @@ export default async function OpinionPage({
   const marca = normalizarMarca(await runWithOrg(negocio.orgId, getAjustes));
   return (
     <div className="marca-local" style={variablesMarca(marca) as CSSProperties}>
-      <OpinionPublica slug={slug} nombre={negocio.nombre} origen={origenValido(Array.isArray(o) ? o[0] : o)} />
+      <OpinionPublica slug={slug} nombre={negocio.nombre} enlaceGoogle={negocio.enlaceGoogle} origen={origenValido(Array.isArray(o) ? o[0] : o)} />
     </div>
   );
 }

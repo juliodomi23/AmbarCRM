@@ -27,6 +27,11 @@ export function origenValido(valor: unknown) {
   return /^[a-z0-9_-]{1,40}$/.test(origen) ? origen : "directo";
 }
 
+/** Pase lo que pase con el guardado (200, 429, 5xx, sin red, timeout), el cliente llega al enlace configurado. */
+export function destinoTrasGuardar(_resultado: { status: number } | Error, enlace: string) {
+  return enlace;
+}
+
 export function calificacionValida(valor: unknown) {
   const numero = Number(valor);
   return Number.isInteger(numero) && numero >= 1 && numero <= 5 ? numero : null;

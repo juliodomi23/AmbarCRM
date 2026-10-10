@@ -1,30 +1,29 @@
 "use client";
 
 import { useState } from "react";
+import { destinoTrasGuardar } from "@/lib/resenas";
 
-/** Estrellas → guarda y salta a Google. El destino lo manda el servidor; la estrella no cambia el camino. */
-export function OpinionPublica({ slug, nombre, origen }: { slug: string; nombre: string; origen: string }) {
+/** Estrellas → intenta guardar y salta a Google siempre. El destino lo manda el servidor; la estrella y el resultado del guardado no lo cambian. */
+export function OpinionPublica({ slug, nombre, origen, enlaceGoogle }: { slug: string; nombre: string; origen: string; enlaceGoogle: string }) {
   const [enviando, setEnviando] = useState(false);
-  const [error, setError] = useState("");
   const [sobre, setSobre] = useState(0);
 
   async function elegir(calificacion: number) {
     if (enviando) return;
     setEnviando(true);
-    setError("");
+    let resultado: { status: number } | Error;
     try {
       const respuesta = await fetch(`/api/public/opinion/${encodeURIComponent(slug)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ calificacion, origen }),
+        signal: AbortSignal.timeout(3000),
       });
-      const datos = await respuesta.json().catch(() => ({}));
-      if (!respuesta.ok || typeof datos.url !== "string") throw new Error(datos.error ?? "No pudimos guardar tu opinión");
-      window.location.assign(datos.url);
+      resultado = { status: respuesta.status };
     } catch (e) {
-      setError((e as Error).message);
-      setEnviando(false);
+      resultado = e instanceof Error ? e : new Error("sin red");
     }
+    window.location.assign(destinoTrasGuardar(resultado, enlaceGoogle));
   }
 
   return (
@@ -48,7 +47,6 @@ export function OpinionPublica({ slug, nombre, origen }: { slug: string; nombre:
       <p className="text-sm text-muted-foreground">
         {enviando ? "Un momento, te llevamos a Google…" : "Toca una estrella y te llevamos a Google para dejar tu reseña."}
       </p>
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
     </main>
   );
 }
