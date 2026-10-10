@@ -29,13 +29,15 @@ async function preparar() {
     const turno = await tx.turnoCaja.create({ data: { cajaId: caja.id, usuarioId: usuario.id, fondoInicial: 0 } });
     const contacto = await tx.contacto.create({ data: { nombre: "Cliente mayoreo", telefono: `55${String(Date.now()).slice(-8)}` } });
     const promo = await tx.producto.create({ data: { sku: `3X2-${sufijo}`, nombre: "Producto 3x2", categoria: "Promo", precio: 100, stock: 30, visibleEnLinea: true } });
+    const promoZona = await tx.producto.create({ data: { sku: `ZONA-${sufijo}`, nombre: "Promoción de un día", categoria: "Promo", precio: 100, stock: 30 } });
     const escalas = await tx.producto.create({ data: { sku: `ESC-${sufijo}`, nombre: "Producto escalas", precio: 120, stock: 30, visibleEnLinea: true } });
     const lista = await tx.listaPrecio.create({ data: { nombre: `Mayoreo ${sufijo}`, tipo: "mayoreo" } });
     await tx.contacto.update({ where: { id: contacto.id }, data: { listaPrecioId: lista.id } });
     await tx.listaPrecioProducto.create({ data: { listaId: lista.id, productoId: escalas.id, precio: 95 } });
     await tx.precioVolumen.create({ data: { productoId: escalas.id, desde: 10, precio: 90 } });
-    await tx.promocion.create({ data: { nombre: "3x2 octubre", tipo: "nxm", productoId: promo.id, cantidadCompra: 3, cantidadPaga: 2, inicia: new Date("2026-10-09T12:00:00Z"), termina: new Date("2026-10-09T12:00:00Z") } });
-    return { turno, contacto, promo, escalas };
+    await tx.promocion.create({ data: { nombre: "3x2 octubre", tipo: "nxm", productoId: promo.id, cantidadCompra: 3, cantidadPaga: 2, inicia: new Date("2026-01-01T12:00:00Z"), termina: new Date("2026-12-31T12:00:00Z") } });
+    await tx.promocion.create({ data: { nombre: "Promoción local", tipo: "nxm", productoId: promoZona.id, cantidadCompra: 3, cantidadPaga: 2, inicia: new Date("2026-10-09T12:00:00Z"), termina: new Date("2026-10-09T12:00:00Z") } });
+    return { turno, contacto, promo, promoZona, escalas };
   });
 }
 
@@ -60,8 +62,8 @@ async function main() {
   const reglas = await transaccionTenant(orgId, async (tx) => {
     const lista = await calcularPrecios(tx, [{ productoId: base.escalas.id, cantidad: new Prisma.Decimal(1) }], { contactoId: base.contacto.id });
     const volumen = await calcularPrecios(tx, [{ productoId: base.escalas.id, cantidad: new Prisma.Decimal(10) }], { contactoId: base.contacto.id });
-    const ultimoDia = await calcularPrecios(tx, [{ productoId: base.promo.id, cantidad: new Prisma.Decimal(3) }], { ahora: new Date("2026-10-10T02:00:00Z") });
-    const siguienteDia = await calcularPrecios(tx, [{ productoId: base.promo.id, cantidad: new Prisma.Decimal(3) }], { ahora: new Date("2026-10-10T06:01:00Z") });
+    const ultimoDia = await calcularPrecios(tx, [{ productoId: base.promoZona.id, cantidad: new Prisma.Decimal(3) }], { ahora: new Date("2026-10-10T02:00:00Z") });
+    const siguienteDia = await calcularPrecios(tx, [{ productoId: base.promoZona.id, cantidad: new Prisma.Decimal(3) }], { ahora: new Date("2026-10-10T06:01:00Z") });
     return { lista: lista[0], volumen: volumen[0], ultimoDia: ultimoDia[0], siguienteDia: siguienteDia[0] };
   });
   assert.equal(reglas.lista.precioUnitario.toFixed(2), "95.00");

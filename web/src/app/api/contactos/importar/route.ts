@@ -2,48 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { validarCampos } from "@/lib/campos-personalizados";
+import { parseCSV } from "@/lib/csv";
 
 export const dynamic = "force-dynamic";
-
-/** Parser CSV simple con soporte de comillas. Detecta delimitador , o ; */
-function parseCSV(text: string): string[][] {
-  const cabecera = text.split(/\r?\n/)[0] ?? "";
-  const delim =
-    cabecera.split(";").length > cabecera.split(",").length ? ";" : ",";
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = "";
-  let enComillas = false;
-
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (enComillas) {
-      if (ch === '"') {
-        if (text[i + 1] === '"') {
-          field += '"';
-          i++;
-        } else enComillas = false;
-      } else field += ch;
-    } else if (ch === '"') {
-      enComillas = true;
-    } else if (ch === delim) {
-      row.push(field);
-      field = "";
-    } else if (ch === "\n") {
-      row.push(field);
-      rows.push(row);
-      row = [];
-      field = "";
-    } else if (ch !== "\r") {
-      field += ch;
-    }
-  }
-  if (field.length > 0 || row.length > 0) {
-    row.push(field);
-    rows.push(row);
-  }
-  return rows;
-}
 
 const soloDigitos = (s: string) => s.replace(/\D/g, "");
 

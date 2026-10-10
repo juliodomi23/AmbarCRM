@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validarProducto } from "@/lib/retail";
-import { transaccionTenant } from "@/lib/retail-db";
+import { ErrorRetail, transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
 import { paginacionListado } from "@/lib/paginacion";
@@ -31,6 +31,9 @@ export const POST = conModulo("productos", {}, async (sesion, req: NextRequest) 
 
   try {
     const producto = await transaccionTenant(sesion.orgId, async (tx) => {
+      if (validacion.data.grupoId && !(await tx.producto.findUnique({ where: { id: validacion.data.grupoId } }))) {
+        throw new ErrorRetail("El producto padre no pertenece a la empresa", 404);
+      }
       const creado = await tx.producto.create({ data: validacion.data });
       if (creado.stock.gt(0)) {
         await tx.movimientoInventario.create({
@@ -49,6 +52,7 @@ export const POST = conModulo("productos", {}, async (sesion, req: NextRequest) 
     });
     return NextResponse.json(serializar({ producto }), { status: 201 });
   } catch (error) {
+    if (error instanceof ErrorRetail) return NextResponse.json({ error: error.message }, { status: error.status });
     if (conflictoUnico(error)) {
       return NextResponse.json(
         { error: "El SKU o código de barras ya está registrado" },

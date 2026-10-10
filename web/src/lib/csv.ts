@@ -11,6 +11,30 @@ export function toCSV(headers: string[], rows: (string | number | null | undefin
   return "﻿" + cuerpo;
 }
 
+/** Parser CSV con comillas escapadas y detección de coma o punto y coma. */
+export function parseCSV(text: string): string[][] {
+  const cabecera = text.replace(/^\uFEFF/, "").split(/\r?\n/)[0] ?? "";
+  const delimitador = cabecera.split(";").length > cabecera.split(",").length ? ";" : ",";
+  const filas: string[][] = [];
+  let fila: string[] = [];
+  let campo = "";
+  let enComillas = false;
+  for (let indice = text.startsWith("\uFEFF") ? 1 : 0; indice < text.length; indice++) {
+    const caracter = text[indice];
+    if (enComillas) {
+      if (caracter === '"') {
+        if (text[indice + 1] === '"') { campo += '"'; indice++; }
+        else enComillas = false;
+      } else campo += caracter;
+    } else if (caracter === '"') enComillas = true;
+    else if (caracter === delimitador) { fila.push(campo); campo = ""; }
+    else if (caracter === "\n") { fila.push(campo); filas.push(fila); fila = []; campo = ""; }
+    else if (caracter !== "\r") campo += caracter;
+  }
+  if (campo.length > 0 || fila.length > 0) { fila.push(campo); filas.push(fila); }
+  return filas;
+}
+
 /** Rango de fechas desde query params (YYYY-MM-DD). hasta incluye todo el día. */
 export function rangoFechas(desde?: string | null, hasta?: string | null) {
   const f: { gte?: Date; lte?: Date } = {};

@@ -772,6 +772,8 @@ model Propiedad {
 model Producto {
   id               BigInt   @id @default(autoincrement())
   orgId            BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  grupoId          BigInt?  @map("grupo_id")
+  atributos        Json     @default("{}")
   sku              String?
   codigoBarras     String?  @map("codigo_barras")
   nombre           String
@@ -800,11 +802,14 @@ model Producto {
   preciosVolumen PrecioVolumen[]
   preciosLista   ListaPrecioProducto[]
   promociones    Promocion[]
+  grupo          Producto?  @relation("VariantesProducto", fields: [grupoId], references: [id], onDelete: SetNull)
+  variantes      Producto[] @relation("VariantesProducto")
 
   @@unique([orgId, sku])
   @@unique([orgId, codigoBarras])
   @@index([orgId, activo, nombre])
   @@index([orgId, categoria])
+  @@index([grupoId])
   @@map("productos")
 }
 

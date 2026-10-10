@@ -1,0 +1,11 @@
+.controles { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 1rem; }
+.hoja { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+.etiqueta { min-height: 132px; border: 1px dashed #999; padding: 8px; display: flex; flex-direction: column; align-items: center; text-align: center; break-inside: avoid; }
+.precio { font-size: 1.35rem; font-weight: 800; }
+.codigo { width: 100%; overflow: hidden; }
+.codigo svg { width: 100%; height: auto; max-height: 70px; }
+@media print {
+  .controles { display: none; }
+  .hoja { grid-template-columns: repeat(3, 1fr); gap: 2mm; }
+  .etiqueta { min-height: 32mm; border-color: #bbb; }
+}

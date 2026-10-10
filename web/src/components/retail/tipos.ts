@@ -13,6 +13,8 @@ export type MovimientoRetail = {
 
 export type ProductoRetail = {
   id: string;
+  grupoId: string | null;
+  atributos: Record<string, unknown>;
   sku: string | null;
   codigoBarras: string | null;
   nombre: string;

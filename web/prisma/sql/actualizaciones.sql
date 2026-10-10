@@ -1374,3 +1374,14 @@ DO $$ DECLARE t TEXT; BEGIN
 END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON listas_precios, precios_volumen, lista_precio_productos, promociones TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+-- A3b · Variantes como productos independientes.
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS grupo_id BIGINT;
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS atributos JSONB NOT NULL DEFAULT '{}'::jsonb;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'productos_grupo_id_fkey') THEN
+    ALTER TABLE productos ADD CONSTRAINT productos_grupo_id_fkey
+      FOREIGN KEY (grupo_id) REFERENCES productos(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS productos_grupo_id_idx ON productos(grupo_id);

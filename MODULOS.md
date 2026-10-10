@@ -152,6 +152,16 @@ El descuento promocional y su descripción se guardan en cada partida. Las devol
 prorratean el importe efectivamente cobrado, incluido el descuento general, y ajustan el
 último centavo para que la suma nunca rebase el total de la venta.
 
+Las variantes son productos independientes enlazados por `productos.grupo_id`; cada una
+tiene SKU, código, atributos JSON y existencia propios, por lo que participa en las mismas
+reservas y bloqueos que cualquier producto. `/productos/etiquetas` genera Code 128 en SVG
+sin dependencias y muestra precio público y primera escala de mayoreo.
+
+El catálogo se puede importar y exportar por CSV desde Productos. La importación valida
+precio, costo, SKU y códigos por renglón, es atómica y nunca escribe existencia; la
+exportación neutraliza valores que Excel interpretaría como fórmulas. Los cambios en lote
+solo permiten precio, estado activo y agotado manual.
+
 ## Módulo Citas
 
 Cuando Citas está activo aparece en el menú lateral, la barra móvil y Ctrl+K. Su

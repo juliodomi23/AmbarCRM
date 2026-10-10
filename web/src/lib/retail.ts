@@ -44,12 +44,22 @@ export function validarProducto(body: Record<string, unknown>) {
   const vendePorPeso = booleano(body.vendePorPeso);
   const stock = cantidad(body.stock ?? 0);
   const stockMinimo = cantidad(body.stockMinimo ?? 0);
+  const grupoId = body.grupoId ? idBigInt(body.grupoId) : null;
+  let atributos: Prisma.InputJsonObject = {};
+  try {
+    const valor = typeof body.atributos === "string" ? JSON.parse(body.atributos || "{}") : (body.atributos ?? {});
+    if (!valor || typeof valor !== "object" || Array.isArray(valor)) throw new Error();
+    atributos = valor as Prisma.InputJsonObject;
+  } catch {
+    return { error: "Los atributos de variante deben ser un objeto JSON" } as const;
+  }
 
   if (!nombre) return { error: "El nombre del producto es obligatorio" } as const;
   if (precio === null) return { error: "El precio no es válido" } as const;
   if (costo === null) return { error: "El costo no es válido" } as const;
   if (stock === null) return { error: "La existencia no es válida" } as const;
   if (stockMinimo === null) return { error: "El stock mínimo no es válido" } as const;
+  if (body.grupoId && grupoId === null) return { error: "El producto padre no es válido" } as const;
   if (!cantidadValidaParaProducto(stock, vendePorPeso)) {
     return { error: "Los productos por pieza requieren una existencia entera" } as const;
   }
@@ -71,6 +81,8 @@ export function validarProducto(body: Record<string, unknown>) {
     vendePorPeso,
     moneda: texto(body.moneda) ?? "MXN",
     fotoUrl: texto(body.fotoUrl),
+    grupoId,
+    atributos,
     activo: body.activo === undefined ? true : Boolean(body.activo),
   };
   return { data } as const;

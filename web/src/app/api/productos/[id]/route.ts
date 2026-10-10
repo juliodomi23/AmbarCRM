@@ -24,6 +24,10 @@ export const PATCH = conModulo(
   // La existencia solo cambia por ventas, compras y movimientos (con bloqueo). Si la edición
   // la guardara, regresaría a un valor viejo cualquier venta hecha mientras se editaba.
   const { stock: _existencia, ...datos } = validacion.data;
+  if (datos.grupoId === id) return NextResponse.json({ error: "Un producto no puede ser su propio padre" }, { status: 400 });
+  if (datos.grupoId && !(await db.producto.findUnique({ where: { id: datos.grupoId } }))) {
+    return NextResponse.json({ error: "El producto padre no pertenece a la empresa" }, { status: 404 });
+  }
   try {
     const producto = await db.producto.update({ where: { id }, data: datos });
     return NextResponse.json(serializar({ producto }));

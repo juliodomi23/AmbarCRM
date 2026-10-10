@@ -18,6 +18,8 @@ const INICIAL = {
   vendePorPeso: false,
   fotoUrl: "",
   activo: true,
+  grupoId: "",
+  atributos: "{}",
 };
 
 export type ProductoFormulario = typeof INICIAL;
@@ -55,6 +57,8 @@ export function ProductoFormModal({
             vendePorPeso: producto.vendePorPeso,
             fotoUrl: producto.fotoUrl ?? "",
             activo: producto.activo,
+            grupoId: producto.grupoId ?? "",
+            atributos: JSON.stringify(producto.atributos ?? {}),
           }
         : INICIAL,
     );
@@ -98,6 +102,12 @@ export function ProductoFormModal({
             label="Categoría"
             value={formulario.categoria}
             onChange={(evento) => set("categoria", evento.target.value)}
+          />
+          <Campo
+            label="Id del producto padre (variante)"
+            value={formulario.grupoId}
+            onChange={(evento) => set("grupoId", evento.target.value)}
+            placeholder="Vacío si no es variante"
           />
           <Campo
             label="Precio de venta"
@@ -155,6 +165,11 @@ export function ProductoFormModal({
           type="url"
           value={formulario.fotoUrl}
           onChange={(evento) => set("fotoUrl", evento.target.value)}
+        />
+        <Campo
+          label='Atributos JSON (ej. {"talla":"M","color":"Rojo"})'
+          value={formulario.atributos}
+          onChange={(evento) => set("atributos", evento.target.value)}
         />
         <label className="block space-y-1">
           <span className="text-sm font-medium text-muted-foreground">Descripción</span>

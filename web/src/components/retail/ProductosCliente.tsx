@@ -120,6 +120,42 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
     toast("Catálogo en línea actualizado"); router.refresh();
   }
 
+  async function importarCatalogo(archivo: File | undefined) {
+    if (!archivo) return;
+    const respuesta = await fetch("/api/productos/importar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ csv: await archivo.text() }) });
+    const payload = await respuesta.json().catch(() => null);
+    if (!respuesta.ok) {
+      const detalle = Array.isArray(payload?.errores) ? payload.errores.slice(0, 5).map((error: { linea: number; mensaje: string }) => `Línea ${error.linea}: ${error.mensaje}`).join(" · ") : errorApi(payload);
+      return toast(detalle, "error");
+    }
+    toast(`Catálogo importado: ${payload.creados} nuevos, ${payload.actualizados} actualizados`); router.refresh();
+  }
+
+  async function cambiarPreciosLote() {
+    const entrada = window.prompt("Escribe una línea por producto: SKU,precio");
+    if (!entrada) return;
+    const porSku = new Map(productos.flatMap((producto) => producto.sku ? [[producto.sku.toUpperCase(), producto] as const] : []));
+    const cambios = entrada.split(/\r?\n/).filter(Boolean).map((linea) => {
+      const [sku, precio] = linea.split(",").map((valor) => valor.trim());
+      return { id: porSku.get(sku.toUpperCase())?.id ?? "", precio };
+    });
+    const respuesta = await fetch("/api/productos/lote", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productos: cambios }) });
+    const payload = await respuesta.json().catch(() => null);
+    if (!respuesta.ok) return toast(errorApi(payload), "error");
+    toast(`${payload.actualizados} precios actualizados`); router.refresh();
+  }
+
+  async function descontinuarRapido() {
+    const entrada = window.prompt("SKU de productos a descontinuar, separados por coma");
+    if (!entrada) return;
+    const porSku = new Map(productos.flatMap((producto) => producto.sku ? [[producto.sku.toUpperCase(), producto] as const] : []));
+    const cambios = entrada.split(",").map((sku) => ({ id: porSku.get(sku.trim().toUpperCase())?.id ?? "", activo: false, agotadoManual: true }));
+    const respuesta = await fetch("/api/productos/lote", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productos: cambios }) });
+    const payload = await respuesta.json().catch(() => null);
+    if (!respuesta.ok) return toast(errorApi(payload), "error");
+    toast(`${payload.actualizados} productos descontinuados`); router.refresh();
+  }
+
   return (
     <div className="space-y-5 p-4 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -130,6 +166,12 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
           </p>
         </div>
         <div className="flex gap-2">
+          <Link href="/productos/precios" className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">Precios y promos</Link>
+          <Link href="/productos/etiquetas" className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">Etiquetas</Link>
+          <Link href="/api/productos/exportar" className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">Exportar CSV</Link>
+          <label className="cursor-pointer rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">Importar CSV<input className="hidden" type="file" accept=".csv,text/csv" onChange={(evento) => void importarCatalogo(evento.target.files?.[0])} /></label>
+          <Boton variante="ghost" onClick={() => void cambiarPreciosLote()}>Precios en lote</Boton>
+          <Boton variante="ghost" onClick={() => void descontinuarRapido()}>Descontinuar</Boton>
           <Link href="/compras" className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">
             Compras
           </Link>
