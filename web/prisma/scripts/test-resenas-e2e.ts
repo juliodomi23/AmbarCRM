@@ -62,7 +62,12 @@ async function preparar() {
     await admin.query("INSERT INTO orgs (id, nombre, slug) VALUES ($1, $2, $3)", [id.toString(), nombre, slugOrg]);
   }
   await transaccionTenant(orgId, async (tx) => {
-    await tx.moduloOrg.create({ data: { clave: "resenas", activo: true, config: { enlaceGoogle: GOOGLE, diasEntreSolicitudes: 90 } } });
+    await tx.moduloOrg.createMany({ data: [
+      { clave: "resenas", activo: true, config: { enlaceGoogle: GOOGLE, diasEntreSolicitudes: 90 } },
+      { clave: "citas", activo: true, config: {} },
+      { clave: "ventas", activo: true, config: {} },
+      { clave: "productos", activo: true, config: {} },
+    ] });
     const hash = await bcrypt.hash(password, 10);
     await tx.usuario.create({ data: { nombre: "Admin reseñas", email: emailAdmin, passwordHash: hash, rol: "admin", puesto: "Administrador" } });
     await tx.usuario.create({ data: { nombre: "Agente reseñas", email: emailAgente, passwordHash: hash, rol: "agente", puesto: "Recepción" } });
@@ -133,6 +138,36 @@ async function main() {
   assert.match(html, /Reseñas de Google/);
   assert.match(html, /mostrador/);
 
+  // Solicitud automática: cita completada y venta entregada. Sin canal oficial queda "omitida" con su motivo,
+  // y el cambio de estado se conserva de todos modos.
+  const { cita, venta } = await transaccionTenant(orgId, async (tx) => {
+    const clienta = await tx.contacto.create({ data: { nombre: "Clienta cita", telefono: `55${Math.floor(10_000_000 + Math.random() * 89_999_999)}`, fuente: "web" } });
+    const cliente = await tx.contacto.create({ data: { nombre: "Cliente venta", telefono: `55${Math.floor(10_000_000 + Math.random() * 89_999_999)}`, fuente: "web" } });
+    const ahora = new Date();
+    return {
+      cita: await tx.cita.create({ data: { contactoId: clienta.id, inicio: ahora, fin: new Date(ahora.getTime() + 1_800_000), titulo: "Cita reseña", estado: "en_sala" } }),
+      venta: await tx.venta.create({ data: { folio: `RES-E2E-${sufijo}`, contactoId: cliente.id, estado: "pagada", subtotal: 10, total: 10 } }),
+    };
+  });
+  const patch = async (ruta: string, cuerpo: unknown) => (await fetch(`${baseUrl}${ruta}`, { method: "PATCH", headers: { Cookie: cookieAdmin, "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) })).status;
+  const solicitudes = (contactoId: bigint) => transaccionTenant(orgId, (tx) => tx.solicitudResena.findMany({ where: { contactoId } }));
+  assert.equal(await patch(`/api/citas/${cita.id}`, { estado: "completada" }), 200);
+  const deCita = await solicitudes(cita.contactoId);
+  assert.equal(deCita.length, 1);
+  assert.equal(deCita[0].evento, "cita");
+  assert.equal(deCita[0].estado, "omitida");
+  assert.match(deCita[0].detalle ?? "", /canal oficial/);
+  assert.equal(await patch(`/api/citas/${cita.id}`, { notas: "sin cambio de estado" }), 200);
+  assert.equal(await patch(`/api/citas/${cita.id}`, { estado: "cancelada" }), 200);
+  assert.equal((await solicitudes(cita.contactoId)).length, 1, "solo el paso a completada solicita");
+  assert.equal(await patch(`/api/ventas/${venta.id}`, { estado: "preparando" }), 200);
+  assert.equal((await solicitudes(venta.contactoId!)).length, 0, "una venta que no llega a entregada no solicita");
+  assert.equal(await patch(`/api/ventas/${venta.id}`, { estado: "entregada" }), 200);
+  const deVenta = await solicitudes(venta.contactoId!);
+  assert.equal(deVenta.length, 1);
+  assert.equal(deVenta[0].evento, "venta");
+  assert.equal((await transaccionTenant(orgId, (tx) => tx.venta.findUniqueOrThrow({ where: { id: venta.id } }))).estado, "entregada");
+
   // Límite por IP: 30 por 10 min; la IP de prueba ya consumió varias.
   const otraIp = `10.78.${Math.floor(Math.random() * 200)}.1`;
   const estados: number[] = [];
@@ -142,7 +177,7 @@ async function main() {
 
   console.log(JSON.stringify({
     destinoPorEstrella: [...destinos], guardadas: guardadas.length, openRedirect: "ignorado",
-    moduloApagado: 404, sinEnlaceValido: 404, agente: 403, enlaceMalo: 400, limitePorIp: { ok: 30, bloqueadas: 2 },
+    solicitudAutomatica: { cita: deCita[0].estado, venta: deVenta[0].estado }, moduloApagado: 404, sinEnlaceValido: 404, agente: 403, enlaceMalo: 400, limitePorIp: { ok: 30, bloqueadas: 2 },
   }));
 }
 

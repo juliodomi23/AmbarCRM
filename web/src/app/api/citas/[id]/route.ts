@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { conModulo } from "@/lib/con-modulo";
+import { solicitarResena } from "@/lib/resenas-envio";
 
 const ESTADOS = [
   "programada",
@@ -54,7 +55,7 @@ export const PATCH = conModulo("citas", {}, async (s, req: NextRequest, props: {
   }
   const citaId = aBigInt(id);
   const actual = citaId
-    ? await db.cita.findFirst({ where: { id: citaId }, select: { inicio: true, fin: true } })
+    ? await db.cita.findFirst({ where: { id: citaId }, select: { inicio: true, fin: true, estado: true, contactoId: true } })
     : null;
   if (!citaId || !actual) {
     return NextResponse.json({ error: "cita inexistente" }, { status: 404 });
@@ -65,5 +66,8 @@ export const PATCH = conModulo("citas", {}, async (s, req: NextRequest, props: {
       { status: 400 },
     );
   await db.cita.update({ where: { id: citaId }, data });
+  if (data.estado === "completada" && actual.estado !== "completada" && s.orgId !== null) {
+    await solicitarResena(s.orgId, { evento: "cita", citaId, contactoId: actual.contactoId });
+  }
   return NextResponse.json({ ok: true });
 });

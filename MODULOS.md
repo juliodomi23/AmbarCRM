@@ -142,6 +142,19 @@ de la configuración (https y dominio `g.page`, `google.com` o `maps.app.goo.gl`
 la petición. El origen se normaliza a `[a-z0-9_-]` de hasta 40 caracteres o cae en
 `directo`. `limitarIp` frena abusos; con el módulo apagado, o sin enlace válido, responde 404.
 
+La solicitud automática (`src/lib/resenas-envio.ts`) se dispara al pasar una cita a
+`completada` (el "atendida") o una venta a `entregada`, y solo si el cambio de estado es
+una transición real. Las ventas de mostrador (caja) quedan fuera porque nunca pasan por
+`entregada`. Corre fuera de la transacción del cambio de estado y nunca lanza: si Meta
+falla, la cita o la venta cambian igual. Dentro de las 24 h manda texto; fuera, la
+plantilla aprobada (`{{1}}` nombre, `{{2}}` enlace a `/opinion/<empresa>?o=whatsapp`). Sin
+canal oficial o sin plantilla no se envía: la solicitud queda `omitida` con su motivo y,
+si hay conversación, una nota interna. Una solicitud vigente (`reservada` o `enviada`) por
+contacto cada `diasEntreSolicitudes` (90 por defecto): se reserva con `SELECT … FOR UPDATE`
+sobre el contacto, no con un `if` suelto. `omitida` y `fallida` no consumen el periodo. Una
+solicitud `reservada` que nunca se resolvió (caída del proceso) sí lo consume. Prueba:
+`prisma/scripts/test-concurrencia-resenas.ts` (`RESENAS_SIN_PROTECCION=1` demuestra el fallo).
+
 Los QR los genera `src/lib/qr-svg.ts` (modo byte, corrección M, hasta 213 bytes) sin
 dependencias. Las pruebas son `scripts/check-resenas.ts` y
 `prisma/scripts/test-resenas-e2e.ts`.

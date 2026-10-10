@@ -8,6 +8,8 @@ import { ErrorRetail } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
 import { cambiarEstadoVenta } from "@/lib/venta-estado-db";
+import { db } from "@/lib/db";
+import { solicitarResena } from "@/lib/resenas-envio";
 
 export const PATCH = conModulo(
   "ventas",
@@ -24,7 +26,11 @@ export const PATCH = conModulo(
   }
 
   try {
+    const previa = estado === "entregada" ? await db.venta.findUnique({ where: { id }, select: { estado: true } }) : null;
     const venta = await cambiarEstadoVenta({ ...sesion, orgId: sesion.orgId }, id, estado);
+    if (estado === "entregada" && previa && previa.estado !== "entregada" && venta.contactoId !== null) {
+      await solicitarResena(sesion.orgId, { evento: "venta", ventaId: id, contactoId: venta.contactoId });
+    }
     return NextResponse.json(serializar({ venta }));
   } catch (error) {
     if (error instanceof ErrorRetail) {
