@@ -1243,3 +1243,32 @@ CREATE OR REPLACE FUNCTION resolve_org_by_cotizacion_token(p_token text)
   $$;
 REVOKE ALL ON FUNCTION resolve_org_by_cotizacion_token(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION resolve_org_by_cotizacion_token(text) TO crm_app;
+
+-- D · Bots: firma HMAC hacia n8n, asesor fijo para handoff y bitácora de acciones del bot.
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS signing_secret TEXT;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS asesor_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS auditoria_bot (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  bot_id BIGINT REFERENCES bots(id) ON DELETE SET NULL,
+  conversacion_id BIGINT REFERENCES conversaciones(id) ON DELETE SET NULL,
+  accion TEXT NOT NULL,
+  entidad TEXT,
+  entidad_id BIGINT,
+  antes JSONB,
+  despues JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS auditoria_bot_org_fecha_idx ON auditoria_bot(org_id, created_at);
+CREATE INDEX IF NOT EXISTS auditoria_bot_conversacion_idx ON auditoria_bot(conversacion_id);
+ALTER TABLE auditoria_bot ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_isolation ON auditoria_bot;
+CREATE POLICY org_isolation ON auditoria_bot
+  USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+  WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
+-- Bitácora de solo agregar: la app lee e inserta, nunca edita ni borra.
+-- (Los DEFAULT PRIVILEGES de multi-tenant.sql dan UPDATE/DELETE a las tablas nuevas; se quitan aquí.)
+GRANT SELECT, INSERT ON auditoria_bot TO crm_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON auditoria_bot FROM crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
