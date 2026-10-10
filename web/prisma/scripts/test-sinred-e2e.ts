@@ -156,6 +156,57 @@ async function main() {
   assert.equal(corte.data.corte.ventas, 2);
   assert.equal(corte.data.corte.efectivoEsperado, "195", "100 de fondo + 50 + (50 − 5 de cambio)");
 
+  // Existencia negativa a propósito (solo por esta vía) y panel "Ventas por revisar".
+  const grande = await api(cookies.cajero, "/api/caja/ventas/sin-red", "POST", cuerpo(preparado.usuarios.cajero, turnoCajero, {
+    totalCobrado: "550.00", partidas: [{ productoId: String(preparado.producto.id), cantidad: "11", descuento: "0" }], pagos: [{ metodo: "efectivo", monto: "550" }],
+  }));
+  assert.equal(grande.status, 201);
+  assert.deepEqual(grande.data.venta.revisionMotivos, ["inventario_negativo"]);
+  const existencia = Number((await transaccionTenant(orgId, (tx) => tx.producto.findUniqueOrThrow({ where: { id: preparado.producto.id } }))).stock);
+  assert.equal(existencia, -3);
+  const movimientoMarcado = await transaccionTenant(orgId, (tx) => tx.movimientoInventario.count({ where: { productoId: preparado.producto.id, sinRed: true } }));
+  assert.equal(movimientoMarcado, 3);
+  assert.equal((await api(cookies.cajero, "/api/caja/revision")).status, 404, "el cajero no ve la revisión");
+  const revision = await api(cookies.encargado, "/api/caja/revision");
+  assert.equal(revision.status, 200);
+  const marcadas = revision.data.ventas.map((venta: { folio: string }) => venta.folio);
+  assert.ok(marcadas.includes(barata.data.venta.folio) && marcadas.includes(grande.data.venta.folio));
+  assert.equal(revision.data.ventas.find((venta: { folio: string }) => venta.folio === barata.data.venta.folio).cajero.nombre, "Persona cajero");
+  assert.deepEqual(revision.data.diferenciasPorCajero.map((fila: { cajero: { nombre: string }; ventas: number; diferencia: string }) => [fila.cajero.nombre, fila.ventas, fila.diferencia]), [["Persona cajero", 1, "5.00"]]);
+  assert.ok(revision.data.rechazos.some((rechazo: { folio: string; cajero: string }) => rechazo.folio === vieja.folio && rechazo.cajero === "Persona cajero"));
+  assert.equal(revision.data.inventarioNegativo[0].stock, "-3");
+  assert.equal((await fetch(`${baseUrl}/caja/revision`, { headers: { Cookie: cookies.encargado } })).status, 200);
+  const paginaCajero = await (await fetch(`${baseUrl}/caja/revision`, { headers: { Cookie: cookies.cajero }, redirect: "manual" })).text();
+  assert.ok(!paginaCajero.includes("Diferencias de precio por cajero"), "el cajero no recibe el panel de revisión");
+  assert.match(await (await fetch(`${baseUrl}/caja/revision`, { headers: { Cookie: cookies.encargado } })).text(), /Diferencias de precio por cajero/);
+  assert.equal((await api(cookies.cajero, `/api/caja/revision/${barata.data.venta.id}`, "PATCH")).status, 404);
+  assert.equal((await api(cookies.encargado, `/api/caja/revision/${barata.data.venta.id}`, "PATCH")).status, 200);
+  assert.equal((await api(cookies.encargado, `/api/caja/revision/${barata.data.venta.id}`, "PATCH")).status, 404, "ya estaba revisada");
+  const rechazoId = revision.data.rechazos.find((rechazo: { folio: string }) => rechazo.folio === vieja.folio).id;
+  assert.equal((await api(cookies.encargado, `/api/caja/revision/${rechazoId}?tipo=rechazo`, "PATCH")).status, 200);
+  const tras = await api(cookies.encargado, "/api/caja/revision");
+  assert.ok(!tras.data.ventas.some((venta: { folio: string }) => venta.folio === barata.data.venta.folio));
+  assert.ok(!tras.data.rechazos.some((rechazo: { folio: string }) => rechazo.folio === vieja.folio));
+  assert.deepEqual(tras.data.diferenciasPorCajero, []);
+
+  // Corte Z y una venta sin internet que llega después: el corte no cambia y el reporte la explica.
+  const esperadoAntes = (await api(cookies.cajero, `/api/caja/turnos/${turnoCajero}/corte`)).data.corte.efectivoEsperado;
+  const cierre = await api(cookies.cajero, `/api/caja/turnos/${turnoCajero}/corte`, "POST", { efectivoContado: esperadoAntes });
+  assert.equal(cierre.status, 200);
+  const tardia = await api(cookies.cajero, "/api/caja/ventas/sin-red", "POST", cuerpo(preparado.usuarios.cajero, turnoCajero, { vendidaAt: new Date(new Date(cierre.data.corte.turno.cerradoAt).getTime() - 60_000).toISOString() }));
+  assert.equal(tardia.status, 201);
+  assert.deepEqual(tardia.data.venta.revisionMotivos, ["tardia", "inventario_negativo"]);
+  const corteCerrado = await api(cookies.cajero, `/api/caja/turnos/${turnoCajero}/corte`);
+  assert.equal(corteCerrado.data.corte.efectivoEsperado, esperadoAntes, "el esperado del Z no se mueve");
+  assert.equal(corteCerrado.data.corte.tardias.efectivo, "50");
+  const dia = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+  const reporte = await api(cookies.encargado, `/api/reportes/retail?desde=${dia(-1)}&hasta=${dia(1)}`);
+  assert.equal(reporte.status, 200);
+  const filaCajero = reporte.data.reporte.cortes.find((fila: { clave: string }) => fila.clave === `cajero:${preparado.usuarios.cajero.id}`);
+  assert.equal(filaCajero.explicadoPorTardias, "50");
+  assert.equal(Number(filaCajero.diferencia) - Number(filaCajero.explicadoPorTardias), Number(filaCajero.diferenciaAjustada));
+  assert.ok(reporte.data.reporte.inventario.filas.some((fila: { negativo: boolean }) => fila.negativo));
+
   // Se vuelve a apagar: el endpoint y el catálogo cierran sin tocar lo ya subido.
   assert.equal((await api(cookies.admin, "/api/modulos", "PATCH", { clave: "caja", config: { ventasSinRed: false } })).status, 200);
   assert.equal((await api(cookies.cajero, "/api/caja/ventas/sin-red", "POST", cuerpo(preparado.usuarios.cajero, turnoCajero))).data.codigo, "SIN_RED_APAGADO");
@@ -163,7 +214,7 @@ async function main() {
   console.log(JSON.stringify({
     apagado: { subida: apagado.status, catalogo: 403 }, soloAdminEnciende: true, subida: primera.status, reenvio: repetida.status, ventasGuardadas: ventas,
     identidadAjena: ajena.status, turnoAjeno: turnoAjeno.data.codigo, rechazosRegistrados: rechazos.length, precioDistinto: barata.data.venta.revisionMotivos,
-    corteX: corte.data.corte.efectivoEsperado,
+    corteX: corte.data.corte.efectivoEsperado, existenciaNegativa: existencia, revision: marcadas.length, corteZTardia: { esperado: corteCerrado.data.corte.efectivoEsperado, tardias: corteCerrado.data.corte.tardias.efectivo },
   }));
 }
 

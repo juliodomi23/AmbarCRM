@@ -159,6 +159,39 @@ Los QR los genera `src/lib/qr-svg.ts` (modo byte, corrección M, hasta 213 bytes
 dependencias. Las pruebas son `scripts/check-resenas.ts` y
 `prisma/scripts/test-resenas-e2e.ts`.
 
+## Caja sin internet (A5)
+
+Opcional por empresa y **apagada por defecto**: `caja.config.ventasSinRed === true`, que solo el Admin
+enciende (interruptor en `/caja` o `PATCH /api/modulos`). Apagada, `GET /api/caja/catalogo` y
+`POST /api/caja/ventas/sin-red` responden 403 y la UI no ofrece el modo, porque esa ruta omite la
+existencia y respeta lo cobrado.
+
+- **Alcance:** solo `/caja`, venta de mostrador anónima en efectivo, tarjeta o transferencia. Sin red no hay
+  cliente, crédito, apartado, nota de crédito, devolución, movimientos de efectivo ni abrir/cerrar turno.
+- **Service worker:** `public/sw.js` (el mismo de push; no hay otro registro) cachea el shell de `/caja` por
+  identidad y los `/_next/static`. Los cachés llevan la versión del build (`/sw.js?v=<build>`) y `activate`
+  borra los de otras versiones. Sin red hay que **recargar** `/caja`.
+- **Catálogo:** `GET /api/caja/catalogo` (productos, precio base, lista pública, escalas, promociones, tope de
+  descuento) a IndexedDB `ambar-caja` por `orgId:userId`. La regla de precios es `lib/precios-puro.ts`, la misma
+  que usa `calcularPrecios`; `test-paridad-precios.ts` compara servidor y navegador.
+- **Cola:** IndexedDB, FIFO, reintento con retroceso en 5xx o sin red, 4xx con error visible sin frenar la cola,
+  401 conserva y pide login. Nunca sube con la sesión de otra persona (`IDENTIDAD_DISTINTA`). El cierre de
+  sesión borra catálogo y shell de esa persona; **la cola no se borra**. El corte Z se bloquea mientras haya cola.
+- **`POST /api/caja/ventas/sin-red`:** idempotente por `uuid_cliente`; fecha no futura ni de más de 72 h (también
+  para `esperando_turno`); sin cliente. El servidor recalcula con las promociones vigentes a la fecha de la venta
+  (no hay historial de precios) y **respeta lo cobrado** (`precio_distinto`, `diferencia_precio`). Permite
+  existencia negativa (`inventario_negativo`, `movimientos_inventario.sin_red`). Los rechazos definitivos quedan
+  en `cola_caja_rechazos`.
+- **Turno:** abierto, entra ahí. Cerrado y la venta fue antes del corte: entra a ese turno como `tardia` sin
+  reescribir el Z (`totalesTurno` no cuenta lo subido después del cierre y el reporte de cortes muestra
+  "Por ventas tardías" y la diferencia ajustada). Cerrado antes de la venta: turno abierto actual con
+  `turno_original_id`, o `TURNO_REQUERIDO` (espera turno).
+- **Revisión:** `/caja/revision` (Encargado/Admin): ventas marcadas con cajero y diferencia de precio por
+  cajero, rechazos y existencias negativas; se corrige con una entrada de inventario normal.
+- **Ticket:** se arma en el navegador con el folio `SR-…` que conserva el servidor.
+- **Pruebas:** `check-sw-push.ts`, `check-caja-offline.ts`, `check-caja-sinred.ts`, `test-paridad-precios.ts`,
+  `test-concurrencia-sinred.ts` (`SINRED_SIN_PROTECCION=1`) y `test-sinred-e2e.ts`.
+
 ## Módulo Pedidos en línea
 
 Los pedidos web pendientes reservan existencia sin descontarla hasta su confirmación.

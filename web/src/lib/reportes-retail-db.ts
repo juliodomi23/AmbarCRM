@@ -146,12 +146,30 @@ export async function reporteRetail(
       utilidad: total.utilidad.plus(fila.utilidad), ingresosSinCosto: total.ingresosSinCosto.plus(fila.ingresosSinCosto),
       partidasSinCosto: total.partidasSinCosto + fila.partidasSinCosto,
     }), { ingresos: CERO, costos: CERO, utilidad: CERO, ingresosSinCosto: CERO, partidasSinCosto: 0 });
-    const cortes = new Map<string, { clave: string; nombre: string; diferencia: Prisma.Decimal; turnos: number }>();
+    // Ventas sin internet que llegaron DESPUÉS del corte Z: el efectivo ya estaba en el cajón cuando se contó,
+    // así que explican parte del sobrante sin reescribir el corte (que es irreversible).
+    const tardias = turnos.length
+      ? await tx.venta.findMany({
+        where: { turnoId: { in: turnos.map((turno) => turno.id) }, sinRed: true, estado: { not: "cancelada" }, subidaAt: { not: null } },
+        select: { turnoId: true, subidaAt: true, cambio: true, pagos: { select: { metodo: true, monto: true } } },
+      })
+      : [];
+    const explicadoPorTurno = new Map<string, Prisma.Decimal>();
+    for (const venta of tardias) {
+      const turno = turnos.find((item) => item.id === venta.turnoId);
+      if (!turno?.cerradoAt || !venta.subidaAt || venta.subidaAt <= turno.cerradoAt) continue;
+      const efectivo = (venta.pagos.find((pago) => pago.metodo === "efectivo")?.monto ?? CERO).minus(venta.cambio);
+      explicadoPorTurno.set(String(turno.id), (explicadoPorTurno.get(String(turno.id)) ?? CERO).plus(efectivo));
+    }
+    const cortes = new Map<string, { clave: string; nombre: string; diferencia: Prisma.Decimal; explicadoPorTardias: Prisma.Decimal; diferenciaAjustada: Prisma.Decimal; turnos: number }>();
     for (const turno of turnos) {
+      const explicado = explicadoPorTurno.get(String(turno.id)) ?? CERO;
       for (const [prefijo, entidad] of [["cajero", turno.usuario], ["caja", turno.caja]] as const) {
         const clave = `${prefijo}:${entidad.id}`;
-        const fila = cortes.get(clave) ?? { clave, nombre: entidad.nombre, diferencia: CERO, turnos: 0 };
+        const fila = cortes.get(clave) ?? { clave, nombre: entidad.nombre, diferencia: CERO, explicadoPorTardias: CERO, diferenciaAjustada: CERO, turnos: 0 };
         fila.diferencia = fila.diferencia.plus(turno.diferencia ?? 0); fila.turnos++;
+        fila.explicadoPorTardias = fila.explicadoPorTardias.plus(explicado);
+        fila.diferenciaAjustada = fila.diferencia.minus(fila.explicadoPorTardias);
         cortes.set(clave, fila);
       }
     }
@@ -170,6 +188,7 @@ export async function reporteRetail(
           id: producto.id, nombre: producto.nombre, sku: producto.sku, stock: producto.stock, stockMinimo: producto.stockMinimo,
           valorCosto: producto.stock.mul(producto.costo).toDecimalPlaces(2), valorPrecio: producto.stock.mul(producto.precio).toDecimalPlaces(2),
           sinMovimiento: !conMovimiento.has(String(producto.id)), alertaMinimo: producto.stockMinimo.gt(0) && producto.stock.lte(producto.stockMinimo),
+          negativo: producto.stock.lt(0),
         })),
         pagina, tamano, total: totalProductos,
       },

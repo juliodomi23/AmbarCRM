@@ -9,6 +9,7 @@ export type IdentidadCaja = { orgId: string; userId: string };
 export type CatalogoLocal = {
   identidad: IdentidadCaja;
   sinTopeDescuento: boolean;
+  negocio: string;
   catalogo: CatalogoCaja;
   guardadoAt: string;
 };
@@ -42,6 +43,7 @@ export async function sincronizarCatalogo(
         const datos: CatalogoLocal = {
           identidad,
           sinTopeDescuento: Boolean(cuerpo.sinTopeDescuento),
+          negocio: String(cuerpo.negocio ?? ""),
           catalogo: cuerpo.catalogo,
           guardadoAt: new Date().toISOString(),
         };

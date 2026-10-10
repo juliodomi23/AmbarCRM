@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { almacenMemoria, claveIdentidad } from "../src/lib/caja-offline/almacen";
 import { calcularLineaLocal, leerCatalogoLocal, sincronizarCatalogo } from "../src/lib/caja-offline/catalogo";
 import type { CatalogoCaja } from "../src/lib/caja-offline/tipos";
+import { htmlTicketLocal } from "../src/lib/caja-offline/ticket";
+import { folioSinRed } from "../src/lib/caja-offline/cola";
 
 const identidadA = { orgId: "1", userId: "10" };
 const identidadB = { orgId: "1", userId: "11" };
@@ -59,5 +61,18 @@ assert.deepEqual(
 assert.equal(calcularLineaLocal(catalogo, pieza, "1", ahora).total, "90.00");
 assert.equal(calcularLineaLocal(catalogo, pieza, "10", ahora).fuentePrecio, "volumen");
 assert.equal(calcularLineaLocal(catalogo, granel, "0.75", ahora).total, "22.50");
+
+// Ticket local: folio SR-, total cobrado y nombres escapados (no se ejecuta HTML que venga del catálogo).
+const ticket = htmlTicketLocal({
+  uuidCliente: "00000000-0000-4000-8000-000000000001", folio: folioSinRed("00000000-0000-4000-8000-000000000001"), identidad: identidadA, turnoId: "1",
+  vendidaAt: "2026-10-10T18:00:00.000Z", partidas: [{ productoId: "5", nombre: "<img src=x onerror=alert(1)>", cantidad: "2", descuento: "0", precioUnitario: "50.00", total: "100.00" }],
+  pagos: [{ metodo: "efectivo", monto: "100.00" }], descuento: "0", totalCobrado: "100.00", cambio: "0.00", catalogoVersion: "v1",
+  estado: "pendiente", intentos: 0, proximoIntentoAt: null, ultimoError: null, codigo: null,
+}, { negocio: "Tienda <b>X</b>", caja: "Caja 1", cajero: "Ana", zona: "America/Mexico_City", ancho: 58 });
+assert.match(ticket, /SR-0000000000/);
+assert.match(ticket, /size: 58mm auto/);
+assert.doesNotMatch(ticket, /<img src=x/);
+assert.doesNotMatch(ticket, /<b>X<\/b>/);
+assert.match(ticket, /Venta registrada sin conexión/);
 
 console.log("caja offline: catálogo por identidad, sin red, 403 apagado, identidad ajena y cálculo local OK");

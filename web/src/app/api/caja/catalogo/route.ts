@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { puedeAutorizarDescuento } from "@/lib/caja";
 import { construirCatalogoCaja } from "@/lib/caja-catalogo-db";
+import { normalizarMarca } from "@/lib/brand";
 import { conModulo } from "@/lib/con-modulo";
+import { getAjustes } from "@/lib/services/config";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,7 @@ export const GET = conModulo("caja", {}, async (sesion) => {
   return NextResponse.json({
     identidad: { orgId: String(sesion.orgId), userId: String(sesion.userId) },
     sinTopeDescuento: puedeAutorizarDescuento(sesion.rol, sesion.puesto),
+    negocio: normalizarMarca(await getAjustes()).nombre,
     catalogo,
   });
 });
