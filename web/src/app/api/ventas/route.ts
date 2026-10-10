@@ -5,9 +5,9 @@ import {
   CERO_DECIMAL,
   estadoUsaInventario,
   folioVenta,
-  importePartida,
   validarVenta,
 } from "@/lib/retail";
+import { calcularPrecios } from "@/lib/precios-db";
 import { cantidadValidaParaProducto } from "@/lib/cantidad";
 import { bloquearProductos, ErrorRetail, reservasActivasPorProducto, transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
@@ -47,27 +47,24 @@ export const POST = conModulo("ventas", {}, async (sesion, req: NextRequest) => 
         tx,
         partidas.map((partida) => partida.productoId),
       );
-      const productos = await tx.producto.findMany({
-        where: { id: { in: partidas.map((partida) => partida.productoId) }, activo: true },
-      });
-      if (productos.length !== partidas.length) {
-        throw new ErrorRetail("Uno de los productos no existe o está inactivo");
-      }
-      const porId = new Map(productos.map((producto) => [String(producto.id), producto]));
+      const precios = await calcularPrecios(tx, partidas, { contactoId });
+      const porId = new Map(precios.map((precio) => [String(precio.producto.id), precio]));
       const reservadas = await reservasActivasPorProducto(tx, partidas.map((partida) => partida.productoId));
       const subtotal = partidas.reduce((suma, partida) => {
-        const producto = porId.get(String(partida.productoId));
-        if (!producto) return suma;
-        if (!cantidadValidaParaProducto(partida.cantidad, producto.vendePorPeso)) {
-          throw new ErrorRetail(`${producto.nombre} se vende por piezas enteras`);
+        const calculo = porId.get(String(partida.productoId));
+        if (!calculo) return suma;
+        if (!cantidadValidaParaProducto(partida.cantidad, calculo.producto.vendePorPeso)) {
+          throw new ErrorRetail(`${calculo.producto.nombre} se vende por piezas enteras`);
         }
-        return suma.plus(importePartida(producto.precio, partida.cantidad));
+        return suma.plus(calculo.bruto);
       }, CERO_DECIMAL);
-      if (descuento.gt(subtotal)) throw new ErrorRetail("El descuento no puede superar el subtotal");
+      const descuentoPromociones = precios.reduce((suma, precio) => suma.plus(precio.descuentoPromocion), CERO_DECIMAL);
+      if (descuento.gt(subtotal.minus(descuentoPromociones))) throw new ErrorRetail("El descuento no puede superar el subtotal");
       const aplicaStock = estadoUsaInventario(cabecera.estado);
       if (aplicaStock) {
         for (const partida of partidas) {
-          const producto = porId.get(String(partida.productoId));
+          const calculo = porId.get(String(partida.productoId));
+          const producto = calculo?.producto;
           if (!producto || producto.stock.minus(reservadas.get(String(partida.productoId)) ?? 0).lt(partida.cantidad)) {
             throw new ErrorRetail(`No hay existencias suficientes de ${producto?.nombre ?? "un producto"}`);
           }
@@ -81,21 +78,25 @@ export const POST = conModulo("ventas", {}, async (sesion, req: NextRequest) => 
           contactoId,
           creadoPorId: sesion.userId,
           subtotal,
-          descuento,
-          total: subtotal.minus(descuento),
+          descuento: descuento.plus(descuentoPromociones),
+          total: subtotal.minus(descuento).minus(descuentoPromociones),
           stockAplicado: aplicaStock,
         },
       });
       for (const partida of partidas) {
-        const producto = porId.get(String(partida.productoId));
-        if (!producto) continue;
+        const calculo = porId.get(String(partida.productoId));
+        if (!calculo) continue;
+        const producto = calculo.producto;
         await tx.ventaPartida.create({
           data: {
             ventaId: creada.id,
             productoId: producto.id,
             cantidad: partida.cantidad,
-            precioUnitario: producto.precio,
-            total: importePartida(producto.precio, partida.cantidad),
+            precioUnitario: calculo.precioUnitario,
+            descuento: calculo.descuentoPromocion,
+            descuentoPromocion: calculo.descuentoPromocion,
+            promocionDescripcion: calculo.promocionDescripcion,
+            total: calculo.total,
           },
         });
         if (aplicaStock) {

@@ -1287,3 +1287,90 @@ CREATE OR REPLACE FUNCTION resolve_org_by_pedido_token(p_token text)
   $$;
 REVOKE ALL ON FUNCTION resolve_org_by_pedido_token(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION resolve_org_by_pedido_token(text) TO crm_app;
+
+-- A3a · Motor único de precios, listas, volumen y promociones.
+CREATE TABLE IF NOT EXISTS listas_precios (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  nombre TEXT NOT NULL,
+  tipo TEXT NOT NULL DEFAULT 'cliente' CHECK (tipo IN ('publico', 'cliente', 'mayoreo')),
+  activa BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, nombre)
+);
+CREATE INDEX IF NOT EXISTS listas_precios_org_tipo_idx ON listas_precios(org_id, tipo, activa);
+
+ALTER TABLE contactos ADD COLUMN IF NOT EXISTS lista_precio_id BIGINT;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'contactos_lista_precio_id_fkey') THEN
+    ALTER TABLE contactos ADD CONSTRAINT contactos_lista_precio_id_fkey
+      FOREIGN KEY (lista_precio_id) REFERENCES listas_precios(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS contactos_lista_precio_idx ON contactos(lista_precio_id);
+
+CREATE TABLE IF NOT EXISTS precios_volumen (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  producto_id BIGINT NOT NULL REFERENCES productos(id) ON DELETE CASCADE,
+  desde NUMERIC(12,3) NOT NULL CHECK (desde > 0),
+  precio NUMERIC(12,2) NOT NULL CHECK (precio >= 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (producto_id, desde)
+);
+CREATE INDEX IF NOT EXISTS precios_volumen_org_producto_idx ON precios_volumen(org_id, producto_id, desde);
+
+CREATE TABLE IF NOT EXISTS lista_precio_productos (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  lista_id BIGINT NOT NULL REFERENCES listas_precios(id) ON DELETE CASCADE,
+  producto_id BIGINT NOT NULL REFERENCES productos(id) ON DELETE CASCADE,
+  precio NUMERIC(12,2) NOT NULL CHECK (precio >= 0),
+  UNIQUE (lista_id, producto_id)
+);
+CREATE INDEX IF NOT EXISTS lista_precio_productos_org_producto_idx ON lista_precio_productos(org_id, producto_id);
+
+CREATE TABLE IF NOT EXISTS promociones (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  nombre TEXT NOT NULL,
+  tipo TEXT NOT NULL CHECK (tipo IN ('porcentaje', 'monto', 'nxm', 'precio_especial')),
+  producto_id BIGINT REFERENCES productos(id) ON DELETE CASCADE,
+  categoria TEXT,
+  valor NUMERIC(12,2) CHECK (valor >= 0),
+  cantidad_compra INTEGER CHECK (cantidad_compra > 1),
+  cantidad_paga INTEGER CHECK (cantidad_paga > 0),
+  inicia DATE NOT NULL,
+  termina DATE NOT NULL,
+  activa BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (producto_id IS NOT NULL OR categoria IS NOT NULL),
+  CHECK (termina >= inicia),
+  CHECK (
+    (tipo = 'nxm' AND cantidad_compra IS NOT NULL AND cantidad_paga IS NOT NULL AND cantidad_paga < cantidad_compra)
+    OR (tipo <> 'nxm' AND valor IS NOT NULL)
+  )
+);
+CREATE INDEX IF NOT EXISTS promociones_org_vigencia_idx ON promociones(org_id, activa, inicia, termina);
+CREATE INDEX IF NOT EXISTS promociones_producto_idx ON promociones(producto_id);
+CREATE INDEX IF NOT EXISTS promociones_org_categoria_idx ON promociones(org_id, categoria);
+
+ALTER TABLE venta_partidas ADD COLUMN IF NOT EXISTS descuento_promocion NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE venta_partidas ADD COLUMN IF NOT EXISTS promocion_descripcion TEXT;
+ALTER TABLE cotizacion_partidas ADD COLUMN IF NOT EXISTS descuento_promocion NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE cotizacion_partidas ADD COLUMN IF NOT EXISTS promocion_descripcion TEXT;
+
+DO $$ DECLARE t TEXT; BEGIN
+  FOREACH t IN ARRAY ARRAY['listas_precios', 'precios_volumen', 'lista_precio_productos', 'promociones'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format(
+      'CREATE POLICY org_isolation ON %I USING (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint) WITH CHECK (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint)',
+      t
+    );
+  END LOOP;
+END $$;
+GRANT SELECT, INSERT, UPDATE, DELETE ON listas_precios, precios_volumen, lista_precio_productos, promociones TO crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;

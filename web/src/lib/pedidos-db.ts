@@ -1,9 +1,9 @@
 import crypto from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { db, dbRaw, runWithOrg } from "@/lib/db";
-import { importePartida } from "@/lib/retail";
 import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
 import { cantidadPedidoValida, configPedidos, type ConfigPedidos, type PartidaPedidoEntrada } from "@/lib/pedidos";
+import { calcularPrecios } from "@/lib/precios-db";
 
 export class ErrorPedido extends ErrorRetail {}
 
@@ -77,17 +77,23 @@ export async function crearPedido(orgId: bigint, config: ConfigPedidos, datos: C
       _sum: { cantidad: true },
     });
     const porProducto = new Map(reservadas.map((r) => [String(r.productoId), r._sum.cantidad ?? new Prisma.Decimal(0)]));
+    const precios = await calcularPrecios(tx, datos.partidas, { publico: true });
+    const precioPorProducto = new Map(precios.map((precio) => [String(precio.producto.id), precio]));
     let subtotal = new Prisma.Decimal(0);
+    let descuentoPromociones = new Prisma.Decimal(0);
     const calculadas = datos.partidas.map((partida) => {
       const producto = productos.find((p) => p.id === partida.productoId)!;
+      const precio = precioPorProducto.get(String(producto.id))!;
       if (!cantidadPedidoValida(partida.cantidad, producto.vendePorPeso)) throw new ErrorPedido(`Cantidad inválida para ${producto.nombre}`, 400);
       const disponible = producto.stock.minus(porProducto.get(String(producto.id)) ?? 0);
       if (producto.agotadoManual || disponible.lt(partida.cantidad)) throw new ErrorPedido(`${producto.nombre} está agotado`, 409);
-      const total = importePartida(producto.precio, partida.cantidad);
-      subtotal = subtotal.plus(total);
-      return { producto, cantidad: partida.cantidad, total };
+      const total = precio.total;
+      subtotal = subtotal.plus(precio.bruto);
+      descuentoPromociones = descuentoPromociones.plus(precio.descuentoPromocion);
+      return { producto, cantidad: partida.cantidad, precio, total };
     });
-    if (subtotal.lt(config.minimoCompra)) throw new ErrorPedido(`El pedido mínimo es de $${config.minimoCompra.toFixed(2)}`, 409);
+    const subtotalNeto = subtotal.minus(descuentoPromociones);
+    if (subtotalNeto.lt(config.minimoCompra)) throw new ErrorPedido(`El pedido mínimo es de $${config.minimoCompra.toFixed(2)}`, 409);
     const costoEnvio = datos.tipoEntrega === "domicilio" ? config.costoEnvio : new Prisma.Decimal(0);
 
     let contacto = await tx.contacto.findFirst({ where: { telefono: { endsWith: datos.telefono10 } } });
@@ -97,8 +103,16 @@ export async function crearPedido(orgId: bigint, config: ConfigPedidos, datos: C
         folio: folioPedido(), contactoId: contacto.id, uuidCliente: datos.uuidCliente,
         tokenSeguimiento: crypto.randomBytes(16).toString("hex"), estado: "pendiente", canal: "tienda_en_linea",
         tipoEntrega: datos.tipoEntrega, direccionEntrega: datos.direccion, horarioDeseado: datos.horarioDeseado,
-        costoEnvio, pedidoIp: datos.ip, subtotal, total: subtotal.plus(costoEnvio), notas: datos.notas, stockAplicado: false,
-        partidas: { create: calculadas.map(({ producto, cantidad, total }) => ({ productoId: producto.id, cantidad, precioUnitario: producto.precio, total })) },
+        costoEnvio, pedidoIp: datos.ip, subtotal, descuento: descuentoPromociones, total: subtotalNeto.plus(costoEnvio), notas: datos.notas, stockAplicado: false,
+        partidas: { create: calculadas.map(({ producto, cantidad, precio, total }) => ({
+          productoId: producto.id,
+          cantidad,
+          precioUnitario: precio.precioUnitario,
+          descuento: precio.descuentoPromocion,
+          descuentoPromocion: precio.descuentoPromocion,
+          promocionDescripcion: precio.promocionDescripcion,
+          total,
+        })) },
         reservasPedido: { create: calculadas.map(({ producto, cantidad }) => ({ productoId: producto.id, cantidad })) },
       },
       include: { contacto: true, partidas: { include: { producto: true } } },

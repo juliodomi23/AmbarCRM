@@ -5,6 +5,7 @@ import { dbRaw } from "@/lib/db";
 import { bloquearProductos, ErrorRetail, reservasActivasPorProducto, transaccionTenant } from "@/lib/retail-db";
 import { fechaLocal } from "@/lib/reservas/horarios";
 import { configReservas } from "@/lib/reservas/servidor";
+import { calcularPrecios } from "@/lib/precios-db";
 
 export class ErrorCotizacion extends ErrorRetail {}
 
@@ -31,19 +32,22 @@ function folioCotizacion() {
   return `COT-${Date.now().toString(36).toUpperCase()}-${randomBytes(2).toString("hex").toUpperCase()}`;
 }
 
-async function prepararPartidas(tx: Prisma.TransactionClient, entradas: readonly PartidaCotizacionEntrada[]) {
+async function prepararPartidas(tx: Prisma.TransactionClient, contactoId: bigint, entradas: readonly PartidaCotizacionEntrada[]) {
   const ids = entradas.flatMap((partida) => partida.productoId === null ? [] : [partida.productoId]);
-  const productos = ids.length ? await tx.producto.findMany({ where: { id: { in: ids }, activo: true } }) : [];
-  if (productos.length !== new Set(ids.map(String)).size) throw new ErrorCotizacion("Uno de los productos no existe o está inactivo", 404);
-  const porId = new Map(productos.map((producto) => [String(producto.id), producto]));
+  const precios = ids.length
+    ? await calcularPrecios(tx, entradas.flatMap((partida) => partida.productoId === null ? [] : [{ productoId: partida.productoId, cantidad: partida.cantidad }]), { contactoId })
+    : [];
+  const porId = new Map(precios.map((precio) => [String(precio.producto.id), precio]));
   return entradas.map((partida) => {
-    const producto = partida.productoId === null ? null : porId.get(String(partida.productoId));
+    const calculo = partida.productoId === null ? null : porId.get(String(partida.productoId));
     return {
       productoId: partida.productoId,
-      concepto: producto?.nombre ?? partida.concepto,
+      concepto: calculo?.producto.nombre ?? partida.concepto,
       cantidad: partida.cantidad,
-      precio: producto?.precio ?? partida.precio!,
-      descuento: partida.descuento,
+      precio: calculo?.precioUnitario ?? partida.precio!,
+      descuento: partida.descuento.plus(calculo?.descuentoPromocion ?? 0),
+      descuentoPromocion: calculo?.descuentoPromocion ?? new Prisma.Decimal(0),
+      promocionDescripcion: calculo?.promocionDescripcion ?? null,
     };
   });
 }
@@ -58,7 +62,7 @@ export async function crearCotizacion(orgId: bigint, userId: bigint | null, dato
     }
     const modulo = await tx.moduloOrg.findFirst({ where: { clave: "cotizaciones", activo: true }, select: { config: true } });
     const config = configCotizaciones(modulo?.config);
-    const preparadas = await prepararPartidas(tx, datos.partidas);
+    const preparadas = await prepararPartidas(tx, contacto.id, datos.partidas);
     let calculo;
     try {
       calculo = calcularCotizacion(preparadas, datos.descuentoGeneral, config);
@@ -92,6 +96,8 @@ export async function crearCotizacion(orgId: bigint, userId: bigint | null, dato
         cantidad: partida.cantidad,
         precio: partida.precio,
         descuento: partida.descuento,
+        descuentoPromocion: partida.descuentoPromocion,
+        promocionDescripcion: partida.promocionDescripcion,
         total: partida.total,
       })),
     });
@@ -156,6 +162,8 @@ async function convertirEnVenta(tx: Prisma.TransactionClient, cotizacion: Awaite
         cantidad: partida.cantidad,
         precioUnitario: partida.precio,
         descuento: partida.descuento,
+        descuentoPromocion: partida.descuentoPromocion,
+        promocionDescripcion: partida.promocionDescripcion,
         total: partida.total,
       },
     });

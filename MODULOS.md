@@ -140,6 +140,18 @@ Los pedidos web pendientes reservan existencia sin descontarla hasta su confirma
 las empresas, cancela los pendientes vencidos y libera sus reservas. Si una empresa
 falla, el cron continúa con las demás.
 
+## Precios y promociones
+
+`calcularPrecios()` es el único motor de precios del servidor. Busca primero una escala
+por volumen; si no aplica, usa la lista asignada al cliente o la lista pública; después
+elige la promoción vigente más favorable. La vigencia se evalúa con la zona de Reservas
+o `America/Mexico_City`. Caja, Ventas, apartados, crédito, cotizaciones y tienda usan el
+mismo motor. Las cotizaciones conservan el precio calculado al crearse.
+
+El descuento promocional y su descripción se guardan en cada partida. Las devoluciones
+prorratean el importe efectivamente cobrado, incluido el descuento general, y ajustan el
+último centavo para que la suma nunca rebase el total de la venta.
+
 ## Módulo Citas
 
 Cuando Citas está activo aparece en el menú lateral, la barra móvil y Ctrl+K. Su

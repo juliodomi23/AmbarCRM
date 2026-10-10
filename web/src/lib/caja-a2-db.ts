@@ -9,7 +9,8 @@ import {
 import { descuentoMaximoCajero, puedeAutorizarDescuento } from "@/lib/caja";
 import { bloquearTurnoCaja, type IdentidadCaja } from "@/lib/caja-db";
 import { cantidadValidaParaProducto } from "@/lib/cantidad";
-import { CERO_DECIMAL, importePartida } from "@/lib/retail";
+import { CERO_DECIMAL } from "@/lib/retail";
+import { calcularPrecios } from "@/lib/precios-db";
 import { bloquearProductos, bloquearVenta, ErrorRetail, reservasActivasPorProducto, transaccionTenant } from "@/lib/retail-db";
 
 export class ErrorCajaA2 extends ErrorRetail {}
@@ -47,27 +48,25 @@ async function bloquearCuenta(tx: Prisma.TransactionClient, cuentaId: bigint) {
 async function prepararPartidas(
   tx: Prisma.TransactionClient,
   partidas: readonly PartidaNueva[],
+  contactoId: bigint,
 ) {
   await bloquearProductos(tx, partidas.map((partida) => partida.productoId));
-  const productos = await tx.producto.findMany({
-    where: { id: { in: partidas.map((partida) => partida.productoId) }, activo: true },
-  });
-  if (productos.length !== partidas.length) throw new ErrorCajaA2("Uno de los productos no existe o está inactivo", 404);
-  const porId = new Map(productos.map((producto) => [String(producto.id), producto]));
+  const precios = await calcularPrecios(tx, partidas, { contactoId });
+  const porId = new Map(precios.map((precio) => [String(precio.producto.id), precio]));
   const reservadas = await reservasActivasPorProducto(tx, partidas.map((partida) => partida.productoId));
   let subtotal = CERO_DECIMAL;
   let descuentosPartidas = CERO_DECIMAL;
   for (const partida of partidas) {
-    const producto = porId.get(String(partida.productoId));
-    if (!producto) throw new ErrorCajaA2("Producto no encontrado", 404);
+    const calculo = porId.get(String(partida.productoId));
+    if (!calculo) throw new ErrorCajaA2("Producto no encontrado", 404);
+    const producto = calculo.producto;
     if (!cantidadValidaParaProducto(partida.cantidad, producto.vendePorPeso)) {
       throw new ErrorCajaA2(`${producto.nombre} se vende por piezas enteras`);
     }
     if (producto.stock.minus(reservadas.get(String(producto.id)) ?? 0).lt(partida.cantidad)) throw new ErrorCajaA2(`No hay existencias suficientes de ${producto.nombre}`, 409);
-    const bruto = importePartida(producto.precio, partida.cantidad);
-    if (partida.descuento.gt(bruto)) throw new ErrorCajaA2(`El descuento de ${producto.nombre} supera su importe`);
-    subtotal = subtotal.plus(bruto);
-    descuentosPartidas = descuentosPartidas.plus(partida.descuento);
+    if (partida.descuento.gt(calculo.total)) throw new ErrorCajaA2(`El descuento de ${producto.nombre} supera su importe`);
+    subtotal = subtotal.plus(calculo.bruto);
+    descuentosPartidas = descuentosPartidas.plus(partida.descuento).plus(calculo.descuentoPromocion);
   }
   return { porId, subtotal, descuentosPartidas };
 }
@@ -81,17 +80,19 @@ async function guardarPartidasYDescontar(
   porId: Awaited<ReturnType<typeof prepararPartidas>>["porId"],
 ) {
   for (const partida of partidas) {
-    const producto = porId.get(String(partida.productoId))!;
-    const bruto = importePartida(producto.precio, partida.cantidad);
+    const calculo = porId.get(String(partida.productoId))!;
+    const producto = calculo.producto;
     const existenciaDespues = producto.stock.minus(partida.cantidad);
     await tx.ventaPartida.create({
       data: {
         ventaId,
         productoId: producto.id,
         cantidad: partida.cantidad,
-        precioUnitario: producto.precio,
-        descuento: partida.descuento,
-        total: bruto.minus(partida.descuento),
+        precioUnitario: calculo.precioUnitario,
+        descuento: partida.descuento.plus(calculo.descuentoPromocion),
+        descuentoPromocion: calculo.descuentoPromocion,
+        promocionDescripcion: calculo.promocionDescripcion,
+        total: calculo.total.minus(partida.descuento),
       },
     });
     await tx.producto.update({ where: { id: producto.id }, data: { stock: existenciaDespues } });
@@ -262,7 +263,7 @@ export async function crearApartado(
     if (!contacto) throw new ErrorCajaA2("El cliente no existe", 404);
     const existente = await tx.venta.findFirst({ where: { uuidCliente: datos.uuidCliente }, include: { apartado: true } });
     if (existente?.apartado) return { apartado: existente.apartado, repetido: true };
-    const { porId, subtotal, descuentosPartidas } = await prepararPartidas(tx, datos.partidas);
+    const { porId, subtotal, descuentosPartidas } = await prepararPartidas(tx, datos.partidas, contacto.id);
     const total = subtotal.minus(descuentosPartidas);
     if (datos.anticipo.gt(total)) throw new ErrorCajaA2("El anticipo no puede superar el total");
     const saldo = total.minus(datos.anticipo);
@@ -448,7 +449,7 @@ export async function registrarVentaCredito(
     if (!cuentaInicial) throw new ErrorCajaA2("Configura el límite de crédito del cliente", 409);
     await bloquearCuenta(tx, cuentaInicial.id);
     const cuenta = await tx.cuentaCliente.findUniqueOrThrow({ where: { id: cuentaInicial.id } });
-    const { porId, subtotal, descuentosPartidas } = await prepararPartidas(tx, datos.partidas);
+    const { porId, subtotal, descuentosPartidas } = await prepararPartidas(tx, datos.partidas, datos.contactoId);
     const base = subtotal.minus(descuentosPartidas);
     if (datos.descuento.gt(base)) throw new ErrorCajaA2("El descuento general supera el subtotal");
     const descuentoTotal = descuentosPartidas.plus(datos.descuento);

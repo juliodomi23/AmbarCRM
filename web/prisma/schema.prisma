@@ -248,6 +248,7 @@ model Contacto {
   fuente        FuenteContacto @default(manual)
   notas         String?
   responsableId BigInt?        @map("responsable_id")
+  listaPrecioId  BigInt?        @map("lista_precio_id")
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at")
 
@@ -256,6 +257,7 @@ model Contacto {
   campos         Json    @default("{}")
 
   responsable        Usuario?             @relation(fields: [responsableId], references: [id], onDelete: SetNull)
+  listaPrecio         ListaPrecio?         @relation(fields: [listaPrecioId], references: [id], onDelete: SetNull)
   etiquetas          ContactoEtiqueta[]
   oportunidades      Oportunidad[]
   conversaciones     Conversacion[]
@@ -274,6 +276,7 @@ model Contacto {
 
   @@unique([orgId, telefono])
   @@index([responsableId])
+  @@index([listaPrecioId])
   @@index([orgId])
   @@map("contactos")
 }
@@ -794,6 +797,9 @@ model Producto {
   compras        CompraPartida[]
   cotizaciones   CotizacionPartida[]
   reservasPedido ReservaPedido[]
+  preciosVolumen PrecioVolumen[]
+  preciosLista   ListaPrecioProducto[]
+  promociones    Promocion[]
 
   @@unique([orgId, sku])
   @@unique([orgId, codigoBarras])
@@ -880,6 +886,8 @@ model VentaPartida {
   cantidad       Decimal @db.Decimal(12, 3)
   precioUnitario Decimal @map("precio_unitario") @db.Decimal(12, 2)
   descuento      Decimal @default(0) @db.Decimal(12, 2)
+  descuentoPromocion Decimal @default(0) @map("descuento_promocion") @db.Decimal(12, 2)
+  promocionDescripcion String? @map("promocion_descripcion")
   total          Decimal @db.Decimal(12, 2)
 
   venta        Venta               @relation(fields: [ventaId], references: [id], onDelete: Cascade)
@@ -1165,6 +1173,8 @@ model CotizacionPartida {
   cantidad     Decimal @db.Decimal(12, 3)
   precio       Decimal @db.Decimal(12, 2)
   descuento    Decimal @default(0) @db.Decimal(12, 2)
+  descuentoPromocion Decimal @default(0) @map("descuento_promocion") @db.Decimal(12, 2)
+  promocionDescripcion String? @map("promocion_descripcion")
   total        Decimal @db.Decimal(12, 2)
 
   cotizacion Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
@@ -1174,6 +1184,77 @@ model CotizacionPartida {
   @@index([productoId])
   @@index([orgId])
   @@map("cotizacion_partidas")
+}
+
+model PrecioVolumen {
+  id         BigInt   @id @default(autoincrement())
+  orgId      BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  productoId BigInt   @map("producto_id")
+  desde      Decimal  @db.Decimal(12, 3)
+  precio     Decimal  @db.Decimal(12, 2)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  producto Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  @@unique([productoId, desde])
+  @@index([orgId, productoId, desde])
+  @@map("precios_volumen")
+}
+
+model ListaPrecio {
+  id        BigInt   @id @default(autoincrement())
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre    String
+  tipo      String   @default("cliente")
+  activa    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  contactos Contacto[]
+  productos ListaPrecioProducto[]
+
+  @@unique([orgId, nombre])
+  @@index([orgId, tipo, activa])
+  @@map("listas_precios")
+}
+
+model ListaPrecioProducto {
+  id         BigInt  @id @default(autoincrement())
+  orgId      BigInt  @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  listaId    BigInt  @map("lista_id")
+  productoId BigInt  @map("producto_id")
+  precio     Decimal @db.Decimal(12, 2)
+
+  lista    ListaPrecio @relation(fields: [listaId], references: [id], onDelete: Cascade)
+  producto Producto    @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  @@unique([listaId, productoId])
+  @@index([orgId, productoId])
+  @@map("lista_precio_productos")
+}
+
+model Promocion {
+  id             BigInt   @id @default(autoincrement())
+  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre         String
+  tipo           String
+  productoId     BigInt?  @map("producto_id")
+  categoria      String?
+  valor          Decimal? @db.Decimal(12, 2)
+  cantidadCompra Int?     @map("cantidad_compra")
+  cantidadPaga   Int?     @map("cantidad_paga")
+  inicia         DateTime @db.Date
+  termina        DateTime @db.Date
+  activa         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  producto Producto? @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, activa, inicia, termina])
+  @@index([productoId])
+  @@index([orgId, categoria])
+  @@map("promociones")
 }
 
 model Proveedor {

@@ -111,7 +111,7 @@ export function validarCotizacion(body: Record<string, unknown>) {
 }
 
 export function calcularCotizacion(
-  partidas: readonly { productoId: bigint | null; concepto: string; cantidad: Prisma.Decimal; precio: Prisma.Decimal; descuento: Prisma.Decimal }[],
+  partidas: readonly { productoId: bigint | null; concepto: string; cantidad: Prisma.Decimal; precio: Prisma.Decimal; descuento: Prisma.Decimal; descuentoPromocion?: Prisma.Decimal; promocionDescripcion?: string | null }[],
   descuentoGeneral: Prisma.Decimal,
   config: ConfigCotizaciones,
 ) {

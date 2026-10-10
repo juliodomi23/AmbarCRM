@@ -9,9 +9,38 @@ import { crearPedido, ErrorPedido, negocioPublico } from "@/lib/pedidos-db";
 import { validarPartidasPedido } from "@/lib/pedidos";
 import { errorPublico, limitarIp, telefonoMx } from "@/lib/reservas/publico";
 import { getAjustes } from "@/lib/services/config";
+import { calcularPrecios } from "@/lib/precios-db";
+import { transaccionTenant } from "@/lib/retail-db";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ slug: string }> };
+
+export async function PUT(req: NextRequest, { params }: Props) {
+  const limitado = limitarIp(req, "tienda-precio", 120, 60_000);
+  if (limitado) return limitado;
+  const negocio = await negocioPublico((await params).slug);
+  if (!negocio) return errorPublico("Este negocio no tiene pedidos en línea", 404);
+  const body = await req.json().catch(() => ({}));
+  const partidas = validarPartidasPedido(body.partidas);
+  if (!partidas) return errorPublico("Revisa los productos y cantidades", 400);
+  try {
+    const calculadas = await transaccionTenant(negocio.orgId, async (tx) => {
+      const visibles = await tx.producto.count({ where: { id: { in: partidas.map((p) => p.productoId) }, activo: true, visibleEnLinea: true } });
+      if (visibles !== partidas.length) throw new ErrorPedido("Uno de los productos ya no está disponible", 404);
+      return calcularPrecios(tx, partidas, { publico: true });
+    });
+    return NextResponse.json({
+      partidas: calculadas.map((partida) => ({ productoId: String(partida.producto.id), precioUnitario: partida.precioUnitario.toFixed(2), descuentoPromocion: partida.descuentoPromocion.toFixed(2), promocion: partida.promocionDescripcion, total: partida.total.toFixed(2) })),
+      subtotal: calculadas.reduce((suma, partida) => suma.plus(partida.total), new Prisma.Decimal(0)).toFixed(2),
+    });
+  } catch (error) {
+    if (error instanceof ErrorPedido || (error instanceof Error && "status" in error)) {
+      const conocido = error as Error & { status: number };
+      return errorPublico(conocido.message, conocido.status);
+    }
+    throw error;
+  }
+}
 
 export async function GET(req: NextRequest, { params }: Props) {
   const limitado = limitarIp(req, "tienda-consulta", 120, 60_000);
@@ -25,6 +54,12 @@ export async function GET(req: NextRequest, { params }: Props) {
       db.reservaPedido.groupBy({ by: ["productoId"], where: { activa: true }, _sum: { cantidad: true } }),
     ]);
     const ocupada = new Map(reservas.map((r) => [String(r.productoId), r._sum.cantidad ?? new Prisma.Decimal(0)]));
+    const precios = productos.length ? await transaccionTenant(negocio.orgId, (tx) => calcularPrecios(
+      tx,
+      productos.map((producto) => ({ productoId: producto.id, cantidad: new Prisma.Decimal(1) })),
+      { publico: true },
+    )) : [];
+    const precioPorProducto = new Map(precios.map((precio) => [String(precio.producto.id), precio]));
     const marca = normalizarMarca(ajustes);
     return NextResponse.json({
       negocio: { nombre: marca.nombre || negocio.nombre, logo: marca.logo, colorPrimario: marca.colorPrimario },
@@ -36,7 +71,7 @@ export async function GET(req: NextRequest, { params }: Props) {
         const disponible = Prisma.Decimal.max(producto.stock.minus(ocupada.get(String(producto.id)) ?? 0), 0);
         return {
           id: String(producto.id), nombre: producto.nombre, descripcion: producto.descripcion, categoria: producto.categoria,
-          precio: producto.precio.toFixed(2), unidad: producto.unidad, vendePorPeso: producto.vendePorPeso,
+          precio: (precioPorProducto.get(String(producto.id))?.total ?? producto.precio).toFixed(2), unidad: producto.unidad, vendePorPeso: producto.vendePorPeso,
           fotoUrl: producto.fotoUrl, etiquetas: producto.etiquetasEnLinea,
           agotado: producto.agotadoManual || disponible.lte(0), disponible: disponible.toFixed(3),
         };

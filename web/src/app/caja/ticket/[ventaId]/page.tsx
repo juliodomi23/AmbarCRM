@@ -109,7 +109,8 @@ export default async function TicketPage({ params, searchParams }: ParametrosTic
                 </span>
                 <span>{moneda(partida.total)}</span>
               </p>
-              {partida.descuento.gt(0) && <p className="text-right">Desc. {moneda(partida.descuento)}</p>}
+              {partida.descuentoPromocion.gt(0) && <p className="text-right">Promo {partida.promocionDescripcion ?? "aplicada"}: −{moneda(partida.descuentoPromocion)}</p>}
+              {partida.descuento.minus(partida.descuentoPromocion).gt(0) && <p className="text-right">Desc. manual {moneda(partida.descuento.minus(partida.descuentoPromocion))}</p>}
             </div>
           ))}
         </div>

@@ -15,11 +15,24 @@ export function TiendaPublica({ slug }: { slug: string }) {
   const [carrito, setCarrito] = useState<Record<string, string>>({});
   const [mensaje, setMensaje] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [subtotalServidor, setSubtotalServidor] = useState<string | null>(null);
 
   useEffect(() => { fetch(`/api/public/tienda/${slug}`).then((r) => r.json()).then(setCatalogo); }, [slug]);
   const categorias = useMemo(() => [...new Set((catalogo?.productos ?? []).map((p) => p.categoria).filter(Boolean))] as string[], [catalogo]);
   const productos = (catalogo?.productos ?? []).filter((p) => (!categoria || p.categoria === categoria) && `${p.nombre} ${p.descripcion ?? ""}`.toLocaleLowerCase("es-MX").includes(busqueda.toLocaleLowerCase("es-MX")));
-  const subtotal = (catalogo?.productos ?? []).reduce((suma, p) => suma + Number(p.precio) * Number(carrito[p.id] || 0), 0);
+  const partidasCarrito = useMemo(() => Object.entries(carrito).filter(([, cantidad]) => Number(cantidad) > 0).map(([productoId, cantidad]) => ({ productoId, cantidad })), [carrito]);
+  useEffect(() => {
+    if (partidasCarrito.length === 0) { setSubtotalServidor("0.00"); return; }
+    const controlador = new AbortController();
+    const espera = setTimeout(() => {
+      fetch(`/api/public/tienda/${slug}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ partidas: partidasCarrito }), signal: controlador.signal })
+        .then((respuesta) => respuesta.ok ? respuesta.json() : Promise.reject())
+        .then((resultado) => setSubtotalServidor(String(resultado.subtotal)))
+        .catch(() => { if (!controlador.signal.aborted) setSubtotalServidor(null); });
+    }, 180);
+    return () => { clearTimeout(espera); controlador.abort(); };
+  }, [partidasCarrito, slug]);
+  const subtotal = Number(subtotalServidor ?? 0);
 
   async function pedir(evento: React.FormEvent<HTMLFormElement>) {
     evento.preventDefault(); setMensaje(""); setEnviando(true);
@@ -30,7 +43,7 @@ export function TiendaPublica({ slug }: { slug: string }) {
       uuidCliente, nombre: datos.get("nombre"), telefono: datos.get("telefono"), tipoEntrega: datos.get("tipoEntrega"),
       direccion: datos.get("direccion"), horarioDeseado: datos.get("horarioDeseado"), notas: datos.get("notas"),
       total: datos.get("total"),
-      partidas: Object.entries(carrito).filter(([, cantidad]) => Number(cantidad) > 0).map(([productoId, cantidad]) => ({ productoId, cantidad })),
+      partidas: partidasCarrito,
     };
     const respuesta = await fetch(`/api/public/tienda/${slug}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     const resultado = await respuesta.json();
@@ -47,11 +60,11 @@ export function TiendaPublica({ slug }: { slug: string }) {
       <div>{producto.etiquetas.map((e) => <span className={estilos.etiqueta} key={e}>{e}</span>)}<h2>{producto.nombre}</h2><p>{producto.descripcion}</p><strong>${producto.precio} / {producto.unidad}</strong>
         {producto.agotado ? <b className={estilos.agotado}>Agotado</b> : <><small>Disponible: {Number(producto.disponible).toLocaleString("es-MX")} {producto.unidad}</small><input aria-label={`Cantidad de ${producto.nombre}`} type="number" min="0" max={producto.disponible} step={producto.vendePorPeso ? ".001" : "1"} value={carrito[producto.id] ?? ""} onChange={(e) => setCarrito({ ...carrito, [producto.id]: e.target.value })} /></>}
       </div></article>)}</section>
-    <form className={estilos.pedido} onSubmit={pedir}><h2>Completa tu pedido</h2><p>Subtotal estimado: <strong>${subtotal.toFixed(2)}</strong>. El servidor confirma precios y existencia.</p>
+    <form className={estilos.pedido} onSubmit={pedir}><h2>Completa tu pedido</h2><p>Subtotal con promociones: <strong>{subtotalServidor === null ? "Calculando…" : `$${subtotal.toFixed(2)}`}</strong>. El servidor confirma precios y existencia.</p>
       <input name="nombre" required maxLength={120} placeholder="Nombre" /><input name="telefono" required inputMode="tel" placeholder="WhatsApp (10 dígitos)" />
       <select name="tipoEntrega" required>{catalogo.config.permiteRecoger && <option value="recoger">Recoger en tienda</option>}{catalogo.config.permiteEntrega && <option value="domicilio">Entrega a domicilio (+${catalogo.config.costoEnvio})</option>}</select>
       <input name="direccion" maxLength={500} placeholder="Dirección (si es entrega)" /><input name="horarioDeseado" type="datetime-local" /><textarea name="notas" maxLength={500} placeholder="Notas" />
-      <input name="total" type="hidden" value={subtotal.toFixed(2)} /><button disabled={enviando || subtotal <= 0}>{enviando ? "Enviando…" : "Hacer pedido"}</button>{mensaje && <p role="alert">{mensaje}</p>}
+      <input name="total" type="hidden" value={subtotal.toFixed(2)} /><button disabled={enviando || subtotalServidor === null || subtotal <= 0}>{enviando ? "Enviando…" : "Hacer pedido"}</button>{mensaje && <p role="alert">{mensaje}</p>}
     </form>
   </main>;
 }

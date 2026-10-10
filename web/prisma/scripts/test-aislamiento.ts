@@ -43,6 +43,8 @@ async function valorColumna(columna: Columna, tabla: string, indice: number) {
   if (tabla === "apartados" && columna.column_name === "estado") return "activo";
   if (tabla === "abonos_apartado" && columna.column_name === "metodo") return "efectivo";
   if (tabla === "movimientos_cuenta_cliente" && columna.column_name === "tipo") return "cargo";
+  if (tabla === "listas_precios" && columna.column_name === "tipo") return "cliente";
+  if (tabla === "promociones" && columna.column_name === "tipo") return "porcentaje";
   if (columna.data_type === "USER-DEFINED") {
     const resultado = await admin.query<{ valor: string }>(
       `SELECT e.enumlabel AS valor
@@ -83,6 +85,7 @@ async function insertarMarcador(tabla: string, columnas: Columna[]) {
   const requeridas = columnas.filter((columna) =>
     columna.column_name === "org_id" ||
     (tabla === "notas_credito_cliente" && columna.column_name === "apartado_id") ||
+    (tabla === "promociones" && ["categoria", "valor"].includes(columna.column_name)) ||
     (
       columna.is_nullable === "NO" &&
       columna.column_default === null &&
