@@ -108,6 +108,9 @@ Componente de ticket **en el cliente** con los datos de la cola, mismo CSS/ancho
 | Cola de otro usuario / otra empresa | se sube con sesión ajena | `403`, se conserva, no se marca error |
 | Venta de más de 72 h / fecha futura | se acepta | `400`, registro en `cola_caja_rechazos` |
 | Precio distinto | rechaza ("no cubre") | respeta lo cobrado, `precio_distinto` |
+| Modo apagado en la empresa | se sube igual | `403 SIN_RED_APAGADO` |
+| `esperando_turno` de más de 72 h | queda colgada | rechazada y en `cola_caja_rechazos` |
+| Cachés viejos del SW / listeners push | — | `check-sw-push.ts` |
 | Paridad de cálculo cliente-vs-servidor | — | N casos aleatorios idénticos |
 | Cola: 5xx reintenta, 4xx no, 401 pausa (unit con `fetch` simulado) | — | ok |
 | e2e con app real: login, catálogo, subida, panel de revisión, permisos | — | ok |
@@ -124,6 +127,20 @@ Además `test-aislamiento` con las tablas nuevas (`cola_caja_rechazos`).
 - **No haré**: Background Sync/periodic sync (no hay en Safari; subo al abrir la caja y con evento `online`),
   caché de otras pantallas o APIs, clientes/crédito/apartados offline, historial de precios, cifrado de IndexedDB,
   sincronización entre dispositivos, ni modificar `registrarVentaCaja` ni la ruta `/api/caja/ventas`.
+
+## 12. Ajustes de la revisión (aprobados)
+1. **Opcional y apagado por empresa.** `caja.config.ventasSinRed` (default `false`, solo `=== true` lo enciende),
+   editable solo por Admin (`PATCH /api/modulos`, que ya exige admin). Apagado: `/api/caja/ventas/sin-red` responde
+   `403 SIN_RED_APAGADO` y la UI no ofrece el modo ni encola. Motivo: ese endpoint omite la existencia y respeta lo
+   cobrado. "Ventas por revisar" muestra el **cajero** de cada venta y el **total de diferencias de precio por cajero**.
+2. **Cachés del SW versionados.** `ambar-caja-shell-<v>` y `ambar-caja-static-<v>`, con `<v>` = id de build
+   (`/sw.js?v=<build>`). En `activate` se borran los `ambar-caja-*` de otra versión y se hace `clients.claim()`, así
+   una caja desplegada no queda con chunks que ya no existen. Los listeners `push` y `notificationclick` no se tocan:
+   `scripts/check-sw-push.ts` verifica que siguen y que no hay un segundo registro de SW.
+3. **`esperando_turno` caduca.** Una venta que sigue esperando turno con más de 72 h desde `vendidaAt` la rechaza el
+   servidor (`400 VENTA_MUY_ANTIGUA`) y queda en `cola_caja_rechazos` visible para el Encargado.
+4. **Regla pura de precios sin cambiar resultados.** `test-precios-promociones`, `check-precios`, `check-a3` y los
+   e2e de A3 deben pasar **sin modificarse**.
 
 ## Plan de commits (tras tu aprobación)
 1. SW ampliado + `/api/caja/catalogo` + catálogo en IndexedDB + cálculo local compartido.
