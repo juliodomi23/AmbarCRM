@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-import { getSesion } from "@/lib/session";
 
 const ACCESO_TODOS = { puestosPorDefecto: [] } as const;
 const ACCESO_CLINICO = {
@@ -275,6 +274,7 @@ export async function moduloActivo(clave: ClaveModulo) {
     select: { config: true },
   });
   if (!modulo) return false;
+  const { getSesion } = await import("@/lib/session");
   const sesion = await getSesion();
   if (!sesion?.user) return true;
   return puestoPuedeAcceder(
@@ -307,7 +307,7 @@ export async function requireModuloActivo(
   }
   const sesion = sesionActual
     ? { user: sesionActual }
-    : await getSesion();
+    : await (await import("@/lib/session")).getSesion();
   if (
     sesion?.user &&
     !puestoPuedeAcceder(

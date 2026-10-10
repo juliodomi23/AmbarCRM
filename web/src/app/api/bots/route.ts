@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
-import { generarToken } from "@/lib/services/bots";
+import { generarToken, nuevoSecretoFirma } from "@/lib/services/bots";
 import { validarWebhookUrl } from "@/lib/webhook-url";
 import { referenciaAjena } from "@/lib/referencias";
 import { conErrores } from "@/lib/errores-api";
@@ -20,8 +20,10 @@ async function manejarPOST(req: NextRequest) {
   const ajena = await referenciaAjena({ canalId }, { canalId: "canal" });
   if (ajena) return NextResponse.json({ error: `${ajena} inexistente` }, { status: 400 });
 
+  const secreto = nuevoSecretoFirma();
   const bot = await db.bot.create({
     data: {
+      signingSecret: secreto.cifrado,
       nombre,
       webhookUrl: String(webhookUrl).trim(),
       apiToken: generarToken(),
@@ -29,7 +31,8 @@ async function manejarPOST(req: NextRequest) {
       activo: activo ?? true
     }
   });
-  return NextResponse.json({ ok: true, id: bot.id.toString(), apiToken: bot.apiToken });
+  // El secreto de firma se muestra solo aquí; después ya no hay forma de leerlo (solo regenerarlo).
+  return NextResponse.json({ ok: true, id: bot.id.toString(), apiToken: bot.apiToken, signingSecret: secreto.plano });
 }
 
 export const POST = conErrores(manejarPOST);

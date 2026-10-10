@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
-import { generarToken } from "@/lib/services/bots";
+import { generarToken, nuevoSecretoFirma } from "@/lib/services/bots";
 import { validarWebhookUrl } from "@/lib/webhook-url";
 import { referenciaPropia } from "@/lib/referencias";
 import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
 
-/** Edita un bot. Body: { nombre?, webhookUrl?, canalId?, activo?, regenerarToken? } */
+/** Edita un bot. Body: { nombre?, webhookUrl?, canalId?, activo?, asesorId?, regenerarToken?, regenerarSecreto? } */
 async function manejarPATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const s = await requireSesion(true);
@@ -28,10 +28,18 @@ async function manejarPATCH(req: NextRequest, props: { params: Promise<{ id: str
     if (canalId === false) return NextResponse.json({ error: "canal inexistente" }, { status: 400 });
     data.canalId = canalId;
   }
+  if ("asesorId" in body) {
+    const asesorId = await referenciaPropia("usuario", body.asesorId);
+    if (asesorId === false) return NextResponse.json({ error: "asesor inexistente" }, { status: 400 });
+    data.asesorId = asesorId;
+  }
   if (body.regenerarToken === true) data.apiToken = generarToken();
+  const secreto = body.regenerarSecreto === true ? nuevoSecretoFirma() : null;
+  if (secreto) data.signingSecret = secreto.cifrado;
 
   const bot = await db.bot.update({ where: { id: BigInt(params.id) }, data });
-  return NextResponse.json({ ok: true, apiToken: bot.apiToken });
+  // El secreto en claro solo viaja en la respuesta que lo genera.
+  return NextResponse.json({ ok: true, apiToken: bot.apiToken, ...(secreto ? { signingSecret: secreto.plano } : {}) });
 }
 
 async function manejarDELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {

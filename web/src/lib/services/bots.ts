@@ -1,6 +1,10 @@
 import crypto from "crypto";
+import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { destinoPublico } from "@/lib/webhook-url";
+import { decryptMetaToken, encryptMetaToken } from "@/lib/meta/credentials";
+import { transaccionTenant } from "@/lib/retail-db";
+import { serializar } from "@/lib/serialize";
 
 const BASE = process.env.NEXTAUTH_URL ?? "";
 
@@ -8,8 +12,133 @@ export function generarToken(): string {
   return crypto.randomBytes(24).toString("hex");
 }
 
-export function listarBots() {
-  return db.bot.findMany({ orderBy: { id: "asc" }, include: { canal: true } });
+/** Lista para la UI: nunca incluye el secreto de firma (solo si ya tiene uno). */
+export async function listarBots() {
+  const bots = await db.bot.findMany({ orderBy: { id: "asc" }, include: { canal: true } });
+  return bots.map(({ signingSecret, ...bot }) => ({ ...bot, firmaActiva: signingSecret != null }));
+}
+
+/** Secreto HMAC nuevo: `plano` se muestra una sola vez; `cifrado` es lo que se guarda. */
+export function nuevoSecretoFirma() {
+  const plano = generarToken();
+  return { plano, cifrado: encryptMetaToken(plano) };
+}
+
+/** Valor del header X-AmbarCRM-Signature: sha256=<hex del HMAC-SHA256 del cuerpo>. */
+export function firmarCuerpo(secretoPlano: string, cuerpo: string) {
+  return `sha256=${crypto.createHmac("sha256", secretoPlano).update(cuerpo).digest("hex")}`;
+}
+
+type BotAuditable = { id: bigint };
+
+/**
+ * Registra una acción del bot en auditoria_bot. No rompe la acción principal si falla el registro.
+ * `tx` permite escribirla dentro de una transacción.
+ */
+export async function auditarBot(
+  bot: BotAuditable,
+  conversacionId: bigint | null,
+  accion: string,
+  datos: { entidad?: string; entidadId?: bigint | null; antes?: unknown; despues?: unknown } = {},
+  tx?: Prisma.TransactionClient
+) {
+  try {
+    const data = {
+      botId: bot.id,
+      conversacionId,
+      accion,
+      entidad: datos.entidad,
+      entidadId: datos.entidadId ?? null,
+      antes: datos.antes == null ? undefined : serializar(datos.antes),
+      despues: datos.despues == null ? undefined : serializar(datos.despues)
+    };
+    if (tx) await tx.auditoriaBot.create({ data });
+    else await db.auditoriaBot.create({ data });
+  } catch (e) {
+    console.error(`auditoría del bot ${bot.id} falló (${accion}):`, e instanceof Error ? e.message : e);
+  }
+}
+
+/**
+ * Asesor para un handoff: el fijo del bot si está activo; si no, round-robin entre usuarios activos
+ * (el siguiente al último asesor asignado por handoff, según auditoria_bot).
+ * `bloquear` (FOR NO KEY UPDATE sobre los usuarios) serializa handoffs simultáneos; solo se
+ * desactiva en la prueba de concurrencia para mostrar qué pasa sin protección.
+ */
+export async function elegirAsesor(
+  tx: Prisma.TransactionClient,
+  bot: { asesorId: bigint | null },
+  bloquear = true
+) {
+  if (bot.asesorId != null) {
+    const fijo = await tx.usuario.findFirst({
+      where: { id: bot.asesorId, activo: true },
+      select: { id: true, nombre: true }
+    });
+    if (fijo) return fijo;
+  }
+  const usuarios = bloquear
+    ? await tx.$queryRaw<{ id: bigint; nombre: string }[]>`
+        SELECT id, nombre FROM usuarios WHERE activo ORDER BY id FOR NO KEY UPDATE`
+    : await tx.usuario.findMany({ where: { activo: true }, orderBy: { id: "asc" }, select: { id: true, nombre: true } });
+  if (usuarios.length === 0) return null;
+
+  const ultimo = await tx.auditoriaBot.findFirst({
+    where: { accion: "handoff" },
+    orderBy: { id: "desc" },
+    select: { despues: true }
+  });
+  const previo = (ultimo?.despues as { responsableId?: string } | null)?.responsableId;
+  const i = usuarios.findIndex((u) => String(u.id) === previo);
+  return usuarios[(i + 1) % usuarios.length];
+}
+
+/**
+ * Handoff: apaga el bot, deja la conversación pendiente, asigna asesor, nota interna con el motivo
+ * y bitácora. Todo en una transacción. Si el bot ya estaba apagado no hace nada (idempotente).
+ */
+export async function escalarAHumano(
+  bot: { id: bigint; orgId: bigint; asesorId: bigint | null },
+  conversacionId: bigint,
+  motivo: string,
+  bloquear = true
+) {
+  return transaccionTenant(bot.orgId, async (tx) => {
+    const conv = await tx.conversacion.findUnique({ where: { id: conversacionId } });
+    if (!conv) return null;
+    if (!conv.botActivo) return { escalada: false as const, responsableId: conv.responsableId };
+
+    const asesor = conv.responsableId != null ? null : await elegirAsesor(tx, bot, bloquear);
+    const responsableId = conv.responsableId ?? asesor?.id ?? null;
+    await tx.conversacion.update({
+      where: { id: conv.id },
+      data: { botActivo: false, estado: "pendiente", responsableId }
+    });
+    const destino = asesor ? `Asignada a ${asesor.nombre}.` : responsableId ? "Conserva su responsable." : "Sin asesor disponible.";
+    await tx.mensaje.create({
+      data: {
+        conversacionId: conv.id,
+        direccion: "saliente",
+        tipo: "texto",
+        interna: true,
+        status: "enviado",
+        contenido: `Handoff del bot: ${motivo} ${destino}`
+      }
+    });
+    await auditarBot(
+      bot,
+      conv.id,
+      "handoff",
+      {
+        entidad: "conversacion",
+        entidadId: conv.id,
+        antes: { botActivo: true, estado: conv.estado, responsableId: conv.responsableId },
+        despues: { botActivo: false, estado: "pendiente", responsableId, motivo }
+      },
+      tx
+    );
+    return { escalada: true as const, responsableId };
+  });
 }
 
 /** Bot activo aplicable a un canal: prioriza el específico del canal, si no, el global (canalId null). */
@@ -36,7 +165,7 @@ type DatosDispatch = {
 /**
  * Manda el mensaje entrante al webhook del bot con el evento `message_created` de AmbarCRM.
  */
-export async function dispatchABot(bot: { webhookUrl: string }, d: DatosDispatch) {
+export async function dispatchABot(bot: { webhookUrl: string; signingSecret?: string | null }, d: DatosDispatch) {
   // El valor también se valida al guardar, pero se vuelve a comprobar aquí
   // para proteger ejecuciones con datos antiguos o migrados.
   if (!(await destinoPublico(bot.webhookUrl))) {
@@ -79,15 +208,28 @@ export async function dispatchABot(bot: { webhookUrl: string }, d: DatosDispatch
     }
   };
 
+  const cuerpo = JSON.stringify(payload);
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  let intentos = 2;
+  if (bot.signingSecret) {
+    try {
+      headers["X-AmbarCRM-Signature"] = firmarCuerpo(decryptMetaToken(bot.signingSecret), cuerpo);
+    } catch (e) {
+      // No se manda sin firma: n8n la exige. Cae al aviso interno de abajo.
+      console.error("no se pudo firmar el dispatch al bot:", e instanceof Error ? e.message : e);
+      intentos = 0;
+    }
+  }
+
   // 2 intentos: si n8n tiene un hipo, reintenta una vez antes de rendirse.
-  for (let intento = 1; intento <= 2; intento++) {
+  for (let intento = 1; intento <= intentos; intento++) {
     try {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 10000);
       const res = await fetch(bot.webhookUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        headers,
+        body: cuerpo,
         signal: ctrl.signal,
         redirect: "manual"
       });
