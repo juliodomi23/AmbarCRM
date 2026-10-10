@@ -19,6 +19,7 @@ import {
   dispatchABot,
   escalarAHumano,
   firmarCuerpo,
+  firmarCuerpoV2,
   listarBots,
   nuevoSecretoFirma,
 } from "../../src/lib/services/bots";
@@ -229,6 +230,22 @@ async function main() {
   await llamar(postLabels, token("A"), conv, { labels: ["bot_on"] });
   assert.equal((await q("SELECT bot_activo FROM conversaciones WHERE id=$1", [conv]))[0].bot_activo, true, "bot_on reactiva");
   assert.equal((await auditoria("bot_reactivado")).length, 1);
+
+  // bot_on con responsable humano: 409, el bot sigue apagado y queda en la bitácora.
+  await q("UPDATE conversaciones SET bot_activo=false, responsable_id=$2 WHERE id=$1", [conv, usuarios[0]]);
+  const rechazo = await llamar(postLabels, token("A"), conv, { labels: ["bot_on"] });
+  assert.equal(rechazo.status, 409);
+  assert.equal((await rechazo.json()).motivo, "asignada_a_humano");
+  assert.equal((await q("SELECT bot_activo FROM conversaciones WHERE id=$1", [conv]))[0].bot_activo, false, "con responsable el bot sigue apagado");
+  assert.equal((await auditoria("bot_reactivado")).length, 1, "no se registró una reactivación");
+  const rechazos = await auditoria("bot_reactivado_rechazado");
+  assert.equal(rechazos.length, 1, "el rechazo quedó en auditoria_bot");
+  assert.equal((rechazos[0].despues as { motivo: string }).motivo, "asignada_a_humano");
+  // Sin responsable vuelve a reactivar, y el estado de la conversación queda como al inicio de la prueba.
+  await q("UPDATE conversaciones SET responsable_id=NULL WHERE id=$1", [conv]);
+  assert.equal((await llamar(postLabels, token("A"), conv, { labels: ["bot_on"] })).status, 200);
+  assert.equal((await q("SELECT bot_activo FROM conversaciones WHERE id=$1", [conv]))[0].bot_activo, true, "sin responsable, bot_on reactiva");
+  assert.equal((await auditoria("bot_reactivado")).length, 2);
   assert.equal((await llamar(getConversacion, token("A"), conv).then((r) => r.json())).perfil.etiquetas.length, 2);
 
   // ---------- 4. Handoff: apaga, pendiente, asesor, nota interna, bitácora, idempotente ----------
@@ -308,6 +325,16 @@ async function main() {
   const enviado = capturado as { headers: Record<string, string>; body: string };
   assert.equal(enviado.headers["X-AmbarCRM-Signature"], firmarCuerpo(secreto.plano, enviado.body));
 
+  // Firma V2 con marca de tiempo: la V1 queda igual y la V2 solo verifica con el timestamp original.
+  const ts = enviado.headers["X-AmbarCRM-Timestamp"];
+  assert.match(ts, /^\d{10}$/, "timestamp en segundos unix");
+  assert.ok(Math.abs(Date.now() / 1000 - Number(ts)) < 60, "timestamp reciente");
+  const v2 = enviado.headers["X-AmbarCRM-Signature-V2"];
+  assert.equal(v2, firmarCuerpoV2(secreto.plano, ts, enviado.body), "V2 válida verifica");
+  assert.notEqual(v2, firmarCuerpoV2(secreto.plano, String(Number(ts) + 1), enviado.body), "timestamp alterado no verifica");
+  assert.notEqual(v2, firmarCuerpoV2(secreto.plano, ts, enviado.body + " "), "cuerpo alterado no verifica");
+  assert.notEqual(v2, enviado.headers["X-AmbarCRM-Signature"], "V2 distinta de V1");
+
   // El secreto nunca sale en lo que usa la UI.
   const botConSecreto = await uno(
     `INSERT INTO bots (org_id, nombre, webhook_url, api_token, signing_secret, permisos) VALUES ($1,'firma','https://8.8.8.8/h',$2,$3,${TODOS_SQL}) RETURNING id::text AS id`,
@@ -337,6 +364,45 @@ async function main() {
   const conLock = await rondas(true, 15);
   console.log(`concurrencia (15 pares de handoffs simultáneos): sin bloqueo → ${sinLock} pares con el mismo asesor; con FOR NO KEY UPDATE → ${conLock}`);
   assert.equal(conLock, 0, "con bloqueo, dos handoffs simultáneos nunca eligen al mismo asesor");
+
+  // ---------- 9B. Round-robin: el Cajero nunca recibe un handoff ----------
+  const org4 = orgId + 4n;
+  const o4 = org4.toString();
+  await q("INSERT INTO orgs (id, nombre, slug) VALUES ($1,'Bot API RR',$2)", [o4, `bot-api-rr-${sufijo}`]);
+  const usuarioRR = (n: string, puesto: string, rol = "agente", activo = true) =>
+    uno(
+      `INSERT INTO usuarios (org_id, nombre, email, password_hash, puesto, rol, activo) VALUES ($1,$2,$3,'x',$4,$5,$6) RETURNING id::text AS id`,
+      [o4, n, `${n}-${sufijo}@rr.test`, puesto, rol, activo],
+    );
+  const cajero = await usuarioRR("cajero", "Cajero");
+  const asesor1 = await usuarioRR("asesor1", "Agente");
+  const asesor2 = await usuarioRR("asesor2", "Agente");
+  await usuarioRR("cajero-inactivo", "Agente", "agente", false);
+  const botRR = await uno(
+    `INSERT INTO bots (org_id, nombre, webhook_url, api_token, permisos) VALUES ($1,'rr','https://8.8.8.8/h',$2,${TODOS_SQL}) RETURNING id::text AS id`,
+    [o4, token("rr")],
+  );
+  const convRR = async (n: number) => {
+    const c = await uno(`INSERT INTO contactos (org_id, nombre, telefono) VALUES ($1,$2,$3) RETURNING id::text AS id`, [o4, `RR${n}`, `55${Date.now()}${n}`]);
+    return uno(`INSERT INTO conversaciones (org_id, contacto_id) VALUES ($1,$2) RETURNING id::text AS id`, [o4, c]);
+  };
+  const botRRObj = { id: BigInt(botRR), orgId: org4, asesorId: null };
+  const asignados: string[] = [];
+  for (let i = 0; i < 4; i++) {
+    const r = await escalarAHumano(botRRObj, BigInt(await convRR(i)), "prueba");
+    asignados.push(String(r?.responsableId));
+  }
+  console.log(`round-robin con 1 Cajero y 2 asesores → ${asignados.map((a) => (a === asesor1 ? "asesor1" : a === asesor2 ? "asesor2" : a === cajero ? "CAJERO" : a)).join(", ")}`);
+  assert.ok(!asignados.includes(cajero), "el Cajero nunca recibe un handoff");
+  assert.deepEqual(asignados, [asesor1, asesor2, asesor1, asesor2], "se reparten por turnos solo entre los asesores");
+  // El asesor fijo del bot se respeta igual que antes.
+  const botFijo = { id: BigInt(botRR), orgId: org4, asesorId: BigInt(asesor2) };
+  const rFijo = await escalarAHumano(botFijo, BigInt(await convRR(10)), "prueba");
+  assert.equal(String(rFijo?.responsableId), asesor2, "el asesor fijo del bot se respeta");
+  // Solo queda un Cajero activo: sin asesores elegibles no se asigna a nadie.
+  await q("UPDATE usuarios SET activo=false WHERE org_id=$1 AND id IN ($2,$3)", [o4, asesor1, asesor2]);
+  const rNadie = await escalarAHumano(botRRObj, BigInt(await convRR(11)), "prueba");
+  assert.equal(rNadie?.responsableId, null, "solo Cajeros activos: queda sin asesor, no se le asigna al Cajero");
 
   await bloque3(o, { canalA, canalB, token, conv, contactoId, botA });
   await bloque4(token, conv, botA);
@@ -844,7 +910,7 @@ async function limpiar() {
   try {
     await c.query("SET session_replication_role = replica");
     const tablas = await c.query("SELECT table_name FROM information_schema.columns WHERE table_schema='public' AND column_name='org_id'");
-    for (const org of [orgId, orgId + 1n, orgId + 2n, orgId + 3n]) {
+    for (const org of [orgId, orgId + 1n, orgId + 2n, orgId + 3n, orgId + 4n]) {
       for (const { table_name } of tablas.rows) await c.query(`DELETE FROM "${table_name}" WHERE org_id = $1`, [org.toString()]);
       await c.query("DELETE FROM orgs WHERE id = $1", [org.toString()]);
     }

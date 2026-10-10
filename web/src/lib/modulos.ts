@@ -285,6 +285,20 @@ export function puestoPuedeAcceder(
   );
 }
 
+/**
+ * Puestos de mostrador que no atienden chats. Conversaciones (/chat) no es un módulo de `MODULOS`
+ * ni tiene permiso por puesto (lo ve cualquier usuario de la empresa), así que no hay clave para
+ * `puestoPuedeAcceder`; esta es la regla más cercana: el puesto Cajero (del módulo `caja`) queda
+ * fuera, y un admin siempre puede, igual que en `puestoPuedeAcceder`.
+ */
+const PUESTOS_SIN_CONVERSACIONES = ["Cajero"];
+
+export function puestoPuedeAtenderConversaciones(puesto?: string, rol?: string) {
+  if (rol === "admin") return true;
+  const actual = String(puesto ?? "").trim().toLocaleLowerCase("es-MX");
+  return !PUESTOS_SIN_CONVERSACIONES.some((p) => p.toLocaleLowerCase("es-MX") === actual);
+}
+
 /** Se usa dentro de rutas y servicios: RLS limita siempre a la organización actual. */
 export async function moduloActivo(clave: ClaveModulo) {
   const modulo = await db.moduloOrg.findFirst({

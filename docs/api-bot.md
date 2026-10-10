@@ -97,14 +97,15 @@ Body: `{ "labels": ["interesado"], "motivo": "pide hablar con un asesor" }`
 | Etiqueta | Efecto |
 |---|---|
 | `escalado_humano` o `bot_off` | **Handoff**: apaga el bot, conversación `pendiente`, asigna asesor, nota interna con `motivo`. Si el bot ya estaba apagado no repite nada. |
-| `bot_on` | Reactiva el bot. |
+| `bot_on` | Reactiva el bot **solo si la conversación no tiene responsable**. Si lo tiene (un humano la atiende) responde `409 { "motivo": "asignada_a_humano" }`, el bot queda como estaba y se registra `bot_reactivado_rechazado` en la bitácora. Un handoff asigna responsable, así que tras un handoff `bot_on` no sirve hasta que un humano libere la conversación. |
 | Cualquier otra | Se **agrega** al contacto (máx. 10 por petición, 40 caracteres). No quita etiquetas existentes y **no cambia el estado del bot**. |
 
 Si vienen `bot_on` y una de handoff juntas, gana el handoff.
 Respuesta: `{ "payload": [...labels recibidas], "bot_activo": false, "etiquetas_guardadas": ["interesado"], "handoff": { "escalada": true, "responsableId": "3" } }` (`handoff` solo si hubo).
 
 Asesor del handoff: el usuario fijo del bot (`asesorId`, se configura con `PATCH /api/bots/:id {"asesorId": 3}`)
-si está activo; si no, round-robin entre usuarios activos de la empresa. Si la conversación ya tiene
+si está activo; si no, round-robin entre usuarios activos que pueden atender conversaciones (el puesto
+**Cajero** nunca recibe un handoff). Si la conversación ya tiene
 responsable, se conserva.
 
 ### `POST …/{id}/tasks` — crear tarea (nueva)
@@ -249,7 +250,7 @@ Edita la oportunidad **abierta** más reciente del contacto. Body (al menos un c
 
 Cada acción del bot que cambia algo se guarda en `auditoria_bot` (empresa, bot, conversación, acción,
 entidad, antes, después, fecha): `mover_etapa`, `cita_confirmada`, `cita_cancelada`, `handoff`,
-`bot_reactivado`, `etiquetas`, `nota_interna`, `mensaje_enviado`, `tarea_creada`.
+`bot_reactivado`, `bot_reactivado_rechazado`, `etiquetas`, `nota_interna`, `mensaje_enviado`, `tarea_creada`.
 
 ## Firma de lo que el CRM manda a n8n
 
@@ -258,12 +259,47 @@ Cada petición al webhook del bot lleva `X-AmbarCRM-Signature: sha256=<hex>`: HM
 regenerarlo (Configuración → Bots); después no se puede leer. Un bot sin secreto se envía sin firma
 hasta que generes uno.
 
+Además de `X-AmbarCRM-Signature` (que **no cambia**, para no romper los n8n que ya la verifican), cada
+petición firmada lleva dos encabezados más, que sí protegen contra reenvíos de un mensaje capturado:
+
+| Encabezado | Valor |
+|---|---|
+| `X-AmbarCRM-Timestamp` | segundos unix en que se envió |
+| `X-AmbarCRM-Signature-V2` | `sha256=<hex>`: HMAC-SHA256 de `${timestamp}.${cuerpo}` con el mismo secreto |
+
+Los reintentos del dispatch reutilizan los mismos encabezados (mismo timestamp). Verifica **V2** en los
+workflows nuevos; la V1 solo prueba que el cuerpo es auténtico, no que sea reciente.
+
 ### Verificar en n8n
 1. En el nodo **Webhook** activa *Options → Raw Body*. Hay que firmar los bytes recibidos: si n8n los
    parsea y vuelve a serializar, la firma puede no coincidir.
 2. Guarda el secreto como variable/credencial de n8n (aquí `AMBARCRM_SIGNING_SECRET`). El nodo Code
    necesita `NODE_FUNCTION_ALLOW_BUILTIN=crypto` en el servidor de n8n.
-3. Nodo **Code** justo después del Webhook (modo *Run Once for All Items*):
+3. Nodo **Code** justo después del Webhook (modo *Run Once for All Items*). Esta versión verifica la
+   **V2** y rechaza lo que tenga más de 5 minutos de diferencia:
+
+```js
+const crypto = require('crypto');
+const secreto = $env.AMBARCRM_SIGNING_SECRET;
+
+// Raw Body llega como binario (propiedad "data").
+const crudo = (await this.helpers.getBinaryDataBuffer(0, 'data')).toString('utf8');
+const headers = $input.first().json.headers;
+const timestamp = headers['x-ambarcrm-timestamp'] ?? '';
+const recibida = headers['x-ambarcrm-signature-v2'] ?? '';
+
+// Anti-repetición: rechaza si |ahora − timestamp| > 300 s (o si no es un número).
+const ahora = Math.floor(Date.now() / 1000);
+if (!/^\d+$/.test(timestamp) || Math.abs(ahora - Number(timestamp)) > 300) throw new Error('Mensaje expirado');
+
+const esperada = 'sha256=' + crypto.createHmac('sha256', secreto).update(`${timestamp}.${crudo}`).digest('hex');
+const a = Buffer.from(recibida), b = Buffer.from(esperada);
+if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) throw new Error('Firma inválida');
+
+return [{ json: JSON.parse(crudo) }];
+```
+
+   <details><summary>Versión anterior (solo V1, sin timestamp firmado)</summary>
 
 ```js
 const crypto = require('crypto');
@@ -283,7 +319,9 @@ if (Math.abs(Date.now() - Date.parse(cuerpo.created_at)) > 5 * 60 * 1000) throw 
 
 return [{ json: cuerpo }];
 ```
-> Este snippet no se probó contra una instancia real de n8n; la firma y el formato sí están cubiertos
+   </details>
+
+> Estos snippets no se probaron contra una instancia real de n8n; la firma y el formato sí están cubiertos
 > por `prisma/scripts/test-bot-api.ts`. Si `$env` está bloqueado en tu n8n, pega el secreto en una credencial.
 
 ## Probar con curl

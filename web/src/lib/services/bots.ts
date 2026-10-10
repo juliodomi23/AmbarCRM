@@ -5,6 +5,7 @@ import { destinoPublico } from "@/lib/webhook-url";
 import { decryptMetaToken, encryptMetaToken } from "@/lib/meta/credentials";
 import { transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
+import { puestoPuedeAtenderConversaciones } from "@/lib/modulos";
 
 const BASE = process.env.NEXTAUTH_URL ?? "";
 
@@ -27,6 +28,14 @@ export function nuevoSecretoFirma() {
 /** Valor del header X-AmbarCRM-Signature: sha256=<hex del HMAC-SHA256 del cuerpo>. */
 export function firmarCuerpo(secretoPlano: string, cuerpo: string) {
   return `sha256=${crypto.createHmac("sha256", secretoPlano).update(cuerpo).digest("hex")}`;
+}
+
+/**
+ * Firma V2 (anti-repetición): sha256=<hex del HMAC-SHA256 de `${timestamp}.${cuerpo}`>.
+ * `timestamp` son segundos unix y viaja en X-AmbarCRM-Timestamp.
+ */
+export function firmarCuerpoV2(secretoPlano: string, timestamp: string | number, cuerpo: string) {
+  return `sha256=${crypto.createHmac("sha256", secretoPlano).update(`${timestamp}.${cuerpo}`).digest("hex")}`;
 }
 
 type BotAuditable = { id: bigint };
@@ -61,7 +70,9 @@ export async function auditarBot(
 
 /**
  * Asesor para un handoff: el fijo del bot si está activo; si no, round-robin entre usuarios activos
- * (el siguiente al último asesor asignado por handoff, según auditoria_bot).
+ * que puedan atender conversaciones (el Cajero nunca recibe un handoff; ver
+ * `puestoPuedeAtenderConversaciones`), tomando el siguiente al último asesor asignado por handoff,
+ * según auditoria_bot.
  * `bloquear` (FOR NO KEY UPDATE sobre los usuarios) serializa handoffs simultáneos; solo se
  * desactiva en la prueba de concurrencia para mostrar qué pasa sin protección.
  */
@@ -77,10 +88,17 @@ export async function elegirAsesor(
     });
     if (fijo) return fijo;
   }
-  const usuarios = bloquear
-    ? await tx.$queryRaw<{ id: bigint; nombre: string }[]>`
-        SELECT id, nombre FROM usuarios WHERE activo ORDER BY id FOR NO KEY UPDATE`
-    : await tx.usuario.findMany({ where: { activo: true }, orderBy: { id: "asc" }, select: { id: true, nombre: true } });
+  const activos = bloquear
+    ? await tx.$queryRaw<{ id: bigint; nombre: string; puesto: string; rol: string }[]>`
+        SELECT id, nombre, puesto, rol::text AS rol FROM usuarios WHERE activo ORDER BY id FOR NO KEY UPDATE`
+    : await tx.usuario.findMany({
+        where: { activo: true },
+        orderBy: { id: "asc" },
+        select: { id: true, nombre: true, puesto: true, rol: true }
+      });
+  const usuarios = activos
+    .filter((u) => puestoPuedeAtenderConversaciones(u.puesto, u.rol))
+    .map(({ id, nombre }) => ({ id, nombre }));
   if (usuarios.length === 0) return null;
 
   const ultimo = await tx.auditoriaBot.findFirst({
@@ -213,7 +231,12 @@ export async function dispatchABot(bot: { webhookUrl: string; signingSecret?: st
   let intentos = 2;
   if (bot.signingSecret) {
     try {
-      headers["X-AmbarCRM-Signature"] = firmarCuerpo(decryptMetaToken(bot.signingSecret), cuerpo);
+      const secreto = decryptMetaToken(bot.signingSecret);
+      const timestamp = String(Math.floor(Date.now() / 1000));
+      // La V1 no cambia (hay n8n en producción que la verifica); la V2 agrega la marca de tiempo.
+      headers["X-AmbarCRM-Signature"] = firmarCuerpo(secreto, cuerpo);
+      headers["X-AmbarCRM-Timestamp"] = timestamp;
+      headers["X-AmbarCRM-Signature-V2"] = firmarCuerpoV2(secreto, timestamp, cuerpo);
     } catch (e) {
       // No se manda sin firma: n8n la exige. Cae al aviso interno de abajo.
       console.error("no se pudo firmar el dispatch al bot:", e instanceof Error ? e.message : e);
