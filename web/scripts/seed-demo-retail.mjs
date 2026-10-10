@@ -104,7 +104,7 @@ await prisma.$transaction(async (tx) => {
       marcaPreset: "retail",
     },
   });
-  for (const clave of ["clientes", "productos", "compras", "ventas", "caja", "cotizaciones"]) {
+  for (const clave of ["clientes", "productos", "compras", "ventas", "caja", "cotizaciones", "pedidos_en_linea"]) {
     await tx.moduloOrg.upsert({
       where: { orgId_clave: { orgId: org.id, clave } },
       update: { activo: true },
@@ -114,6 +114,10 @@ await prisma.$transaction(async (tx) => {
   await tx.moduloOrg.update({
     where: { orgId_clave: { orgId: org.id, clave: "caja" } },
     data: { config: { puestosPermitidos: ["Cajero", "Encargado de tienda"], descuentoMaximoCajero: 10, apartadoDiasVigencia: 7 } },
+  });
+  await tx.moduloOrg.update({
+    where: { orgId_clave: { orgId: org.id, clave: "pedidos_en_linea" } },
+    data: { config: { permiteEntrega: true, permiteRecoger: true, minimoCompra: "300.00", costoEnvio: "65.00", maxPorTelefono: 3, maxPorIp: 10 } },
   });
   await tx.moduloOrg.update({
     where: { orgId_clave: { orgId: org.id, clave: "cotizaciones" } },
@@ -175,7 +179,7 @@ await prisma.$transaction(async (tx) => {
     const [sku, nombre, categoria, precio, costo, stock, stockMinimo] = catalogo[indice];
     const producto = await tx.producto.upsert({
       where: { orgId_sku: { orgId: org.id, sku } },
-      update: { nombre, categoria, precio, costo, stock, stockMinimo, activo: true },
+      update: { nombre, categoria, precio, costo, stock, stockMinimo, activo: true, visibleEnLinea: true, agotadoManual: false, etiquetasEnLinea: indice < 2 ? ["temporada"] : [] },
       create: {
         sku,
         codigoBarras: `75010000000${String(indice).padStart(2, "0")}`,
@@ -185,6 +189,8 @@ await prisma.$transaction(async (tx) => {
         costo,
         stock,
         stockMinimo,
+        visibleEnLinea: true,
+        etiquetasEnLinea: indice < 2 ? ["temporada"] : [],
       },
     });
     productos.set(sku, producto);
@@ -337,6 +343,8 @@ await prisma.$transaction(async (tx) => {
         total: subtotal,
         stockAplicado: aplicaStock,
         esCredito: folio === "DEMO-005",
+        tokenSeguimiento: canal === "tienda_en_linea" ? "de003000000000000000000000000003" : null,
+        tipoEntrega: canal === "tienda_en_linea" ? "recoger" : null,
         createdAt: fechaMexico(indice < 4 ? 0 : -indice + 3, 10 + indice),
       },
     });

@@ -9,6 +9,7 @@ import {
   bloquearCompra,
   bloquearProductos,
   ErrorRetail,
+  reservasActivasPorProducto,
   transaccionTenant,
 } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
@@ -42,12 +43,13 @@ export const PATCH = conModulo(
           tx,
           actual.partidas.map((partida) => partida.productoId),
         );
+        const reservadas = await reservasActivasPorProducto(tx, actual.partidas.map((partida) => partida.productoId));
         for (const partida of actual.partidas) {
           const producto = await tx.producto.findUnique({ where: { id: partida.productoId } });
           if (!producto) throw new ErrorRetail("Uno de los productos ya no existe");
           const cambio = debeAplicar ? partida.cantidad : partida.cantidad.neg();
           const existenciaDespues = producto.stock.plus(cambio);
-          if (existenciaDespues.lt(0)) {
+          if (existenciaDespues.minus(reservadas.get(String(producto.id)) ?? 0).lt(0)) {
             throw new ErrorRetail(`No es posible devolver ${producto.nombre}: stock insuficiente`);
           }
           await tx.producto.update({

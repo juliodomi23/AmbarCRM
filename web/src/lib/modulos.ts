@@ -116,6 +116,15 @@ export const MODULOS = [
     ruta: "/ventas",
   },
   {
+    clave: "pedidos_en_linea",
+    area: "Retail y comercio",
+    nombre: "Pedidos en línea",
+    descripcion: "Catálogo público, carrito, reservas de existencia y seguimiento de pedidos.",
+    acceso: ACCESO_TODOS,
+    icono: "M3 5h18v14H3zM7 9h10M7 13h6M17 16h.01M7 16h4",
+    ruta: "/pedidos-en-linea",
+  },
+  {
     clave: "caja",
     area: "Retail y comercio",
     nombre: "Caja de mostrador",

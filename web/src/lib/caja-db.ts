@@ -8,7 +8,7 @@ import {
   validarCantidadProducto,
 } from "@/lib/caja";
 import { CERO_DECIMAL, importePartida } from "@/lib/retail";
-import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
+import { bloquearProductos, ErrorRetail, reservasActivasPorProducto, transaccionTenant } from "@/lib/retail-db";
 
 export type IdentidadCaja = { userId: bigint; orgId: bigint; rol?: string; puesto?: string };
 
@@ -205,6 +205,7 @@ export async function registrarVentaCaja(sesion: IdentidadCaja, datos: VentaCaja
       });
       if (productos.length !== datos.partidas.length) throw new ErrorCaja("Uno de los productos no existe o está inactivo");
       const porId = new Map(productos.map((producto) => [String(producto.id), producto]));
+      const reservadas = await reservasActivasPorProducto(tx, datos.partidas.map((partida) => partida.productoId));
       let subtotal = CERO_DECIMAL;
       let descuentosPartidas = CERO_DECIMAL;
       for (const partida of datos.partidas) {
@@ -213,7 +214,7 @@ export async function registrarVentaCaja(sesion: IdentidadCaja, datos: VentaCaja
         if (!validarCantidadProducto(partida.cantidad, producto.vendePorPeso)) {
           throw new ErrorCaja(`${producto.nombre} se vende por piezas enteras`);
         }
-        if (producto.stock.lt(partida.cantidad)) throw new ErrorCaja(`No hay existencias suficientes de ${producto.nombre}`, 409);
+        if (producto.stock.minus(reservadas.get(String(producto.id)) ?? 0).lt(partida.cantidad)) throw new ErrorCaja(`No hay existencias suficientes de ${producto.nombre}`, 409);
         const bruto = importePartida(producto.precio, partida.cantidad);
         if (partida.descuento.gt(bruto)) throw new ErrorCaja(`El descuento de ${producto.nombre} supera su importe`);
         subtotal = subtotal.plus(bruto);

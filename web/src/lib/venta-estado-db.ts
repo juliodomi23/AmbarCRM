@@ -6,6 +6,7 @@ import {
   bloquearProductos,
   bloquearVenta,
   ErrorRetail,
+  reservasActivasPorProducto,
   transaccionTenant,
 } from "@/lib/retail-db";
 
@@ -38,7 +39,7 @@ export async function cambiarEstadoVenta(
     await bloquearVenta(tx, ventaId);
     const actual = await tx.venta.findUnique({
       where: { id: ventaId },
-      include: { pagos: true, partidas: { include: { producto: true } } },
+      include: { pagos: true, partidas: { include: { producto: true } }, reservasPedido: true },
     });
     if (!actual) throw new ErrorRetail("Venta no encontrada", 404);
 
@@ -80,12 +81,15 @@ export async function cambiarEstadoVenta(
         tx,
         actual.partidas.map((partida) => partida.productoId),
       );
+      const reservadas = debeAplicar
+        ? await reservasActivasPorProducto(tx, actual.partidas.map((partida) => partida.productoId), actual.id)
+        : new Map<string, Prisma.Decimal>();
       for (const partida of actual.partidas) {
         const producto = await tx.producto.findUnique({ where: { id: partida.productoId } });
         if (!producto) throw new ErrorRetail("Uno de los productos ya no existe");
         const cambio = debeAplicar ? partida.cantidad.neg() : partida.cantidad;
         const existenciaDespues = producto.stock.plus(cambio);
-        if (existenciaDespues.lt(0)) {
+        if (existenciaDespues.minus(reservadas.get(String(producto.id)) ?? 0).lt(0)) {
           throw new ErrorRetail(`No hay existencias suficientes de ${producto.nombre}`);
         }
         await tx.producto.update({
@@ -107,6 +111,9 @@ export async function cambiarEstadoVenta(
           },
         });
       }
+    }
+    if (actual.canal === "tienda_en_linea" && actual.reservasPedido.some((reserva) => reserva.activa)) {
+      await tx.reservaPedido.updateMany({ where: { ventaId: actual.id, activa: true }, data: { activa: false } });
     }
     return tx.venta.update({
       where: { id: ventaId },

@@ -9,7 +9,7 @@ import {
   validarVenta,
 } from "@/lib/retail";
 import { cantidadValidaParaProducto } from "@/lib/cantidad";
-import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
+import { bloquearProductos, ErrorRetail, reservasActivasPorProducto, transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
 
@@ -54,6 +54,7 @@ export const POST = conModulo("ventas", {}, async (sesion, req: NextRequest) => 
         throw new ErrorRetail("Uno de los productos no existe o está inactivo");
       }
       const porId = new Map(productos.map((producto) => [String(producto.id), producto]));
+      const reservadas = await reservasActivasPorProducto(tx, partidas.map((partida) => partida.productoId));
       const subtotal = partidas.reduce((suma, partida) => {
         const producto = porId.get(String(partida.productoId));
         if (!producto) return suma;
@@ -67,7 +68,7 @@ export const POST = conModulo("ventas", {}, async (sesion, req: NextRequest) => 
       if (aplicaStock) {
         for (const partida of partidas) {
           const producto = porId.get(String(partida.productoId));
-          if (!producto || producto.stock.lt(partida.cantidad)) {
+          if (!producto || producto.stock.minus(reservadas.get(String(partida.productoId)) ?? 0).lt(partida.cantidad)) {
             throw new ErrorRetail(`No hay existencias suficientes de ${producto?.nombre ?? "un producto"}`);
           }
         }

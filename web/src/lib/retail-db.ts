@@ -37,6 +37,24 @@ export async function bloquearProductos(
   `);
 }
 
+/** Existencia física menos pedidos web pendientes. Debe llamarse después de bloquear productos. */
+export async function reservasActivasPorProducto(
+  tx: Prisma.TransactionClient,
+  productoIds: bigint[],
+  excluirVentaId?: bigint,
+) {
+  const filas = await tx.reservaPedido.groupBy({
+    by: ["productoId"],
+    where: {
+      productoId: { in: [...new Set(productoIds)] },
+      activa: true,
+      ...(excluirVentaId ? { ventaId: { not: excluirVentaId } } : {}),
+    },
+    _sum: { cantidad: true },
+  });
+  return new Map(filas.map((fila) => [String(fila.productoId), fila._sum.cantidad ?? new Prisma.Decimal(0)]));
+}
+
 export async function bloquearVenta(tx: Prisma.TransactionClient, ventaId: bigint) {
   await tx.$queryRaw<Array<{ id: bigint }>>`
     SELECT id

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { aBigInt } from "@/lib/ids";
 import { validarMovimiento } from "@/lib/retail";
 import { cantidadValidaParaProducto } from "@/lib/cantidad";
-import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
+import { bloquearProductos, ErrorRetail, reservasActivasPorProducto, transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
 
@@ -30,7 +30,8 @@ export const POST = conModulo(
       }
       const cambio = validacion.tipo === "entrada" ? validacion.cantidad : validacion.cantidad.neg();
       const existenciaDespues = producto.stock.plus(cambio);
-      if (existenciaDespues.lt(0)) throw new ErrorRetail("No hay existencias suficientes");
+      const reservadas = await reservasActivasPorProducto(tx, [id]);
+      if (existenciaDespues.minus(reservadas.get(String(id)) ?? 0).lt(0)) throw new ErrorRetail("No hay existencias suficientes");
       const actualizado = await tx.producto.update({
         where: { id },
         data: { stock: existenciaDespues },

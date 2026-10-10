@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { calcularCotizacion, configCotizaciones, cotizacionVencida, ZONA_COTIZACIONES, type PartidaCotizacionEntrada } from "@/lib/cotizaciones";
 import { dbRaw } from "@/lib/db";
-import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
+import { bloquearProductos, ErrorRetail, reservasActivasPorProducto, transaccionTenant } from "@/lib/retail-db";
 import { fechaLocal } from "@/lib/reservas/horarios";
 import { configReservas } from "@/lib/reservas/servidor";
 
@@ -122,6 +122,7 @@ async function convertirEnVenta(tx: Prisma.TransactionClient, cotizacion: Awaite
   await bloquearProductos(tx, productoIds);
   const productos = await tx.producto.findMany({ where: { id: { in: productoIds }, activo: true } });
   const porId = new Map(productos.map((producto) => [String(producto.id), producto]));
+  const reservadas = await reservasActivasPorProducto(tx, productoIds);
   const cantidadesPorProducto = new Map<string, Prisma.Decimal>();
   for (const partida of cotizacion.partidas) {
     const producto = porId.get(String(partida.productoId));
@@ -131,7 +132,7 @@ async function convertirEnVenta(tx: Prisma.TransactionClient, cotizacion: Awaite
   }
   for (const [productoId, cantidadTotal] of cantidadesPorProducto) {
     const producto = porId.get(productoId)!;
-    if (producto.stock.lt(cantidadTotal)) throw new ErrorCotizacion(`No hay existencias suficientes de ${producto.nombre}`, 409);
+    if (producto.stock.minus(reservadas.get(productoId) ?? 0).lt(cantidadTotal)) throw new ErrorCotizacion(`No hay existencias suficientes de ${producto.nombre}`, 409);
   }
   const venta = await tx.venta.create({
     data: {

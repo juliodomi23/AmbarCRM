@@ -359,6 +359,25 @@ omite la contraseña, el script genera una segura y la muestra únicamente al
 terminar. En PowerShell, define primero `$env:ALLOW_DEMO_SEED="1"` y ejecuta el
 comando `node` sin el prefijo de variable.
 
+## Pedidos en línea
+
+El módulo `pedidos_en_linea` depende de Productos y Ventas. Publica únicamente
+productos activos con `visible_en_linea`, toma precios y existencias del servidor
+y guarda cada pedido como una venta normal con canal `tienda_en_linea`.
+
+Los pedidos pendientes separan existencia en `reservas_pedido` sin escribir
+`productos.stock`. Al confirmar una venta, la transición bloquea los productos,
+descuenta la existencia y consume la reserva; al cancelar, la libera. El enlace
+público `/tienda/<empresa>` usa la marca del negocio y el seguimiento por token
+no muestra teléfono, dirección ni otros datos personales.
+
+La demo retail incluye catálogo público, ajustes de entrega y un pedido en línea:
+
+```bash
+cd web
+ALLOW_DEMO_SEED=1 node scripts/seed-demo-retail.mjs
+```
+
 ## Cómo agregar un módulo
 
 - [ ] Añadir la clave, ruta, descripción y acceso por puesto en `src/lib/modulos.ts`.

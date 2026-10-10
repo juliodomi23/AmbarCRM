@@ -109,6 +109,17 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
     router.refresh();
   }
 
+  async function cambiarTienda(producto: ProductoRetail, cambio: Partial<Pick<ProductoRetail, "visibleEnLinea" | "agotadoManual">>) {
+    setGuardando(true);
+    const respuesta = await fetch("/api/pedidos-en-linea/productos", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productos: [{ id: producto.id, precio: producto.precio, visibleEnLinea: producto.visibleEnLinea, agotadoManual: producto.agotadoManual, etiquetasEnLinea: producto.etiquetasEnLinea, ...cambio }] }),
+    });
+    setGuardando(false);
+    if (!respuesta.ok) return toast(errorApi(await respuesta.json().catch(() => null)), "error");
+    toast("Catálogo en línea actualizado"); router.refresh();
+  }
+
   return (
     <div className="space-y-5 p-4 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -182,6 +193,8 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
                         <p className="text-xs text-muted-foreground">
                           {producto.sku ?? "Sin SKU"}
                           {!producto.activo ? " · Inactivo" : ""}
+                          {producto.visibleEnLinea ? " · En tienda" : ""}
+                          {producto.agotadoManual ? " · Agotado en línea" : ""}
                         </p>
                       </div>
                     </div>
@@ -223,6 +236,12 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
                       <Boton variante="ghost" onClick={() => abrirEditar(producto)}>
                         Editar
                       </Boton>
+                      <Boton variante="ghost" onClick={() => cambiarTienda(producto, { visibleEnLinea: !producto.visibleEnLinea })}>
+                        {producto.visibleEnLinea ? "Ocultar tienda" : "Publicar tienda"}
+                      </Boton>
+                      {producto.visibleEnLinea && <Boton variante="ghost" onClick={() => cambiarTienda(producto, { agotadoManual: !producto.agotadoManual })}>
+                        {producto.agotadoManual ? "Reactivar" : "Marcar agotado"}
+                      </Boton>}
                       <Boton onClick={() => setProductoMovimiento(producto)}>Inventario</Boton>
                     </div>
                   </td>

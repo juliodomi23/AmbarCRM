@@ -1243,3 +1243,47 @@ CREATE OR REPLACE FUNCTION resolve_org_by_cotizacion_token(p_token text)
   $$;
 REVOKE ALL ON FUNCTION resolve_org_by_cotizacion_token(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION resolve_org_by_cotizacion_token(text) TO crm_app;
+
+-- C · Pedidos en línea y catálogo público.
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS visible_en_linea BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS agotado_manual BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS etiquetas_en_linea TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
+
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS token_seguimiento TEXT;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS tipo_entrega TEXT;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS direccion_entrega TEXT;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS horario_deseado TIMESTAMPTZ;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS costo_envio NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS pedido_ip TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS ventas_token_seguimiento_key ON ventas(token_seguimiento);
+CREATE INDEX IF NOT EXISTS ventas_pedidos_telefono_idx ON ventas(org_id, canal, created_at, contacto_id);
+CREATE INDEX IF NOT EXISTS ventas_pedidos_ip_idx ON ventas(org_id, canal, created_at, pedido_ip);
+
+CREATE TABLE IF NOT EXISTS reservas_pedido (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  venta_id BIGINT NOT NULL REFERENCES ventas(id) ON DELETE CASCADE,
+  producto_id BIGINT NOT NULL REFERENCES productos(id) ON DELETE RESTRICT,
+  cantidad NUMERIC(12,3) NOT NULL CHECK (cantidad > 0),
+  activa BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (venta_id, producto_id)
+);
+CREATE INDEX IF NOT EXISTS reservas_pedido_producto_idx ON reservas_pedido(org_id, producto_id, activa);
+CREATE INDEX IF NOT EXISTS reservas_pedido_venta_idx ON reservas_pedido(venta_id, activa);
+ALTER TABLE reservas_pedido ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_isolation ON reservas_pedido;
+CREATE POLICY org_isolation ON reservas_pedido
+  USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+  WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
+GRANT SELECT, INSERT, UPDATE, DELETE ON reservas_pedido TO crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+CREATE OR REPLACE FUNCTION resolve_org_by_pedido_token(p_token text)
+  RETURNS bigint LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
+    SELECT org_id FROM ventas
+    WHERE token_seguimiento = p_token AND canal = 'tienda_en_linea'
+    LIMIT 1
+  $$;
+REVOKE ALL ON FUNCTION resolve_org_by_pedido_token(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION resolve_org_by_pedido_token(text) TO crm_app;

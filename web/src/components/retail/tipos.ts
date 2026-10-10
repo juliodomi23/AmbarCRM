@@ -26,6 +26,9 @@ export type ProductoRetail = {
   vendePorPeso: boolean;
   moneda: string;
   fotoUrl: string | null;
+  visibleEnLinea: boolean;
+  agotadoManual: boolean;
+  etiquetasEnLinea: string[];
   activo: boolean;
   movimientos?: MovimientoRetail[];
 };
