@@ -10,6 +10,7 @@ const dinero = (valor: DecimalSerializado) => formatoMoneda(Number(valor));
 type Fila = { clave: string; nombre: string; cantidad: DecimalSerializado; ingresos: DecimalSerializado; costos: DecimalSerializado; utilidad: DecimalSerializado; ingresosSinCosto: DecimalSerializado; partidasSinCosto: number };
 type Reporte = {
   zona: string;
+  envios: DecimalSerializado;
   resumen: { ingresos: DecimalSerializado; costos: DecimalSerializado; utilidad: DecimalSerializado; ingresosSinCosto: DecimalSerializado; partidasSinCosto: number };
   productos: { variantes: Fila[]; agrupados: Fila[] };
   categorias: Fila[];
@@ -52,7 +53,7 @@ export function ReportesRetailCliente() {
     </section>
     {reporte && <>
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Metrica titulo="Ingreso neto" valor={dinero(reporte.resumen.ingresos)}/><Metrica titulo="Costo conocido" valor={dinero(reporte.resumen.costos)}/><Metrica titulo="Utilidad conocida" valor={dinero(reporte.resumen.utilidad)}/><Metrica titulo="Ingreso sin costo" valor={dinero(reporte.resumen.ingresosSinCosto)} detalle={`${reporte.resumen.partidasSinCosto} partidas`}/>
+        <Metrica titulo="Ingreso neto" valor={dinero(reporte.resumen.ingresos)}/><Metrica titulo="Costo conocido" valor={dinero(reporte.resumen.costos)}/><Metrica titulo="Utilidad conocida" valor={dinero(reporte.resumen.utilidad)}/><Metrica titulo="Ingreso sin costo" valor={dinero(reporte.resumen.ingresosSinCosto)} detalle={`${reporte.resumen.partidasSinCosto} partidas`}/><Metrica titulo="Envíos" valor={dinero(reporte.envios)} detalle="No cuenta como ingreso de producto"/>
       </section>
       <section className="surface p-4"><div className="mb-3 flex flex-wrap justify-between gap-2"><h2 className="font-bold">Por producto</h2><label className="text-sm"><input className="mr-2" type="checkbox" checked={agruparPadre} onChange={(e) => setAgruparPadre(e.target.checked)}/>Agrupar variantes por producto padre</label></div><TablaFinanciera filas={productos}/></section>
       <section className="grid gap-4 xl:grid-cols-2"><Panel titulo="Por categoría"><TablaFinanciera filas={reporte.categorias}/></Panel><Panel titulo="Ventas por día local"><TablaFinanciera filas={reporte.ventas.porDia}/></Panel><Panel titulo="Ventas por hora local"><TablaFinanciera filas={reporte.ventas.porHora}/></Panel><Panel titulo="Por cajero"><TablaFinanciera filas={reporte.ventas.porCajero}/></Panel><Panel titulo="Por caja"><TablaFinanciera filas={reporte.ventas.porCaja}/></Panel><Panel titulo="Faltantes y sobrantes"><table className="w-full text-sm"><thead><tr><th className="py-2 text-left">Persona / caja</th><th>Turnos</th><th className="text-right">Diferencia</th></tr></thead><tbody>{reporte.cortes.map((fila) => <tr className="border-t" key={fila.clave}><td className="py-2">{fila.nombre}</td><td className="text-center">{fila.turnos}</td><td className="text-right">{dinero(fila.diferencia)}</td></tr>)}</tbody></table></Panel></section>

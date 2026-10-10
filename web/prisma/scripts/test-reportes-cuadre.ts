@@ -8,6 +8,7 @@ import { cambiarEstadoVenta } from "../../src/lib/venta-estado-db";
 import { ingresosNetosPorPartida, metricasNetasPartida } from "../../src/lib/venta-importes";
 import { dbRaw } from "../../src/lib/db";
 import { transaccionTenant } from "../../src/lib/retail-db";
+import { reporteRetail } from "../../src/lib/reportes-retail-db";
 
 const { Pool } = pg;
 const adminUrl = process.env.ADMIN_DATABASE_URL;
@@ -65,7 +66,32 @@ async function main() {
   const canceladaGuardada = await transaccionTenant(orgId, (tx) => tx.venta.findUniqueOrThrow({ where: { id: cancelada.venta.id } }));
   assert.equal(canceladaGuardada.estado, "cancelada");
 
+  const pedido = await transaccionTenant(orgId, async (tx) => {
+    const producto = await tx.producto.create({ data: { sku: `ENVIO-${sufijo}`, nombre: "Producto con envío", precio: 100, costo: 60, stock: 5 } });
+    const venta = await tx.venta.create({
+      data: {
+        folio: `ENV-${sufijo}`, canal: "tienda_en_linea", estado: "entregada", stockAplicado: true,
+        subtotal: 100, total: 150, costoEnvio: 50, turnoId: base.turno.id, creadoPorId: actor.userId,
+        partidas: { create: [{ productoId: producto.id, cantidad: 1, precioUnitario: 100, costoUnitario: 60, total: 100 }] },
+      },
+      include: { partidas: true },
+    });
+    return { producto, venta };
+  });
+  const dia = (desplazamiento: number) => new Date(Date.now() + desplazamiento * 86_400_000).toISOString().slice(0, 10);
+  const reporteEnvio = await reporteRetail(orgId, { desde: dia(-1), hasta: dia(1) });
+  const filaPedido = reporteEnvio.productos.variantes.find((fila) => fila.clave === String(pedido.producto.id))!;
+  assert.equal(filaPedido.ingresos.toFixed(2), "100.00", "el envío no es ingreso de producto");
+  assert.equal(filaPedido.utilidad.toFixed(2), "40.00");
+  assert.equal(reporteEnvio.envios.toFixed(2), "50.00");
+  const devolucionPedido = await registrarDevolucion(actor, {
+    ventaId: pedido.venta.id, ventaCambioId: null, tipoReembolso: "efectivo", motivo: "Envío",
+    partidas: [{ ventaPartidaId: pedido.venta.partidas[0].id, cantidad: new Prisma.Decimal(1) }],
+  });
+  assert.equal(devolucionPedido.total.toFixed(2), "100.00", "la devolución total no reembolsa el envío");
+
   console.log(JSON.stringify({
+    pedidoConEnvio: { ingresoProducto: filaPedido.ingresos.toNumber(), utilidad: filaPedido.utilidad.toNumber(), envios: reporteEnvio.envios.toNumber(), reembolso: devolucionPedido.total.toNumber() },
     calculoManual: { cobrado: 180, devolucion: 60, ingresoNeto: 120, costoNeto: 80, utilidad: 40 },
     reporte: { ingresoNeto: metricas.ingresoNeto.toNumber(), costoNeto: metricas.costoNeto?.toNumber(), utilidad: metricas.utilidad?.toNumber() },
     canceladaExcluible: canceladaGuardada.estado === "cancelada",

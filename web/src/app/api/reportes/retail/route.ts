@@ -33,6 +33,7 @@ export const GET = conModulo("caja", {}, async (sesion, req: NextRequest) => {
   agregar("Hora", reporte.ventas.porHora);
   agregar("Cajero", reporte.ventas.porCajero);
   agregar("Caja", reporte.ventas.porCaja);
+  filas.push(["Envíos", "Envíos cobrados", "", String(reporte.envios), "", "", ""]);
   for (const fila of reporte.cortes) filas.push(["Diferencia de corte", fila.nombre, fila.turnos, "", "", String(fila.diferencia), ""]);
   for (const fila of reporte.inventario.filas) filas.push(["Inventario", fila.nombre, String(fila.stock), String(fila.valorPrecio), String(fila.valorCosto), "", fila.sinMovimiento ? "Sin movimiento" : fila.alertaMinimo ? "Bajo mínimo" : ""]);
   return respuestaCSV(toCSV(["seccion", "nombre", "cantidad", "ingresos_o_valor", "costos", "utilidad_o_diferencia", "sin_costo_o_alerta"], filas), `reporte_retail_${desde}_${hasta}.csv`);

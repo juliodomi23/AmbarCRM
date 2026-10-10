@@ -120,8 +120,10 @@ export async function reporteRetail(
       sumar(porCaja, dato.caja ? String(dato.caja.id) : "sin-caja", dato.caja?.nombre ?? "Sin caja", dato.cantidad, dato.ingreso, dato.costo);
     };
 
+    let envios = CERO;
     for (const venta of ventas) {
-      const importes = ingresosNetosPorPartida(venta.partidas, venta.total);
+      envios = envios.plus(venta.costoEnvio);
+      const importes = ingresosNetosPorPartida(venta.partidas, venta.total.minus(venta.costoEnvio));
       for (const partida of venta.partidas) {
         const ingreso = importes.get(String(partida.id)) ?? CERO;
         const costo = partida.costoUnitario === null ? null : partida.costoUnitario.mul(partida.cantidad).toDecimalPlaces(2);
@@ -154,7 +156,7 @@ export async function reporteRetail(
       }
     }
     return {
-      zona, rango: { desde: rango.desde, hasta: rango.hasta, dias: rango.dias }, resumen,
+      zona, rango: { desde: rango.desde, hasta: rango.hasta, dias: rango.dias }, resumen, envios,
       productos: { variantes, agrupados: filas(porPadre).sort((a, b) => b.ingresos.comparedTo(a.ingresos)) },
       categorias: filas(porCategoria).sort((a, b) => b.ingresos.comparedTo(a.ingresos)),
       ventas: {

@@ -174,7 +174,7 @@ export async function registrarDevolucion(
       });
     }
 
-    const montoTotalPorPartida = ingresosNetosPorPartida(venta.partidas, venta.total);
+    const montoTotalPorPartida = ingresosNetosPorPartida(venta.partidas, venta.total.minus(venta.costoEnvio));
     if (montoTotalPorPartida.size === 0) throw new ErrorCajaA2("La venta no tiene un importe reembolsable", 409);
 
     const calculadas = datos.partidas.map((solicitada) => {
@@ -194,7 +194,7 @@ export async function registrarDevolucion(
     });
     const total = calculadas.reduce((suma, partida) => suma.plus(partida.monto), CERO_DECIMAL);
     const totalDevueltoAntes = anteriores.reduce((suma, partida) => suma.plus(partida.monto), CERO_DECIMAL);
-    if (totalDevueltoAntes.plus(total).gt(venta.total)) {
+    if (totalDevueltoAntes.plus(total).gt(venta.total.minus(venta.costoEnvio))) {
       throw new ErrorCajaA2("La devolución supera el total cobrado en la venta", 409);
     }
 
