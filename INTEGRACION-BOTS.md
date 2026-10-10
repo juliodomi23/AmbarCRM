@@ -43,3 +43,7 @@ El workflow puede desactivar el bot o asignar la conversación mediante las ruta
 - Usa el identificador de mensaje para idempotencia.
 - Maneja reintentos de n8n sin enviar dos respuestas.
 - Nunca registres el token completo en logs.
+
+## Referencia
+
+Contrato completo de las rutas, firma HMAC y bitácora: [docs/api-bot.md](docs/api-bot.md).

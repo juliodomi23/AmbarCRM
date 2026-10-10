@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { ErrorCotizacion } from "@/lib/cotizaciones-db";
+import { ErrorRetail } from "@/lib/retail-db";
 
 export function respuestaErrorCotizacion(error: unknown) {
-  if (error instanceof ErrorCotizacion) {
+  // ErrorRetail incluye ErrorCotizacion y los errores del motor de precios (producto inactivo, 404).
+  if (error instanceof ErrorRetail) {
     return NextResponse.json({ error: error.message }, { status: error.status });
   }
   throw error;

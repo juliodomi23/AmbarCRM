@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, runWithOrg } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { requireBot } from "@/lib/bot-auth";
 import { leerMedia, mimeDeArchivo, orgDeArchivo } from "@/lib/storage";
@@ -25,10 +25,9 @@ export async function GET(req: NextRequest, props: { params: Promise<{ archivo: 
     if (dueno !== orgId) return NO_ENCONTRADO();
   } else {
     // Archivo anterior al prefijo: debe pertenecer a un mensaje visible para esta empresa (RLS).
-    const mensaje = await db.mensaje.findFirst({
-      where: { mediaUrl: `/api/media/${archivo}` },
-      select: { id: true },
-    });
+    // requireBot ya no deja el tenant fijado: con token de bot la consulta corre dentro de su empresa.
+    const buscar = () => db.mensaje.findFirst({ where: { mediaUrl: `/api/media/${archivo}` }, select: { id: true } });
+    const mensaje = bot && orgId !== null ? await runWithOrg(orgId, buscar) : await buscar();
     if (!mensaje) return NO_ENCONTRADO();
   }
 

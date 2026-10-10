@@ -15,6 +15,8 @@ if (!appUrl || !adminUrl) {
 
 const app = new Pool({ connectionString: appUrl, max: 8 });
 const admin = new Pool({ connectionString: adminUrl, max: 1 });
+// Tablas que la app solo puede leer e insertar (sin UPDATE/DELETE para crm_app).
+const SOLO_AGREGAR = new Set(["auditoria_bot"]);
 const sufijo = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const orgA = BigInt(Date.now()) * 1000n + 101n;
 const orgB = orgA + 1n;
@@ -171,6 +173,20 @@ async function main() {
     );
     assert.equal(ajeno.rows[0].total, "0", `${tabla}: B leyó una fila de A`);
 
+    if (SOLO_AGREGAR.has(tabla)) {
+      // Bitácoras: crm_app no debe poder ni intentar UPDATE/DELETE (permission denied, 42501).
+      for (const sentencia of [
+        `UPDATE ${nombre} SET org_id = org_id WHERE ctid = $1::tid`,
+        `DELETE FROM ${nombre} WHERE ctid = $1::tid`,
+      ]) {
+        await assert.rejects(
+          () => consultaTenant(orgA, sentencia, [fila]),
+          (error: { code?: string }) => error.code === "42501",
+          `${tabla}: crm_app debe tener ${sentencia.split(" ")[0]} denegado`,
+        );
+      }
+      continue;
+    }
     const escritura = await consultaTenant(
       orgB,
       `UPDATE ${nombre} SET org_id = org_id WHERE ctid = $1::tid RETURNING org_id`,

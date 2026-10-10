@@ -181,6 +181,7 @@ model Usuario {
   eventos             Evento[]
   citas               Cita[]
   evoluciones         EvolucionClinica[]
+  botsAsesor          Bot[]                     @relation("BotAsesor")
   ventasCreadas       Venta[]                   @relation("VentaCreadoPor")
   movimientos         MovimientoInventario[]    @relation("MovimientoUsuario")
   comprasCreadas      Compra[]                  @relation("CompraCreadoPor")
@@ -415,11 +416,40 @@ model Bot {
   canalId    BigInt?  @map("canal_id") // null = aplica a todos los canales
   activo     Boolean  @default(true)
   createdAt  DateTime @default(now()) @map("created_at")
+  /// Secreto HMAC cifrado (encv1:…) con el que se firma lo que el CRM manda a n8n.
+  signingSecret String? @map("signing_secret")
+  /// Asesor fijo para el handoff de este bot. null = round-robin entre usuarios activos.
+  asesorId   BigInt?  @map("asesor_id")
+  /// Lo que este bot puede hacer por /api/v1 (ver src/lib/bot-permisos.ts).
+  permisos   String[] @default(["leer_perfil", "enviar_mensaje", "notas_internas", "handoff"])
 
-  canal CanalWhatsapp? @relation(fields: [canalId], references: [id], onDelete: SetNull)
+  canal     CanalWhatsapp? @relation(fields: [canalId], references: [id], onDelete: SetNull)
+  asesor    Usuario?       @relation("BotAsesor", fields: [asesorId], references: [id], onDelete: SetNull)
+  auditoria AuditoriaBot[]
 
   @@index([orgId])
   @@map("bots")
+}
+
+/// Bitácora de lo que hace el bot vía /api/v1 (solo se agrega, nunca se edita).
+model AuditoriaBot {
+  id             BigInt   @id @default(autoincrement())
+  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  botId          BigInt?  @map("bot_id")
+  conversacionId BigInt?  @map("conversacion_id")
+  accion         String
+  entidad        String?
+  entidadId      BigInt?  @map("entidad_id")
+  antes          Json?
+  despues        Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  bot          Bot?          @relation(fields: [botId], references: [id], onDelete: SetNull)
+  conversacion Conversacion? @relation(fields: [conversacionId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, createdAt])
+  @@index([conversacionId])
+  @@map("auditoria_bot")
 }
 
 model Conversacion {
@@ -446,6 +476,7 @@ model Conversacion {
   mensajes    Mensaje[]
   programados MensajeProgramado[]
   citas       Cita[]
+  auditoriaBot AuditoriaBot[]
 
   @@unique([contactoId, canalId])
   @@index([ultimoMensajeAt])

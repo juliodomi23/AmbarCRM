@@ -1388,3 +1388,45 @@ CREATE INDEX IF NOT EXISTS productos_grupo_id_idx ON productos(grupo_id);
 
 -- A4 · Costo histórico al aplicar inventario.
 ALTER TABLE venta_partidas ADD COLUMN IF NOT EXISTS costo_unitario NUMERIC(12,2);
+
+-- Bot API · firma HMAC hacia n8n, asesor fijo para handoff y bitácora de acciones del bot.
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS signing_secret TEXT;
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS asesor_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS auditoria_bot (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  bot_id BIGINT REFERENCES bots(id) ON DELETE SET NULL,
+  conversacion_id BIGINT REFERENCES conversaciones(id) ON DELETE SET NULL,
+  accion TEXT NOT NULL,
+  entidad TEXT,
+  entidad_id BIGINT,
+  antes JSONB,
+  despues JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS auditoria_bot_org_fecha_idx ON auditoria_bot(org_id, created_at);
+CREATE INDEX IF NOT EXISTS auditoria_bot_conversacion_idx ON auditoria_bot(conversacion_id);
+ALTER TABLE auditoria_bot ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_isolation ON auditoria_bot;
+CREATE POLICY org_isolation ON auditoria_bot
+  USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+  WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
+-- Bitácora de solo agregar: la app lee e inserta, nunca edita ni borra.
+-- (Los DEFAULT PRIVILEGES de multi-tenant.sql dan UPDATE/DELETE a las tablas nuevas; se quitan aquí.)
+GRANT SELECT, INSERT ON auditoria_bot TO crm_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON auditoria_bot FROM crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+-- Bot API · permisos por bot.
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS permisos TEXT[];
+-- Los bots que ya existen conservan solo lo que sus rutas de producción les permitían: leer la
+-- conversación, responder, dejar notas, mover la etapa y handoff/etiquetas. Tareas, citas y
+-- cotizaciones no existían en producción y se activan después, por cliente.
+-- Solo toca filas con permisos NULL: volver a correr el archivo no pisa lo que el admin edite.
+UPDATE bots
+   SET permisos = ARRAY['leer_perfil', 'enviar_mensaje', 'notas_internas', 'mover_embudo', 'handoff']
+ WHERE permisos IS NULL;
+-- Los bots nuevos nacen con el conjunto mínimo.
+ALTER TABLE bots ALTER COLUMN permisos SET DEFAULT ARRAY['leer_perfil', 'enviar_mensaje', 'notas_internas', 'handoff'];
+ALTER TABLE bots ALTER COLUMN permisos SET NOT NULL;

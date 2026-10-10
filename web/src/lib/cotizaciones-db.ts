@@ -7,7 +7,15 @@ import { fechaLocal } from "@/lib/reservas/horarios";
 import { configReservas } from "@/lib/reservas/servidor";
 import { calcularPrecios } from "@/lib/precios-db";
 
-export class ErrorCotizacion extends ErrorRetail {}
+export class ErrorCotizacion extends ErrorRetail {
+  /** Motivo estable para integraciones (el bot decide qué hacer según este valor). */
+  readonly codigo?: string;
+
+  constructor(message: string, status = 400, codigo?: string) {
+    super(message, status);
+    this.codigo = codigo;
+  }
+}
 
 type DatosCotizacion = {
   contactoId: bigint;

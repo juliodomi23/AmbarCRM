@@ -9,8 +9,19 @@ async function embudoPrincipal() {
   });
 }
 
+/** Embudo activo por nombre (sin importar mayúsculas), o el principal si no se pide uno. */
+async function embudoDestino(nombre?: string) {
+  if (!nombre?.trim()) return embudoPrincipal();
+  const activos = await db.embudo.findMany({
+    where: { activo: true },
+    orderBy: { orden: "asc" },
+    include: { etapas: { orderBy: { orden: "asc" } } }
+  });
+  return activos.find((e) => e.nombre.toLowerCase().trim() === nombre.toLowerCase().trim()) ?? null;
+}
+
 /** La oportunidad abierta más reciente de un contacto (la que el bot manipula). */
-function oportunidadAbierta(contactoId: bigint) {
+export function oportunidadAbierta(contactoId: bigint) {
   return db.oportunidad.findFirst({
     where: { contactoId, estado: "abierto" },
     orderBy: { createdAt: "desc" }
@@ -51,11 +62,23 @@ export async function crearLeadSiNoTiene(contactoId: bigint, responsableId: bigi
  * Si no tiene oportunidad, la crea primero. Marca ganado/perdido según el tipo de etapa.
  * La usa el bot vía la tool `actualizar_funnel`.
  */
-export async function moverLeadAEtapa(contactoId: bigint, nombreEtapa: string, tituloFallback: string) {
-  const embudo = await embudoPrincipal();
-  if (!embudo) return { ok: false as const, error: "no hay embudo configurado" };
+export async function moverLeadAEtapa(
+  contactoId: bigint,
+  nombreEtapa: string | null,
+  tituloFallback: string,
+  /** Embudo destino por nombre; sin él, el principal. Sin etapa, la primera del embudo. */
+  nombreEmbudo?: string
+) {
+  const embudo = await embudoDestino(nombreEmbudo);
+  if (!embudo) {
+    if (!nombreEmbudo) return { ok: false as const, error: "no hay embudo configurado" };
+    const activos = await db.embudo.findMany({ where: { activo: true }, orderBy: { orden: "asc" } });
+    return { ok: false as const, error: `embudo '${nombreEmbudo}' no existe`, embudos: activos.map((e) => e.nombre) };
+  }
 
-  const objetivo = embudo.etapas.find((e) => e.nombre.toLowerCase().trim() === nombreEtapa.toLowerCase().trim());
+  const objetivo = nombreEtapa
+    ? embudo.etapas.find((e) => e.nombre.toLowerCase().trim() === nombreEtapa.toLowerCase().trim())
+    : embudo.etapas[0];
   if (!objetivo) {
     return { ok: false as const, error: `etapa '${nombreEtapa}' no existe`, etapas: embudo.etapas.map((e) => e.nombre) };
   }

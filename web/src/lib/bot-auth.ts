@@ -1,15 +1,22 @@
-import { NextRequest } from "next/server";
-import { db, dbRaw, setOrg } from "@/lib/db";
+import { createHash } from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
+import { db, dbRaw, runWithOrg } from "@/lib/db";
+import { aBigInt } from "@/lib/ids";
+import { moduloHabilitado, type ClaveModulo } from "@/lib/modulos";
+import { ipCliente, permitido } from "@/lib/rate-limit";
+import type { PermisoBot } from "@/lib/bot-permisos";
+import { auditarBot } from "@/lib/services/bots";
 
 /**
- * Autentica un bot por su token mediante el header `api_access_token`
- * o `x-bot-token`. Devuelve el bot (con su orgId) o null.
+ * Autentica un bot por su token mediante el header `api_access_token` o `x-bot-token`.
+ * Devuelve el bot (con su orgId) o null.
  *
- * El token es global; primero resolvemos su org con una función SECURITY DEFINER
- * (salta RLS), y luego leemos el bot ya dentro del tenant.
+ * El token es global; primero resolvemos su org con una función SECURITY DEFINER (salta RLS) y
+ * luego leemos el bot dentro del tenant. NO deja ningún tenant fijado al terminar: las consultas
+ * siguientes solo ven datos si corren dentro de `conBot`/`runWithOrg` (si no, RLS devuelve 0 filas).
  */
 export async function requireBot(req: NextRequest) {
-  const token = req.headers.get("api_access_token") || req.headers.get("x-bot-token");
+  const token = tokenDe(req);
   if (!token) return null;
 
   const r = await dbRaw.$queryRawUnsafe<{ org: bigint | null }[]>(
@@ -17,11 +24,102 @@ export async function requireBot(req: NextRequest) {
   );
   const orgId = r[0]?.org;
   if (orgId == null) return null;
+  return runWithOrg(orgId, () => db.bot.findUnique({ where: { apiToken: token } }));
+}
 
-  // Fija el tenant para el resto del request: las queries siguientes del handler
-  // (db.conversacion, db.mensaje…) quedan automáticamente acotadas a esta org.
-  setOrg(orgId);
-  return db.bot.findUnique({ where: { apiToken: token } });
+export type BotAutenticado = NonNullable<Awaited<ReturnType<typeof requireBot>>>;
+
+const tokenDe = (req: NextRequest) => req.headers.get("api_access_token") || req.headers.get("x-bot-token");
+const numero = (valor: string | undefined, defecto: number) => Number(valor) || defecto;
+
+function limitado(ventanaMs: number) {
+  return NextResponse.json(
+    { error: "demasiadas peticiones" },
+    { status: 429, headers: { "Retry-After": String(Math.ceil(ventanaMs / 1000)) } }
+  );
+}
+
+/**
+ * Punto de entrada ÚNICO de las rutas /api/v1 del bot: limita, autentica y ejecuta `handler`
+ * dentro de `runWithOrg(bot.orgId)` (AsyncLocalStorage.run: el tenant vale solo dentro del callback
+ * y no se filtra a otras peticiones). Una ruta que no use este helper corre sin tenant y no ve datos.
+ *
+ * `permiso`: lo que la ruta exige al bot (403 `permiso_faltante`, queda en la bitácora). Con `null`
+ * la ruta decide después con `denegarSinPermiso` (p. ej. mensajes: nota interna o mensaje al cliente).
+ *
+ * Límites por entorno:
+ *  - por token: BOT_RATE_LIMIT_MAX (300) por BOT_RATE_LIMIT_WINDOW_MS (60000)
+ *  - tokens inválidos por IP: BOT_AUTH_FAIL_MAX (20) por BOT_AUTH_FAIL_WINDOW_MS (300000)
+ * `ipCliente` lee solo el encabezado de IP_HEADER (default x-real-ip) que escribe el proxy.
+ */
+export async function conBot(
+  req: NextRequest,
+  permiso: PermisoBot | null,
+  handler: (bot: BotAutenticado) => Promise<Response | undefined>
+) {
+  const token = tokenDe(req);
+  if (token) {
+    const ventanaMs = numero(process.env.BOT_RATE_LIMIT_WINDOW_MS, 60_000);
+    const clave = `bot-api:${createHash("sha256").update(token).digest("base64url")}`;
+    if (!permitido(clave, numero(process.env.BOT_RATE_LIMIT_MAX, 300), ventanaMs)) return limitado(ventanaMs);
+  }
+
+  const bot = await requireBot(req);
+  if (!bot) {
+    // Intentos con token inválido (o ausente) por IP. Pasado el tope se responde 429 en vez de 401;
+    // un token válido nunca se bloquea por la IP (varios bots comparten la IP del servidor de n8n).
+    const ventanaMs = numero(process.env.BOT_AUTH_FAIL_WINDOW_MS, 300_000);
+    const claveIp = `bot-401:${ipCliente(Object.fromEntries(req.headers))}`;
+    if (!permitido(claveIp, numero(process.env.BOT_AUTH_FAIL_MAX, 20), ventanaMs)) return limitado(ventanaMs);
+    return NextResponse.json({ error: "token inválido" }, { status: 401 });
+  }
+  const respuesta = await runWithOrg(bot.orgId, async () => {
+    if (permiso) {
+      const conv = /\/conversations\/(\d+)/.exec(req.nextUrl.pathname)?.[1];
+      const denegada = await denegarSinPermiso(bot, permiso, conv ? BigInt(conv) : null, req);
+      if (denegada) return denegada;
+    }
+    return handler(bot);
+  });
+  return respuesta ?? NextResponse.json({ error: "sin respuesta" }, { status: 500 });
+}
+
+/**
+ * 403 `permiso_faltante` (y registro en la bitácora) si el bot no tiene `permiso`; null si lo tiene.
+ * Debe llamarse dentro de `conBot` (usa la empresa del bot).
+ */
+export async function denegarSinPermiso(
+  bot: BotAutenticado,
+  permiso: PermisoBot,
+  conversacionId: bigint | null,
+  req?: NextRequest
+) {
+  if (bot.permisos.includes(permiso)) return null;
+  await auditarBot(bot, conversacionId, "permiso_denegado", {
+    entidad: "permiso",
+    despues: { permiso, ...(req ? { metodo: req.method, ruta: req.nextUrl.pathname } : {}) }
+  });
+  return NextResponse.json(
+    { error: `el bot no tiene el permiso '${permiso}'`, motivo: "permiso_faltante", permiso },
+    { status: 403 }
+  );
+}
+
+/**
+ * Dentro de `conBot`: exige que el módulo esté activo para la empresa (sin depender de sesión de
+ * usuario), valida el id y el canal del bot, y devuelve la conversación con su contacto.
+ * Uso: `const a = await conversacionDelBot(bot, id, "citas"); if (!a.conv) return a.respuesta;`
+ */
+export async function conversacionDelBot(bot: BotAutenticado, conversationId: string, modulo?: ClaveModulo) {
+  const error = (mensaje: string, status: number) =>
+    ({ bot: null, conv: null, respuesta: NextResponse.json({ error: mensaje }, { status }) }) as const;
+  if (modulo && !(await moduloHabilitado(modulo))) return error("módulo no activo", 404);
+  const id = aBigInt(conversationId);
+  if (id === null) return error("conversationId inválido", 400);
+  const conv = await db.conversacion.findUnique({ where: { id }, include: { contacto: true } });
+  if (!conv) return error("conversación inexistente", 404);
+  if (!botAutorizado(bot, conv)) return error("el bot no opera en este canal", 403);
+  return { bot, conv, respuesta: null } as const;
 }
 
 /**

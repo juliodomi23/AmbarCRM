@@ -122,7 +122,12 @@ export function makeCloudApiProvider(config?: CloudConfig): ChannelProvider {
       headers: { Authorization: `Bearer ${token}`, ...(init?.headers || {}) }
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data?.error ? motivoDeErrorMeta(data.error) : `Meta HTTP ${response.status}`);
+    if (!response.ok) {
+      throw Object.assign(
+        new Error(data?.error ? motivoDeErrorMeta(data.error) : `Meta HTTP ${response.status}`),
+        { status: response.status }
+      );
+    }
     return data;
   }
 
@@ -152,6 +157,30 @@ export function makeCloudApiProvider(config?: CloudConfig): ChannelProvider {
     return typeof data?.id === "string" ? data.id : null;
   }
 
+  async function consultarPlantillas() {
+    if (!wabaId) {
+      return { ok: false as const, motivo: "sin_waba" as const, error: "el canal no tiene wabaId configurado" };
+    }
+    try {
+      const data = await graph(
+        `${wabaId}/message_templates?fields=name,language,status,category,components&limit=100`
+      );
+      const plantillas = (data?.data || []).map((item: any): PlantillaOficial => ({
+        name: item.name,
+        language: item.language,
+        status: item.status,
+        category: item.category,
+        components: item.components
+      }));
+      return { ok: true as const, plantillas };
+    } catch (error) {
+      const status = (error as { status?: number }).status;
+      // Sin status = la petición ni llegó (red/DNS/timeout); 5xx = Meta caído. 4xx = nos rechazó.
+      const motivo = status !== undefined && status < 500 ? ("rechazado" as const) : ("no_disponible" as const);
+      return { ok: false as const, motivo, error: error instanceof Error ? error.message : "error de red" };
+    }
+  }
+
   return {
     nombre: "cloud_api",
 
@@ -172,22 +201,11 @@ export function makeCloudApiProvider(config?: CloudConfig): ChannelProvider {
       });
     },
 
+    consultarPlantillas,
+
     async listarPlantillas() {
-      if (!wabaId) return [];
-      try {
-        const data = await graph(
-          `${wabaId}/message_templates?fields=name,language,status,category,components&limit=100`
-        );
-        return (data?.data || []).map((item: any): PlantillaOficial => ({
-          name: item.name,
-          language: item.language,
-          status: item.status,
-          category: item.category,
-          components: item.components
-        }));
-      } catch {
-        return [];
-      }
+      const r = await consultarPlantillas();
+      return r.ok ? r.plantillas : [];
     },
 
     async enviarMedia(telefono, mediaValue, tipo: TipoMensaje, caption, mimetype) {

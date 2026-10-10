@@ -4,10 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton, Campo } from "@/components/ui";
 import { api } from "@/components/config/tabs/shared";
+import { toast } from "@/components/Toaster";
+import { ETIQUETAS_PERMISO, PERMISOS_BOT, type PermisoBot } from "@/lib/bot-permisos";
 
 export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
   const router = useRouter();
   const [f, setF] = useState({ nombre: "", webhookUrl: "", canalId: "" });
+  // El secreto de firma solo llega en la respuesta que lo crea: se muestra una vez aquí.
+  const [secretoNuevo, setSecretoNuevo] = useState<string | null>(null);
   const origin =
     typeof window !== "undefined"
       ? window.location.origin
@@ -16,8 +20,27 @@ export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
   async function crear(e: React.FormEvent) {
     e.preventDefault();
     if (!f.nombre.trim() || !f.webhookUrl.trim()) return;
-    if (await api("/api/bots", "POST", { ...f, canalId: f.canalId || null })) {
+    const secreto = await enviarYObtenerSecreto("/api/bots", "POST", { ...f, canalId: f.canalId || null });
+    if (secreto !== false) {
+      setSecretoNuevo(secreto);
       setF({ nombre: "", webhookUrl: "", canalId: "" });
+      router.refresh();
+    }
+  }
+  async function enviarYObtenerSecreto(url: string, metodo: string, body: unknown) {
+    const res = await fetch(url, { method: metodo, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast(d.error ?? "Ocurrió un error", "error");
+      return false;
+    }
+    return (d.signingSecret as string | undefined) ?? null;
+  }
+  async function regenerarSecreto(b: any) {
+    if (!confirm("¿Regenerar el secreto de firma? n8n dejará de validar hasta que lo actualices.")) return;
+    const secreto = await enviarYObtenerSecreto(`/api/bots/${b.id}`, "PATCH", { regenerarSecreto: true });
+    if (secreto !== false) {
+      setSecretoNuevo(secreto);
       router.refresh();
     }
   }
@@ -31,6 +54,11 @@ export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
     if (await api(`/api/bots/${b.id}`, "PATCH", { regenerarToken: true }))
       router.refresh();
   }
+  async function cambiarPermiso(b: any, permiso: PermisoBot, activo: boolean) {
+    const actuales: string[] = b.permisos ?? [];
+    const permisos = activo ? [...new Set([...actuales, permiso])] : actuales.filter((p) => p !== permiso);
+    if (await api(`/api/bots/${b.id}`, "PATCH", { permisos })) router.refresh();
+  }
   async function borrar(b: any) {
     if (!confirm(`¿Borrar el bot "${b.nombre}"?`)) return;
     if (await api(`/api/bots/${b.id}`, "DELETE")) router.refresh();
@@ -38,6 +66,15 @@ export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
 
   return (
     <div className="max-w-2xl space-y-5">
+      {secretoNuevo && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm">
+          <p className="font-medium">Secreto de firma (cópialo ahora, no se volverá a mostrar):</p>
+          <code className="block break-all">{secretoNuevo}</code>
+          <button onClick={() => setSecretoNuevo(null)} className="mt-2 text-primary hover:underline">
+            Ya lo copié
+          </button>
+        </div>
+      )}
       <form
         onSubmit={crear}
         className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2"
@@ -137,6 +174,34 @@ export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
               <code className="block break-all text-foreground">
                 {b.apiToken}
               </code>
+            </div>
+
+            <div className="rounded-lg bg-background p-3 text-xs">
+              <p className="mb-1 text-muted-foreground">Permisos del bot:</p>
+              <div className="grid gap-1 sm:grid-cols-2">
+                {PERMISOS_BOT.map((permiso) => (
+                  <label key={permiso} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={(b.permisos ?? []).includes(permiso)}
+                      onChange={(e) => cambiarPermiso(b, permiso, e.target.checked)}
+                    />
+                    <span className="text-foreground">{ETIQUETAS_PERMISO[permiso]}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-background p-3 text-xs">
+              <div className="flex items-center justify-between">
+                <p className="text-muted-foreground">
+                  Firma HMAC (header <code>X-AmbarCRM-Signature</code>):{" "}
+                  {b.firmaActiva ? "activa" : "sin secreto"}
+                </p>
+                <button onClick={() => regenerarSecreto(b)} className="text-primary hover:underline">
+                  {b.firmaActiva ? "Regenerar secreto" : "Generar secreto"}
+                </button>
+              </div>
             </div>
 
             <div className="rounded-lg bg-background p-3 text-xs">
