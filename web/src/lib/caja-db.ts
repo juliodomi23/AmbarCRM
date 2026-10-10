@@ -70,18 +70,25 @@ export async function movimientoCaja(
 }
 
 async function totalesTurno(tx: Prisma.TransactionClient, turnoId: bigint) {
-  const [turno, ventas, movimientos] = await Promise.all([
+  const [turno, ventasTurno, movimientos] = await Promise.all([
     tx.turnoCaja.findUnique({
       where: { id: turnoId },
       include: { caja: true, usuario: { select: { id: true, nombre: true } } },
     }),
     tx.venta.findMany({
       where: { turnoId },
-      select: { id: true, estado: true, total: true, cambio: true, pagos: true },
+      select: { id: true, estado: true, total: true, cambio: true, pagos: true, sinRed: true, subidaAt: true },
     }),
     tx.movimientoCaja.findMany({ where: { turnoId } }),
   ]);
   if (!turno) throw new ErrorCaja("Turno no encontrado", 404);
+  let ventas = ventasTurno;
+  // Las ventas sin internet que llegan DESPUÉS del corte Z no reescriben ese corte: ya se contó el cajón.
+  const tardias = turno.cerradoAt
+    ? ventas.filter((venta) => venta.sinRed && venta.subidaAt !== null && venta.subidaAt > turno.cerradoAt!)
+    : [];
+  const idsTardias = new Set(tardias.map((venta) => venta.id));
+  ventas = ventas.filter((venta) => !idsTardias.has(venta.id));
   const ventasVigentes = ventas.filter((venta) => venta.estado !== "cancelada");
   const ventasTotal = ventasVigentes.reduce((suma, venta) => suma.plus(venta.total), CERO_DECIMAL);
   const efectivoCobrado = ventas.reduce(
@@ -91,7 +98,16 @@ async function totalesTurno(tx: Prisma.TransactionClient, turnoId: bigint) {
   const entradas = movimientos.filter((m) => m.tipo === "entrada").reduce((suma, m) => suma.plus(m.monto), CERO_DECIMAL);
   const salidas = movimientos.filter((m) => m.tipo === "salida").reduce((suma, m) => suma.plus(m.monto), CERO_DECIMAL);
   const efectivoEsperado = turno.fondoInicial.plus(efectivoCobrado).plus(entradas).minus(salidas);
-  return { turno, ventasTotal, efectivoCobrado, entradas, salidas, efectivoEsperado, ventas: ventasVigentes.length };
+  const tardiasVigentes = tardias.filter((venta) => venta.estado !== "cancelada");
+  const tardiasInfo = {
+    ventas: tardiasVigentes.length,
+    total: tardiasVigentes.reduce((suma, venta) => suma.plus(venta.total), CERO_DECIMAL),
+    efectivo: tardiasVigentes.reduce(
+      (suma, venta) => suma.plus(venta.pagos.find((pago) => pago.metodo === "efectivo")?.monto ?? 0).minus(venta.cambio),
+      CERO_DECIMAL,
+    ),
+  };
+  return { turno, ventasTotal, efectivoCobrado, entradas, salidas, efectivoEsperado, ventas: ventasVigentes.length, tardias: tardiasInfo };
 }
 
 async function notasCreditoBloqueadas(tx: Prisma.TransactionClient, contactoId: bigint) {

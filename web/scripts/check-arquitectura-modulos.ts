@@ -9,7 +9,7 @@ for (const ruta of rutas) {
   const contenido = await readFile(new URL(ruta.replaceAll("\\", "/"), raizApi), "utf8");
   if (contenido.includes("conModulo(")) rutasConModulo.push(ruta);
 }
-assert.equal(rutasConModulo.length, 81, "deben existir 81 rutas de módulos con conModulo (80 previas + catálogo de caja)");
+assert.equal(rutasConModulo.length, 82, "deben existir 82 rutas de módulos con conModulo (81 previas + subida sin internet)");
 
 // Cada módulo de listado debe permitir capturar desde la pantalla, no solo por API.
 for (const pagina of [

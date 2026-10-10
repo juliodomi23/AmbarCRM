@@ -872,6 +872,15 @@ model Venta {
   notas            String?
   stockAplicado    Boolean   @default(false) @map("stock_aplicado")
   esCredito        Boolean   @default(false) @map("es_credito")
+  sinRed           Boolean   @default(false) @map("sin_red")
+  vendidaAt        DateTime? @map("vendida_at")
+  subidaAt         DateTime? @map("subida_at")
+  turnoOriginalId  BigInt?   @map("turno_original_id")
+  revisionMotivos  String[]  @default([]) @map("revision_motivos")
+  diferenciaPrecio Decimal?  @map("diferencia_precio") @db.Decimal(12, 2)
+  catalogoVersion  String?   @map("catalogo_version")
+  revisionResueltaAt  DateTime? @map("revision_resuelta_at")
+  revisionResueltaPor BigInt?   @map("revision_resuelta_por")
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
 
@@ -1372,6 +1381,7 @@ model MovimientoInventario {
   existenciaAntes   Decimal  @map("existencia_antes") @db.Decimal(12, 3)
   existenciaDespues Decimal  @map("existencia_despues") @db.Decimal(12, 3)
   motivo            String?
+  sinRed            Boolean  @default(false) @map("sin_red")
   createdAt         DateTime @default(now()) @map("created_at")
 
   producto Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
@@ -1854,4 +1864,23 @@ model SolicitudResena {
 
   @@index([orgId, contactoId, createdAt])
   @@map("solicitudes_resena")
+}
+
+model ColaCajaRechazo {
+  id          BigInt    @id @default(autoincrement())
+  orgId       BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  uuidCliente String    @map("uuid_cliente")
+  usuarioId   BigInt?   @map("usuario_id")
+  turnoId     BigInt?   @map("turno_id")
+  codigo      String?
+  motivo      String
+  payload     Json
+  vendidaAt   DateTime? @map("vendida_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  resueltaAt  DateTime? @map("resuelta_at")
+  resueltaPor BigInt?   @map("resuelta_por")
+
+  @@unique([orgId, uuidCliente])
+  @@index([orgId, createdAt])
+  @@map("cola_caja_rechazos")
 }

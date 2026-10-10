@@ -1468,3 +1468,52 @@ DO $$ DECLARE t TEXT; BEGIN
 END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON resenas, solicitudes_resena TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+-- A5 · Ventas sin internet (opcional por empresa: caja.config.ventasSinRed).
+-- sin_red: la venta llegó por la cola local. vendida_at: instante real (reloj de la caja); created_at = vendida_at.
+-- revision_motivos: precio_distinto | tardia | inventario_negativo. turno_original_id: turno de origen cuando
+-- la venta entró al turno abierto actual porque el original ya estaba cerrado antes de la venta.
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS sin_red BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS vendida_at TIMESTAMPTZ;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS subida_at TIMESTAMPTZ;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS turno_original_id BIGINT REFERENCES turnos_caja(id) ON DELETE SET NULL;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS revision_motivos TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS diferencia_precio NUMERIC(12,2);
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS catalogo_version TEXT;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS revision_resuelta_at TIMESTAMPTZ;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS revision_resuelta_por BIGINT REFERENCES usuarios(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS ventas_revision_idx ON ventas(org_id, created_at)
+  WHERE sin_red AND revision_resuelta_at IS NULL AND cardinality(revision_motivos) > 0;
+ALTER TABLE movimientos_inventario ADD COLUMN IF NOT EXISTS sin_red BOOLEAN NOT NULL DEFAULT false;
+
+-- Ventas sin internet que el servidor rechazó (4xx definitivo): la caja las marca con error y aquí queda el
+-- registro completo para que el Encargado decida. UNIQUE por uuid: reenviar no duplica el rechazo.
+CREATE TABLE IF NOT EXISTS cola_caja_rechazos (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  uuid_cliente TEXT NOT NULL,
+  usuario_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  turno_id BIGINT REFERENCES turnos_caja(id) ON DELETE SET NULL,
+  codigo TEXT,
+  motivo TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  vendida_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  resuelta_at TIMESTAMPTZ,
+  resuelta_por BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  UNIQUE (org_id, uuid_cliente)
+);
+CREATE INDEX IF NOT EXISTS cola_caja_rechazos_pendientes_idx ON cola_caja_rechazos(org_id, created_at) WHERE resuelta_at IS NULL;
+
+DO $$ DECLARE t TEXT; BEGIN
+  FOREACH t IN ARRAY ARRAY['cola_caja_rechazos'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format(
+      'CREATE POLICY org_isolation ON %I USING (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint) WITH CHECK (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint)',
+      t
+    );
+  END LOOP;
+END $$;
+GRANT SELECT, INSERT, UPDATE, DELETE ON cola_caja_rechazos TO crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;

@@ -12,6 +12,7 @@ import { Boton, formatoMoneda } from "@/components/ui";
 import { almacenIndexedDB } from "@/lib/caja-offline/almacen";
 import { calcularLineaLocal, horasDeCatalogo, leerCatalogoLocal, sincronizarCatalogo, type CatalogoLocal } from "@/lib/caja-offline/catalogo";
 import type { ProductoCatalogoCaja } from "@/lib/caja-offline/tipos";
+import { descartarVenta, encolarVenta, folioSinRed, listarCola, reintentarVenta, subirCola, type VentaEnCola } from "@/lib/caja-offline/cola";
 
 type Caja = { id: string; nombre: string; sucursal: string | null };
 type Turno = {
@@ -42,12 +43,14 @@ type ContactoBusqueda = { id: string; nombre: string; detalle: string };
 const dinero = (valor: string) => Number(valor || 0);
 const normalizar = (valor: string) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
+class ErrorRed extends Error {}
+
 async function api(url: string, method = "GET", body?: unknown) {
   const respuesta = await fetch(url, {
     method,
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
-  });
+  }).catch(() => { throw new ErrorRed("Esta acción necesita internet"); });
   const payload = await respuesta.json().catch(() => ({}));
   if (!respuesta.ok) throw new Error(payload.error ?? "No se pudo completar la operación");
   return payload;
@@ -100,6 +103,9 @@ export function CajaCliente({
   const [catalogoLocal, setCatalogoLocal] = useState<CatalogoLocal | null>(null);
   const [enLinea, setEnLinea] = useState(true);
   const [modoSinRed, setModoSinRed] = useState(ventasSinRed);
+  const [cola, setCola] = useState<VentaEnCola[]>([]);
+  const [sesionCaducada, setSesionCaducada] = useState(false);
+  const [ventaLocal, setVentaLocal] = useState<VentaEnCola | null>(null);
 
   useEffect(() => {
     if (!ventasSinRed) return;
@@ -126,6 +132,38 @@ export function CajaCliente({
       window.clearInterval(intervalo);
     };
   }, [ventasSinRed, identidad]);
+
+  useEffect(() => {
+    if (!ventasSinRed) return;
+    const almacen = almacenIndexedDB();
+    let activo = true;
+    const refrescar = async () => { const lista = await listarCola(almacen, identidad); if (activo) setCola(lista); };
+    const subir = async () => {
+      if (!navigator.onLine) return;
+      const ejecutar = async () => {
+        const resultado = await subirCola(almacen, identidad);
+        await refrescar();
+        if (!activo) return;
+        setSesionCaducada(resultado.estado === "sesion");
+        if (resultado.estado === "apagado") setModoSinRed(false);
+        if (resultado.subidas > 0) { toast(`${resultado.subidas} venta(s) hechas sin internet ya se subieron`); router.refresh(); }
+      };
+      if (navigator.locks) await navigator.locks.request("ambar-caja-subida", { ifAvailable: true }, async (candado) => { if (candado) await ejecutar(); });
+      else await ejecutar();
+    };
+    void refrescar().then(subir);
+    const alVolver = () => void subir();
+    window.addEventListener("online", alVolver);
+    const intervalo = window.setInterval(() => void subir(), 30_000);
+    const alEncolar = () => void refrescar();
+    window.addEventListener("ambar-cola-cambio", alEncolar);
+    return () => {
+      activo = false;
+      window.removeEventListener("online", alVolver);
+      window.removeEventListener("ambar-cola-cambio", alEncolar);
+      window.clearInterval(intervalo);
+    };
+  }, [ventasSinRed, identidad, router]);
 
   const productosCaja = useMemo(
     () => (catalogoLocal ? catalogoLocal.catalogo.productos.map(aProductoRetail) : productos),
@@ -187,15 +225,6 @@ export function CajaCliente({
       abortar.abort();
     };
   }, [busquedaContacto, contactoId]);
-  useEffect(() => {
-    const tecla = (evento: KeyboardEvent) => {
-      if (evento.key === "F2") { evento.preventDefault(); void cobrar(); }
-      if (evento.key === "F4") { evento.preventDefault(); busquedaRef.current?.focus(); }
-      if (evento.key === "Escape" && lineas.length) setLineas((actual) => actual.slice(0, -1));
-    };
-    window.addEventListener("keydown", tecla);
-    return () => window.removeEventListener("keydown", tecla);
-  });
 
   function agregar(producto: ProductoRetail) {
     let cantidad = "1";
@@ -243,8 +272,57 @@ export function CajaCliente({
     catch (error) { toast((error as Error).message, "error"); }
   }
 
+  async function cobrarSinRed() {
+    if (!turno || !catalogoLocal) {
+      toast("Sin internet: conéctate una vez para descargar el catálogo", "error");
+      return;
+    }
+    if (contactoId) return toast("Sin internet no se puede vender a un cliente: quítalo de la venta", "error");
+    if (dinero(pagos.nota_credito) > 0) return toast("Sin internet no se aceptan notas de crédito", "error");
+    const baseTrasPromocion = subtotal - descuentoPromociones;
+    const manual = descuentoLineas - descuentoPromociones + dinero(descuento);
+    const porcentaje = baseTrasPromocion > 0 ? (manual * 100) / baseTrasPromocion : 0;
+    if (!catalogoLocal.sinTopeDescuento && porcentaje > catalogoLocal.catalogo.descuentoMaximo) {
+      return toast(`Sin internet el descuento no puede pasar de ${catalogoLocal.catalogo.descuentoMaximo}%`, "error");
+    }
+    if (pagado < total) return toast("El pago no cubre el total", "error");
+    const registro: VentaEnCola = {
+      uuidCliente: uuid,
+      folio: folioSinRed(uuid),
+      identidad,
+      turnoId: turno.id,
+      vendidaAt: new Date().toISOString(),
+      partidas: lineas.map((linea, indice) => ({
+        productoId: linea.producto.id,
+        nombre: linea.producto.nombre,
+        cantidad: linea.cantidad,
+        descuento: linea.descuento || "0",
+        precioUnitario: calculoLineas?.[indice]?.precioUnitario ?? String(linea.producto.precio),
+        total: calculoLineas?.[indice]?.total ?? (Number(linea.producto.precio) * Number(linea.cantidad)).toFixed(2),
+      })),
+      pagos: (["efectivo", "tarjeta", "transferencia"] as const)
+        .filter((metodo) => dinero(pagos[metodo]) > 0)
+        .map((metodo) => ({ metodo, monto: pagos[metodo] })),
+      descuento: descuento || "0",
+      totalCobrado: total.toFixed(2),
+      cambio: cambio.toFixed(2),
+      catalogoVersion: catalogoLocal.catalogo.version,
+      estado: "pendiente",
+      intentos: 0,
+      proximoIntentoAt: null,
+      ultimoError: null,
+      codigo: null,
+    };
+    await encolarVenta(almacenIndexedDB(), registro);
+    window.dispatchEvent(new Event("ambar-cola-cambio"));
+    setVentaLocal(registro);
+    limpiarVenta();
+    toast(`Venta ${registro.folio} guardada sin internet; se subirá al volver la conexión`);
+  }
+
   async function cobrar() {
     if (!turno || lineas.length === 0 || ocupado) return;
+    if (modoSinRed && !navigator.onLine) return cobrarSinRed();
     setOcupado(true);
     try {
       const data = await api("/api/caja/ventas", "POST", {
@@ -255,10 +333,13 @@ export function CajaCliente({
         partidas: lineas.map((linea) => ({ productoId: linea.producto.id, cantidad: linea.cantidad, descuento: linea.descuento })),
         pagos: Object.entries(pagos).filter(([, monto]) => dinero(monto) > 0).map(([metodo, monto]) => ({ metodo, monto })),
       });
-      setVenta(data.venta); limpiarVenta();
+      setVenta(data.venta); setVentaLocal(null); limpiarVenta();
       toast(data.repetida ? "La venta ya estaba registrada" : `Venta ${data.venta.folio} cobrada`);
       router.refresh();
-    } catch (error) { toast((error as Error).message, "error"); }
+    } catch (error) {
+      if (modoSinRed && error instanceof ErrorRed) { setOcupado(false); return cobrarSinRed(); }
+      toast((error as Error).message, "error");
+    }
     finally { setOcupado(false); }
   }
 
@@ -297,6 +378,7 @@ export function CajaCliente({
 
   async function cerrarTurno() {
     if (!turno) return;
+    if (cola.length > 0) return toast(`Hay ${cola.length} venta(s) sin subir: espera a que se suban antes del corte Z`, "error");
     const efectivoContado = window.prompt("Efectivo contado para el corte Z", String(corte?.efectivoEsperado ?? ""));
     if (efectivoContado === null) return;
     try {
@@ -313,6 +395,16 @@ export function CajaCliente({
     try { await api("/api/caja/movimientos", "POST", { turnoId: turno.id, tipo, monto, motivo }); toast("Movimiento registrado"); void verCorte(); }
     catch (error) { toast((error as Error).message, "error"); }
   }
+
+  useEffect(() => {
+    const tecla = (evento: KeyboardEvent) => {
+      if (evento.key === "F2") { evento.preventDefault(); void cobrar(); }
+      if (evento.key === "F4") { evento.preventDefault(); busquedaRef.current?.focus(); }
+      if (evento.key === "Escape" && lineas.length) setLineas((actual) => actual.slice(0, -1));
+    };
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  });
 
   if (!turno) return (
     <div className="mx-auto max-w-3xl space-y-5 p-4 md:p-6">
@@ -345,15 +437,37 @@ export function CajaCliente({
           <label className="block text-xs">Descuento general $ <span className="text-muted-foreground">(Cajero hasta {descuentoMaximo}%)</span><input type="number" min="0" step="0.01" value={descuento} onChange={(e) => setDescuento(e.target.value)} className="mt-1 w-full rounded border p-2" /></label>
           <div className="space-y-2"><p className="text-xs font-semibold uppercase text-muted-foreground">Cobro mixto</p>{(["efectivo", "tarjeta", "transferencia", "nota_credito"] as const).map((metodo) => <label key={metodo} className="grid grid-cols-[1fr_130px] items-center text-sm capitalize"><span>{metodo.replace("_", " ")}</span><input type="number" min="0" step="0.01" value={pagos[metodo]} disabled={metodo === "nota_credito" && !contactoId} onChange={(e) => setPagos({ ...pagos, [metodo]: e.target.value })} className="rounded border p-2 text-right disabled:opacity-50" /></label>)}<div className="flex flex-wrap gap-1">{[50,100,200,500,1000].map((billete) => <button key={billete} onClick={() => setPagos({ ...pagos, efectivo: String(billete) })} className="rounded bg-muted px-2 py-1 text-xs">${billete}</button>)}</div></div>
           <div className="border-t pt-3 text-sm"><p className="flex justify-between"><span>Subtotal</span><span>{formatoMoneda(subtotal)}</span></p><p className="flex justify-between"><span>Pagado</span><span>{formatoMoneda(pagado)}</span></p><p className="flex justify-between text-base font-bold"><span>Total</span><span>{formatoMoneda(total)}</span></p><p className="flex justify-between text-success"><span>Cambio</span><span>{formatoMoneda(cambio)}</span></p></div>
-          <div className="grid grid-cols-3 gap-2"><Boton className="py-3" disabled={!lineas.length || pagado < total || ocupado} onClick={cobrar}>Cobrar (F2)</Boton><Boton variante="ghost" disabled={!lineas.length || !contactoId || ocupado} onClick={apartar}>Apartar</Boton><Boton variante="ghost" disabled={!lineas.length || !contactoId || ocupado} onClick={venderCredito}>A crédito</Boton></div>
+          <div className="grid grid-cols-3 gap-2"><Boton className="py-3" disabled={!lineas.length || pagado < total || ocupado} onClick={cobrar}>Cobrar (F2)</Boton><Boton variante="ghost" disabled={!lineas.length || !contactoId || ocupado || (modoSinRed && !enLinea)} onClick={apartar}>Apartar</Boton><Boton variante="ghost" disabled={!lineas.length || !contactoId || ocupado || (modoSinRed && !enLinea)} onClick={venderCredito}>A crédito</Boton></div>
         </aside>
       </div>
       {corte && <section className="surface grid gap-2 p-4 text-sm sm:grid-cols-3"><strong className="sm:col-span-3">Corte {turno ? "X" : "Z"}</strong><span>{corte.ventas} ventas · {formatoMoneda(corte.ventasTotal)}</span><span>Efectivo cobrado {formatoMoneda(corte.efectivoCobrado)}</span><span>Esperado {formatoMoneda(corte.efectivoEsperado)}</span><span>Entradas {formatoMoneda(corte.entradas)}</span><span>Salidas {formatoMoneda(corte.salidas)}</span>{corte.diferencia !== undefined && <b>Diferencia {formatoMoneda(corte.diferencia)}</b>}</section>}
+      {modoSinRed && <PanelCola cola={cola} sesionCaducada={sesionCaducada} identidad={identidad} />}
+      {ventaLocal && <section className="surface p-4 text-sm"><strong>{ventaLocal.folio}</strong><p className="text-amber-700">Guardada sin internet · total {formatoMoneda(Number(ventaLocal.totalCobrado))}. Se subirá sola al volver la conexión.</p></section>}
       {venta && <section className="surface space-y-3 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><strong>{venta.folio}</strong><p className="text-sm text-success">Venta registrada</p></div><AbrirTicket ventaId={venta.id}>Imprimir / reimprimir ticket</AbrirTicket></div>{venta.contacto && <TarjetaLealtad contactoId={venta.contacto.id} />}</section>}
       <OperacionesCajaA2 turnoId={turno.id} contactoId={contactoId} puedeConfigurarCredito={usuario.rol === "admin" || normalizar(usuario.puesto) === "encargado de tienda"} />
       <p className="text-xs text-muted-foreground">Perfil: {usuario.puesto}{usuario.rol === "admin" ? " · Admin" : ""}</p>
     </div>
   );
+}
+
+function PanelCola({ cola, sesionCaducada, identidad }: { cola: VentaEnCola[]; sesionCaducada: boolean; identidad: { orgId: string; userId: string } }) {
+  if (cola.length === 0 && !sesionCaducada) return null;
+  const refrescar = () => window.dispatchEvent(new Event("ambar-cola-cambio"));
+  return <section className="surface space-y-2 border-amber-500 p-4 text-sm">
+    <h2 className="font-bold">Ventas hechas sin internet · {cola.length} por subir</h2>
+    {sesionCaducada && <p className="text-red-700">Tu sesión caducó: <Link className="underline" href="/login">inicia sesión</Link> para subirlas. Se conservan en este equipo.</p>}
+    {cola.map((venta) => <div key={venta.uuidCliente} className="flex flex-wrap items-center justify-between gap-2 border-t pt-2">
+      <span><b>{venta.folio}</b> · {formatoMoneda(Number(venta.totalCobrado))} · {new Date(venta.vendidaAt).toLocaleString("es-MX")}</span>
+      <span className={venta.estado === "error" ? "text-red-700" : "text-muted-foreground"}>
+        {venta.estado === "error" ? `Error: ${venta.ultimoError} (avisa al Encargado)` : venta.estado === "esperando_turno" ? "Abre turno para subirla" : venta.intentos ? `Reintentando (${venta.intentos})` : "En espera"}
+      </span>
+      {venta.estado === "error" && <span className="flex gap-2">
+        <button className="underline" onClick={async () => { await reintentarVenta(almacenIndexedDB(), venta); refrescar(); }}>Reintentar</button>
+        <button className="underline" onClick={async () => { if (window.confirm(`¿Descartar ${venta.folio}? El rechazo queda registrado para el Encargado.`)) { await descartarVenta(almacenIndexedDB(), venta); refrescar(); } }}>Descartar</button>
+      </span>}
+    </div>)}
+    <p className="text-xs text-muted-foreground">Cuenta {identidad.userId}</p>
+  </section>;
 }
 
 function EstadoSinRed({ enLinea, catalogo }: { enLinea: boolean; catalogo: CatalogoLocal | null }) {
