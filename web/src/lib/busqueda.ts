@@ -24,3 +24,26 @@ export async function contactosQueCoinciden(q: string, limite: number): Promise<
   ]);
   return filas.map((fila) => fila.id);
 }
+
+/**
+ * Ids de productos activos de la empresa actual cuyo nombre, SKU o categoría contiene `q`
+ * (sin acentos ni mayúsculas). Sin `q` devuelve los primeros por nombre.
+ */
+export async function productosQueCoinciden(q: string, limite: number): Promise<bigint[]> {
+  const org = await orgActual();
+  if (org == null) return [];
+  const patron = patronLike(q);
+  const [, filas] = await dbRaw.$transaction([
+    dbRaw.$executeRaw`SELECT set_config('app.current_org', ${String(org)}, true)`,
+    dbRaw.$queryRaw<{ id: bigint }[]>`
+      SELECT id FROM productos
+      WHERE activo
+        AND (${q} = ''
+             OR unaccent(nombre) ILIKE unaccent(${patron})
+             OR coalesce(sku, '') ILIKE ${patron}
+             OR unaccent(coalesce(categoria, '')) ILIKE unaccent(${patron}))
+      ORDER BY nombre
+      LIMIT ${limite}`,
+  ]);
+  return filas.map((fila) => fila.id);
+}
