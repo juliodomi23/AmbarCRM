@@ -970,8 +970,12 @@ async function bloque5(o: string, ctx: Ctx) {
   await bot("legado", null);
   await q("UPDATE bots SET permisos = NULL WHERE api_token=$1", [token("legado")]);
   await q(bloqueE);
-  const esperados = ["leer_perfil", "enviar_mensaje", "notas_internas", "mover_embudo", "crear_tarea", "handoff", "agendar_cita", "cotizar"];
-  assert.deepEqual([...(await permisosDe("legado"))].sort(), [...esperados].sort(), "el bot existente conserva sus acciones actuales");
+  // Solo lo que sus rutas de producción permitían; tareas, citas y cotizaciones no existían allí.
+  const esperados = ["leer_perfil", "enviar_mensaje", "notas_internas", "mover_embudo", "handoff"];
+  const noRecibe = ["crear_tarea", "agendar_cita", "cotizar", "editar_oportunidad", "ver_productos", "gestionar_contactos"];
+  const migrados = await permisosDe("legado");
+  assert.deepEqual([...migrados].sort(), [...esperados].sort(), "el bot existente conserva solo sus 5 permisos");
+  for (const p of noRecibe) assert.ok(!migrados.includes(p), `el bot existente no debe recibir ${p}`);
   assert.equal(
     (await q<{ is_nullable: string }>("SELECT is_nullable FROM information_schema.columns WHERE table_name='bots' AND column_name='permisos'"))[0].is_nullable,
     "NO",
@@ -981,29 +985,47 @@ async function bloque5(o: string, ctx: Ctx) {
   await q(bloqueE);
   assert.deepEqual(await permisosDe("legado"), ["leer_perfil"]);
   await q("UPDATE bots SET permisos = ARRAY[" + esperados.map((p) => `'${p}'`).join(",") + "] WHERE api_token=$1", [token("legado")]);
-  // Comportamiento anterior intacto con el bot migrado (las 9 rutas vigentes):
+  await q(bloqueE);
+  assert.deepEqual([...(await permisosDe("legado"))].sort(), [...esperados].sort(), "tras volver a correr el bloque sigue igual");
+  // Las rutas que existían en producción siguen funcionando con el bot migrado…
   const L = await nueva(canalA);
   await q("INSERT INTO mensajes (org_id, conversacion_id, direccion, contenido) VALUES ($1,$2,'entrante','hola')", [o, L.id]);
   const dia = sumarDias(fechaLocal(new Date(), "America/Mexico_City"), 3);
   const vigentes: [string, Handler, unknown, Opciones][] = [
     ["GET conversación", getConversacion, undefined, {}],
-    ["messages", postMessages, { content: "n", private: true }, {}],
+    ["messages (nota)", postMessages, { content: "n", private: true }, {}],
     ["funnel", postFunnel, { etapa: "Nuevo" }, {}],
     ["labels", postLabels, { labels: ["x"] }, {}],
-    ["tasks", postTasks, { titulo: "t" }, {}],
-    ["availability", getDisponibilidad, undefined, { query: `?fecha=${dia}` }],
-    ["appointments GET", getCitas, undefined, {}],
-    ["quotes GET", getCotizaciones, undefined, {}],
-    ["quotes POST", postCotizaciones, { partidas: [{ concepto: "x", cantidad: 1, precio: 10 }] }, {}],
   ];
   for (const [nombre, handler, cuerpo, opciones] of vigentes) {
     const r = await llamar(handler, token("legado"), L.id, cuerpo, opciones);
     assert.notEqual(r.status, 403, `${nombre} con el bot migrado`);
     assert.ok(r.status < 500, `${nombre}: ${r.status}`);
   }
-  // …y no hereda las rutas nuevas:
-  assert.equal((await llamar(getProductos, token("legado"), L.id)).status, 403);
-  assert.equal((await llamar(getContactos, token("legado"), L.id, undefined, { query: "?phone=5599999999" })).status, 403);
+  // …y lo que no existía en producción queda apagado hasta que se contrate (403 permiso_faltante).
+  const apagadas: [string, Handler, unknown, Opciones, string][] = [
+    ["tasks", postTasks, { titulo: "t" }, {}, "crear_tarea"],
+    ["availability", getDisponibilidad, undefined, { query: `?fecha=${dia}` }, "agendar_cita"],
+    ["appointments GET", getCitas, undefined, {}, "agendar_cita"],
+    ["appointments POST", postCitas, { fecha: dia, hora: "09:00", servicioId: 1 }, {}, "agendar_cita"],
+    ["quotes GET", getCotizaciones, undefined, {}, "cotizar"],
+    ["quotes POST", postCotizaciones, { partidas: [{ concepto: "x", cantidad: 1, precio: 10 }] }, {}, "cotizar"],
+    ["products", getProductos, undefined, {}, "ver_productos"],
+    ["contacts", getContactos, undefined, { query: "?phone=5599999999" }, "gestionar_contactos"],
+    ["opportunity", patchOportunidad, { valor: 1 }, { metodo: "PATCH" }, "editar_oportunidad"],
+  ];
+  for (const [nombre, handler, cuerpo, opciones, permiso] of apagadas) {
+    const r = await llamar(handler, token("legado"), L.id, cuerpo, opciones);
+    assert.equal(r.status, 403, `${nombre} con el bot migrado`);
+    assert.equal((await r.json()).permiso, permiso, nombre);
+  }
+  // El admin activa tareas, citas y cotizaciones para el cliente que las contrate; queda funcionando.
+  await q("UPDATE bots SET permisos = permisos || ARRAY['crear_tarea','agendar_cita','cotizar']::text[] WHERE api_token=$1", [token("legado")]);
+  for (const [nombre, handler, cuerpo, opciones] of apagadas.slice(0, 6)) {
+    const r = await llamar(handler, token("legado"), L.id, cuerpo, opciones);
+    assert.notEqual(r.status, 403, `${nombre} tras activar el permiso`);
+    assert.ok(r.status < 500, `${nombre}: ${r.status}`);
+  }
 
   // ---------- 4B. Productos ----------
   await modulo("productos", true);

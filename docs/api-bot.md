@@ -31,9 +31,12 @@ Límites (en memoria de cada instancia del CRM; con varias instancias, mover el 
 Cada bot tiene una lista de permisos (Configuración → Bots → casillas, o `PATCH /api/bots/:id {"permisos": [...]}`).
 `conBot(req, "<permiso>", …)` lo comprueba antes de ejecutar la ruta; la comprobación del canal (`botAutorizado`)
 sigue aplicando aparte. Un bot **nuevo** nace con `leer_perfil`, `enviar_mensaje`, `notas_internas` y `handoff`.
-Los bots que ya existían al migrar conservaron lo que hacían: `leer_perfil`, `enviar_mensaje`, `notas_internas`,
-`mover_embudo`, `crear_tarea`, `handoff`, `agendar_cita` y `cotizar`; **no** reciben `editar_oportunidad`,
-`ver_productos` ni `gestionar_contactos` hasta que el admin los active.
+Los bots que ya existían al migrar conservan **solo lo que sus rutas de producción les permitían**:
+`leer_perfil`, `enviar_mensaje`, `notas_internas`, `mover_embudo` y `handoff`. **No** reciben `crear_tarea`,
+`agendar_cita`, `cotizar`, `editar_oportunidad`, `ver_productos` ni `gestionar_contactos`: esas rutas no
+existían en producción y el admin las activa por cliente (Configuración → Bots → casillas, o
+`PATCH /api/bots/:id`; ver [despliegue-bot.md](despliegue-bot.md)). Mientras no estén activas responden
+`403 permiso_faltante`.
 
 | Permiso | Rutas |
 |---|---|

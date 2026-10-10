@@ -1275,11 +1275,12 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
 -- E · Permisos por bot.
 ALTER TABLE bots ADD COLUMN IF NOT EXISTS permisos TEXT[];
--- Los bots que ya existen conservan lo que hacen hoy (acciones de las rutas vigentes).
+-- Los bots que ya existen conservan solo lo que sus rutas de producción les permitían: leer la
+-- conversación, responder, dejar notas, mover la etapa y handoff/etiquetas. Tareas, citas y
+-- cotizaciones no existían en producción y se activan después, por cliente.
 -- Solo toca filas con permisos NULL: volver a correr el archivo no pisa lo que el admin edite.
 UPDATE bots
-   SET permisos = ARRAY['leer_perfil', 'enviar_mensaje', 'notas_internas', 'mover_embudo',
-                        'crear_tarea', 'handoff', 'agendar_cita', 'cotizar']
+   SET permisos = ARRAY['leer_perfil', 'enviar_mensaje', 'notas_internas', 'mover_embudo', 'handoff']
  WHERE permisos IS NULL;
 -- Los bots nuevos nacen con el conjunto mínimo.
 ALTER TABLE bots ALTER COLUMN permisos SET DEFAULT ARRAY['leer_perfil', 'enviar_mensaje', 'notas_internas', 'handoff'];
