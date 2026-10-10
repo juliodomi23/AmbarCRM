@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ accountId
     // Las notas internas no se incluyen: el bot podría citarlas al cliente.
     const recientes = await db.mensaje.findMany({
       where: { conversacionId: conv.id, interna: false },
-      orderBy: { timestamp: "desc" },
+      orderBy: [{ timestamp: "desc" }, { id: "desc" }],
       take: 20
     });
     const oportunidad = await oportunidadAbierta(conv.contactoId);
