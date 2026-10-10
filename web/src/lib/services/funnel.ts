@@ -10,7 +10,7 @@ async function embudoPrincipal() {
 }
 
 /** La oportunidad abierta más reciente de un contacto (la que el bot manipula). */
-function oportunidadAbierta(contactoId: bigint) {
+export function oportunidadAbierta(contactoId: bigint) {
   return db.oportunidad.findFirst({
     where: { contactoId, estado: "abierto" },
     orderBy: { createdAt: "desc" }
