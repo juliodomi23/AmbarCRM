@@ -22,6 +22,9 @@ no se toca ni se despliega hasta que Meta apruebe la App Review.
 | **Fix de A4 (envío)** | ✅ | 75bc943 |
 | **D · reseñas de Google** | ✅ | b9ac2f6, bc91dcd, 64a5eb4 |
 | **A5 · modo sin internet** | ✅ | 50a958d, f7893a3, e62d069, 012eb0d |
+| **Pendientes menores del bot** (firma V2, round-robin sin Cajeros, `bot_on`) | ✅ | cc7b961, 91a930e, 42bc22a, f1c49e2 |
+| **Fixes de la revisión final** (CHECK de inventario negativo, CSV con negativos, matcher del proxy) | ✅ | a660486, bc11178, 2cdde94, a4379f7 |
+| **Fixes de cierre** (tours con Decimal, secreto de Aurum en header, prueba del bot determinista) | ✅ | e065f08, f6ac475, 1cad9e2 |
 | **Revisión final + despliegue** | ⏳ (despliegue espera a Meta) | — |
 
 Estado de pruebas en b1a36d0 (BD desechable): tsc, eslint y build OK; `actualizaciones.sql` 3 veces OK;
@@ -142,6 +145,14 @@ Especificación en `PLAN-MODULOS-FASE-2.md` §A5. Reglas clave:
 | `test-lealtad-aurum.ts` | Necesita un Aurum de pruebas real | Correrlo antes de desplegar |
 
 ### 3.5 Revisión final y despliegue (después de D y A5)
+
+> La BD de producción se armó con `schema.sql`: las pruebas finales y el ensayo de migración deben usar ese mismo camino, no `db push`.
+> (Con `db push` no existen los `CHECK` de `actualizaciones.sql` —así se escapó el de inventario negativo de A5— y las fechas son `timestamp(3)` en vez de `timestamptz`.)
+
+Estado de la revisión del diff (`modulos-fase-2` contra `meta-tech-provider`): hecha. Hallazgos y resolución:
+bloqueante de inventario negativo ✅ (a660486), CSV ✅ (bc11178), matcher del proxy ✅ (2cdde94),
+dinero de tours con `Decimal` ✅ (e065f08), secreto de Aurum por header ✅ (f6ac475). Queda para el
+despliegue verificar `IP_HEADER` (paso 4) y correr el ensayo con un dump real (paso 2).
 
 1. Revisar todo `modulos-fase-2` contra `meta-tech-provider` (diff completo, con atención a
    multi-tenant, dinero y rutas públicas).
