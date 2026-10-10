@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { destinoPublico, esIpInterna, validarWebhookUrl } from "../src/lib/webhook-url.ts";
 import { orgDeArchivo } from "../src/lib/media-nombre.ts";
 import { ipCliente, permitido } from "../src/lib/rate-limit.ts";
@@ -50,3 +50,22 @@ assert.match(importar, /status: 413/);
 assert.match(enviar, /MAX_BASE64/);
 
 console.log("seguridad: SSRF, archivos por empresa, límites e intentos OK");
+
+// API del bot: toda ruta /api/v1 entra por conBot (autentica y fija el tenant con runWithOrg).
+// Sin él las consultas no ven datos (RLS), y nadie debe volver a fijar el tenant con setOrg/enterWith.
+async function rutasV1(dir: string): Promise<string[]> {
+  const entradas = await readdir(dir, { withFileTypes: true });
+  const hijos = await Promise.all(
+    entradas.map((e) => (e.isDirectory() ? rutasV1(`${dir}/${e.name}`) : e.name === "route.ts" ? [`${dir}/${e.name}`] : [])),
+  );
+  return hijos.flat();
+}
+const rutasBot = await rutasV1("src/app/api/v1");
+assert.ok(rutasBot.length >= 9, "se esperaban las rutas del bot");
+for (const ruta of rutasBot) {
+  const codigo = await readFile(ruta, "utf8");
+  assert.match(codigo, /\bconBot\(/, `${ruta}: debe usar conBot`);
+  assert.doesNotMatch(codigo, /\bsetOrg\(|\brequireBot\(|\bautenticarBot\(/, `${ruta}: no debe fijar el tenant a mano`);
+}
+console.log(`bot: ${rutasBot.length} rutas /api/v1 pasan por conBot`);
+
