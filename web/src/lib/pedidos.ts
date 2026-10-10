@@ -9,6 +9,7 @@ export type ConfigPedidos = {
   costoEnvio: Prisma.Decimal;
   maxPorTelefono: number;
   maxPorIp: number;
+  horasVencimiento: number;
   plantillaPedido: { name: string; language: string } | null;
 };
 
@@ -31,6 +32,7 @@ export function configPedidos(config: unknown): ConfigPedidos {
     costoEnvio: monto(valor.costoEnvio, "0"),
     maxPorTelefono: entero(valor.maxPorTelefono, 1, 20, 3),
     maxPorIp: entero(valor.maxPorIp, 1, 100, 10),
+    horasVencimiento: entero(valor.horasVencimiento, 1, 8760, 24),
     plantillaPedido:
       plantilla && typeof plantilla.name === "string" && typeof plantilla.language === "string"
         ? { name: plantilla.name.trim(), language: plantilla.language.trim() }

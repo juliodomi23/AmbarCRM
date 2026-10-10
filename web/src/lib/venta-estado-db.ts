@@ -43,6 +43,13 @@ export async function cambiarEstadoVenta(
     });
     if (!actual) throw new ErrorRetail("Venta no encontrada", 404);
 
+    if (actual.canal === "tienda_en_linea" && actual.estado === "pendiente" && estado === "borrador") {
+      throw new ErrorRetail("Un pedido en línea pendiente no puede volver a borrador", 409);
+    }
+    if (actual.canal === "tienda_en_linea" && actual.estado === "cancelada" && estado !== "cancelada") {
+      throw new ErrorRetail("Un pedido cancelado no puede reactivarse", 409);
+    }
+
     if (estado === "cancelada" && actual.estado !== "cancelada") {
       const devoluciones = await tx.devolucionVenta.count({ where: { ventaOriginalId: actual.id } });
       if (devoluciones > 0) {

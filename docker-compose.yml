@@ -53,6 +53,8 @@ services:
       NEXTAUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       WA_API_KEY: ${WA_API_KEY}
+      # El proxy frontal debe sobrescribir esta cabecera; no se confía en alternativas.
+      IP_HEADER: ${IP_HEADER:-x-real-ip}
       META_APP_ID: ${META_APP_ID}
       META_APP_SECRET: ${META_APP_SECRET}
       META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN}

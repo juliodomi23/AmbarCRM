@@ -32,8 +32,8 @@ assert.equal(orgDeArchivo("../o7-1-a.jpg"), 7n);
 // Límite de intentos: por clave y por IP.
 for (let i = 0; i < 3; i++) assert.equal(permitido("prueba:ip", 3, 60_000), true);
 assert.equal(permitido("prueba:ip", 3, 60_000), false);
-assert.equal(ipCliente({ "cf-connecting-ip": "1.2.3.4", "x-forwarded-for": "9.9.9.9" }), "1.2.3.4");
-assert.equal(ipCliente({ "x-forwarded-for": "5.6.7.8, 10.0.0.1" }), "5.6.7.8");
+assert.equal(ipCliente({ "cf-connecting-ip": "1.2.3.4", "x-real-ip": "9.9.9.9" }), "9.9.9.9", "CF falsificado no cambia la IP confiable");
+assert.equal(ipCliente({ "cf-connecting-ip": "1.2.3.4" }), "desconocida");
 
 // Piezas que no deben desaparecer.
 const [media, auth, config, importar, enviar] = await Promise.all([

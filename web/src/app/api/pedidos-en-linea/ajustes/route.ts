@@ -10,7 +10,8 @@ export const PATCH = conModulo("pedidos_en_linea", { admin: true }, async (_sesi
   const costoEnvio = dinero(body.costoEnvio);
   const maxPorTelefono = Number(body.maxPorTelefono);
   const maxPorIp = Number(body.maxPorIp);
-  if (minimoCompra === null || costoEnvio === null || !Number.isInteger(maxPorTelefono) || maxPorTelefono < 1 || maxPorTelefono > 20 || !Number.isInteger(maxPorIp) || maxPorIp < 1 || maxPorIp > 100) {
+  const horasVencimiento = Number(body.horasVencimiento);
+  if (minimoCompra === null || costoEnvio === null || !Number.isInteger(maxPorTelefono) || maxPorTelefono < 1 || maxPorTelefono > 20 || !Number.isInteger(maxPorIp) || maxPorIp < 1 || maxPorIp > 100 || !Number.isInteger(horasVencimiento) || horasVencimiento < 1 || horasVencimiento > 8760) {
     return NextResponse.json({ error: "Revisa los ajustes" }, { status: 400 });
   }
   const modulo = await db.moduloOrg.findFirst({ where: { clave: "pedidos_en_linea", activo: true } });
@@ -20,12 +21,12 @@ export const PATCH = conModulo("pedidos_en_linea", { admin: true }, async (_sesi
     ...anterior,
     permiteEntrega: body.permiteEntrega === true || body.permiteEntrega === "true",
     permiteRecoger: body.permiteRecoger === true || body.permiteRecoger === "true",
-    minimoCompra, costoEnvio, maxPorTelefono, maxPorIp,
+    minimoCompra, costoEnvio, maxPorTelefono, maxPorIp, horasVencimiento,
     plantillaPedido: String(body.plantillaNombre ?? "").trim()
       ? { name: String(body.plantillaNombre).trim(), language: String(body.plantillaIdioma ?? "es_MX").trim() }
       : null,
   });
   if (!config.permiteEntrega && !config.permiteRecoger) return NextResponse.json({ error: "Activa al menos una forma de entrega" }, { status: 400 });
-  await db.moduloOrg.update({ where: { id: modulo.id }, data: { config: { ...anterior, permiteEntrega: config.permiteEntrega, permiteRecoger: config.permiteRecoger, minimoCompra: config.minimoCompra.toFixed(2), costoEnvio: config.costoEnvio.toFixed(2), maxPorTelefono, maxPorIp, plantillaPedido: config.plantillaPedido } } });
+  await db.moduloOrg.update({ where: { id: modulo.id }, data: { config: { ...anterior, permiteEntrega: config.permiteEntrega, permiteRecoger: config.permiteRecoger, minimoCompra: config.minimoCompra.toFixed(2), costoEnvio: config.costoEnvio.toFixed(2), maxPorTelefono, maxPorIp, horasVencimiento, plantillaPedido: config.plantillaPedido } } });
   return NextResponse.json({ ok: true });
 });

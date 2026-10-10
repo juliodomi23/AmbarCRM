@@ -15,6 +15,7 @@ DATABASE_URL=postgresql://usuario:password@postgres:5432/ambar_crm
 NEXTAUTH_URL=https://crm.tudominio.com
 NEXTAUTH_SECRET=<secreto-largo>
 WA_API_KEY=<secreto-para-integraciones-internas>
+IP_HEADER=x-real-ip
 
 META_APP_ID=<app-id>
 META_APP_SECRET=<app-secret>
@@ -29,6 +30,11 @@ NEXT_PUBLIC_META_GRAPH_VERSION=v26.0
 LEGAL_BUSINESS_NAME=<razon-social>
 PRIVACY_EMAIL=privacidad@tudominio.com
 ```
+
+`IP_HEADER` es la única cabecera aceptada para límites por IP. El proxy frontal debe
+sobrescribirla y eliminar cualquier valor enviado por el cliente. El compose documenta
+el contrato con `x-real-ip`; la configuración del proxy administrado por EasyPanel no
+forma parte de este repositorio.
 
 Genera la clave de cifrado una sola vez y consérvala en el gestor de secretos. Si se pierde, no podrán descifrarse los tokens ya guardados.
 

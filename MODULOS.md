@@ -132,6 +132,14 @@ continúa aunque falle una. Las pruebas principales son `scripts/check-cotizacio
 `prisma/scripts/test-concurrencia-cotizaciones.ts` y
 `prisma/scripts/test-cotizaciones-e2e.ts`.
 
+## Módulo Pedidos en línea
+
+Los pedidos web pendientes reservan existencia sin descontarla hasta su confirmación.
+`horasVencimiento` configura el plazo (24 horas por defecto, mínimo 1). El cron
+`POST /api/cron/vencer-pedidos`, protegido con `x-api-key: WA_API_KEY`, recorre todas
+las empresas, cancela los pendientes vencidos y libera sus reservas. Si una empresa
+falla, el cron continúa con las demás.
+
 ## Módulo Citas
 
 Cuando Citas está activo aparece en el menú lateral, la barra móvil y Ctrl+K. Su

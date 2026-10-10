@@ -20,11 +20,10 @@ export function permitido(clave: string, max: number, ventanaMs: number): boolea
   return true;
 }
 
-/** IP del cliente detrás de Cloudflare/EasyPanel. Solo para limitar intentos, no para autorizar. */
+/** IP que escribió el proxy confiable. Solo sirve para limitar intentos, no para autorizar. */
 export function ipCliente(headers: Record<string, string | string[] | undefined> | undefined) {
-  const valor = (nombre: string) => {
-    const v = headers?.[nombre];
-    return Array.isArray(v) ? v[0] : v;
-  };
-  return (valor("cf-connecting-ip") ?? valor("x-real-ip") ?? valor("x-forwarded-for")?.split(",")[0] ?? "desconocida").trim();
+  const configurado = (process.env.IP_HEADER ?? "x-real-ip").trim().toLowerCase();
+  const nombre = /^[a-z0-9-]+$/.test(configurado) ? configurado : "x-real-ip";
+  const valor = headers?.[nombre];
+  return (Array.isArray(valor) ? valor[0] : valor)?.trim() || "desconocida";
 }
