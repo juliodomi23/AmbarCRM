@@ -61,6 +61,7 @@ export function PanelConversacion({
   embudos,
   etiquetas = [],
   onCambio,
+  onEtiquetas,
   onRenombrar,
   onPersonal,
   onBorrada,
@@ -70,6 +71,8 @@ export function PanelConversacion({
   embudos: Embudo[];
   etiquetas?: EtiquetaDef[];
   onCambio?: () => void;
+  /** Cambiaron las etiquetas: el padre las refleja en la bandeja al instante. */
+  onEtiquetas?: (nombres: string[]) => void;
   onRenombrar?: (nombre: string) => void;
   /** Cambió el flag Personal del contacto: el padre mueve la conversación de pestaña. */
   onPersonal?: (esPersonal: boolean) => void;
@@ -331,13 +334,15 @@ export function PanelConversacion({
             return (
               <button
                 key={et.id}
-                onClick={() =>
-                  patch({
-                    etiquetas: activa
-                      ? d.etiquetas.filter((x) => x !== et.nombre)
-                      : [...d.etiquetas, et.nombre],
-                  })
-                }
+                onClick={() => {
+                  const nuevas = activa
+                    ? d.etiquetas.filter((x) => x !== et.nombre)
+                    : [...d.etiquetas, et.nombre];
+                  // Se ve al instante; patch() después confirma con lo guardado.
+                  setD({ ...d, etiquetas: nuevas });
+                  onEtiquetas?.(nuevas);
+                  void patch({ etiquetas: nuevas });
+                }}
                 className="rounded-full px-2 py-0.5 text-[10px] font-medium"
                 style={
                   activa

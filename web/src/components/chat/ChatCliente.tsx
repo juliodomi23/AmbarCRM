@@ -880,6 +880,10 @@ export function ChatCliente({
               setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, contacto: { ...c.contacto, nombre } } : c)))
             }
             onBorrada={() => quitarConversacion(seleccionada.id)}
+            onCambio={refrescarLista}
+            onEtiquetas={(nombres) =>
+              setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, etiquetas: nombres } : c)))
+            }
             onPersonal={(v) =>
               setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, esPersonal: v } : c)))
             }
@@ -944,6 +948,10 @@ export function ChatCliente({
               setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, contacto: { ...c.contacto, nombre } } : c)))
             }
             onBorrada={() => quitarConversacion(seleccionada.id)}
+            onCambio={refrescarLista}
+            onEtiquetas={(nombres) =>
+              setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, etiquetas: nombres } : c)))
+            }
             onPersonal={(v) => {
               setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, esPersonal: v } : c)));
               setPanelMovil(false);
