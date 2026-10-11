@@ -39,7 +39,7 @@ export const GIROS: GiroConfig[] = [
       { nombre: "Elena Paz", puesto: "Encargado de inventario" },
       { nombre: "Paula Vega", puesto: "Encargado de tienda" },
     ],
-    modulos: { productos: {}, compras: {}, ventas: {}, caja: {}, cotizaciones: {}, pedidos_en_linea: {}, resenas: {} },
+    modulos: { clientes: {}, productos: {}, compras: {}, ventas: {}, caja: {}, cotizaciones: {}, pedidos_en_linea: {}, resenas: {} },
   },
   {
     id: "legal",

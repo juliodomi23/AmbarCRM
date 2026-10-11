@@ -84,6 +84,11 @@ export function NavegacionDemo({ children }: { children: React.ReactNode }) {
       if (a.hasAttribute("data-demo-salir") || href === "/login") return; // salir de la demo
       e.preventDefault();
       e.stopPropagation();
+      // Páginas públicas del CRM (tienda, reservas, cotización…): son del servidor y no forman parte de la demo.
+      if (/^\/(tienda|reservar|cotizacion|opinion|caja\/ticket|privacidad|terminos|eliminacion-datos)(\/|$)/.test(href)) {
+        void fetch(href);
+        return;
+      }
       if (a.hasAttribute("download") || href.startsWith("/api/")) {
         void fetch(href); // la capa responde «En la demo esto no se guarda» (nunca sale)
         return;

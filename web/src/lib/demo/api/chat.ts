@@ -174,8 +174,3 @@ ruta("GET", "/api/meta/templates", () => ({ plantillas: [] }));
 
 // Tarjeta de lealtad (Aurum): módulo sin conexión en la demo → el componente se oculta solo.
 ruta("GET", "/api/lealtad/contacto/:id", () => new Respuesta(404, { error: "sin conexión" }));
-
-// Fichas por contacto (CitasContacto): se completan con los módulos por giro.
-ruta("GET", "/api/pacientes", () => new Respuesta(404, { error: "módulo no activo" }));
-ruta("GET", "/api/clientes", () => new Respuesta(404, { error: "módulo no activo" }));
-ruta("GET", "/api/citas", () => ({ citas: [] }));

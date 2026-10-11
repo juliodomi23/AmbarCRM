@@ -23,6 +23,7 @@ let originales: null | {
   Notification: typeof Notification | undefined;
   beacon: typeof navigator.sendBeacon | undefined;
   xhrOpen: typeof XMLHttpRequest.prototype.open;
+  open: typeof window.open;
   swRegister: ServiceWorkerContainer["register"] | undefined;
 } = null;
 
@@ -129,6 +130,7 @@ export function instalarCapa(): () => void {
       Notification: (window as any).Notification,
       beacon: navigator.sendBeacon?.bind(navigator),
       xhrOpen: XMLHttpRequest.prototype.open,
+      open: window.open,
       swRegister: navigator.serviceWorker?.register?.bind(navigator.serviceWorker),
     };
     const real = window.fetch.bind(window);
@@ -139,6 +141,15 @@ export function instalarCapa(): () => void {
       static permission = "denied";
       static requestPermission = async () => "denied";
     };
+    // Tickets, enlaces públicos…: páginas del servidor que la demo no abre.
+    window.open = ((url?: string | URL, ...resto: any[]) => {
+      const destino = url ? new URL(String(url), window.location.href) : null;
+      if (destino && destino.origin === window.location.origin) {
+        toast(MENSAJE_NO_GUARDA, "error");
+        return null;
+      }
+      return originales!.open.call(window, url, ...resto);
+    }) as typeof window.open;
     if (navigator.sendBeacon) navigator.sendBeacon = () => true;
     XMLHttpRequest.prototype.open = function (this: XMLHttpRequest, metodo: string, url: string | URL, ...resto: any[]) {
       const destino = new URL(String(url), window.location.href);
@@ -155,6 +166,7 @@ export function instalarCapa(): () => void {
     retirada = true;
     if (--usos > 0 || !originales) return;
     window.fetch = originales.fetch;
+    window.open = originales.open;
     window.EventSource = originales.EventSource;
     (window as any).Notification = originales.Notification;
     if (originales.beacon) navigator.sendBeacon = originales.beacon;

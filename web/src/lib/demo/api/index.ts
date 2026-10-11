@@ -2,6 +2,8 @@
 import "./marco";
 import "./chat";
 import "./ventas";
+import "./modulos-giro";
+import "./config";
 import { ErrorApi, Respuesta, resolver, endpointsSoportados } from "./ruteo";
 
 export { endpointsSoportados };

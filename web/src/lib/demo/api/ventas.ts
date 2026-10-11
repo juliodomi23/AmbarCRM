@@ -110,11 +110,6 @@ ruta("POST", "/api/etiquetas", ({ cuerpo }) => {
   return { ok: true, id: etiqueta.id, etiqueta };
 });
 
-ruta("GET", "/api/campos-personalizados", ({ url }) => {
-  const entidad = url.searchParams.get("entidad");
-  return { campos: almacen.datos.camposPersonalizados.filter((c) => !entidad || c.entidad === entidad) };
-});
-
 // ─── Oportunidades (embudo) ───────────────────────────────────────────────────────────────────
 function tipoDeEtapa(etapaId: string) {
   const etapa = almacen.datos.etapas.find((e) => e.id === etapaId);

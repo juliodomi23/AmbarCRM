@@ -1,5 +1,11 @@
 "use client";
 
+import { PantallaCaja } from "./pantallas/Caja";
+import { PantallaCitas } from "./pantallas/Citas";
+import { PantallaConfiguracion } from "./pantallas/Configuracion";
+import { PantallaCotizaciones } from "./pantallas/Cotizaciones";
+import { PantallaPedidos } from "./pantallas/Pedidos";
+import { PantallaProductos } from "./pantallas/Productos";
 import { PantallaChat } from "./pantallas/Chat";
 import { PantallaContactos } from "./pantallas/Contactos";
 import { PantallaEmbudos } from "./pantallas/Embudos";
@@ -20,6 +26,18 @@ export function Pantalla({ ruta }: { ruta: string }) {
       return <PantallaContactos />;
     case "/tareas":
       return <PantallaTareas />;
+    case "/citas":
+      return <PantallaCitas />;
+    case "/caja":
+      return <PantallaCaja />;
+    case "/productos":
+      return <PantallaProductos />;
+    case "/cotizaciones":
+      return <PantallaCotizaciones />;
+    case "/pedidos-en-linea":
+      return <PantallaPedidos />;
+    case "/configuracion":
+      return <PantallaConfiguracion />;
     default:
       return <PantallaNoDisponible ruta={ruta} />;
   }

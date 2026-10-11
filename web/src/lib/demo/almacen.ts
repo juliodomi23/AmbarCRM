@@ -6,21 +6,8 @@ import { PERFILES, type PerfilGiro } from "./perfiles";
 import { sembrarExtra } from "./semilla-extra";
 import type { Datos, GiroId } from "./tipos";
 
-const ZONA = "America/Mexico_City";
-
-/** Fecha a las `hora` en punto, `dias` días respecto a hoy (hora de México), como en los seeds demo. */
-export function fechaMexico(dias: number, hora: number): string {
-  const partes = Object.fromEntries(
-    new Intl.DateTimeFormat("en-CA", { timeZone: ZONA, year: "numeric", month: "2-digit", day: "2-digit" })
-      .formatToParts(new Date())
-      .map((p) => [p.type, p.value]),
-  );
-  const f = new Date(Date.UTC(Number(partes.year), Number(partes.month) - 1, Number(partes.day)));
-  f.setUTCDate(f.getUTCDate() + dias);
-  return new Date(`${f.toISOString().slice(0, 10)}T${String(hora).padStart(2, "0")}:00:00-06:00`).toISOString();
-}
-
-export const hace = (minutos: number) => new Date(Date.now() - minutos * 60_000).toISOString();
+export { fechaMexico, hace } from "./fechas";
+import { fechaMexico, hace } from "./fechas";
 
 let secuencia = 1000;
 /** Id nuevo (string numérico, como los BigInt serializados del CRM). */
@@ -184,6 +171,11 @@ export function construirDatos(giroId: GiroId): Datos {
       { id: id(), nombre: "Seguimiento", contenido: "Hola, ¿pudiste revisar la información que te compartimos? Quedo al pendiente." },
     ],
     camposPersonalizados: [],
+    ajustes: {
+      nombreNegocio: giro.marca, autoAsignar: false, bienvenidaActiva: false, bienvenidaTexto: "", crearLeadAuto: true, csatActivo: false, csatTexto: "",
+      horarioActivo: false, horarioInicio: "09:00", horarioFin: "18:00", horarioDias: [1, 2, 3, 4, 5], fueraHorarioTexto: "", autoResolverActivo: false, autoResolverHoras: 48,
+      iaPromptSistema: "",
+    },
     modulos,
     resenas: (perfil.resenas?.filas ?? []).map(([calificacion, origen, dias], i) => ({
       calificacion,

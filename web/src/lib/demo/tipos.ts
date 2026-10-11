@@ -136,6 +136,8 @@ export type Datos = {
   camposPersonalizados: CampoPersonalizadoD[];
   modulos: Record<string, ModuloD>;
   resenas: Array<{ calificacion: number; origen: string; createdAt: string }>;
+  /** Ajustes de la empresa (automatizaciones, IA…); la marca vive en `marca`. */
+  ajustes: Record<string, unknown>;
   /** Filas de los módulos por giro (citas, productos, cotizaciones…): se agregan por fase. */
   extra: Record<string, any[]>;
 };
