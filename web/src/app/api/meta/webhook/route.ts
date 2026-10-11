@@ -3,6 +3,7 @@ import { db, dbRaw, runWithOrg } from "@/lib/db";
 import { getProvider } from "@/lib/channel";
 import { ingestarEntrante } from "@/lib/services/ingest";
 import { verifyMetaWebhookSignature } from "@/lib/meta/signature";
+import { decryptMetaToken } from "@/lib/meta/credentials";
 import { normalizarHistorialCoexistence } from "@/lib/channel/cloudapi";
 
 export const dynamic = "force-dynamic";
@@ -38,25 +39,43 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ error: "verificación inválida" }, { status: 403 });
 }
 
+const firmaInvalida = () => {
+  console.warn("[meta/webhook] firma inválida: revisa META_APP_SECRET o el App Secret del canal manual");
+  return NextResponse.json({ error: "firma inválida" }, { status: 401 });
+};
+
+/** Canal conectado a mano con otra app de Meta: su webhook viene firmado con el App Secret de esa app. */
+function firmaDelCanal(config: unknown, rawBody: string, firma: string | null) {
+  const cifrado = (config as Record<string, unknown> | null)?.appSecretEncrypted;
+  if (typeof cifrado !== "string") return false;
+  try {
+    return verifyMetaWebhookSignature(rawBody, firma, decryptMetaToken(cifrado));
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
-  if (!verifyMetaWebhookSignature(rawBody, req.headers.get("x-hub-signature-256"))) {
-    console.warn("[meta/webhook] firma inválida: revisa META_APP_SECRET");
-    return NextResponse.json({ error: "firma inválida" }, { status: 401 });
-  }
+  const firma = req.headers.get("x-hub-signature-256");
+  // Con la firma global se procesa como siempre. Sin ella, solo se acepta si coincide con el
+  // App Secret del canal manual dueño del phone_number_id; nada se procesa antes de comprobarlo.
+  const firmaGlobal = verifyMetaWebhookSignature(rawBody, firma);
 
   let payload: any;
   try {
     payload = JSON.parse(rawBody);
   } catch {
-    return NextResponse.json({ error: "body inválido" }, { status: 400 });
+    return firmaGlobal ? NextResponse.json({ error: "body inválido" }, { status: 400 }) : firmaInvalida();
   }
 
   // Los eventos de cuenta sin teléfono no corresponden a una conversación y se confirman.
   const phoneId = phoneNumberId(payload);
-  // Una línea por evento: confirma en los logs si Meta está entregando webhooks.
-  console.log(`[meta/webhook] evento phone_number_id=${phoneId ?? "-"} campos=${eventFields(payload).join(",") || "-"}`);
-  if (!phoneId) return NextResponse.json({ ok: true, procesados: 0, fields: eventFields(payload) });
+  if (!phoneId) {
+    if (!firmaGlobal) return firmaInvalida();
+    console.log(`[meta/webhook] evento phone_number_id=- campos=${eventFields(payload).join(",") || "-"}`);
+    return NextResponse.json({ ok: true, procesados: 0, fields: eventFields(payload) });
+  }
 
   const result = await dbRaw.$queryRawUnsafe<{ org: bigint | null }[]>(
     "SELECT resolve_org_by_phone($1) AS org",
@@ -64,6 +83,7 @@ export async function POST(req: NextRequest) {
   );
   const orgId = result[0]?.org;
   if (orgId == null) {
+    if (!firmaGlobal) return firmaInvalida();
     // Meta reintenta webhooks no-2xx. Un número aún no persistido no debe crear una tormenta.
     console.warn(`[meta/webhook] phone_number_id desconocido: ${phoneId}`);
     return NextResponse.json({ ok: true, procesados: 0 });
@@ -77,6 +97,9 @@ export async function POST(req: NextRequest) {
       const config = (item.config || {}) as Record<string, unknown>;
       return item.instancia === phoneId || config.phoneNumberId === phoneId;
     });
+    if (!firmaGlobal && !firmaDelCanal(canal?.config, rawBody, firma)) return firmaInvalida();
+    // Una línea por evento: confirma en los logs si Meta está entregando webhooks.
+    console.log(`[meta/webhook] evento phone_number_id=${phoneId} campos=${eventFields(payload).join(",") || "-"}`);
     if (!canal) {
       console.warn(`[meta/webhook] canal no encontrado para phone_number_id=${phoneId}`);
       return NextResponse.json({ ok: true, procesados: 0 });

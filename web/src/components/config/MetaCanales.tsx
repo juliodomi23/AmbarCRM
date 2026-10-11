@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EmbeddedSignup } from "@/components/config/EmbeddedSignup";
+import { ConexionManual } from "@/components/config/ConexionManual";
 import { Boton, Campo } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import { errorDeBotones, errorDePlantilla, MAX_BOTONES, variablesDePlantilla, type BotonPlantilla } from "@/lib/meta/plantillaMeta";
@@ -115,6 +116,7 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
   return (
     <div className="max-w-2xl space-y-5">
       {vista === "canal" && <EmbeddedSignup />}
+      {vista === "canal" && <ConexionManual />}
 
       {vista === "plantillas" && canales.length === 0 && (
         <p className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
