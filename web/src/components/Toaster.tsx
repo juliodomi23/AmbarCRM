@@ -24,12 +24,12 @@ export function Toaster() {
   }, []);
 
   return (
-    <div className="fixed bottom-4 right-4 z-[60] flex flex-col gap-2">
+    <div className="pointer-events-none fixed inset-x-4 bottom-4 z-[60] flex flex-col items-end gap-2 sm:left-auto">
       {items.map((t) => (
         <div
           key={t.id}
-          role="status"
-          className={`max-w-xs rounded-lg px-4 py-2.5 text-sm text-white shadow-lg ${t.tipo === "error" ? "bg-red-600" : "bg-primary"}`}
+          role={t.tipo === "error" ? "alert" : "status"}
+          className={`animate-toast pointer-events-auto max-w-xs rounded-lg px-4 py-2.5 text-sm shadow-pop ${t.tipo === "error" ? "bg-destructive text-white" : "bg-primary text-primary-foreground"}`}
         >
           {t.msg}
         </div>

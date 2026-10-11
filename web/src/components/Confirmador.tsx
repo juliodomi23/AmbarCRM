@@ -41,8 +41,8 @@ export function Confirmador() {
   const peligro = actual.peligro ?? true;
   return (
     <div className="fixed inset-0 z-[70] grid place-items-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="confirmador-titulo" aria-describedby="confirmador-mensaje">
-      <div className="absolute inset-0 bg-foreground/40 backdrop-blur-[2px]" onClick={() => cerrar(false)} />
-      <div className="surface surface-pop relative w-full max-w-sm p-6">
+      <div className="animate-fade-in absolute inset-0 bg-foreground/40 backdrop-blur-[2px]" onClick={() => cerrar(false)} />
+      <div className="surface surface-pop animate-pop relative w-full max-w-sm p-6">
         <div className={`mb-4 grid h-11 w-11 place-items-center rounded-full ${peligro ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             {peligro ? (
@@ -55,14 +55,14 @@ export function Confirmador() {
         <h2 id="confirmador-titulo" className="text-base font-semibold text-foreground">{actual.titulo ?? "¿Estás seguro?"}</h2>
         <p id="confirmador-mensaje" className="mt-1.5 text-sm text-muted-foreground">{actual.mensaje}</p>
         <div className="mt-6 flex justify-end gap-2">
-          <button type="button" onClick={() => cerrar(false)} className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium text-foreground transition hover:bg-muted/70">
+          <button type="button" onClick={() => cerrar(false)} className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium text-foreground transition duration-150 hover:bg-muted/70 active:scale-[.98]">
             {actual.cancelar ?? "Cancelar"}
           </button>
           <button
             ref={botonConfirmar}
             type="button"
             onClick={() => cerrar(true)}
-            className={`rounded-lg px-3.5 py-2 text-sm font-medium text-white transition ${peligro ? "bg-destructive hover:bg-destructive/90" : "bg-primary hover:bg-primary/90"}`}
+            className={`rounded-lg px-3.5 py-2 text-sm font-medium transition duration-150 active:scale-[.98] ${peligro ? "bg-destructive text-white hover:bg-destructive/90" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}
           >
             {actual.confirmar ?? (peligro ? "Eliminar" : "Aceptar")}
           </button>

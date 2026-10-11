@@ -93,24 +93,49 @@
     animation: shimmer 1.6s infinite;
   }
   .stagger > * { animation: fade-up 0.34s cubic-bezier(0.22, 1, 0.36, 1) both; }
-  .stagger > *:nth-child(2) { animation-delay: .05s; }
-  .stagger > *:nth-child(3) { animation-delay: .1s; }
-  .stagger > *:nth-child(4) { animation-delay: .15s; }
-  .stagger > *:nth-child(5) { animation-delay: .2s; }
+  .stagger > *:nth-child(2) { animation-delay: .04s; }
+  .stagger > *:nth-child(3) { animation-delay: .08s; }
+  .stagger > *:nth-child(4) { animation-delay: .12s; }
+  .stagger > *:nth-child(5) { animation-delay: .16s; }
+  .stagger > *:nth-child(6) { animation-delay: .20s; }
+  .stagger > *:nth-child(n+7) { animation-delay: .24s; }
+
+  /* Tarjeta o fila que se puede abrir: se eleva apenas al pasar el cursor y al enfocarla. */
+  .surface-interactiva { transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease; }
+  .surface-interactiva:hover, .surface-interactiva:focus-within { transform: translateY(-1px); box-shadow: var(--shadow-lift); border-color: hsl(var(--primary) / 0.35); }
+
+  /* Tabla estándar: <table className="tabla">; el contenedor lleva overflow-x-auto para celular. */
+  .tabla { @apply w-full text-sm; }
+  .tabla thead th { @apply whitespace-nowrap border-b border-border/70 bg-muted/50 px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground; }
+  .tabla tbody td { @apply border-b border-border/50 px-3 py-2.5 align-middle; }
+  .tabla tbody tr { transition: background-color .15s ease; }
+  .tabla tbody tr:hover { background-color: hsl(var(--muted) / 0.55); }
+  .tabla tbody tr:last-child td { @apply border-b-0; }
+
+  /* Fila de lista (ul/li) con hover suave. */
+  .fila-lista { transition: background-color .15s ease; }
+  .fila-lista:hover { background-color: hsl(var(--muted) / 0.5); }
 }
 
 @keyframes fade-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes pop { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
 @keyframes shimmer { to { transform: translateX(100%); } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes toast-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: translateX(0); } }
 .animate-fade-up { animation: fade-up .3s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .animate-pop { animation: pop .18s cubic-bezier(0.22, 1, 0.36, 1); }
+/* Modales y Confirmador: el fondo aparece y el panel entra con fade + ligera escala (~180 ms). */
+.animate-fade-in { animation: fade-in .16s ease-out both; }
+.animate-toast { animation: toast-in .22s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
 * { scrollbar-width: thin; scrollbar-color: hsl(var(--muted-foreground) / .3) transparent; }
 *::-webkit-scrollbar { width: 8px; height: 8px; }
 *::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / .24); border: 2px solid transparent; border-radius: 999px; background-clip: content-box; }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .surface-interactiva:hover, .surface-interactiva:focus-within { transform: none; }
+  .skeleton::after { animation: none; }
 }
 
 /* iPhone hace zoom al enfocar campos con letra menor a 16 px: en celular la subimos. */
