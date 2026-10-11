@@ -38,7 +38,7 @@ export function OpinionPublica({ slug, nombre, origen, enlaceGoogle }: { slug: s
             aria-label={`${estrella} ${estrella === 1 ? "estrella" : "estrellas"}`}
             onMouseEnter={() => setSobre(estrella)}
             onClick={() => void elegir(estrella)}
-            className={`text-5xl transition-transform hover:scale-110 disabled:opacity-60 ${estrella <= sobre ? "text-amber-400" : "text-muted-foreground"}`}
+            className={`text-5xl transition-transform hover:scale-110 disabled:opacity-60 ${estrella <= sobre ? "text-warning" : "text-muted-foreground"}`}
           >
             ★
           </button>

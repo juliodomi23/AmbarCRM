@@ -7,6 +7,8 @@ import { moduloActivo } from "@/lib/modulos";
 import { configResenas } from "@/lib/resenas";
 import { panelResenas } from "@/lib/resenas-db";
 import { getSesion } from "@/lib/session";
+import { EncabezadoPagina } from "@/components/ui";
+import { EmptyState } from "@/components/EmptyState";
 
 export const dynamic = "force-dynamic";
 
@@ -26,12 +28,9 @@ export default async function ResenasPage() {
   const maximo = Math.max(1, ...panel.distribucion);
   return (
     <div className="space-y-5 p-4 md:p-6">
-      <header className="print:hidden">
-        <h1 className="text-2xl font-bold">Reseñas de Google</h1>
-        <p className="text-sm text-muted-foreground">Cada opinión se guarda y el cliente siempre pasa a tu ficha de Google.</p>
-      </header>
+      <EncabezadoPagina className="print:hidden" titulo="Reseñas de Google" descripcion="Cada opinión se guarda y el cliente siempre pasa a tu ficha de Google." />
       <div className="print:hidden"><EnlacePublico url={enlace} /></div>
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4 print:hidden">
+      <section className="flex flex-wrap items-center justify-between gap-3 surface p-4 print:hidden">
         <div>
           <h2 className="font-semibold">Ajustes</h2>
           <p className="text-xs text-muted-foreground">
@@ -60,36 +59,36 @@ export default async function ResenasPage() {
         )}
       </section>
       <section className="grid gap-4 md:grid-cols-3 print:hidden">
-        <div className="rounded-xl border bg-card p-4">
+        <div className="surface p-4">
           <p className="text-xs uppercase text-muted-foreground">Promedio</p>
-          <strong className="text-3xl">{panel.promedio === null ? "—" : panel.promedio.toFixed(2)}</strong>
+          <strong className="tnum text-3xl">{panel.promedio === null ? "—" : panel.promedio.toFixed(2)}</strong>
           <p className="text-xs text-muted-foreground">{panel.total} calificaciones</p>
         </div>
-        <div className="rounded-xl border bg-card p-4 md:col-span-2">
+        <div className="surface p-4 md:col-span-2">
           <h2 className="mb-2 font-semibold">Distribución</h2>
           {[5, 4, 3, 2, 1].map((estrellas) => (
             <div key={estrellas} className="flex items-center gap-2 text-sm">
               <span className="w-8">{estrellas} ★</span>
-              <div className="h-2 flex-1 rounded bg-muted"><div className="h-2 rounded bg-primary" style={{ width: `${(panel.distribucion[estrellas - 1] / maximo) * 100}%` }} /></div>
+              <div className="h-2 flex-1 rounded bg-muted"><div className="h-2 rounded bg-primary transition-all duration-500" style={{ width: `${(panel.distribucion[estrellas - 1] / maximo) * 100}%` }} /></div>
               <span className="w-8 text-right">{panel.distribucion[estrellas - 1]}</span>
             </div>
           ))}
         </div>
       </section>
       <section className="grid gap-4 lg:grid-cols-2 print:hidden">
-        <div className="rounded-xl border bg-card p-4">
+        <div className="surface p-4">
           <h2 className="mb-2 font-semibold">Tendencia semanal ({panel.zona})</h2>
-          {panel.tendencia.length === 0 ? <p className="text-sm text-muted-foreground">Aún no hay opiniones en las últimas 12 semanas.</p> : (
-            <table className="w-full text-sm"><thead><tr className="text-left"><th>Semana del</th><th className="text-right">Opiniones</th><th className="text-right">Promedio</th></tr></thead>
-              <tbody>{panel.tendencia.map((fila) => <tr key={fila.clave} className="border-t"><td className="py-1">{fila.clave}</td><td className="text-right">{fila.total}</td><td className="text-right">{fila.promedio.toFixed(2)}</td></tr>)}</tbody>
+          {panel.tendencia.length === 0 ? <EmptyState titulo="Sin opiniones recientes" descripcion="Aún no hay opiniones en las últimas 12 semanas." /> : (
+            <table className="tabla"><thead><tr className="text-left"><th>Semana del</th><th className="text-right">Opiniones</th><th className="text-right">Promedio</th></tr></thead>
+              <tbody>{panel.tendencia.map((fila) => <tr key={fila.clave}><td className="py-1">{fila.clave}</td><td className="text-right">{fila.total}</td><td className="text-right">{fila.promedio.toFixed(2)}</td></tr>)}</tbody>
             </table>
           )}
         </div>
-        <div className="rounded-xl border bg-card p-4">
+        <div className="surface p-4">
           <h2 className="mb-2 font-semibold">Por origen</h2>
-          {panel.origenes.length === 0 ? <p className="text-sm text-muted-foreground">Aún no hay opiniones.</p> : (
-            <table className="w-full text-sm"><thead><tr className="text-left"><th>Origen</th><th className="text-right">Opiniones</th><th className="text-right">Promedio</th></tr></thead>
-              <tbody>{panel.origenes.map((fila) => <tr key={fila.clave} className="border-t"><td className="py-1">{fila.clave}</td><td className="text-right">{fila.total}</td><td className="text-right">{fila.promedio.toFixed(2)}</td></tr>)}</tbody>
+          {panel.origenes.length === 0 ? <EmptyState titulo="Sin opiniones" descripcion="Cuando tus clientes califiquen, verás aquí de dónde vienen." /> : (
+            <table className="tabla"><thead><tr className="text-left"><th>Origen</th><th className="text-right">Opiniones</th><th className="text-right">Promedio</th></tr></thead>
+              <tbody>{panel.origenes.map((fila) => <tr key={fila.clave}><td className="py-1">{fila.clave}</td><td className="text-right">{fila.total}</td><td className="text-right">{fila.promedio.toFixed(2)}</td></tr>)}</tbody>
             </table>
           )}
         </div>
