@@ -6,10 +6,10 @@ import { ZONA_CITAS } from "@/components/citas/fecha";
 import type { Cita, EstadoCita } from "@/components/citas/tipos";
 
 const ACCIONES: { estado: EstadoCita; etiqueta: string; clase: string }[] = [
-  { estado: "confirmada", etiqueta: "Confirmó", clase: "bg-emerald-600" },
-  { estado: "en_sala", etiqueta: "Ya llegó", clase: "bg-violet-600" },
-  { estado: "completada", etiqueta: "Atendido", clase: "bg-slate-700" },
-  { estado: "no_asistio", etiqueta: "No llegó", clase: "bg-amber-600" },
+  { estado: "confirmada", etiqueta: "Confirmó", clase: "bg-success" },
+  { estado: "en_sala", etiqueta: "Ya llegó", clase: "bg-accent" },
+  { estado: "completada", etiqueta: "Atendido", clase: "bg-muted-foreground" },
+  { estado: "no_asistio", etiqueta: "No llegó", clase: "bg-warning" },
 ];
 
 export function DetalleCitaModal({
@@ -75,7 +75,7 @@ export function DetalleCitaModal({
             type="button"
             disabled={guardando}
             onClick={() => onCambiarEstado("cancelada")}
-            className="mt-2 w-full rounded-lg border border-red-300 px-3 py-2 text-sm text-red-700"
+            className="mt-2 w-full rounded-lg border border-destructive/30 px-3 py-2 text-sm text-destructive"
           >
             Cancelar cita
           </button>

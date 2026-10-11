@@ -55,12 +55,12 @@ export const ESTADOS_CITA: { valor: EstadoCita; etiqueta: string }[] = [
 
 export function estiloEstado(estado: EstadoCita) {
   const estilos: Record<EstadoCita, string> = {
-    programada: "border-sky-400 bg-sky-100 text-sky-950",
-    confirmada: "border-emerald-500 bg-emerald-100 text-emerald-950",
-    en_sala: "border-violet-500 bg-violet-100 text-violet-950",
-    completada: "border-slate-400 bg-slate-100 text-slate-700",
-    cancelada: "border-red-400 bg-red-100 text-red-800",
-    no_asistio: "border-amber-400 bg-amber-100 text-amber-900",
+    programada: "border-info bg-card bg-[linear-gradient(hsl(var(--info)/0.14),hsl(var(--info)/0.14))] text-info",
+    confirmada: "border-success bg-card bg-[linear-gradient(hsl(var(--success)/0.14),hsl(var(--success)/0.14))] text-success",
+    en_sala: "border-accent-foreground bg-accent text-accent-foreground",
+    completada: "border-border bg-muted text-foreground",
+    cancelada: "border-destructive bg-card bg-[linear-gradient(hsl(var(--destructive)/0.14),hsl(var(--destructive)/0.14))] text-destructive",
+    no_asistio: "border-warning bg-card bg-[linear-gradient(hsl(var(--warning)/0.14),hsl(var(--warning)/0.14))] text-warning",
   };
   return estilos[estado];
 }

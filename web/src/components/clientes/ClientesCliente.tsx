@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AvatarNombre } from "@/components/AvatarNombre";
 import { ZONA_CITAS } from "@/components/citas/fecha";
-import { Boton, Campo, Modal } from "@/components/ui";
+import { Boton, Campo, Modal, EncabezadoPagina } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 
 type CitaCliente = {
@@ -133,21 +133,19 @@ export function ClientesCliente({
 
   return (
     <div className="space-y-5 p-4 md:p-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">
-            {modo === "pacientes" ? "Pacientes" : "Clientes"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {modo === "pacientes"
+      <EncabezadoPagina
+        titulo={modo === "pacientes" ? "Pacientes" : "Clientes"}
+        descripcion={modo === "pacientes"
               ? "Personas con expediente clínico, alergias e historial de atención."
               : "Personas con ficha de servicio, preferencias e historial de atención."}
-          </p>
-        </div>
-        <Boton onClick={() => setModal(true)}>
+        acciones={
+          <>
+            <Boton onClick={() => setModal(true)}>
           + Nuevo {modo === "pacientes" ? "paciente" : "cliente"}
         </Boton>
-      </header>
+          </>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <input
@@ -185,7 +183,7 @@ export function ClientesCliente({
                       {edadCliente !== null ? ` · ${edadCliente} años` : ""}
                     </p>
                     {cliente.expediente.alergias && (
-                      <p className="mt-2 line-clamp-2 text-xs text-amber-700">
+                      <p className="mt-2 line-clamp-2 text-xs text-warning">
                         {modo === "pacientes" ? "Alergias" : "Sensibilidades"}: {cliente.expediente.alergias}
                       </p>
                     )}
@@ -337,7 +335,7 @@ function Resumen({
       className={[
         "rounded-full border px-3 py-1.5 text-xs font-medium",
         alerta
-          ? "border-amber-300 bg-amber-50 text-amber-800"
+          ? "border-warning/30 bg-warning/10 text-warning"
           : "border-border bg-card text-muted-foreground",
       ].join(" ")}
     >

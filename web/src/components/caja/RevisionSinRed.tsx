@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/Toaster";
-import { formatoMoneda } from "@/components/ui";
+import { formatoMoneda, EncabezadoPagina } from "@/components/ui";
 
 type Datos = {
   ventas: Array<{
@@ -33,10 +33,15 @@ export function RevisionSinRed({ datos }: { datos: Datos }) {
   }
   return (
     <div className="space-y-5 p-4 md:p-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div><h1 className="text-2xl font-bold">Ventas por revisar</h1><p className="text-sm text-muted-foreground">Ventas hechas sin internet con diferencias, tardías o existencia negativa, y las que el servidor rechazó.</p></div>
-        <Link className="rounded-lg bg-muted px-4 py-2 text-sm font-medium" href="/caja">Volver a caja</Link>
-      </header>
+      <EncabezadoPagina
+        titulo="Ventas por revisar"
+        descripcion="Ventas hechas sin internet con diferencias, tardías o existencia negativa, y las que el servidor rechazó."
+        acciones={
+          <>
+            <Link className="rounded-lg bg-muted px-4 py-2 text-sm font-medium" href="/caja">Volver a caja</Link>
+          </>
+        }
+      />
 
       <section className="surface p-4">
         <h2 className="mb-2 font-bold">Diferencias de precio por cajero</h2>

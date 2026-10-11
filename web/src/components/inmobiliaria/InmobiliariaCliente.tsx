@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Boton, Campo, Modal, formatoMoneda } from "@/components/ui";
+import { Boton, Campo, Modal, formatoMoneda, EncabezadoPagina } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 
 const ESTADOS = ["disponible", "reservada", "vendida", "rentada"] as const;
@@ -115,21 +115,21 @@ export function InmobiliariaCliente({ propiedades }: { propiedades: Propiedad[] 
 
   return (
     <div className="space-y-5 p-4 md:p-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Inmobiliaria</h1>
-          <p className="text-sm text-muted-foreground">Propiedades y citas de visita.</p>
-        </div>
-        <div className="flex gap-2">
-          <Link
+      <EncabezadoPagina
+        titulo="Inmobiliaria"
+        descripcion="Propiedades y citas de visita."
+        acciones={
+          <>
+            <Link
             href="/citas"
             className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium"
           >
             Ver citas
           </Link>
           <Boton onClick={() => setModal(true)}>+ Propiedad</Boton>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <section className="grid gap-3 sm:grid-cols-3">
         <Kpi etiqueta="Disponibles" valor={String(disponibles.length)} />
@@ -297,7 +297,7 @@ export function InmobiliariaCliente({ propiedades }: { propiedades: Propiedad[] 
 
 function Kpi({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
+    <div className="surface p-4 shadow-soft">
       <p className="text-xs uppercase text-muted-foreground">{etiqueta}</p>
       <p className="mt-1 text-2xl font-bold">{valor}</p>
     </div>

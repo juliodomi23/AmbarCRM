@@ -33,19 +33,19 @@ export function GestionCita({ token }: { token: string }) {
       <h1 className="text-xl font-bold">Tu cita</h1>
       {!cita && <p className="text-sm text-muted-foreground">{error || "Cargando…"}</p>}
       {cita && (
-        <div className="space-y-2 rounded-xl border bg-card p-4">
+        <div className="space-y-2 surface p-4">
           <p className="font-medium">{cita.servicio}{cita.especialista ? ` con ${cita.especialista}` : ""}</p>
           <p className="first-letter:uppercase">
             {new Intl.DateTimeFormat("es-MX", { timeZone: cita.zona, dateStyle: "full", timeStyle: "short" }).format(new Date(cita.inicio))}
           </p>
           <p className="text-sm capitalize text-muted-foreground">Estado: {cita.estado.replaceAll("_", " ")}</p>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
           {cancelable && !confirmar && (
-            <button type="button" onClick={() => setConfirmar(true)} className="text-sm font-medium text-red-600">Cancelar cita</button>
+            <button type="button" onClick={() => setConfirmar(true)} className="text-sm font-medium text-destructive">Cancelar cita</button>
           )}
           {cancelable && confirmar && (
             <div className="flex justify-center gap-3 text-sm">
-              <button type="button" onClick={cancelar} className="rounded-lg bg-red-600 px-3 py-1.5 font-medium text-white">Sí, cancelar</button>
+              <button type="button" onClick={cancelar} className="rounded-lg bg-destructive px-3 py-1.5 font-medium text-white">Sí, cancelar</button>
               <button type="button" onClick={() => setConfirmar(false)}>No</button>
             </div>
           )}

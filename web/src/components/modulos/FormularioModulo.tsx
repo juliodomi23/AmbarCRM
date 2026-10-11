@@ -110,7 +110,7 @@ export function FormularioModulo({
             <label key={campo.nombre} className="block space-y-1">
               <span className="text-sm font-medium">
                 {campo.etiqueta}
-                {campo.requerido && <span className="text-red-600"> *</span>}
+                {campo.requerido && <span className="text-destructive"> *</span>}
               </span>
               {campo.tipo === "contacto" ? (
                 <SelectorContacto valor={valores[campo.nombre]} onChange={(id) => cambiar(campo.nombre, id)} />

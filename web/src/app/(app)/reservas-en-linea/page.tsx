@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/ui";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BotonEliminar } from "@/components/modulos/BotonEliminar";
@@ -19,7 +20,7 @@ function Seccion({ titulo, descripcion, accion, children }: {
   titulo: string; descripcion: string; accion?: React.ReactNode; children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-3 rounded-xl border bg-card p-4">
+    <section className="space-y-3 surface p-4">
       <header className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="font-semibold">{titulo}</h2>
@@ -65,15 +66,10 @@ export default async function ReservasEnLineaPage() {
 
   return (
     <div className="space-y-5 p-4 md:p-6">
-      <header>
-        <h1 className="text-2xl font-bold">Reservas en línea</h1>
-        <p className="text-sm text-muted-foreground">
-          Tus clientes eligen servicio, especialista, día y hora; la cita aparece sola en tu agenda.
-        </p>
-      </header>
+      <EncabezadoPagina titulo="Reservas en línea" descripcion="Tus clientes eligen servicio, especialista, día y hora; la cita aparece sola en tu agenda." />
       <EnlacePublico url={enlace} />
       {doctores.length === 0 && (
-        <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+        <p className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
           Primero da de alta a tus especialistas en <Link href="/citas" className="font-medium underline">Citas → Doctores</Link> (el módulo Citas debe estar activo).
         </p>
       )}

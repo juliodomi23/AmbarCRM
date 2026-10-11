@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Boton, Campo, Modal, formatoMoneda } from "@/components/ui";
+import { Boton, Campo, Modal, formatoMoneda, EncabezadoPagina } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 
 const ESTADOS = ["disponible", "reservado", "vendido", "taller"] as const;
@@ -16,10 +16,10 @@ const ETIQUETAS: Record<EstadoVehiculo, string> = {
 };
 
 const COLORES: Record<EstadoVehiculo, string> = {
-  disponible: "bg-emerald-100 text-emerald-700",
-  reservado: "bg-amber-100 text-amber-700",
-  vendido: "bg-slate-200 text-slate-700",
-  taller: "bg-violet-100 text-violet-700",
+  disponible: "bg-success/10 text-success",
+  reservado: "bg-warning/10 text-warning",
+  vendido: "bg-muted text-foreground",
+  taller: "bg-accent text-accent-foreground",
 };
 
 type Vehiculo = {
@@ -133,15 +133,15 @@ export function AutomotrizCliente({ vehiculos }: { vehiculos: Vehiculo[] }) {
 
   return (
     <div className="space-y-5 p-4 md:p-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Automotriz</h1>
-          <p className="text-sm text-muted-foreground">
-            Inventario y disponibilidad de vehículos.
-          </p>
-        </div>
-        <Boton onClick={() => setModal(true)}>+ Agregar vehículo</Boton>
-      </header>
+      <EncabezadoPagina
+        titulo="Automotriz"
+        descripcion="Inventario y disponibilidad de vehículos."
+        acciones={
+          <>
+            <Boton onClick={() => setModal(true)}>+ Agregar vehículo</Boton>
+          </>
+        }
+      />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi etiqueta="Disponibles" valor={String(disponibles.length)} />
@@ -297,7 +297,7 @@ export function AutomotrizCliente({ vehiculos }: { vehiculos: Vehiculo[] }) {
 
 function Kpi({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
+    <div className="surface p-4 shadow-soft">
       <p className="text-xs font-medium uppercase text-muted-foreground">{etiqueta}</p>
       <p className="mt-1 text-2xl font-bold text-foreground">{valor}</p>
     </div>

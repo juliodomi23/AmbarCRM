@@ -26,7 +26,7 @@ import type {
   FormularioCita,
   UsuarioCita,
 } from "@/components/citas/tipos";
-import { Boton } from "@/components/ui";
+import { Boton, EncabezadoPagina } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 
 function mensajeError(payload: unknown, respaldo: string) {
@@ -221,20 +221,18 @@ export function CitasCliente({
 
   return (
     <div className="space-y-5 p-4 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Citas</h1>
-          <p className="text-sm text-muted-foreground">
-            Calendario en zona horaria {ZONA_CITAS}.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Boton variante="ghost" onClick={() => setModalDoctores(true)}>
-            Doctores
-          </Boton>
-          <Boton onClick={() => setModalAbierto(true)}>+ Nueva cita</Boton>
-        </div>
-      </div>
+      <EncabezadoPagina
+        titulo="Citas"
+        descripcion={`Calendario en zona horaria ${ZONA_CITAS}.`}
+        acciones={
+          <>
+            <Boton variante="ghost" onClick={() => setModalDoctores(true)}>
+              Doctores
+            </Boton>
+            <Boton onClick={() => setModalAbierto(true)}>+ Nueva cita</Boton>
+          </>
+        }
+      />
 
       <CalendarioSemanal
         citas={citas}

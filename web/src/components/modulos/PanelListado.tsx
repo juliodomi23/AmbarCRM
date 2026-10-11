@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { FormularioModulo, type ConfigEdicion, type EdicionFila } from "@/components/modulos/FormularioModulo";
+import { EncabezadoPagina } from "@/components/ui";
 
 export type ItemListado = {
   id: string;
@@ -38,16 +39,14 @@ export function PanelListado({
   }, [busqueda, items]);
   return (
     <div className="space-y-5 p-4 md:p-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">{titulo}</h1>
-          <p className="text-sm text-muted-foreground">{descripcion}</p>
-        </div>
-        {acciones && <div className="flex flex-wrap gap-2">{acciones}</div>}
-      </header>
+      <EncabezadoPagina
+        titulo={titulo}
+        descripcion={descripcion}
+        acciones={acciones}
+      />
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {metricas.map((metrica) => (
-          <article key={metrica.etiqueta} className="rounded-xl border bg-card p-4 shadow-soft">
+          <article key={metrica.etiqueta} className="surface p-4 shadow-soft">
             <p className="text-xs uppercase text-muted-foreground">{metrica.etiqueta}</p>
             <p className="mt-1 text-2xl font-bold">{metrica.valor}</p>
           </article>
@@ -60,7 +59,7 @@ export function PanelListado({
         placeholder="Buscar…"
         className="w-full rounded-lg border bg-card px-3 py-2 text-sm"
       />
-      <section className="overflow-hidden rounded-xl border bg-card">
+      <section className="overflow-hidden surface">
         {visibles.map((item) => {
           const contenido = (
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">

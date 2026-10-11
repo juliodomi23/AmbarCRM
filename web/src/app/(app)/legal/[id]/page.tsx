@@ -44,13 +44,13 @@ export default async function DetalleExpedientePage({ params }: { params: Promis
         </p>
       </header>
       <section className="grid gap-4 lg:grid-cols-3">
-        <article className="rounded-xl border bg-card p-4 lg:col-span-2">
+        <article className="surface p-4 lg:col-span-2">
           <h2 className="font-semibold">Resumen</h2>
           <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
             {expediente.resumen || "Sin resumen capturado."}
           </p>
         </article>
-        <article className="rounded-xl border bg-card p-4 text-sm">
+        <article className="surface p-4 text-sm">
           <h2 className="font-semibold">Datos</h2>
           <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2">
             <dt className="text-muted-foreground">Cliente</dt><dd>{expediente.contacto?.nombre ?? "Sin asignar"}</dd>
@@ -62,7 +62,7 @@ export default async function DetalleExpedientePage({ params }: { params: Promis
           </dl>
         </article>
       </section>
-      <section className="rounded-xl border bg-card">
+      <section className="surface">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b p-4">
           <h2 className="font-semibold">Historial del expediente</h2>
           <FormularioModulo boton="+ Agregar registro" titulo="Nuevo registro del expediente"
