@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Boton } from "@/components/ui";
+import { Boton, CLASE_CAMPO, EncabezadoPagina } from "@/components/ui";
+import { confirmar } from "@/components/Confirmador";
 
 type Etiqueta = { id: string; nombre: string; color: string; total: number };
 type Plantilla = { id: string; nombre: string; contenido: string };
@@ -65,10 +66,15 @@ export function DifusionCliente({ etiquetas, plantillas, canales }: { etiquetas:
       setResultado({ ok: false, texto: `Límite diario de ${LIMITE_DIARIO} mensajes alcanzado. Vuelve mañana.` });
       return;
     }
-    if (!confirm(
-      `Se enviará a ${destinatariosEfectivos} contacto(s) con la etiqueta "${etiqueta?.nombre}".\n\n` +
-      `⚠️ Cuantos más mensajes envíes, mayor el riesgo de baneo del número. Usa con responsabilidad.\n\n¿Continuar?`
-    )) return;
+    const ok = await confirmar({
+      titulo: "Enviar difusión",
+      mensaje:
+        `Se enviará a ${destinatariosEfectivos} contacto(s) con la etiqueta "${etiqueta?.nombre}".\n\n` +
+        `⚠️ Cuantos más mensajes envíes, mayor el riesgo de baneo del número. Usa con responsabilidad.`,
+      confirmar: "Enviar difusión",
+      peligro: false
+    });
+    if (!ok) return;
     setEnviando(true);
     setResultado(null);
     const res = await fetch("/api/difusion", {
@@ -106,12 +112,12 @@ export function DifusionCliente({ etiquetas, plantillas, canales }: { etiquetas:
   }
 
   return (
-    <div className="max-w-lg space-y-4 p-4 md:p-6">
-      <h1 className="text-xl font-bold text-primary">Difusión por etiqueta</h1>
+    <div className="mx-auto max-w-xl space-y-4 p-4 md:p-6">
+      <EncabezadoPagina titulo="Difusión por etiqueta" descripcion="Envía un mensaje a todos los contactos de una etiqueta." />
 
       {/* Alerta de riesgo */}
-      <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-foreground">
-        <p className="mb-1 font-semibold text-red-700">Riesgo de baneo — lee antes de enviar</p>
+      <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs text-foreground">
+        <p className="mb-1 font-semibold text-destructive">Riesgo de baneo — lee antes de enviar</p>
         <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
           <li>WhatsApp detecta patrones de envío masivo y puede <b>bloquear permanentemente</b> el número.</li>
           <li>El límite es <b>{LIMITE_DIARIO} mensajes por día</b>. Cuantos más envíes, mayor el riesgo.</li>
@@ -123,22 +129,22 @@ export function DifusionCliente({ etiquetas, plantillas, canales }: { etiquetas:
       {/* Contador diario */}
       {restantes !== null && (
         <div className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
-          restantes === 0 ? "border-red-200 bg-red-50 text-red-700" :
-          restantes < 15 ? "border-amber-200 bg-amber-50 text-amber-700" :
+          restantes === 0 ? "border-destructive/30 bg-destructive/10 text-destructive" :
+          restantes < 15 ? "border-warning/30 bg-warning/10 text-warning" :
           "border-border bg-background text-muted-foreground"
         }`}>
           <span>Enviados hoy: <b>{yaEnviados}</b> de {LIMITE_DIARIO}</span>
-          <span className={`font-semibold ${restantes === 0 ? "text-red-700" : "text-foreground"}`}>
+          <span className={`font-semibold ${restantes === 0 ? "text-destructive" : "text-foreground"}`}>
             {restantes === 0 ? "Límite alcanzado" : `${restantes} disponibles`}
           </span>
         </div>
       )}
 
-      <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+      <div className="surface space-y-3 p-4">
         <label className="block space-y-1">
           <span className="text-sm font-medium text-muted-foreground">WhatsApp de envío</span>
           <select value={canalId} onChange={(e) => { setCanalId(e.target.value); setOficiales([]); setOficialId(""); }}
-            className="w-full rounded-lg border border-input px-3 py-2 text-sm">
+            className={CLASE_CAMPO}>
             {canales.filter((c) => c.activo).map((canal) => <option key={canal.id} value={canal.id}>{canal.nombre}</option>)}
           </select>
         </label>
@@ -146,18 +152,18 @@ export function DifusionCliente({ etiquetas, plantillas, canales }: { etiquetas:
         <label className="block space-y-1">
           <span className="text-sm font-medium text-muted-foreground">Etiqueta destino</span>
           <select value={etiquetaId} onChange={(e) => setEtiquetaId(e.target.value)}
-            className="w-full rounded-lg border border-input px-3 py-2 text-sm">
+            className={CLASE_CAMPO}>
             <option value="">Elige una etiqueta…</option>
             {etiquetas.map((e) => <option key={e.id} value={e.id}>{e.nombre} ({e.total})</option>)}
           </select>
         </label>
 
         {oficiales.length > 0 && (
-          <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
+          <div className="space-y-3 rounded-lg border border-info/30 bg-info/10 p-3">
             <label className="block space-y-1">
-              <span className="text-sm font-medium text-blue-900">Plantilla oficial de Meta</span>
+              <span className="text-sm font-medium text-info">Plantilla oficial de Meta</span>
               <select value={oficialId} onChange={(e) => elegirOficial(e.target.value)}
-                className="w-full rounded-lg border border-blue-300 bg-card px-3 py-2 text-sm">
+                className="w-full rounded-lg border border-info/30 bg-card px-3 py-2 text-sm">
                 <option value="">Usar mensaje libre / plantilla interna</option>
                 {oficiales.filter((p) => p.status === "APPROVED").map((p) => (
                   <option key={`${p.name}:${p.language}`} value={`${p.name}:${p.language}`}>
@@ -166,17 +172,17 @@ export function DifusionCliente({ etiquetas, plantillas, canales }: { etiquetas:
                 ))}
               </select>
               {oficiales.some((p) => p.status === "PENDING") && (
-                <span className="block text-xs text-blue-700">
+                <span className="block text-xs text-info">
                   {oficiales.filter((p) => p.status === "PENDING").length} en revisión de Meta: aparecerán aquí cuando las aprueben.
                 </span>
               )}
             </label>
             {oficial && (
               <label className="block space-y-1">
-                <span className="text-xs font-medium text-blue-900">Variables oficiales</span>
+                <span className="text-xs font-medium text-info">Variables oficiales</span>
                 <input value={variablesOficiales} onChange={(e) => setVariablesOficiales(e.target.value)}
-                  placeholder="Ejemplo: {{nombre}}, promoción de septiembre" className="w-full rounded-lg border border-blue-300 bg-card px-3 py-2 text-sm" />
-                <span className="text-xs text-blue-700">Sepáralas por coma y usa {"{{nombre}}"} o {"{{telefono}}"} para personalizarlas.</span>
+                  placeholder="Ejemplo: {{nombre}}, promoción de septiembre" className="w-full rounded-lg border border-info/30 bg-card px-3 py-2 text-sm" />
+                <span className="text-xs text-info">Sepáralas por coma y usa {"{{nombre}}"} o {"{{telefono}}"} para personalizarlas.</span>
               </label>
             )}
           </div>
@@ -185,7 +191,7 @@ export function DifusionCliente({ etiquetas, plantillas, canales }: { etiquetas:
         <label className="block space-y-1">
           <span className="text-sm font-medium text-muted-foreground">Plantilla (opcional)</span>
           <select value={plantillaId} onChange={(e) => elegirPlantilla(e.target.value)}
-            className="w-full rounded-lg border border-input px-3 py-2 text-sm">
+            className={CLASE_CAMPO}>
             <option value="">Escribir mensaje libre…</option>
             {plantillas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
           </select>
@@ -195,7 +201,7 @@ export function DifusionCliente({ etiquetas, plantillas, canales }: { etiquetas:
           <span className="text-sm font-medium text-muted-foreground">Mensaje</span>
           <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={4}
             placeholder="Hola {{nombre}}, te tenemos una promoción…"
-            className="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+            className={CLASE_CAMPO} />
           <span className="text-xs text-muted-foreground">Variables: {"{{nombre}}"}, {"{{telefono}}"}.</span>
         </label>
 
@@ -216,7 +222,7 @@ export function DifusionCliente({ etiquetas, plantillas, canales }: { etiquetas:
         </Boton>
 
         {resultado && (
-          <p className={`text-sm ${resultado.ok ? "text-foreground" : "text-red-600"}`}>{resultado.texto}</p>
+          <p className={`text-sm ${resultado.ok ? "text-foreground" : "text-destructive"}`}>{resultado.texto}</p>
         )}
       </div>
     </div>

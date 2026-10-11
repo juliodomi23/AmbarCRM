@@ -53,7 +53,7 @@ export function Confirmador() {
           </svg>
         </div>
         <h2 id="confirmador-titulo" className="text-base font-semibold text-foreground">{actual.titulo ?? "¿Estás seguro?"}</h2>
-        <p id="confirmador-mensaje" className="mt-1.5 text-sm text-muted-foreground">{actual.mensaje}</p>
+        <p id="confirmador-mensaje" className="mt-1.5 whitespace-pre-line text-sm text-muted-foreground">{actual.mensaje}</p>
         <div className="mt-6 flex justify-end gap-2">
           <button type="button" onClick={() => cerrar(false)} className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium text-foreground transition duration-150 hover:bg-muted/70 active:scale-[.98]">
             {actual.cancelar ?? "Cancelar"}
