@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { BRAND_PRESETS, type BrandPreset } from "@/lib/brand";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { almacen } from "@/lib/demo/almacen";
-import { GIROS } from "@/lib/demo/giros";
+import { GIROS, giroPorId } from "@/lib/demo/giros";
+import { MODULOS } from "@/lib/modulos-catalogo";
 import { irA } from "@/lib/demo/navegacion";
 import { restablecerDemo } from "@/lib/demo/persistencia";
 import { toast } from "@/components/Toaster";
@@ -13,6 +15,8 @@ import type { GiroId } from "@/lib/demo/tipos";
 /** Barra superior de la demo: aviso de datos ficticios, giro, color, tema, recorrido y restablecer. */
 export function BarraDemo({ onRecorrido }: { onRecorrido: () => void }) {
   const d = useDatos();
+  const [panelModulos, setPanelModulos] = useState(false);
+  const clavesGiro = Object.keys(giroPorId(d.giro).modulos);
 
   function cambiarGiro(giro: GiroId) {
     almacen.reiniciar(giro);
@@ -71,6 +75,9 @@ export function BarraDemo({ onRecorrido }: { onRecorrido: () => void }) {
         <div className="w-10 shrink-0">
           <ThemeToggle compact />
         </div>
+        <button onClick={() => setPanelModulos((x) => !x)} aria-expanded={panelModulos} className="font-bold text-primary hover:underline">
+          Módulos
+        </button>
         <button onClick={onRecorrido} className="font-bold text-primary hover:underline">
           Recorrido
         </button>
@@ -81,6 +88,33 @@ export function BarraDemo({ onRecorrido }: { onRecorrido: () => void }) {
           Ir al acceso real
         </a>
       </div>
+      {panelModulos && (
+        <div role="dialog" aria-label="Módulos del giro" className="fixed right-3 top-11 z-[60] w-72 rounded-xl border bg-card p-3 text-xs shadow-pop">
+          <p className="mb-2 font-semibold">Módulos del giro · {giroPorId(d.giro).etiqueta}</p>
+          <p className="mb-2 text-muted-foreground">Apágalos y desaparecen del menú. Cada empresa activa solo lo que usa.</p>
+          <ul className="space-y-1">
+            {clavesGiro.map((clave) => {
+              const activo = Boolean(d.modulos[clave]?.activo);
+              const nombre = MODULOS.find((m) => m.clave === clave)?.nombre ?? clave;
+              return (
+                <li key={clave} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1 hover:bg-muted">
+                  <span>{nombre}</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={activo}
+                    aria-label={`${activo ? "Apagar" : "Activar"} ${nombre}`}
+                    onClick={() => almacen.mutar((x) => void (x.modulos[clave].activo = !activo))}
+                    className={`relative h-5 w-9 rounded-full transition ${activo ? "bg-primary" : "bg-muted-foreground/30"}`}
+                  >
+                    <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${activo ? "left-[18px]" : "left-0.5"}`} />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

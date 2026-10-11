@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { puestosParaModulos, validarPuesto } from "../src/lib/puestos.ts";
 
-const modulos = await readFile(new URL("../src/lib/modulos.ts", import.meta.url), "utf8");
+const modulos = await Promise.all(["modulos.ts", "modulos-catalogo.ts"].map((archivo) => readFile(new URL(`../src/lib/${archivo}`, import.meta.url), "utf8"))).then((partes) => partes.join("\n"));
 const auth = await readFile(new URL("../src/lib/auth.ts", import.meta.url), "utf8");
 const apiModulos = await readFile(
   new URL("../src/app/api/modulos/route.ts", import.meta.url),

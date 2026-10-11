@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { validarPropiedad } from "../src/lib/propiedades.ts";
 import { validarVehiculo } from "../src/lib/vehiculos.ts";
 
-const catalogo = await readFile(new URL("../src/lib/modulos.ts", import.meta.url), "utf8");
+const catalogo = await Promise.all(["modulos.ts", "modulos-catalogo.ts"].map((archivo) => readFile(new URL(`../src/lib/${archivo}`, import.meta.url), "utf8"))).then((partes) => partes.join("\n"));
 
 assert.match(catalogo, /clave: "clientes"[\s\S]*?nombre: "Clientes"/);
 assert.match(catalogo, /clave: "clientes"[\s\S]*?ruta: "\/clientes"/);

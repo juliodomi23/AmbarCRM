@@ -213,5 +213,22 @@ respuesta ficticia del cliente). Se instala/retira junto con `fetch`, por eso no
 
 ## 9. Props opcionales agregadas a componentes reales
 
-Ninguna hasta la Fase 1 (la capa externa bastó). Sí hubo un movimiento de código sin cambio de comportamiento: `MODULOS` y las funciones puras de acceso pasaron a `lib/modulos-catalogo.ts` y `lib/modulos.ts` las re-exporta. Se listan aquí (con el motivo y por qué el CRM real no cambia) si alguna fase las
-necesita.
+**Ninguna.** La capa externa (fetch/EventSource simulados, contextos de navegación falsos, intercepción de
+clics) bastó para que los componentes reales corran tal cual. El único cambio en código real es un
+movimiento sin cambio de comportamiento: `MODULOS` y las funciones puras de acceso pasaron a
+`web/src/lib/modulos-catalogo.ts` y `web/src/lib/modulos.ts` las re-exporta (`export *`). Por eso seis
+`check-*.ts` que leen el texto del catálogo ahora leen ambos archivos.
+
+## 10. Estado final
+
+* Pantallas reales en `/demo`: Inicio, Chat, Embudos, Contactos, Tareas, Citas, Caja, Productos,
+  Cotizaciones, Pedidos en línea y Configuración (todas las pestañas; Marca y Módulos sobre el almacén).
+* Giros: clínica, retail, legal, automotriz, inmobiliaria, viajes y educación (cada uno con su marca,
+  usuarios, embudo, contactos, chats y tareas de los seeds demo). Citas en clínica/legal/automotriz/inmobiliaria;
+  Caja, Productos, Cotizaciones y Pedidos en retail.
+* Pendiente: pantallas propias de legal, viajes, educación, automotriz e inmobiliaria, y de
+  Pacientes/Clientes, Compras, Ventas, Reseñas, Lealtad, Difusión y Personal: la demo muestra «Disponible
+  en la versión completa» dentro del marco real. Caja: apartados, devoluciones y crédito se muestran vacíos;
+  el ticket (`window.open`) y las páginas públicas (/tienda, /reservar, /cotizacion) no se abren.
+* `web/scripts/check-demo.ts` valida que cada `fetch("/api/…")` de los componentes usados tenga manejador;
+  `web/scripts/verificar-demo-red.mjs` (Playwright externo) comprueba que /demo no saca peticiones.
