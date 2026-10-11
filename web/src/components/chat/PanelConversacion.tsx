@@ -14,6 +14,7 @@ import { toast } from "@/components/Toaster";
 import { CamposPersonalizadosForm } from "@/components/CamposPersonalizadosForm";
 import { CitasContacto } from "@/components/citas/CitasContacto";
 import { TarjetaLealtad } from "@/components/lealtad/TarjetaLealtad";
+import { confirmar } from "@/components/Confirmador";
 
 type Embudo = {
   id: string;
@@ -93,9 +94,12 @@ export function PanelConversacion({
 
   async function borrarChat() {
     if (
-      !confirm(
-        "¿Borrar este chat y todos sus mensajes? El contacto se conserva. No se puede deshacer.",
-      )
+      !(await confirmar({
+        titulo: "Borrar chat",
+        mensaje:
+          "Se borran este chat y todos sus mensajes. El contacto se conserva. No se puede deshacer.",
+        confirmar: "Borrar chat",
+      }))
     )
       return;
     const res = await fetch(`/api/conversaciones/${conversacionId}`, {
@@ -367,9 +371,10 @@ export function PanelConversacion({
           onClick={() => patch({ botActivo: !d.botActivo })}
           className={[
             "relative h-5 w-9 rounded-full transition",
-            d.botActivo ? "bg-green-500" : "bg-muted-foreground/40",
+            d.botActivo ? "bg-success" : "bg-muted-foreground/40",
           ].join(" ")}
           title={d.botActivo ? "Pausar bot (lo atiendes tu)" : "Reactivar bot"}
+ aria-label={d.botActivo ? "Pausar bot (lo atiendes tu)" : "Reactivar bot"}
         >
           <span
             className={[
@@ -408,10 +413,15 @@ export function PanelConversacion({
           className={[
             "relative h-5 w-9 rounded-full transition",
             d.contacto.esPersonal
-              ? "bg-green-500"
+              ? "bg-success"
               : "bg-muted-foreground/40",
           ].join(" ")}
           title={
+            d.contacto.esPersonal
+              ? "Quitar de Personal (vuelve a la bandeja principal)"
+              : "Marcar como Personal (familia/amigos — el bot no responde)"
+          }
+ aria-label={
             d.contacto.esPersonal
               ? "Quitar de Personal (vuelve a la bandeja principal)"
               : "Marcar como Personal (familia/amigos — el bot no responde)"
@@ -439,7 +449,7 @@ export function PanelConversacion({
         {d.estado !== "cerrada" ? (
           <button
             onClick={() => patch({ estado: "cerrada" })}
-            className="text-xs font-medium text-red-600 hover:underline"
+            className="text-xs font-medium text-destructive hover:underline"
           >
             Cerrar chat
           </button>
@@ -454,7 +464,7 @@ export function PanelConversacion({
       </div>
       <button
         onClick={borrarChat}
-        className="text-xs text-muted-foreground hover:text-red-600 hover:underline"
+        className="text-xs text-muted-foreground hover:text-destructive hover:underline"
       >
         Borrar chat
       </button>
@@ -498,8 +508,8 @@ export function PanelConversacion({
                         "shrink-0 rounded-full px-2 py-0.5",
                         "text-[10px] font-medium",
                         o.estado === "ganado"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700",
+                          ? "bg-success/10 text-success"
+                          : "bg-destructive/10 text-destructive",
                       ].join(" ")}
                     >
                       {o.estado}
@@ -583,7 +593,7 @@ export function PanelConversacion({
                   aria-label="Cancelar envío programado"
                   className={[
                     "grid h-5 w-5 shrink-0 place-items-center rounded",
-                    "text-muted-foreground hover:bg-red-50 hover:text-red-600",
+                    "text-muted-foreground hover:bg-destructive/10 hover:text-destructive",
                   ].join(" ")}
                 >
                   <IconoCerrar className="h-3.5 w-3.5" />
@@ -619,7 +629,7 @@ export function PanelConversacion({
           </button>
         </div>
         {recordatorioOk && (
-          <p className="mt-1 flex items-center gap-1 text-xs text-green-600">
+          <p className="mt-1 flex items-center gap-1 text-xs text-success">
             <IconoCheck className="h-3.5 w-3.5" /> Recordatorio creado en Tareas
           </p>
         )}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IconoEnviar } from "@/components/icons";
+import { confirmar } from "@/components/Confirmador";
 
 type PersonalItem = {
   id: string;
@@ -88,7 +89,13 @@ export function PersonalCliente({ itemsIniciales }: { itemsIniciales: PersonalIt
 
   async function quitarPersonal() {
     if (!seleccionado) return;
-    if (!confirm(`Quitar a ${seleccionado.nombre} de Personal? Sus mensajes volverán a la bandeja principal.`)) return;
+    const ok = await confirmar({
+      titulo: `Quitar a ${seleccionado.nombre} de Personal`,
+      mensaje: "Sus mensajes volverán a la bandeja principal.",
+      confirmar: "Quitar",
+      peligro: false
+    });
+    if (!ok) return;
     await fetch(`/api/contactos/${seleccionado.contactoId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -147,7 +154,7 @@ export function PersonalCliente({ itemsIniciales }: { itemsIniciales: PersonalIt
         ) : (
           <>
             <div className="flex items-center gap-3 border-b border-border bg-card px-4 py-3">
-              <button className="text-muted-foreground md:hidden" onClick={() => setSelId(null)}>←</button>
+              <button className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted md:hidden" onClick={() => setSelId(null)} aria-label="Volver a la lista">←</button>
               <div className="min-w-0 flex-1 leading-tight">
                 <p className="truncate font-medium text-foreground">{seleccionado.nombre}</p>
                 {seleccionado.telefono && <p className="truncate text-xs text-muted-foreground">+{seleccionado.telefono}</p>}
@@ -164,7 +171,7 @@ export function PersonalCliente({ itemsIniciales }: { itemsIniciales: PersonalIt
               {mensajes.map((m) => (
                 <div key={m.id} className={`flex ${m.direccion === "saliente" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
-                    m.direccion === "saliente" ? "bg-green-100 text-foreground" : "bg-card text-foreground"
+                    m.direccion === "saliente" ? "bg-success/10 text-foreground" : "bg-card text-foreground"
                   }`}>
                     {m.contenido && <p className="whitespace-pre-wrap">{m.contenido}</p>}
                     {!m.contenido && m.tipo !== "texto" && (
@@ -186,8 +193,9 @@ export function PersonalCliente({ itemsIniciales }: { itemsIniciales: PersonalIt
               />
               <button
                 type="submit"
+                aria-label="Enviar mensaje"
                 disabled={enviando || !texto.trim()}
-                className="grid h-10 w-10 place-items-center rounded-full bg-primary text-white disabled:opacity-50"
+                className="grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground disabled:opacity-50"
               >
                 <IconoEnviar className="h-5 w-5" />
               </button>

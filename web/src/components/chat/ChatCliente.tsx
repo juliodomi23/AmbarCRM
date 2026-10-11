@@ -59,10 +59,10 @@ function claveDia(iso: string) { return new Date(iso).toISOString().slice(0, 10)
 /** Acuse de un mensaje saliente: ✓ enviado · ✓✓ entregado · ✓✓ azul leído. */
 function ticks(status: string): { txt: string; clase: string } {
   switch (status) {
-    case "leido": return { txt: "✓✓", clase: "text-sky-500" };
+    case "leido": return { txt: "✓✓", clase: "text-info" };
     case "entregado": return { txt: "✓✓", clase: "text-muted-foreground" };
     case "enviado": return { txt: "✓", clase: "text-muted-foreground" };
-    case "fallido": return { txt: "!", clase: "font-bold text-red-500" };
+    case "fallido": return { txt: "!", clase: "font-bold text-destructive" };
     default: return { txt: "", clase: "" };
   }
 }
@@ -494,7 +494,7 @@ export function ChatCliente({
               onChange={(e) => { setBusqueda(e.target.value); }}
               onKeyDown={(e) => { if (e.key === "Enter") buscarEnHistorial(); }}
               placeholder="Buscar…"
-              className="flex-1 rounded-lg border border-input px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              className="min-w-0 flex-1 rounded-lg border border-input bg-card px-3 py-1.5 text-sm outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/30"
             />
             <button
               onClick={buscarEnHistorial}
@@ -524,7 +524,7 @@ export function ChatCliente({
                 <button
                   key={v}
                   onClick={() => setFiltroResponsable(v)}
-                  className={`flex-1 rounded-lg py-1 text-[11px] font-medium ${filtroResponsable === v ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-muted"}`}
+                  className={`flex-1 rounded-lg py-1 text-[11px] font-medium ${filtroResponsable === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground transition-colors hover:bg-muted/70"}`}
                 >
                   {label}
                 </button>
@@ -569,7 +569,7 @@ export function ChatCliente({
           {convsFiltradas.map((c) => (
             <div
               key={c.id}
-              className={`group relative flex items-center gap-3 border-b border-border/60 px-4 py-3 hover:bg-muted/60 ${
+              className={`group relative flex items-center gap-3 border-b border-border/60 px-4 py-3 transition-colors hover:bg-muted/60 ${
                 selId === c.id ? "bg-muted" : ""
               }`}
             >
@@ -592,7 +592,7 @@ export function ChatCliente({
               </button>
               <div className="flex shrink-0 flex-col items-center gap-1">
                 {c.noLeidos > 0 && (
-                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-green-500 px-1 text-[10px] font-bold text-white">
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-success px-1 text-[10px] font-bold text-white">
                     {c.noLeidos}
                   </span>
                 )}
@@ -653,12 +653,13 @@ export function ChatCliente({
                 className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground"
                 title={enVivo ? "Recibiendo mensajes en tiempo real" : "Sin conexión en vivo, reintentando…"}
               >
-                <span className={`h-2 w-2 rounded-full ${enVivo ? "bg-green-500" : "animate-pulse bg-amber-500"}`} />
+                <span className={`h-2 w-2 rounded-full ${enVivo ? "bg-success" : "animate-pulse bg-warning"}`} />
                 <span className="hidden sm:inline">{enVivo ? "En vivo" : "Reconectando…"}</span>
               </span>
               <button
                 onClick={() => setPanelMovil(true)}
                 title="Detalles y oportunidades"
+                aria-label="Detalles y oportunidades"
                 className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted lg:hidden"
               >
                 <IconoInfo className="h-5 w-5" />
@@ -679,14 +680,14 @@ export function ChatCliente({
                   <div
                     className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
                       m.interna
-                        ? "border border-amber-200 bg-amber-50 text-foreground"
+                        ? "border border-warning/30 bg-warning/10 text-foreground"
                         : m.direccion === "saliente"
                         ? "bg-success/10 text-foreground"
                         : "border border-border/70 bg-card text-foreground"
                     }`}
                   >
                     {m.interna && (
-                      <p className="mb-0.5 flex items-center gap-1 text-[10px] font-semibold uppercase text-amber-600">
+                      <p className="mb-0.5 flex items-center gap-1 text-[10px] font-semibold uppercase text-warning">
                         <IconoNota className="h-3 w-3" /> Nota interna
                       </p>
                     )}
@@ -714,13 +715,13 @@ export function ChatCliente({
                     {m.direccion === "saliente" && !m.interna && m.status === "fallido" && m.tipo === "texto" && m.contenido && (
                       <button
                         onClick={() => reintentar(m.contenido!)}
-                        className="mt-0.5 flex items-center gap-1 text-right text-[10px] font-medium text-red-600 hover:underline"
+                        className="mt-0.5 flex items-center gap-1 text-right text-[10px] font-medium text-destructive hover:underline"
                       >
                         <IconoDeshacer className="h-3 w-3" /> Reintentar
                       </button>
                     )}
                     {m.direccion === "saliente" && m.status === "fallido" && m.errorDetalle && (
-                      <p className="mt-0.5 max-w-xs text-right text-[10px] text-red-600">{m.errorDetalle}</p>
+                      <p className="mt-0.5 max-w-xs text-right text-[10px] text-destructive">{m.errorDetalle}</p>
                     )}
                   </div>
                 </div>
@@ -797,6 +798,7 @@ export function ChatCliente({
               <button
                 type="button"
                 title="Adjuntar archivo"
+ aria-label="Adjuntar archivo"
                 disabled={enviando || notaInterna || ventanaCerrada}
                 onClick={() => archivoRef.current?.click()}
                 className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-50"
@@ -806,6 +808,7 @@ export function ChatCliente({
               <button
                 type="button"
                 title="Sugerir respuesta con IA"
+ aria-label="Sugerir respuesta con IA"
                 disabled={sugiriendo || enviando}
                 onClick={sugerir}
                 className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-50"
@@ -815,23 +818,26 @@ export function ChatCliente({
               <button
                 type="button"
                 title={grabando ? "Detener y enviar nota de voz" : "Grabar nota de voz"}
+ aria-label={grabando ? "Detener y enviar nota de voz" : "Grabar nota de voz"}
                 disabled={enviando || notaInterna || ventanaCerrada}
                 onClick={grabarVoz}
-                className={`grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-muted disabled:opacity-50 ${grabando ? "animate-pulse bg-red-100 text-red-600" : "text-muted-foreground"}`}
+                className={`grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-muted disabled:opacity-50 ${grabando ? "animate-pulse bg-destructive/10 text-destructive" : "text-muted-foreground"}`}
               >
-                {grabando ? <span className="h-3 w-3 rounded-full bg-red-600" /> : <IconoMicro />}
+                {grabando ? <span className="h-3 w-3 rounded-full bg-destructive" /> : <IconoMicro />}
               </button>
               <button
                 type="button"
                 title="Nota interna (no se envía a WhatsApp)"
+ aria-label="Nota interna (no se envía a WhatsApp)"
                 onClick={() => setNotaInterna((v) => !v)}
-                className={`grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-muted ${notaInterna ? "bg-amber-100 text-amber-600" : "text-muted-foreground"}`}
+                className={`grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-muted ${notaInterna ? "bg-warning/10 text-warning" : "text-muted-foreground"}`}
               >
                 <IconoNota />
               </button>
               <button
                 type="button"
                 title="Programar envío (escribe el mensaje primero)"
+ aria-label="Programar envío (escribe el mensaje primero)"
                 disabled={enviando || notaInterna || ventanaCerrada || !texto.trim()}
                 onClick={abrirProgramar}
                 className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-50"
@@ -843,12 +849,13 @@ export function ChatCliente({
                 onChange={(e) => setTexto(e.target.value)}
                 disabled={ventanaCerrada && !notaInterna}
                 placeholder={notaInterna ? "Nota interna (solo para el equipo)…" : ventanaCerrada ? "Ventana cerrada: envía una plantilla o una nota interna" : "Escribe un mensaje…"}
-                className={`order-first min-w-0 flex-1 basis-[calc(100%-3rem)] rounded-full border px-4 py-2 text-sm outline-none focus:ring-2 sm:order-none sm:basis-auto ${notaInterna ? "border-amber-300 bg-amber-50 focus:ring-amber-300/40" : "border-input focus:ring-primary/30"}`}
+                className={`order-first min-w-0 flex-1 basis-[calc(100%-3rem)] rounded-full border px-4 py-2 text-sm outline-none focus:ring-2 sm:order-none sm:basis-auto ${notaInterna ? "border-warning/30 bg-warning/10 focus:ring-warning/40" : "border-input focus:ring-primary/30"}`}
               />
               <button
                 type="submit"
+                aria-label="Enviar mensaje"
                 disabled={enviando || !texto.trim() || (ventanaCerrada && !notaInterna)}
-                className="order-first grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-white disabled:opacity-50 sm:order-none"
+                className="order-first grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground disabled:opacity-50 sm:order-none"
               >
                 <IconoEnviar className="h-5 w-5" />
               </button>
