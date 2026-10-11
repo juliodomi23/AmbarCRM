@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { FormularioModulo, type ConfigEdicion, type EdicionFila } from "@/components/modulos/FormularioModulo";
-import { EncabezadoPagina } from "@/components/ui";
+import { EncabezadoPagina, Badge, tonoEstado } from "@/components/ui";
 
 export type FilaLegal = {
   id: string;
@@ -83,9 +83,9 @@ export function PanelLegal({
                 <p className="truncate text-xs text-muted-foreground">{fila.subtitulo}</p>
               </div>
               <div className="text-right text-sm">
-                <span className="rounded-full bg-primary/10 px-2 py-1 capitalize text-primary">
+                <Badge tono={tonoEstado(fila.estado)} className="py-1 text-sm capitalize">
                   {fila.estado.replaceAll("_", " ")}
-                </span>
+                </Badge>
                 {fila.fecha && <p className="mt-1 text-xs text-muted-foreground">{fila.fecha}</p>}
                 {fila.importe !== undefined && (
                   <p className="mt-1 font-semibold">
@@ -96,7 +96,7 @@ export function PanelLegal({
             </div>
           );
           const enlace = fila.href ? (
-            <Link href={fila.href} className="block min-w-0 flex-1 hover:bg-muted/40">{contenido}</Link>
+            <Link href={fila.href} className="fila-lista block min-w-0 flex-1">{contenido}</Link>
           ) : <div className="min-w-0 flex-1">{contenido}</div>;
           return (
             <div key={fila.id} className="flex items-center border-b last:border-0">

@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { FormularioModulo, type ConfigEdicion, type EdicionFila } from "@/components/modulos/FormularioModulo";
-import { EncabezadoPagina } from "@/components/ui";
+import { Badge, EncabezadoPagina, tonoEstado } from "@/components/ui";
+import { EmptyState } from "@/components/EmptyState";
 
 export type ItemListado = {
   id: string;
@@ -59,7 +60,7 @@ export function PanelListado({
         placeholder="Buscar…"
         className="w-full rounded-lg border bg-card px-3 py-2 text-sm"
       />
-      <section className="overflow-hidden surface">
+      <section className="stagger overflow-hidden surface">
         {visibles.map((item) => {
           const contenido = (
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
@@ -68,15 +69,15 @@ export function PanelListado({
                 <p className="text-xs text-muted-foreground">{item.descripcion}</p>
               </div>
               <div className="text-right">
-                <span className="rounded-full bg-primary/10 px-2 py-1 text-xs capitalize text-primary">
+                <Badge tono={tonoEstado(item.estado)} className="py-1 text-xs capitalize">
                   {item.estado.replaceAll("_", " ")}
-                </span>
+                </Badge>
                 {item.dato && <p className="mt-1 text-sm font-semibold">{item.dato}</p>}
               </div>
             </div>
           );
           const enlace = item.href ? (
-            <Link href={item.href} className="block min-w-0 flex-1 hover:bg-muted/40">{contenido}</Link>
+            <Link href={item.href} className="fila-lista block min-w-0 flex-1">{contenido}</Link>
           ) : <div className="min-w-0 flex-1">{contenido}</div>;
           return (
             <div key={item.id} className="flex items-center border-b last:border-0">
@@ -91,7 +92,7 @@ export function PanelListado({
             </div>
           );
         })}
-        {!visibles.length && <p className="p-8 text-center text-sm text-muted-foreground">Sin registros.</p>}
+        {!visibles.length && <div className="p-4"><EmptyState titulo="Sin registros" descripcion="Cuando agregues o recibas registros aparecerán aquí." /></div>}
       </section>
     </div>
   );

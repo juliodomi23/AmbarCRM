@@ -111,7 +111,7 @@ export function CotizacionesCliente({
       <section className="surface overflow-x-auto">
         <table className="tabla">
           <thead><tr><th className="p-3">Folio</th><th className="p-3">Cliente</th><th className="p-3">Vigencia</th><th className="p-3">Estado</th><th className="p-3 text-right">Total</th><th className="p-3">Acciones</th></tr></thead>
-          <tbody>
+          <tbody className="stagger">
             {cotizaciones.map((cotizacion) => (
               <tr key={cotizacion.id}>
                 <td className="p-3 font-medium">{cotizacion.folio}</td>

@@ -255,7 +255,7 @@ export function Board({ columnasIniciales }: { columnasIniciales: Columna[] }) {
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
       >
-        <div className="flex flex-1 gap-3 overflow-x-auto p-4">
+        <div className="stagger flex flex-1 gap-3 overflow-x-auto p-4">
           {colsVistas.map((c) => <ColumnaVista key={c.id} col={c} onBorrar={borrar} onChat={abrirChat} />)}
         </div>
         <DragOverlay>{activa ? <div className="w-72"><TarjetaVista t={activa} /></div> : null}</DragOverlay>

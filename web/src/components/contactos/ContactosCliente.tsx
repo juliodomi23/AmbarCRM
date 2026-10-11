@@ -333,7 +333,7 @@ export function ContactosCliente({
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="stagger">
             {filtrados.map((c) => (
               <tr key={c.id}>
                 <td className="px-4 py-1.5">

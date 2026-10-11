@@ -218,7 +218,7 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
               <th className="px-4 py-3 text-right">Acciones</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="stagger">
             {filtrados.map((producto) => {
               const bajo = producto.activo && compararCantidades(producto.stock, producto.stockMinimo) <= 0;
               const ultimo = producto.movimientos?.[0];

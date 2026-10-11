@@ -86,6 +86,16 @@ const TONOS_BADGE: Record<TonoBadge, string> = {
   destructive: "bg-destructive/10 text-destructive"
 };
 
+/** Tono sugerido para un estado en texto libre (activo, pendiente, cancelada…); lo desconocido queda en tono primario. */
+export function tonoEstado(estado: string): TonoBadge {
+  const e = estado.toLowerCase().replaceAll("_", " ");
+  if (/(cancel|vencid|perdid|rechaz|baja|inactiv|no asist|moroso|error|fallid)/.test(e)) return "destructive";
+  if (/(pendient|reserv|por |apartad|parcial|borrador|revisi|espera|prueba)/.test(e)) return "warning";
+  if (/(activ|dispon|pagad|complet|aprobad|acept|confirm|vigente|cobrad|entregad|vendid|cerrad|ganad|al corriente|inscrit)/.test(e)) return "success";
+  if (/(proceso|program|enviad|abiert|nuevo|prepar|list)/.test(e)) return "info";
+  return "primary";
+}
+
 /** Etiqueta de estado con los colores del tema. Pasa siempre texto: el color no comunica por sí solo. */
 export function Badge({
   tono = "neutral",
