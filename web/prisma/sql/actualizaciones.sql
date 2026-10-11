@@ -1526,3 +1526,12 @@ ALTER TABLE productos DROP CONSTRAINT IF EXISTS productos_stock_check;
 ALTER TABLE movimientos_inventario
   DROP CONSTRAINT IF EXISTS movimientos_inventario_existencia_antes_check,
   DROP CONSTRAINT IF EXISTS movimientos_inventario_existencia_despues_check;
+
+-- Etiquetas unificadas en el contacto: el chat ya lee y escribe contacto_etiquetas (las mismas de
+-- Contactos, Difusión y el bot). Las que estaban solo en conversaciones.etiquetas pasan al contacto.
+INSERT INTO contacto_etiquetas (org_id, contacto_id, etiqueta_id)
+SELECT DISTINCT c.org_id, c.contacto_id, e.id
+  FROM conversaciones c
+ CROSS JOIN LATERAL unnest(c.etiquetas) AS t(nombre)
+  JOIN etiquetas e ON e.org_id = c.org_id AND e.nombre = t.nombre
+ON CONFLICT DO NOTHING;

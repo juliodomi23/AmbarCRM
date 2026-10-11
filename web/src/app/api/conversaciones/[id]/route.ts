@@ -5,6 +5,8 @@ import { serializar } from "@/lib/serialize";
 import { enviarCsat } from "@/lib/services/csat";
 import { referenciaPropia } from "@/lib/referencias";
 import { conErrores } from "@/lib/errores-api";
+import { etiquetasDeContacto } from "@/lib/services/chat";
+import { transaccionTenant } from "@/lib/retail-db";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,7 @@ async function manejarGET(
             orderBy: { createdAt: "desc" },
             include: { etapa: true, embudo: true },
           },
+          etiquetas: { select: { etiqueta: { select: { nombre: true } } } },
         },
       },
       responsable: true,
@@ -38,7 +41,7 @@ async function manejarGET(
     id: conv.id.toString(),
     estado: conv.estado,
     botActivo: conv.botActivo,
-    etiquetas: conv.etiquetas,
+    etiquetas: etiquetasDeContacto(conv.contacto),
     responsableId: conv.responsableId?.toString() ?? null,
     contacto: {
       id: conv.contacto.id.toString(),
@@ -90,12 +93,30 @@ async function manejarPATCH(
   if (typeof body.botActivo === "boolean") data.botActivo = body.botActivo;
   if (typeof body.fijado === "boolean")
     data.fijadoAt = body.fijado ? new Date() : null;
-  if (Array.isArray(body.etiquetas))
-    data.etiquetas = body.etiquetas.map(String);
+  const nombresEtiquetas: string[] | null = Array.isArray(body.etiquetas)
+    ? [...new Set<string>(body.etiquetas.map(String))]
+    : null;
+  if (nombresEtiquetas) data.etiquetas = nombresEtiquetas;
   if (Object.keys(data).length === 0)
     return NextResponse.json({ error: "nada que actualizar" }, { status: 400 });
 
-  await db.conversacion.update({ where: { id: BigInt(params.id) }, data });
+  const conv = await db.conversacion.update({ where: { id: BigInt(params.id) }, data });
+
+  // Las etiquetas son del contacto (las mismas de Contactos, Difusión y el bot): se reemplaza su set.
+  if (nombresEtiquetas && s.orgId !== null) {
+    await transaccionTenant(s.orgId, async (tx) => {
+      const etiquetas = await tx.etiqueta.findMany({
+        where: { nombre: { in: nombresEtiquetas } },
+        select: { id: true },
+      });
+      const ids = etiquetas.map((e) => e.id);
+      await tx.contactoEtiqueta.deleteMany({ where: { contactoId: conv.contactoId, etiquetaId: { notIn: ids } } });
+      await tx.contactoEtiqueta.createMany({
+        data: ids.map((etiquetaId) => ({ contactoId: conv.contactoId, etiquetaId })),
+        skipDuplicates: true,
+      });
+    });
+  }
 
   // Al cerrar la conversación se dispara la encuesta de satisfacción (si está activa).
   if (data.estado === "cerrada") await enviarCsat(BigInt(params.id));

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSesion } from "@/lib/session";
-import { listarConversaciones, buscarEnMensajes } from "@/lib/services/chat";
+import { listarConversaciones, buscarEnMensajes, etiquetasDeContacto } from "@/lib/services/chat";
 import { serializar } from "@/lib/serialize";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ function mapearConv(c: any) {
     ultimoMensajeAt: c.ultimoMensajeAt,
     preview: c.mensajes[0]?.contenido ?? (c.mensajes[0] ? `[${c.mensajes[0].tipo}]` : ""),
     estado: c.estado,
-    etiquetas: c.etiquetas ?? [],
+    etiquetas: etiquetasDeContacto(c.contacto),
     canalId: c.canal?.id ?? null,
     canalNombre: c.canal?.nombre ?? "Sin canal",
     canalActivo: c.canal?.activo ?? true,

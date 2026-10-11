@@ -146,6 +146,7 @@ export function ChatCliente({
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroEtiqueta, setFiltroEtiqueta] = useState("");
+  const colorEtiqueta = new Map(etiquetas.map((e) => [e.nombre, e.color]));
   const [filtroCanal, setFiltroCanal] = useState("");
   const [filtroResponsable, setFiltroResponsable] = useState<"" | "mias" | "sinasignar" | "personal">("");
   const [buscandoMensajes, setBuscandoMensajes] = useState(false);
@@ -587,7 +588,10 @@ export function ChatCliente({
                     <span className="ml-2 shrink-0 text-[10px] text-muted-foreground">{hora(c.ultimoMensajeAt)}</span>
                   </span>
                   <span className="truncate block text-xs text-muted-foreground">{c.preview}</span>
-                  <span className="mt-1 flex flex-wrap gap-1 text-[9px] font-medium"><span className="rounded-full bg-info/10 px-1.5 py-0.5 text-info">{c.estado}</span>{c.noLeidos > 0 && <span className="rounded-full bg-warning/10 px-1.5 py-0.5 text-warning">sin leer</span>}{c.botActivo && <span className="rounded-full bg-success/10 px-1.5 py-0.5 text-success">bot activo</span>}</span>
+                  <span className="mt-1 flex flex-wrap gap-1 text-[9px] font-medium"><span className="rounded-full bg-info/10 px-1.5 py-0.5 text-info">{c.estado}</span>{c.noLeidos > 0 && <span className="rounded-full bg-warning/10 px-1.5 py-0.5 text-warning">sin leer</span>}{c.botActivo && <span className="rounded-full bg-success/10 px-1.5 py-0.5 text-success">bot activo</span>}{c.etiquetas.slice(0, 3).map((nombre) => {
+                    const color = colorEtiqueta.get(nombre) ?? "#64748b";
+                    return <span key={nombre} className="inline-flex max-w-24 items-center gap-1 truncate rounded-full px-1.5 py-0.5" style={{ backgroundColor: `${color}1f`, color }}><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />{nombre}</span>;
+                  })}{c.etiquetas.length > 3 && <span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">+{c.etiquetas.length - 3}</span>}</span>
                 </span>
               </button>
               <div className="flex shrink-0 flex-col items-center gap-1">

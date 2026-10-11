@@ -1,5 +1,13 @@
 import { db } from "@/lib/db";
 
+// Las etiquetas viven en el contacto (las mismas de Contactos, Difusión y el bot).
+const CONTACTO_CON_ETIQUETAS = { include: { etiquetas: { select: { etiqueta: { select: { nombre: true } } } } } } as const;
+
+/** Nombres de las etiquetas del contacto de una conversación. */
+export function etiquetasDeContacto(contacto: { etiquetas?: { etiqueta: { nombre: string } }[] } | null | undefined) {
+  return (contacto?.etiquetas ?? []).map((e) => e.etiqueta.nombre);
+}
+
 /** Conversaciones para la bandeja: contacto + último mensaje (preview) + no leídos. */
 export function listarConversaciones() {
   return db.conversacion.findMany({
@@ -8,7 +16,7 @@ export function listarConversaciones() {
     // ponytail: tope de las 200 más recientes; paginar por cursor si la bandeja necesita ver más viejas.
     take: 200,
     include: {
-      contacto: true,
+      contacto: CONTACTO_CON_ETIQUETAS,
       responsable: true,
       canal: true,
       mensajes: { orderBy: { timestamp: "desc" }, take: 1 }
@@ -30,7 +38,7 @@ export function buscarEnMensajes(q: string) {
     orderBy: { ultimoMensajeAt: "desc" },
     take: 30,
     include: {
-      contacto: true,
+      contacto: CONTACTO_CON_ETIQUETAS,
       responsable: true,
       canal: true,
       mensajes: { orderBy: { timestamp: "desc" }, take: 1 }

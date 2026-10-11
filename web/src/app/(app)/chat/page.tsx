@@ -1,4 +1,4 @@
-import { listarConversaciones, listarPlantillas } from "@/lib/services/chat";
+import { etiquetasDeContacto, listarConversaciones, listarPlantillas } from "@/lib/services/chat";
 import { getEmbudosConEtapas, listarCanales } from "@/lib/services/config";
 import { listarUsuariosActivos, listarEtiquetas } from "@/lib/services/contactos";
 import { serializar } from "@/lib/serialize";
@@ -30,7 +30,7 @@ export default async function ChatPage() {
     ultimoMensajeAt: c.ultimoMensajeAt,
     preview: c.mensajes[0]?.contenido ?? (c.mensajes[0] ? `[${c.mensajes[0].tipo}]` : ""),
     estado: c.estado,
-    etiquetas: c.etiquetas ?? [],
+    etiquetas: etiquetasDeContacto(c.contacto),
     canalId: c.canal?.id ?? null,
     canalNombre: c.canal?.nombre ?? "Sin canal",
     canalActivo: c.canal?.activo ?? true,
