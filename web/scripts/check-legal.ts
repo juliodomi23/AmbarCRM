@@ -7,7 +7,7 @@ import {
   validarRegistroLegal,
 } from "../src/lib/legal.ts";
 
-const catalogo = await readFile(new URL("../src/lib/modulos.ts", import.meta.url), "utf8");
+const catalogo = await Promise.all(["modulos.ts", "modulos-catalogo.ts"].map((archivo) => readFile(new URL(`../src/lib/${archivo}`, import.meta.url), "utf8"))).then((partes) => partes.join("\n"));
 const sql = await readFile(new URL("../prisma/sql/actualizaciones.sql", import.meta.url), "utf8");
 
 for (const [clave, ruta] of [

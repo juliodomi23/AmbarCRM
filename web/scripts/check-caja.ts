@@ -12,7 +12,7 @@ import {
 } from "../src/lib/caja.ts";
 
 const [catalogo, schema, sql, cajaDb, estadoVentaDb, pantalla, ticket, estilosTicket, estilosGlobales] = await Promise.all([
-  readFile(new URL("../src/lib/modulos.ts", import.meta.url), "utf8"),
+  Promise.all(["modulos.ts", "modulos-catalogo.ts"].map((archivo) => readFile(new URL(`../src/lib/${archivo}`, import.meta.url), "utf8"))).then((partes) => partes.join("\n")),
   readFile(new URL("../prisma/schema.prisma", import.meta.url), "utf8"),
   readFile(new URL("../prisma/sql/actualizaciones.sql", import.meta.url), "utf8"),
   readFile(new URL("../src/lib/caja-db.ts", import.meta.url), "utf8"),

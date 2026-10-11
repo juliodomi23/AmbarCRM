@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { DemoCRM } from "@/components/demo/DemoCRM";
+import { DemoApp } from "@/components/demo/DemoApp";
 
 export const metadata: Metadata = {
   title: "Demo interactiva | AmbarCRM",
-  description:
-    "Recorre el chat, embudo, automatizaciones y los 22 módulos de AmbarCRM con datos ficticios.",
+  description: "Recorre el CRM real de AmbarCRM —chat, embudos, contactos, tareas y módulos por giro— con datos ficticios.",
 };
 
 export default function DemoPage() {
-  return <DemoCRM />;
+  return <DemoApp />;
 }
