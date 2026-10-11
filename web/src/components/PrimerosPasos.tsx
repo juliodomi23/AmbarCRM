@@ -40,7 +40,7 @@ export function PrimerosPasos({ pasos }: { pasos: Pasos }) {
   if (hechos === PASOS.length) return null;
 
   return (
-    <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+    <div className="animate-fade-up rounded-xl border border-warning/30 bg-warning/10 p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-primary">Primeros pasos</h2>
@@ -50,17 +50,17 @@ export function PrimerosPasos({ pasos }: { pasos: Pasos }) {
           {hechos} de {PASOS.length}
         </span>
       </div>
-      <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-amber-200/60">
+      <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-warning/20">
         <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(hechos / PASOS.length) * 100}%` }} />
       </div>
       <ol className="space-y-1">
         {PASOS.map((p) => {
           const hecho = pasos[p.clave];
           return (
-            <li key={p.clave} className="flex items-center gap-3 rounded-lg px-2 py-2">
+            <li key={p.clave} className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-card/60">
               <span
                 className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${
-                  hecho ? "bg-green-500 text-white" : "border-2 border-input bg-card"
+                  hecho ? "bg-success text-white" : "border-2 border-input bg-card"
                 }`}
               >
                 {hecho && <IconoCheck className="h-3.5 w-3.5" />}
@@ -74,7 +74,7 @@ export function PrimerosPasos({ pasos }: { pasos: Pasos }) {
               {!hecho && (
                 <Link
                   href={p.href}
-                  className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition hover:bg-primary/90"
+                  className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 active:scale-[.98]"
                 >
                   {p.cta}
                 </Link>

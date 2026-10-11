@@ -7,6 +7,7 @@ import { IconoDescargar } from "@/components/icons";
 import { PrimerosPasos } from "@/components/PrimerosPasos";
 import { KpiCard } from "@/components/DashboardVisuals";
 import { EmptyState } from "@/components/EmptyState";
+import { EncabezadoPagina } from "@/components/ui";
 import { db } from "@/lib/db";
 import { moduloActivo } from "@/lib/modulos";
 
@@ -46,15 +47,11 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[.14em] text-primary">
-          Resumen operativo
-        </p>
-        <h1 className="mt-1 text-2xl font-bold">Inicio</h1>
-        <p className="text-sm text-muted-foreground">
-          Datos reales de conversaciones y ventas de {mes}.
-        </p>
-      </div>
+      <EncabezadoPagina
+        eyebrow="Resumen operativo"
+        titulo="Inicio"
+        descripcion={`Datos reales de conversaciones y ventas de ${mes}.`}
+      />
 
       {pasos && <PrimerosPasos pasos={pasos} />}
 
@@ -113,7 +110,7 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="stagger grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard
           titulo={`Ganado en ${mes}`}
           valor={moneda(m.ganadasValor)}
@@ -153,7 +150,7 @@ export default async function DashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Pipeline por etapa */}
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="surface p-4">
           <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
             Pipeline por etapa{m.embudoNombre ? ` · ${m.embudoNombre}` : ""}
           </h2>
@@ -192,7 +189,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Ranking de agentes */}
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="surface p-4">
           <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
             Ranking de ventas · {mes}
           </h2>
@@ -204,11 +201,11 @@ export default async function DashboardPage() {
               href="/embudos"
             />
           )}
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-border/60">
             {m.ranking.map((r, i) => (
               <div
                 key={r.nombre}
-                className="flex items-center justify-between py-2"
+                className="fila-lista -mx-2 flex items-center justify-between rounded-md px-2 py-2"
               >
                 <span className="flex items-center gap-2 text-sm text-foreground">
                   <span
@@ -222,7 +219,7 @@ export default async function DashboardPage() {
                   {r.nombre}
                 </span>
                 <span className="text-sm text-muted-foreground">
-                  <span className="font-semibold text-green-600">
+                  <span className="font-semibold text-success">
                     {moneda(r.valor)}
                   </span>
                   <span className="ml-2 text-xs text-muted-foreground">
@@ -236,7 +233,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Reportes descargables */}
-      <div className="rounded-xl border border-border bg-card p-4">
+      <div className="surface p-4">
         <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
           Reportes (CSV)
         </h2>
@@ -246,7 +243,7 @@ export default async function DashboardPage() {
             download
             className={[
               "flex items-center gap-1.5 rounded-lg border border-border",
-              "px-3 py-1.5 text-primary hover:bg-muted/60",
+              "px-3 py-1.5 text-primary transition hover:border-primary/40 hover:bg-muted/60",
             ].join(" ")}
           >
             <IconoDescargar className="h-4 w-4" /> Oportunidades ({mes})
@@ -256,7 +253,7 @@ export default async function DashboardPage() {
             download
             className={[
               "flex items-center gap-1.5 rounded-lg border border-border",
-              "px-3 py-1.5 text-primary hover:bg-muted/60",
+              "px-3 py-1.5 text-primary transition hover:border-primary/40 hover:bg-muted/60",
             ].join(" ")}
           >
             <IconoDescargar className="h-4 w-4" /> Oportunidades (todo)
@@ -266,7 +263,7 @@ export default async function DashboardPage() {
             download
             className={[
               "flex items-center gap-1.5 rounded-lg border border-border",
-              "px-3 py-1.5 text-primary hover:bg-muted/60",
+              "px-3 py-1.5 text-primary transition hover:border-primary/40 hover:bg-muted/60",
             ].join(" ")}
           >
             <IconoDescargar className="h-4 w-4" /> CSAT ({mes})
