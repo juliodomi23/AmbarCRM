@@ -12,6 +12,8 @@ export function estadoVentana(ultimoEntrante: Date | string | null | undefined, 
 
 export function textoRestante(restanteMs: number): string {
   const minutos = Math.floor(restanteMs / 60000);
+  if (minutos < 1) return "menos de 1 min";
   if (minutos < 60) return `${minutos} min`;
-  return `${Math.floor(minutos / 60)} h`;
+  const resto = minutos % 60;
+  return resto ? `${Math.floor(minutos / 60)} h ${resto} min` : `${minutos / 60} h`;
 }

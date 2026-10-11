@@ -28,12 +28,17 @@ assert.equal(errorDeBotones(leerBotones([{ tipo: "PHONE_NUMBER", texto: "Llamar"
 assert.match(errorDeBotones(leerBotones([{ tipo: "QUICK_REPLY", texto: "x".repeat(26) }]))!, /25/);
 
 // Ventana de 24 h y errores
-import { estadoVentana } from "../src/lib/meta/ventana.ts";
+import { estadoVentana, textoRestante } from "../src/lib/meta/ventana.ts";
 import { motivoDeError, motivoDeErrorMeta } from "../src/lib/meta/errores.ts";
 const ahora = new Date("2026-10-07T12:00:00Z");
 assert.equal(estadoVentana("2026-10-07T00:00:00Z", ahora).abierta, true);
 assert.equal(estadoVentana("2026-10-06T11:59:00Z", ahora).abierta, false);
 assert.equal(estadoVentana(null, ahora).abierta, false);
+const min = 60_000;
+assert.equal(textoRestante((23 * 60 + 41) * min), "23 h 41 min");
+assert.equal(textoRestante(2 * 60 * min), "2 h");
+assert.equal(textoRestante(37 * min), "37 min");
+assert.equal(textoRestante(20_000), "menos de 1 min");
 assert.match(motivoDeError(131047), /24 h/);
 assert.match(motivoDeErrorMeta({ code: 999, error_data: { details: "algo raro" } }), /999.*algo raro/);
 console.log("botones, ventana y errores OK");
