@@ -4,7 +4,7 @@ import { conBot, conversacionDelBot } from "@/lib/bot-auth";
 import { db } from "@/lib/db";
 import { conErrores } from "@/lib/errores-api";
 import { telefonoContacto } from "@/lib/reservas/telefono";
-import { auditarBot } from "@/lib/services/bots";
+import { auditarBot, notaDelBot } from "@/lib/services/bots";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +80,7 @@ async function manejarPOST(req: NextRequest, props: Props) {
       entidadId: creado.id,
       despues: { nombre, telefono: telefono.completo, correo: correoTexto || null }
     });
+    await notaDelBot(conv.id, `Creó contacto: ${nombre}`);
     return NextResponse.json({ contacto: vista(creado), repetida: false }, { status: 201 });
   });
 }

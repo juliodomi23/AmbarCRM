@@ -147,6 +147,11 @@ function llamar(
   });
 }
 
+/** Notas internas "🤖 …" que el CRM dejó en la conversación por acciones del bot, en orden. */
+const notasBot = (conversacionId: string) =>
+  q<{ contenido: string }>("SELECT contenido FROM mensajes WHERE conversacion_id=$1 AND interna AND contenido LIKE '🤖%' ORDER BY id", [conversacionId]);
+const textosNotasBot = async (conversacionId: string) => (await notasBot(conversacionId)).map((n) => n.contenido);
+
 async function main() {
   await new Promise<void>((ok) => servidor.listen(0, "127.0.0.1", ok));
   // ---------- Datos ----------
@@ -290,6 +295,39 @@ async function main() {
   assert.equal((await auditoria("mover_etapa")).length, 1);
   assert.equal((await llamar(postMessages, token("A"), conv, { content: "recordar documento", private: true })).status, 200);
   assert.equal((await auditoria("nota_interna")).length, 1);
+
+  // ---------- 6B. Lo que hace el bot queda como nota interna "🤖" en el chat ----------
+  assert.deepEqual(
+    await textosNotasBot(conv),
+    [
+      "🤖 Etiquetó: interesado, vip",
+      "🤖 Reactivó el bot",
+      "🤖 Reactivó el bot",
+      "🤖 Creó tarea: Llamar mañana",
+      "🤖 Movió a etapa: Contactado",
+    ],
+    "una nota por acción efectiva; el 409 de bot_on, las etiquetas vacías y el handoff no suman notas 🤖",
+  );
+  const lecturaBot = await (await llamar(getConversacion, token("A"), conv)).json();
+  assert.ok(
+    !lecturaBot.mensajes.some((m: { content: string }) => m.content.includes("🤖") || m.content.startsWith("Handoff del bot")),
+    "GET de la conversación no entrega al bot las notas internas",
+  );
+  assert.ok(!JSON.stringify(lecturaBot).includes("🤖"), "tampoco aparecen en el perfil");
+
+  // Repetir la misma etiqueta o la misma etapa no vuelve a escribir en el chat.
+  await llamar(postLabels, token("A"), conv, { labels: ["interesado"] });
+  await llamar(postFunnel, token("A"), conv, { etapa: "Contactado" });
+  assert.equal((await notasBot(conv)).length, 5, "sin cambios no hay notas nuevas");
+  // El handoff ya deja su propia nota: no se duplica con una "🤖".
+  const convHandoff = await conversacion(95);
+  await llamar(postLabels, token("A"), convHandoff, { labels: ["escalado_humano"], motivo: "quiere un asesor" });
+  assert.equal((await notasBot(convHandoff)).length, 0);
+  assert.equal(
+    (await q("SELECT count(*)::int n FROM mensajes WHERE conversacion_id=$1 AND interna", [convHandoff]))[0].n,
+    1,
+    "el handoff deja una sola nota (la suya)",
+  );
 
   // ---------- 7. 429 por token ----------
   process.env.BOT_RATE_LIMIT_MAX = "3";
@@ -604,6 +642,9 @@ async function bloque3(o: string, ctx: Ctx) {
   const rep = await llamar(postCitas, token("A"), X.id, cuerpo());
   assert.equal(rep.status, 200, "reintento idempotente");
   assert.equal((await rep.json()).repetida, true);
+  const notasAgenda = await textosNotasBot(X.id);
+  assert.equal(notasAgenda.length, 1, "el reintento idempotente no duplica la nota");
+  assert.match(notasAgenda[0], new RegExp(`^🤖 Agendó cita: [a-zñáéíóú]+ \\d{1,2}, 09:00 con Dra\\. A-${sufijo}$`));
   assert.equal((await llamar(postCitas, token("A"), Y.id, cuerpo())).status, 409, "mismo profesional y hora ocupados");
   const sinPref = await llamar(postCitas, token("A"), Y.id, cuerpo({ profesionalId: undefined }));
   assert.equal(sinPref.status, 201, "sin preferencia toma al otro profesional");
@@ -664,6 +705,7 @@ async function bloque3(o: string, ctx: Ctx) {
   assert.deepEqual(libresD1.horarios.map((h) => h.hora), ["09:30"], "solo queda 09:30 libre para d1");
   const mueve = await llamar(patchCitas, token("A"), X.id, { citaId: cita1.id, fecha: dia, hora: "09:30" }, { metodo: "PATCH" });
   assert.equal(mueve.status, 200);
+  assert.match((await textosNotasBot(X.id)).at(-1) ?? "", /^🤖 Reprogramó cita: [a-zñáéíóú]+ \d{1,2}, 09:30$/);
   const movida = (await mueve.json()).cita;
   assert.equal(new Date(movida.inicio).getTime() - new Date(cita1.inicio).getTime(), 30 * 60_000);
   assert.equal(
@@ -731,6 +773,9 @@ async function bloque3(o: string, ctx: Ctx) {
   assert.equal((await conf.json()).cita.estado, "confirmada");
   const canc = await llamar(patchCitas, token("A"), m.id, { citaId: cm.id, estado: "cancelada" }, { metodo: "PATCH" });
   assert.equal((await canc.json()).cita.estado, "cancelada");
+  const notasEstado = await textosNotasBot(m.id);
+  assert.ok(notasEstado.some((t) => /^🤖 Confirmó cita: /.test(t)), "nota al confirmar");
+  assert.ok(notasEstado.some((t) => /^🤖 Canceló cita: /.test(t)), "nota al cancelar");
   assert.equal((await auditoria("cita_confirmada")).length >= 1, true);
   assert.equal((await llamar(patchCitas, token("A"), m.id, { citaId: cm.id, estado: "x" }, { metodo: "PATCH" })).status, 400);
 
@@ -791,6 +836,7 @@ async function bloque3(o: string, ctx: Ctx) {
   assert.equal((await crear({}, "B")).status, 403, "otro canal");
   assert.equal((await crear({}, "org2")).status, 404, "otra empresa");
   assert.equal((await auditoria("cotizacion_creada")).length, 1);
+  assert.deepEqual(await textosNotasBot(Q.id), [`🤖 Creó cotización ${c1.folio}`], "una nota; los rechazos no dejan nada");
 
   // GET lista
   const lst = await (await llamar(getCotizaciones, token("A"), Q.id)).json();
@@ -840,6 +886,7 @@ async function bloque3(o: string, ctx: Ctx) {
     assert.ok(llamadasMeta.some((l) => l.url.endsWith("/111/messages") && l.body.includes('"type":"text"')));
     assert.equal((await q("SELECT estado FROM cotizaciones WHERE id=$1", [c1.id]))[0].estado, "enviada");
     assert.equal((await auditoria("cotizacion_enviada")).length, 1);
+    assert.ok((await textosNotasBot(Q.id)).includes(`🤖 Envió cotización ${c1.folio} por WhatsApp`));
 
     // Aislamiento: cotización de otro contacto, otro canal, otra empresa
     const otra = await nuevaConversacion();
@@ -1199,6 +1246,14 @@ async function bloque5(o: string, ctx: Ctx) {
   assert.ok(eventos.some((e) => e.tipo === "etapa_cambio"), "cambio de etapa como evento");
   const aud = await auditoria("oportunidad_editada");
   assert.ok(aud.length >= 4, "cada PATCH exitoso queda en la bitácora");
+  const notasOportunidad = await textosNotasBot(O.id);
+  for (const esperada of [
+    "🤖 Movió a etapa: Nuevo",
+    "🤖 Cambió el valor de la oportunidad a $1500.50 MXN",
+    "🤖 Cambió el responsable de la oportunidad",
+    "🤖 Quitó el responsable de la oportunidad",
+    "🤖 Movió a etapa: Resuelto",
+  ]) assert.ok(notasOportunidad.includes(esperada), `falta la nota: ${esperada}`);
   assert.equal((await patch({ valor: 5 }, "B", O2.id)).status, 403, "otro canal");
   assert.equal((await patch({ valor: 5 }, "org2", O2.id)).status, 404, "otra empresa");
 
@@ -1247,4 +1302,7 @@ async function bloque5(o: string, ctx: Ctx) {
   const propio2 = await (await buscarTel(telefono, "org2", k2.id)).json();
   assert.equal(propio2.contacto.nombre, "Otra empresa", "el bot de la otra empresa solo ve lo suyo");
   assert.equal((await auditoria("contacto_creado")).length >= 2, true);
+  const notasContactos = await textosNotasBot(K.id);
+  assert.equal(notasContactos.filter((t) => t === "🤖 Creó contacto: Ana Pérez").length, 1, "el contacto repetido no deja nota");
+  assert.equal(notasContactos.length, 2, "solo los dos contactos realmente creados (Ana y el ganador de la carrera)");
 }

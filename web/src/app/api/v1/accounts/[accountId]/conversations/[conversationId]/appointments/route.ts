@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { conBot, conversacionDelBot } from "@/lib/bot-auth";
-import { auditarBot } from "@/lib/services/bots";
+import { auditarBot, notaDelBot, resumenCita } from "@/lib/services/bots";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { serializar } from "@/lib/serialize";
@@ -108,6 +108,7 @@ async function manejarPOST(req: NextRequest, props: Props) {
       entidadId: cita.id,
       despues: { inicio: cita.inicio, fin: cita.fin, servicioId: servicio.id, doctorId: cita.doctorId },
     });
+    await notaDelBot(conversacion.id, `Agendó cita: ${resumenCita(cita.inicio, cfg.zona, cita.doctor?.nombre)}`);
     return NextResponse.json(respuestaCita(cita, false), { status: 201 });
   });
 }
@@ -176,6 +177,7 @@ async function reprogramar(
     antes: { inicio: cita.inicio, fin: cita.fin },
     despues: { inicio: actualizada.inicio, fin: actualizada.fin, fecha: fechaLocal(actualizada.inicio, cfg.zona) },
   });
+  await notaDelBot(conversacion.id, `Reprogramó cita: ${resumenCita(actualizada.inicio, cfg.zona)}`);
   return NextResponse.json(serializar({ cita: actualizada }));
 }
 
@@ -212,6 +214,13 @@ async function manejarPATCH(req: NextRequest, props: Props) {
       antes: { estado: cita.estado },
       despues: { estado: actualizada.estado }
     });
+    if (cita.estado !== actualizada.estado) {
+      const cfg = await configReservasEmpresa();
+      await notaDelBot(
+        acceso.conv.id,
+        `${actualizada.estado === "confirmada" ? "Confirmó" : "Canceló"} cita: ${resumenCita(cita.inicio, cfg.zona)}`
+      );
+    }
     return NextResponse.json(serializar({ cita: actualizada }));
   });
 }

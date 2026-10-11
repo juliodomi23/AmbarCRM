@@ -4,7 +4,7 @@ import { botAutorizado, conBot } from "@/lib/bot-auth";
 import { aBigInt } from "@/lib/ids";
 import { referenciaPropia } from "@/lib/referencias";
 import { crearLeadSiNoTiene } from "@/lib/services/funnel";
-import { auditarBot } from "@/lib/services/bots";
+import { auditarBot, notaDelBot } from "@/lib/services/bots";
 import { conErrores } from "@/lib/errores-api";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +51,7 @@ async function manejarPOST(req: NextRequest, props: { params: Promise<{ accountI
       entidadId: tarea.id,
       despues: { titulo, venceAt, responsableId: tarea.responsableId, oportunidadId: oportunidad.id }
     });
+    await notaDelBot(conv.id, `Creó tarea: ${titulo}`);
 
     return NextResponse.json({
       id: Number(tarea.id),

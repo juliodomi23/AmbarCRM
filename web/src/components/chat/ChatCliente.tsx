@@ -49,6 +49,9 @@ type Mensaje = {
 
 type Plantilla = { id: string; nombre: string; contenido: string };
 
+/** Notas internas que deja el bot al actuar por la API ("🤖 …") y la del handoff. */
+const esNotaDelBot = (m: Mensaje) => m.interna && /^(🤖|Handoff del bot)/.test(m.contenido ?? "");
+
 function hora(iso: string | null) {
   if (!iso) return "";
   return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
@@ -683,7 +686,9 @@ export function ChatCliente({
                 <div className={`flex ${m.direccion === "saliente" || m.interna ? "justify-end" : "justify-start"}`}>
                   <div
                     className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
-                      m.interna
+                      esNotaDelBot(m)
+                        ? "border border-info/30 bg-info/10 text-foreground"
+                        : m.interna
                         ? "border border-warning/30 bg-warning/10 text-foreground"
                         : m.direccion === "saliente"
                         ? "bg-success/10 text-foreground"
@@ -691,8 +696,8 @@ export function ChatCliente({
                     }`}
                   >
                     {m.interna && (
-                      <p className="mb-0.5 flex items-center gap-1 text-[10px] font-semibold uppercase text-warning">
-                        <IconoNota className="h-3 w-3" /> Nota interna
+                      <p className={`mb-0.5 flex items-center gap-1 text-[10px] font-semibold uppercase ${esNotaDelBot(m) ? "text-info" : "text-warning"}`}>
+                        <IconoNota className="h-3 w-3" /> {esNotaDelBot(m) ? "Acción del bot" : "Nota interna"}
                       </p>
                     )}
                     {m.tipo === "imagen" && m.mediaUrl ? (

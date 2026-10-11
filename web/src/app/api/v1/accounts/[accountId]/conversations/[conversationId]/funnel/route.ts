@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { botAutorizado, conBot } from "@/lib/bot-auth";
 import { aBigInt } from "@/lib/ids";
 import { moverLeadAEtapa, oportunidadAbierta } from "@/lib/services/funnel";
-import { auditarBot } from "@/lib/services/bots";
+import { auditarBot, notaDelBot } from "@/lib/services/bots";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +37,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ accountI
       antes: antes ? { etapaId: antes.etapaId, estado: antes.estado } : null,
       despues: { etapa: res.etapa, estado: res.estado }
     });
+    const etapaAntes = antes ? await db.etapa.findUnique({ where: { id: antes.etapaId }, select: { nombre: true } }) : null;
+    if (etapaAntes?.nombre !== res.etapa) await notaDelBot(conv.id, `Movió a etapa: ${res.etapa}`);
     return NextResponse.json(res);
   });
 }

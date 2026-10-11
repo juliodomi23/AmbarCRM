@@ -6,7 +6,7 @@ import { dinero } from "@/lib/dinero";
 import { conErrores } from "@/lib/errores-api";
 import { aBigInt } from "@/lib/ids";
 import { moverLeadAEtapa, oportunidadAbierta } from "@/lib/services/funnel";
-import { auditarBot } from "@/lib/services/bots";
+import { auditarBot, notaDelBot } from "@/lib/services/bots";
 
 export const dynamic = "force-dynamic";
 
@@ -90,6 +90,14 @@ async function manejarPATCH(req: NextRequest, props: { params: Promise<{ account
       antes: { valor: antes.valor, responsableId: antes.responsableId, etapaId: antes.etapaId, embudoId: antes.embudoId, estado: antes.estado },
       despues: { valor: despues.valor, responsableId: despues.responsableId, etapaId: despues.etapaId, embudoId: despues.embudoId, estado: despues.estado }
     });
+
+    const cambios: string[] = [];
+    if (despues.etapaId !== antes.etapaId) cambios.push(`Movió a etapa: ${despues.etapa.nombre}`);
+    if (!despues.valor.equals(antes.valor)) cambios.push(`Cambió el valor de la oportunidad a $${despues.valor.toFixed(2)} ${despues.moneda}`);
+    if (despues.responsableId !== antes.responsableId) {
+      cambios.push(despues.responsableId === null ? "Quitó el responsable de la oportunidad" : "Cambió el responsable de la oportunidad");
+    }
+    for (const cambio of cambios) await notaDelBot(conv.id, cambio);
 
     return NextResponse.json({
       oportunidad: {

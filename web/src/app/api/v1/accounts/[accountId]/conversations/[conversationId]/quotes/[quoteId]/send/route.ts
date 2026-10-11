@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { ErrorCotizacion } from "@/lib/cotizaciones-db";
 import { enviarCotizacionWhatsapp } from "@/lib/cotizacion-envio";
-import { auditarBot } from "@/lib/services/bots";
+import { auditarBot, notaDelBot } from "@/lib/services/bots";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +35,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ accountI
         antes: { estado: cotizacion.estado },
         despues: { estado: "enviada", forma: envio.forma },
       });
+      await notaDelBot(conv.id, `Envió cotización ${cotizacion.folio} por WhatsApp`);
       return NextResponse.json({ id: Number(id), folio: cotizacion.folio, estado: "enviada", forma: envio.forma, enlace: envio.enlace });
     } catch (error) {
       if (error instanceof ErrorCotizacion) {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { botAutorizado, conBot } from "@/lib/bot-auth";
 import { aBigInt } from "@/lib/ids";
-import { auditarBot, escalarAHumano } from "@/lib/services/bots";
+import { auditarBot, escalarAHumano, notaDelBot } from "@/lib/services/bots";
 
 export const dynamic = "force-dynamic";
 
@@ -47,12 +47,15 @@ export async function POST(req: NextRequest, props: { params: Promise<{ accountI
       )
     ].slice(0, MAX_ETIQUETAS);
 
+    const nuevas: string[] = [];
     for (const nombre of nombres) {
       const etiqueta = await db.etiqueta.upsert({
         where: { orgId_nombre: { orgId: bot.orgId, nombre } },
         update: {},
         create: { nombre }
       });
+      const claveContacto = { contactoId_etiquetaId: { contactoId: conv.contactoId, etiquetaId: etiqueta.id } };
+      if (!(await db.contactoEtiqueta.findUnique({ where: claveContacto }))) nuevas.push(nombre);
       await db.contactoEtiqueta.upsert({
         where: { contactoId_etiquetaId: { contactoId: conv.contactoId, etiquetaId: etiqueta.id } },
         update: {},
@@ -62,6 +65,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ accountI
     if (nombres.length) {
       await auditarBot(bot, conv.id, "etiquetas", { entidad: "contacto", entidadId: conv.contactoId, despues: { etiquetas: nombres } });
     }
+    if (nuevas.length) await notaDelBot(conv.id, `Etiquetó: ${nuevas.join(", ")}`);
 
     let botActivo = conv.botActivo;
     let handoffResultado: { escalada: boolean; responsableId: string | null } | undefined;
@@ -99,6 +103,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ accountI
         antes: { botActivo: conv.botActivo },
         despues: { botActivo: true }
       });
+      if (!conv.botActivo) await notaDelBot(conv.id, "Reactivó el bot");
       botActivo = true;
     }
 

@@ -13,7 +13,7 @@ import { ErrorRetail } from "@/lib/retail-db";
 import { enlacePublicoCotizacion } from "@/lib/cotizacion-envio";
 import { fechaLocal, sumarDias } from "@/lib/reservas/horarios";
 import { crearLeadSiNoTiene } from "@/lib/services/funnel";
-import { auditarBot } from "@/lib/services/bots";
+import { auditarBot, notaDelBot } from "@/lib/services/bots";
 
 export const dynamic = "force-dynamic";
 
@@ -134,6 +134,7 @@ async function manejarPOST(req: NextRequest, props: Props) {
       entidadId: cotizacion.id,
       despues: { folio: cotizacion.folio, total: cotizacion.total, partidas: cotizacion.partidas.length, oportunidadId: oportunidad.id },
     });
+    await notaDelBot(conv.id, `Creó cotización ${cotizacion.folio}`);
     return NextResponse.json(
       {
         ...resumen(cotizacion),

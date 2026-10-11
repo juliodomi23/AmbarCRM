@@ -68,6 +68,42 @@ export async function auditarBot(
   }
 }
 
+/** Prefijo de las notas internas que deja el bot; el chat las muestra con estilo propio. */
+export const PREFIJO_NOTA_BOT = "🤖";
+
+/**
+ * Deja una nota interna breve en la conversación con lo que hizo el bot (el equipo la ve en el chat;
+ * GET de la conversación excluye las internas, así que el bot no la lee). Insertar el mensaje dispara
+ * el NOTIFY del chat en vivo. Nunca rompe la acción principal.
+ */
+export async function notaDelBot(conversacionId: bigint, texto: string, tx?: Prisma.TransactionClient) {
+  try {
+    const data = {
+      conversacionId,
+      direccion: "saliente" as const,
+      tipo: "texto" as const,
+      interna: true,
+      status: "enviado" as const,
+      contenido: `${PREFIJO_NOTA_BOT} ${texto}`.slice(0, 500)
+    };
+    if (tx) await tx.mensaje.create({ data });
+    else await db.mensaje.create({ data });
+  } catch (e) {
+    console.error(`nota del bot en la conversación ${conversacionId} falló:`, e instanceof Error ? e.message : e);
+  }
+}
+
+/** "lun 14, 10:00 con Dra. X" en la zona del negocio, para las notas de citas. */
+export function resumenCita(inicio: Date, zona: string, especialista?: string | null) {
+  const partes = Object.fromEntries(
+    new Intl.DateTimeFormat("es-MX", { timeZone: zona, weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+      .formatToParts(inicio)
+      .map((p) => [p.type, p.value])
+  );
+  const base = `${String(partes.weekday).replace(".", "")} ${partes.day}, ${partes.hour}:${partes.minute}`;
+  return especialista ? `${base} con ${especialista}` : base;
+}
+
 /**
  * Asesor para un handoff: el fijo del bot si está activo; si no, round-robin entre usuarios activos
  * que puedan atender conversaciones (el Cajero nunca recibe un handoff; ver
