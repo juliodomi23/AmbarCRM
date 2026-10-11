@@ -68,6 +68,8 @@
   html { height: 100%; -webkit-tap-highlight-color: transparent; }
   body { @apply min-h-full bg-background font-sans text-foreground antialiased; }
   h1, h2, h3, h4, h5, h6 { @apply font-display; letter-spacing: -0.018em; }
+  /* Sin esto el navegador pinta los campos blancos y en modo oscuro el texto (que hereda) queda blanco sobre blanco. */
+  input, textarea, select { @apply bg-background text-foreground placeholder:text-muted-foreground; }
   button, a, [role="button"] { touch-action: manipulation; }
   ::selection { background: hsl(var(--primary) / 0.2); }
   :focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
