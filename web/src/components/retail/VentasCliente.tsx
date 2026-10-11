@@ -162,7 +162,7 @@ export function VentasCliente({
         }
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Kpi etiqueta="Ventas de hoy" valor={String(ventasHoy.length)} />
         <Kpi etiqueta="Ingreso cobrado hoy" valor={formatoMoneda(numeroMoneda(ingresoHoy))} />
         <Kpi etiqueta="Pedidos abiertos" valor={String(pedidosAbiertos)} />
@@ -205,7 +205,7 @@ export function VentasCliente({
                   {venta.creadoPor ? ` · ${venta.creadoPor.nombre}` : ""}
                 </p>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <p className="text-lg font-bold">
                   {formatoMoneda(numeroMoneda(centavos(venta.total) ?? 0n))}
                 </p>

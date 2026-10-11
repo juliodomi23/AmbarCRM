@@ -114,9 +114,9 @@ export function CotizacionesCliente({
           <tbody className="stagger">
             {cotizaciones.map((cotizacion) => (
               <tr key={cotizacion.id}>
-                <td className="p-3 font-medium">{cotizacion.folio}</td>
+                <td className="whitespace-nowrap p-3 font-medium">{cotizacion.folio}</td>
                 <td className="p-3">{cotizacion.contacto.nombre}{cotizacion.oportunidad && <span className="block text-xs text-muted-foreground">{cotizacion.oportunidad.titulo}</span>}</td>
-                <td className="p-3">{new Date(cotizacion.vigencia).toLocaleDateString("es-MX", { timeZone: "UTC" })}</td>
+                <td className="whitespace-nowrap p-3">{new Date(cotizacion.vigencia).toLocaleDateString("es-MX", { timeZone: "UTC" })}</td>
                 <td className="p-3"><Badge tono={TONO_ESTADO[cotizacion.estado] ?? "neutral"} punto className="capitalize">{cotizacion.estado}</Badge></td>
                 <td className="p-3 text-right font-medium">{moneda(cotizacion.total)}</td>
                 <td className="p-3"><div className="flex flex-wrap gap-2">

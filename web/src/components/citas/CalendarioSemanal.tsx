@@ -131,12 +131,12 @@ function ListaCitas({
           <article
             key={cita.id}
             className={[
-              "flex items-center justify-between gap-3 rounded-xl border",
+              "flex flex-col gap-3 rounded-xl border sm:flex-row sm:items-center sm:justify-between",
               "border-border bg-card p-3",
             ].join(" ")}
           >
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-foreground">
+              <p className="text-sm font-semibold text-foreground sm:truncate">
                 {cita.titulo} · {cita.contacto.nombre}
               </p>
               <p className="text-xs text-muted-foreground">
@@ -155,7 +155,7 @@ function ListaCitas({
               <button
                 type="button"
                 onClick={() => onSeleccionar(cita)}
-                className="rounded-lg border border-border px-2 py-2 text-xs font-medium"
+                className="rounded-lg border border-border px-3 py-2 text-xs font-medium"
               >
                 Abrir
               </button>
@@ -164,7 +164,7 @@ function ListaCitas({
                 onChange={(evento) =>
                   onCambiarEstado(cita, evento.target.value as EstadoCita)
                 }
-                className="rounded-lg border border-input bg-card p-2 text-xs"
+                className="min-w-0 flex-1 rounded-lg border border-input bg-card p-2 text-xs sm:flex-none"
                 aria-label={`Estado de ${cita.titulo}`}
               >
                 {ESTADOS_CITA.map((estado) => (

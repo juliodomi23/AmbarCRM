@@ -190,7 +190,7 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
         }
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Kpi etiqueta="Productos activos" valor={String(activos.length)} />
         <Kpi etiqueta="Existencia acumulada" valor={formatearMilesimas(unidades)} />
         <Kpi etiqueta="Stock bajo o agotado" valor={String(bajoStock)} alerta={bajoStock > 0} />
