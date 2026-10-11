@@ -124,10 +124,14 @@
   /* Padding y alineación con especificidad mínima: text-right, p-2, etc. siguen ganando. */
   :where(.tabla) th, :where(.tabla) td { padding: .625rem .75rem; text-align: left; }
 
-  /* Última columna (acciones) siempre visible al desplazar la tabla en horizontal. */
-  .tabla .celda-fija { position: sticky; right: 0; z-index: 1; white-space: nowrap; background: hsl(var(--card)); box-shadow: -10px 0 8px -8px hsl(var(--shadow-color) / 0.14); }
-  .tabla thead .celda-fija { background: color-mix(in srgb, hsl(var(--muted)) 50%, hsl(var(--card))); }
-  .tabla tbody tr:hover .celda-fija { background: color-mix(in srgb, hsl(var(--muted)) 55%, hsl(var(--card))); }
+  /* Última columna (acciones) siempre visible al desplazar la tabla en horizontal.
+     Solo desde tablet: en celular la columna fija tapaba el contenido de la fila. */
+  @media (min-width: 768px) {
+    .tabla .celda-fija { position: sticky; right: 0; z-index: 1; white-space: nowrap; background: hsl(var(--card)); box-shadow: -10px 0 8px -8px hsl(var(--shadow-color) / 0.14); }
+    .tabla thead .celda-fija { background: color-mix(in srgb, hsl(var(--muted)) 50%, hsl(var(--card))); }
+    .tabla tbody tr:hover .celda-fija { background: color-mix(in srgb, hsl(var(--muted)) 55%, hsl(var(--card))); }
+  }
+  .tabla .celda-fija { white-space: nowrap; }
 
   /* Fila de lista (ul/li) con hover suave. */
   .fila-lista { transition: background-color .15s ease; }

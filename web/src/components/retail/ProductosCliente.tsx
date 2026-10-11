@@ -9,6 +9,7 @@ import {
   type ProductoFormulario,
 } from "@/components/retail/ProductoFormModal";
 import type { ProductoRetail } from "@/components/retail/tipos";
+import { pedirDatos } from "@/components/PedirDatos";
 import { toast } from "@/components/Toaster";
 import { Boton, EncabezadoPagina, formatoMoneda } from "@/components/ui";
 import {
@@ -132,8 +133,13 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
   }
 
   async function cambiarPreciosLote() {
-    const entrada = window.prompt("Escribe una línea por producto: SKU,precio");
-    if (!entrada) return;
+    const datos = await pedirDatos({
+      titulo: "Precios en lote",
+      confirmar: "Actualizar precios",
+      campos: [{ nombre: "entrada", etiqueta: "Una línea por producto", tipo: "textarea", placeholder: "SKU-001,49.90\nSKU-002,120", ayuda: "Formato: SKU,precio", requerido: true }],
+    });
+    if (!datos) return;
+    const entrada = datos.entrada;
     const porSku = new Map(productos.flatMap((producto) => producto.sku ? [[producto.sku.toUpperCase(), producto] as const] : []));
     const cambios = entrada.split(/\r?\n/).filter(Boolean).map((linea) => {
       const [sku, precio] = linea.split(",").map((valor) => valor.trim());
@@ -146,8 +152,13 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
   }
 
   async function descontinuarRapido() {
-    const entrada = window.prompt("SKU de productos a descontinuar, separados por coma");
-    if (!entrada) return;
+    const datos = await pedirDatos({
+      titulo: "Descontinuar productos",
+      confirmar: "Descontinuar",
+      campos: [{ nombre: "entrada", etiqueta: "SKU a descontinuar", placeholder: "SKU-001, SKU-002", ayuda: "Separados por coma", requerido: true }],
+    });
+    if (!datos) return;
+    const entrada = datos.entrada;
     const porSku = new Map(productos.flatMap((producto) => producto.sku ? [[producto.sku.toUpperCase(), producto] as const] : []));
     const cambios = entrada.split(",").map((sku) => ({ id: porSku.get(sku.trim().toUpperCase())?.id ?? "", activo: false, agotadoManual: true }));
     const respuesta = await fetch("/api/productos/lote", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productos: cambios }) });
@@ -179,7 +190,7 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
         }
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Kpi etiqueta="Productos activos" valor={String(activos.length)} />
         <Kpi etiqueta="Existencia acumulada" valor={formatearMilesimas(unidades)} />
         <Kpi etiqueta="Stock bajo o agotado" valor={String(bajoStock)} alerta={bajoStock > 0} />

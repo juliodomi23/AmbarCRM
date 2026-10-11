@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "@/components/Toaster";
+import { OPCIONES_METODO_PAGO, pedirDatos } from "@/components/PedirDatos";
 import { Boton, formatoMoneda } from "@/components/ui";
 
 type PartidaVenta = {
@@ -56,17 +57,41 @@ export function OperacionesCajaA2({
   }, [contactoId]);
 
   async function devolver(venta: Venta) {
-    const partidas = venta.partidas.flatMap((partida) => {
+    const disponibles = venta.partidas.flatMap((partida) => {
       const devuelto = partida.devoluciones.reduce((suma, item) => suma + Number(item.cantidad), 0);
       const disponible = Number(partida.cantidad) - devuelto;
-      if (disponible <= 0) return [];
-      const cantidad = window.prompt(`Cantidad de ${partida.producto.nombre} a devolver (máximo ${disponible} ${partida.producto.unidad})`, String(disponible));
+      return disponible > 0 ? [{ partida, disponible }] : [];
+    });
+    if (!disponibles.length) return toast("Esta venta ya no tiene partidas por devolver", "error");
+    const datos = await pedirDatos({
+      titulo: `Devolución de ${venta.folio}`,
+      mensaje: "Deja en blanco o en 0 lo que no se devuelve.",
+      confirmar: "Registrar devolución",
+      campos: [
+        ...disponibles.map(({ partida, disponible }) => ({
+          nombre: `cantidad-${partida.id}`,
+          etiqueta: `${partida.producto.nombre} (máximo ${disponible} ${partida.producto.unidad})`,
+          tipo: "numero" as const,
+          valor: String(disponible),
+          max: disponible,
+        })),
+        {
+          nombre: "tipo",
+          etiqueta: "Reembolso",
+          tipo: "seleccion" as const,
+          opciones: [{ valor: "efectivo", etiqueta: "Efectivo" }, { valor: "nota_credito", etiqueta: "Nota de crédito" }],
+        },
+        { nombre: "ventaCambioId", etiqueta: "Id de la nueva venta si es un cambio", valor: "" },
+      ],
+    });
+    if (!datos) return;
+    const partidas = disponibles.flatMap(({ partida }) => {
+      const cantidad = datos[`cantidad-${partida.id}`];
       return cantidad && Number(cantidad) > 0 ? [{ ventaPartidaId: partida.id, cantidad }] : [];
     });
-    if (!partidas.length) return;
-    const tipo = window.prompt("Reembolso: efectivo o nota_credito", "efectivo");
-    if (tipo !== "efectivo" && tipo !== "nota_credito") return;
-    const ventaCambioId = window.prompt("Id de la nueva venta si es un cambio (opcional)", "");
+    if (!partidas.length) return toast("Indica la cantidad a devolver de al menos una partida", "error");
+    const tipo = datos.tipo;
+    const ventaCambioId = datos.ventaCambioId;
     try {
       await apiA2("/api/caja/devoluciones", "POST", { ventaId: venta.id, ventaCambioId: ventaCambioId || null, tipoReembolso: tipo, partidas });
       toast(`Devolución de ${venta.folio} registrada`); await cargar();
@@ -74,9 +99,17 @@ export function OperacionesCajaA2({
   }
 
   async function abonar(apartado: Apartado) {
-    const monto = window.prompt(`Abono para ${apartado.venta.folio} (saldo ${apartado.saldo})`, apartado.saldo);
-    const metodo = monto === null ? null : window.prompt("Método: efectivo, tarjeta o transferencia", "efectivo");
-    if (monto === null || !metodo) return;
+    const datos = await pedirDatos({
+      titulo: `Abono para ${apartado.venta.folio}`,
+      mensaje: `Saldo pendiente: ${formatoMoneda(Number(apartado.saldo))}`,
+      confirmar: "Registrar abono",
+      campos: [
+        { nombre: "monto", etiqueta: "Monto del abono", tipo: "dinero", valor: apartado.saldo, requerido: true, positivo: true },
+        { nombre: "metodo", etiqueta: "Método de pago", tipo: "seleccion", opciones: OPCIONES_METODO_PAGO },
+      ],
+    });
+    if (!datos) return;
+    const { monto, metodo } = datos;
     try {
       await apiA2(`/api/caja/apartados/${apartado.id}`, "PATCH", { accion: "abonar", turnoId, monto, metodo });
       toast("Abono de apartado registrado"); await cargar();
@@ -84,8 +117,24 @@ export function OperacionesCajaA2({
   }
 
   async function cancelar(apartado: Apartado) {
-    const forma = window.prompt("Cancelar con: sin_reembolso, efectivo o nota_credito", "sin_reembolso");
-    if (!forma) return;
+    const datos = await pedirDatos({
+      titulo: `Cancelar apartado ${apartado.venta.folio}`,
+      mensaje: "La existencia separada se libera al cancelar.",
+      confirmar: "Cancelar apartado",
+      cancelar: "Volver",
+      campos: [{
+        nombre: "forma",
+        etiqueta: "Devolver el anticipo",
+        tipo: "seleccion",
+        opciones: [
+          { valor: "sin_reembolso", etiqueta: "Sin reembolso" },
+          { valor: "efectivo", etiqueta: "En efectivo" },
+          { valor: "nota_credito", etiqueta: "Como nota de crédito" },
+        ],
+      }],
+    });
+    if (!datos) return;
+    const forma = datos.forma;
     try {
       await apiA2(`/api/caja/apartados/${apartado.id}`, "PATCH", { accion: "cancelar", forma });
       toast("Apartado cancelado y existencia liberada"); await cargar();
@@ -94,8 +143,12 @@ export function OperacionesCajaA2({
 
   async function configurarLimite() {
     if (!contactoId) return;
-    const limiteCredito = window.prompt("Límite de crédito", cuenta?.limiteCredito ?? "0");
-    if (limiteCredito === null) return;
+    const datos = await pedirDatos({
+      titulo: "Límite de crédito",
+      campos: [{ nombre: "limiteCredito", etiqueta: "Límite de crédito", tipo: "dinero", valor: cuenta?.limiteCredito ?? "0", requerido: true }],
+    });
+    if (!datos) return;
+    const limiteCredito = datos.limiteCredito;
     try {
       const data = await apiA2(`/api/caja/credito/${contactoId}`, "PATCH", { limiteCredito });
       setCuenta({ ...data.cuenta, antiguedadDias: 0, movimientos: data.cuenta.movimientos ?? [] });
@@ -105,9 +158,16 @@ export function OperacionesCajaA2({
 
   async function abonarCredito() {
     if (!contactoId) return;
-    const monto = window.prompt("Monto del abono a crédito", cuenta?.saldo ?? "");
-    const metodo = monto === null ? null : window.prompt("Método: efectivo, tarjeta o transferencia", "efectivo");
-    if (monto === null || !metodo) return;
+    const datos = await pedirDatos({
+      titulo: "Abono a crédito",
+      confirmar: "Registrar abono",
+      campos: [
+        { nombre: "monto", etiqueta: "Monto del abono", tipo: "dinero", valor: cuenta?.saldo ?? "", requerido: true, positivo: true },
+        { nombre: "metodo", etiqueta: "Método de pago", tipo: "seleccion", opciones: OPCIONES_METODO_PAGO },
+      ],
+    });
+    if (!datos) return;
+    const { monto, metodo } = datos;
     try {
       await apiA2("/api/caja/credito/abonos", "POST", { turnoId, contactoId, monto, metodo });
       const data = await apiA2(`/api/caja/credito/${contactoId}`); setCuenta(data.cuenta); toast("Abono a crédito registrado");

@@ -7,6 +7,7 @@ import { AbrirTicket } from "@/components/caja/BotonImprimir";
 import { OperacionesCajaA2 } from "@/components/caja/OperacionesCajaA2";
 import { TarjetaLealtad } from "@/components/lealtad/TarjetaLealtad";
 import type { ContactoVenta, ProductoRetail } from "@/components/retail/tipos";
+import { OPCIONES_METODO_PAGO, pedirDatos } from "@/components/PedirDatos";
 import { toast } from "@/components/Toaster";
 import { Boton, formatoMoneda } from "@/components/ui";
 import { almacenIndexedDB } from "@/lib/caja-offline/almacen";
@@ -228,11 +229,25 @@ export function CajaCliente({
     };
   }, [busquedaContacto, contactoId]);
 
-  function agregar(producto: ProductoRetail) {
+  async function agregar(producto: ProductoRetail) {
     let cantidad = "1";
     if (producto.vendePorPeso) {
-      cantidad = window.prompt(`Cantidad de ${producto.nombre} en ${producto.unidad}`, "0.250") ?? "";
-      if (!/^\d+(\.\d{1,3})?$/.test(cantidad) || Number(cantidad) <= 0) return;
+      const datos = await pedirDatos({
+        titulo: producto.nombre,
+        confirmar: "Agregar",
+        campos: [{
+          nombre: "cantidad",
+          etiqueta: `Cantidad en ${producto.unidad}`,
+          tipo: "numero",
+          valor: "0.250",
+          requerido: true,
+          positivo: true,
+          ayuda: "Hasta 3 decimales",
+          validar: (valor) => (/^\d+(\.\d{1,3})?$/.test(valor) ? null : "Usa hasta 3 decimales, por ejemplo 0.250"),
+        }],
+      });
+      if (!datos) return;
+      cantidad = datos.cantidad;
     }
     setLineas((actual) => {
       const encontrada = actual.find((linea) => linea.producto.id === producto.id);
@@ -256,8 +271,15 @@ export function CajaCliente({
 
   async function abrirTurno() {
     const cajaId = (document.querySelector("#caja-apertura") as HTMLSelectElement | null)?.value;
-    const fondoInicial = window.prompt("Fondo inicial", "500");
-    if (!cajaId || fondoInicial === null) return;
+    if (!cajaId) return;
+    const datos = await pedirDatos({
+      titulo: "Abrir turno",
+      mensaje: "Cuenta el efectivo con el que inicia la caja.",
+      confirmar: "Abrir turno",
+      campos: [{ nombre: "fondoInicial", etiqueta: "Fondo inicial", tipo: "dinero", valor: "500", requerido: true }],
+    });
+    if (!datos) return;
+    const fondoInicial = datos.fondoInicial;
     setOcupado(true);
     try {
       const data = await api("/api/caja/turnos", "POST", { cajaId, fondoInicial });
@@ -267,9 +289,16 @@ export function CajaCliente({
   }
 
   async function crearCaja() {
-    const nombre = window.prompt("Nombre de la caja", "Caja 1");
-    const sucursal = nombre === null ? null : window.prompt("Sucursal (opcional)", "Matriz");
-    if (nombre === null || sucursal === null) return;
+    const datos = await pedirDatos({
+      titulo: "Crear caja",
+      confirmar: "Crear caja",
+      campos: [
+        { nombre: "nombre", etiqueta: "Nombre de la caja", valor: "Caja 1", requerido: true },
+        { nombre: "sucursal", etiqueta: "Sucursal", valor: "Matriz" },
+      ],
+    });
+    if (!datos) return;
+    const { nombre, sucursal } = datos;
     try { await api("/api/caja/cajas", "POST", { nombre, sucursal }); toast("Caja creada"); router.refresh(); }
     catch (error) { toast((error as Error).message, "error"); }
   }
@@ -351,9 +380,17 @@ export function CajaCliente({
 
   async function apartar() {
     if (!turno || !contactoId || !lineas.length || ocupado) return;
-    const anticipo = window.prompt("Anticipo del apartado", "100");
-    const metodo = anticipo === null ? null : window.prompt("Método: efectivo, tarjeta o transferencia", "efectivo");
-    if (anticipo === null || !metodo) return;
+    const datos = await pedirDatos({
+      titulo: "Apartar productos",
+      mensaje: "La existencia queda separada hasta liquidar, cancelar o vencer.",
+      confirmar: "Apartar",
+      campos: [
+        { nombre: "anticipo", etiqueta: "Anticipo", tipo: "dinero", valor: "100", requerido: true },
+        { nombre: "metodo", etiqueta: "Método de pago", tipo: "seleccion", opciones: OPCIONES_METODO_PAGO },
+      ],
+    });
+    if (!datos) return;
+    const { anticipo, metodo } = datos;
     setOcupado(true);
     try {
       const data = await api("/api/caja/apartados", "POST", { turnoId: turno.id, contactoId, anticipo, metodo, uuidCliente: uuid, partidas: lineas.map((linea) => ({ productoId: linea.producto.id, cantidad: linea.cantidad, descuento: linea.descuento })) });
@@ -381,8 +418,14 @@ export function CajaCliente({
   async function cerrarTurno() {
     if (!turno) return;
     if (cola.length > 0) return toast(`Hay ${cola.length} venta(s) sin subir: espera a que se suban antes del corte Z`, "error");
-    const efectivoContado = window.prompt("Efectivo contado para el corte Z", String(corte?.efectivoEsperado ?? ""));
-    if (efectivoContado === null) return;
+    const datos = await pedirDatos({
+      titulo: "Corte Z",
+      mensaje: "Cuenta el efectivo en caja. El turno se cierra al guardar.",
+      confirmar: "Cerrar turno",
+      campos: [{ nombre: "efectivoContado", etiqueta: "Efectivo contado", tipo: "dinero", valor: String(corte?.efectivoEsperado ?? ""), requerido: true }],
+    });
+    if (!datos) return;
+    const efectivoContado = datos.efectivoContado;
     try {
       const data = await api(`/api/caja/turnos/${turno.id}/corte`, "POST", { efectivoContado });
       setCorte(data.corte); setTurno(null); toast(`Corte Z guardado · diferencia ${formatoMoneda(data.corte.diferencia)}`); router.refresh();
@@ -391,9 +434,16 @@ export function CajaCliente({
 
   async function mover(tipo: "entrada" | "salida") {
     if (!turno) return;
-    const monto = window.prompt(`Monto de ${tipo}`);
-    const motivo = monto === null ? null : window.prompt("Motivo");
-    if (monto === null || motivo === null) return;
+    const datos = await pedirDatos({
+      titulo: tipo === "entrada" ? "Entrada de efectivo" : "Salida de efectivo",
+      confirmar: "Registrar",
+      campos: [
+        { nombre: "monto", etiqueta: `Monto de ${tipo}`, tipo: "dinero", requerido: true, positivo: true },
+        { nombre: "motivo", etiqueta: "Motivo", requerido: true },
+      ],
+    });
+    if (!datos) return;
+    const { monto, motivo } = datos;
     try { await api("/api/caja/movimientos", "POST", { turnoId: turno.id, tipo, monto, motivo }); toast("Movimiento registrado"); void verCorte(); }
     catch (error) { toast((error as Error).message, "error"); }
   }

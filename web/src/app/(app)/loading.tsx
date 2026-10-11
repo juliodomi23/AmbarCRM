@@ -1,3 +1,15 @@
+import { Esqueleto, EsqueletoEncabezado, EsqueletoMetricas, EsqueletoPanel } from "@/components/Esqueletos";
+
+// Inicio (y cualquier ruta sin esqueleto propio): encabezado, métricas y dos paneles.
 export default function Loading() {
-  return <div className="space-y-6 p-4 md:p-6"><div className="skeleton h-8 w-44"/><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[0,1,2,3].map((i) => <div key={i} className="skeleton h-32"/>)}</div><div className="grid gap-4 lg:grid-cols-2"><div className="skeleton h-64"/><div className="skeleton h-64"/></div></div>;
+  return (
+    <Esqueleto className="p-4 md:p-6">
+      <EsqueletoEncabezado accion={false} />
+      <EsqueletoMetricas />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <EsqueletoPanel alto="h-64" />
+        <EsqueletoPanel alto="h-64" />
+      </div>
+    </Esqueleto>
+  );
 }
