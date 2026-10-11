@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { formatoMoneda } from "@/components/ui";
 import { IconoCerrar, IconoFlecha } from "@/components/icons";
 import { toast } from "@/components/Toaster";
+import { confirmar } from "@/components/Confirmador";
 import { AvatarNombre } from "@/components/AvatarNombre";
 
 export type Tarjeta = {
@@ -47,7 +48,7 @@ function dentroDeRango(iso: string, rango: Rango): boolean {
 
 function TarjetaVista({ t, onBorrar, color }: { t: Tarjeta; onBorrar?: (id: string) => void; color?: string }) {
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-border bg-card p-3 pl-4 shadow-soft transition-shadow hover:shadow-lift">
+    <div className="group relative overflow-hidden surface p-3 pl-4 shadow-soft transition-shadow hover:shadow-lift">
       <span className="absolute inset-y-0 left-0 w-1" style={{ background: color ?? "hsl(var(--primary))" }}/>
       {onBorrar && (
         <button
@@ -55,7 +56,7 @@ function TarjetaVista({ t, onBorrar, color }: { t: Tarjeta; onBorrar?: (id: stri
           onClick={() => onBorrar(t.id)}
           title="Quitar del embudo"
           aria-label="Quitar del embudo"
-          className="absolute right-1.5 top-1.5 hidden h-5 w-5 place-items-center rounded text-muted-foreground hover:bg-red-50 hover:text-red-600 group-hover:grid"
+          className="absolute right-1.5 top-1.5 hidden h-5 w-5 place-items-center rounded text-muted-foreground hover:bg-destructive/20 hover:text-destructive group-hover:grid"
         >
           <IconoCerrar className="h-3.5 w-3.5" />
         </button>
@@ -98,7 +99,7 @@ function ColumnaVista({ col, onBorrar, onChat }: { col: Columna; onBorrar: (id: 
   const { setNodeRef } = useDroppable({ id: `col-${col.id}` });
   const total = col.tarjetas.reduce((s, t) => s + t.valor, 0);
   return (
-    <div className="flex w-72 shrink-0 flex-col rounded-xl bg-muted">
+    <div className="flex w-72 shrink-0 flex-col rounded-xl border border-border/50 bg-muted">
       <div className="flex items-center justify-between px-3 py-2.5">
         <div className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: col.color }} />
@@ -147,7 +148,12 @@ export function Board({ columnasIniciales }: { columnasIniciales: Columna[] }) {
   );
 
   async function borrar(id: string) {
-    if (!confirm("¿Quitar esta tarjeta del embudo? (No borra el contacto, solo la oportunidad.)")) return;
+    const ok = await confirmar({
+      titulo: "Quitar tarjeta del embudo",
+      mensaje: "Se quita la oportunidad del embudo. El contacto no se borra.",
+      confirmar: "Quitar"
+    });
+    if (!ok) return;
     setCols((prev) => prev.map((c) => ({ ...c, tarjetas: c.tarjetas.filter((t) => t.id !== id) })));
     await fetch(`/api/oportunidades/${id}`, { method: "DELETE" }).catch(() => {});
   }
@@ -232,7 +238,8 @@ export function Board({ columnasIniciales }: { columnasIniciales: Columna[] }) {
           <button
             key={r.id}
             onClick={() => setRango(r.id)}
-            className={`rounded-lg px-2.5 py-1 text-xs font-medium ${rango === r.id ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted"}`}
+            aria-pressed={rango === r.id}
+            className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${rango === r.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
           >
             {r.label}
           </button>

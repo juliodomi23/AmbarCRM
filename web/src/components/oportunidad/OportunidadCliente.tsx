@@ -37,14 +37,14 @@ const ETIQUETA_EVENTO: Record<string, string> = {
   asignacion: "Asignación",
 };
 const COLOR_EVENTO: Record<string, string> = {
-  ganada: "border-green-400",
-  perdida: "border-red-400",
+  ganada: "border-success",
+  perdida: "border-destructive",
   etapa_cambio: "border-primary/40",
-  nota: "border-amber-400",
-  tarea: "border-sky-400",
+  nota: "border-warning",
+  tarea: "border-info",
   creada: "border-input",
   mensaje: "border-input",
-  asignacion: "border-purple-400",
+  asignacion: "border-accent-foreground",
 };
 
 export function OportunidadCliente({ op }: { op: any }) {
@@ -104,20 +104,20 @@ export function OportunidadCliente({ op }: { op: any }) {
 
   const badge =
     op.estado === "ganado"
-      ? "bg-green-100 text-green-700"
+      ? "bg-success/10 text-success"
       : op.estado === "perdido"
-        ? "bg-red-100 text-red-700"
+        ? "bg-destructive/10 text-destructive"
         : "bg-muted text-muted-foreground";
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="space-y-1 p-4 md:p-6">
       <Link href="/embudos" className="text-sm text-primary hover:underline">
         ← Volver al embudo
       </Link>
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-primary">{op.titulo}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{op.titulo}</h1>
           <p className="text-sm text-muted-foreground">
             {op.contacto.nombre}
             {op.contacto.telefono ? ` · ${op.contacto.telefono}` : ""}
@@ -151,7 +151,7 @@ export function OportunidadCliente({ op }: { op: any }) {
         {op.contacto.telefono && (
           <Link
             href={convId ? `/chat?conv=${convId}` : "/chat"}
-            className="rounded-lg bg-green-100 px-3 py-1 font-medium text-green-700 hover:bg-green-200"
+            className="rounded-lg bg-success/10 px-3 py-1 font-medium text-success hover:bg-success/20"
           >
             Abrir chat
           </Link>
@@ -159,7 +159,7 @@ export function OportunidadCliente({ op }: { op: any }) {
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <section className="rounded-xl border border-border bg-card p-4">
+        <section className="surface p-4">
           <h2 className="mb-3 font-semibold text-foreground">
             Datos personalizados
           </h2>
@@ -173,7 +173,7 @@ export function OportunidadCliente({ op }: { op: any }) {
           </Boton>
         </section>
         {/* Notas */}
-        <section className="rounded-xl border border-border bg-card p-4">
+        <section className="surface p-4">
           <h2 className="mb-3 font-semibold text-foreground">Notas</h2>
           <form onSubmit={agregarNota} className="mb-3 space-y-2">
             <textarea
@@ -197,7 +197,7 @@ export function OportunidadCliente({ op }: { op: any }) {
             {op.notas.map((n: any) => (
               <div
                 key={n.id}
-                className="rounded-lg bg-amber-50 border border-amber-100 p-2.5 text-sm"
+                className="rounded-lg bg-warning/10 border border-warning/30 p-2.5 text-sm"
               >
                 <p className="whitespace-pre-wrap text-foreground">
                   {n.contenido}
@@ -211,7 +211,7 @@ export function OportunidadCliente({ op }: { op: any }) {
         </section>
 
         {/* Tareas */}
-        <section className="rounded-xl border border-border bg-card p-4">
+        <section className="surface p-4">
           <h2 className="mb-3 font-semibold text-foreground">Tareas</h2>
           <form onSubmit={agregarTarea} className="mb-3 flex gap-2">
             <input
@@ -257,7 +257,7 @@ export function OportunidadCliente({ op }: { op: any }) {
         </section>
 
         {/* Timeline */}
-        <section className="rounded-xl border border-border bg-card p-4">
+        <section className="surface p-4">
           <h2 className="mb-3 font-semibold text-foreground">Historial</h2>
           <div className="space-y-3">
             {op.eventos.length === 0 && (

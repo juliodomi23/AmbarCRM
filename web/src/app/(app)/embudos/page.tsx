@@ -15,7 +15,7 @@ export default async function EmbudosPage(
   const embudos = serializar(await listarEmbudos());
   if (embudos.length === 0) {
     return (
-      <div className="grid h-full place-items-center p-8">
+      <div className="animate-fade-up grid h-full place-items-center p-8">
         <div className="max-w-sm text-center">
           <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-primary/10">
             <svg className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 5h18l-7 8v5l-4 2v-7z" /></svg>
@@ -26,7 +26,7 @@ export default async function EmbudosPage(
           </p>
           <Link
             href="/configuracion"
-            className="mt-4 inline-block rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary/90"
+            className="mt-4 inline-block rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 hover:shadow-glow"
           >
             Crear mi embudo
           </Link>
@@ -65,8 +65,8 @@ export default async function EmbudosPage(
             <Link
               key={e.id}
               href={`/embudos?embudo=${e.id}`}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-                e.id === activoId ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted"
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                e.id === activoId ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
               }`}
             >
               {e.nombre}
