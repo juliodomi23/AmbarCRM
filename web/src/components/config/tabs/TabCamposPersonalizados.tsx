@@ -46,7 +46,7 @@ export function TabCamposPersonalizados() {
   }
   return (
     <div className="max-w-2xl space-y-4">
-      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+      <div className="rounded-xl border border-info/30 bg-info/10 p-4 text-sm text-info">
         <p className="font-semibold">¿Para qué sirven?</p>
         <p className="mt-1">
           Agregan datos propios del negocio sin programar: por ejemplo tipo de
@@ -73,7 +73,7 @@ export function TabCamposPersonalizados() {
       </div>
       <form
         onSubmit={crear}
-        className="grid gap-2 rounded-xl border border-border bg-card p-4 sm:grid-cols-2"
+        className="grid gap-2 surface p-4 sm:grid-cols-2"
       >
         <Campo
           label="Clave"

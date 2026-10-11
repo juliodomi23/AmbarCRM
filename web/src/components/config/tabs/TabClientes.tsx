@@ -89,7 +89,7 @@ export function TabClientes({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-border bg-amber-50/60 p-3 text-xs text-muted-foreground">
+      <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-xs text-muted-foreground">
         Cada cliente es una <b>organización aislada</b>: sus chats, contactos y
         usuarios no se mezclan con los de nadie más. Al crearla se genera su
         admin, su embudo de ventas y su canal oficial de WhatsApp mediante Meta
@@ -98,7 +98,7 @@ export function TabClientes({
 
       <form
         onSubmit={crear}
-        className="space-y-4 rounded-xl border border-border bg-card p-4"
+        className="space-y-4 surface p-4"
       >
         <p className="font-medium text-foreground">Nuevo cliente de Ámbar CRM</p>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -147,18 +147,18 @@ export function TabClientes({
       </form>
 
       {creado && (
-        <div className="space-y-2 rounded-xl border border-green-200 bg-green-50 p-4">
-          <p className="flex items-center gap-2 font-medium text-green-800">
+        <div className="space-y-2 rounded-xl border border-success/30 bg-success/10 p-4">
+          <p className="flex items-center gap-2 font-medium text-success">
             ✓ Cliente creado
           </p>
-          <p className="text-sm text-green-900">
+          <p className="text-sm text-success">
             Comparte esta liga de acceso junto con el usuario{" "}
             <b>{creado.email}</b> y su contraseña:
           </p>
           <div className="flex items-center gap-2">
             <code
               className={[
-                "min-w-0 flex-1 truncate rounded-lg border border-green-200",
+                "min-w-0 flex-1 truncate rounded-lg border border-success/30",
                 "bg-card px-3 py-2 text-xs text-foreground",
               ].join(" ")}
             >
@@ -180,10 +180,10 @@ export function TabClientes({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-card">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto surface">
+        <table className="tabla">
           <thead>
-            <tr className="border-b border-border text-left text-xs text-muted-foreground">
+            <tr>
               <th className="px-4 py-2">Cliente</th>
               <th className="px-4 py-2">Slug</th>
               <th className="px-4 py-2">Estado</th>
@@ -193,10 +193,7 @@ export function TabClientes({
           </thead>
           <tbody>
             {orgs.map((o) => (
-              <tr
-                key={o.id}
-                className="border-b border-border/60 last:border-0"
-              >
+              <tr key={o.id}>
                 <td className="px-4 py-2 font-medium text-foreground">
                   {o.nombre}
                   {String(o.id) === "1" && (
@@ -211,7 +208,7 @@ export function TabClientes({
                     className={[
                       "rounded-full px-2 py-0.5 text-xs",
                       o.activo
-                        ? "bg-green-100 text-green-700"
+                        ? "bg-success/10 text-success"
                         : "bg-muted text-muted-foreground",
                     ].join(" ")}
                   >

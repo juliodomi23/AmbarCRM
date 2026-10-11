@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { EncabezadoPagina } from "@/components/ui";
 import { MarcaConfig } from "@/components/config/MarcaConfig";
 import { MetaCanales } from "@/components/config/MetaCanales";
 import { TabAutomatizaciones } from "@/components/config/tabs/TabAutomatizaciones";
@@ -50,12 +51,12 @@ export function ConfiguracionCliente({
   }, []);
 
   return (
-    <div className="p-4 md:p-6">
-      <h1 className="mb-4 text-xl font-bold text-primary">Configuración</h1>
-      <div className="mb-5 flex flex-wrap gap-1 border-b border-border">
+    <div className="space-y-5 p-4 md:p-6">
+      <EncabezadoPagina titulo="Configuración" descripcion="Marca, equipo, canales y automatizaciones de tu cuenta." />
+      <div role="tablist" aria-label="Secciones de configuración" className="flex gap-1 overflow-x-auto border-b border-border">
         {tabs.map((item) => (
-          <button key={item} onClick={() => setTab(item)}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
+          <button key={item} onClick={() => setTab(item)} role="tab" aria-selected={tab === item}
+            className={`-mb-px shrink-0 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               tab === item ? "border-primary text-primary" :
                 "border-transparent text-muted-foreground hover:text-foreground"
             }`}>

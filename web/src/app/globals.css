@@ -106,11 +106,13 @@
 
   /* Tabla estándar: <table className="tabla">; el contenedor lleva overflow-x-auto para celular. */
   .tabla { @apply w-full text-sm; }
-  .tabla thead th { @apply whitespace-nowrap border-b border-border/70 bg-muted/50 px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground; }
-  .tabla tbody td { @apply border-b border-border/50 px-3 py-2.5 align-middle; }
+  .tabla thead th { @apply whitespace-nowrap border-b border-border/70 bg-muted/50 text-xs font-semibold uppercase tracking-wide text-muted-foreground; }
+  .tabla tbody td { @apply border-b border-border/50; }
   .tabla tbody tr { transition: background-color .15s ease; }
   .tabla tbody tr:hover { background-color: hsl(var(--muted) / 0.55); }
   .tabla tbody tr:last-child td { @apply border-b-0; }
+  /* Padding y alineación con especificidad mínima: text-right, p-2, etc. siguen ganando. */
+  :where(.tabla) th, :where(.tabla) td { padding: .625rem .75rem; text-align: left; }
 
   /* Fila de lista (ul/li) con hover suave. */
   .fila-lista { transition: background-color .15s ease; }

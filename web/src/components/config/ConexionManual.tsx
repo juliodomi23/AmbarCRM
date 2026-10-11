@@ -43,7 +43,7 @@ export function ConexionManual() {
   const copiar = (texto: string | null) => texto && navigator.clipboard.writeText(texto).then(() => toast("Copiado", "ok"));
 
   return (
-    <section className="space-y-3 rounded-xl border border-border bg-card p-4">
+    <section className="space-y-3 surface p-4">
       <button type="button" onClick={abrir} className="flex w-full items-center justify-between text-left">
         <span>
           <span className="block font-semibold text-foreground">Conexión manual (avanzado)</span>

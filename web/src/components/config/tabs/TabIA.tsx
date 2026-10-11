@@ -22,13 +22,13 @@ export function TabIA({ ajustes }: { ajustes: any }) {
 
   return (
     <div className="max-w-lg space-y-4">
-      <div className="rounded-xl border border-border bg-amber-50/60 p-3 text-xs text-muted-foreground">
+      <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-xs text-muted-foreground">
         La IA usa el modelo <b>Claude Haiku</b> para sugerir respuestas.
         Configura el contexto de tu negocio aquí para que las sugerencias sean
         más precisas y con el tono correcto.
       </div>
 
-      <div className="space-y-4 rounded-xl border border-border bg-card p-4">
+      <div className="space-y-4 surface p-4">
         <label className="block space-y-1">
           <span className="text-sm font-medium text-foreground">
             Nombre del negocio

@@ -135,14 +135,14 @@ export default async function DetalleOrganizacionPage({
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {Object.entries(datos.metricas).map(([nombre, valor]) => (
-          <div key={nombre} className="rounded-xl border border-border bg-card p-4">
+          <div key={nombre} className="surface p-4">
             <p className="text-xs uppercase text-muted-foreground">{nombre}</p>
             <p className="mt-1 text-2xl font-bold">{valor}</p>
           </div>
         ))}
       </section>
 
-      <section className="rounded-xl border border-border bg-card p-5">
+      <section className="surface p-5">
         <h2 className="font-semibold">Módulos activos</h2>
         <div className="mt-3 flex flex-wrap gap-2">
           {activos.map((modulo) => (
@@ -163,7 +163,7 @@ export default async function DetalleOrganizacionPage({
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-5">
+        <div className="surface p-5">
           <h2 className="font-semibold">Negocio</h2>
           <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
             <dt className="text-muted-foreground">Marca</dt>
@@ -176,7 +176,7 @@ export default async function DetalleOrganizacionPage({
             <dd>{organizacion.createdAt.toLocaleDateString("es-MX")}</dd>
           </dl>
         </div>
-        <div className="rounded-xl border border-border bg-card p-5">
+        <div className="surface p-5">
           <h2 className="font-semibold">Canales de WhatsApp</h2>
           <div className="mt-3 space-y-2 text-sm">
             {datos.canales.map((canal) => (
@@ -194,15 +194,15 @@ export default async function DetalleOrganizacionPage({
         </div>
       </section>
 
-      <section className="overflow-x-auto rounded-xl border border-border bg-card">
+      <section className="overflow-x-auto surface">
         <div className="border-b border-border px-5 py-4">
           <h2 className="font-semibold">Equipo y accesos</h2>
           <p className="text-xs text-muted-foreground">
             Las contraseñas nunca se muestran. Para soporte, usa una cuenta autorizada.
           </p>
         </div>
-        <table className="w-full text-sm">
-          <thead className="text-left text-xs uppercase text-muted-foreground">
+        <table className="tabla">
+          <thead>
             <tr>
               <th className="px-5 py-3">Nombre</th>
               <th className="px-5 py-3">Correo</th>
@@ -213,7 +213,7 @@ export default async function DetalleOrganizacionPage({
           </thead>
           <tbody>
             {datos.usuarios.map((usuario) => (
-              <tr key={String(usuario.id)} className="border-t border-border">
+              <tr key={String(usuario.id)} className="border-border">
                 <td className="px-5 py-3 font-medium">{usuario.nombre}</td>
                 <td className="px-5 py-3 text-muted-foreground">{usuario.email}</td>
                 <td className="px-5 py-3">{usuario.puesto}</td>

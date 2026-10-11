@@ -173,7 +173,7 @@ export function EmbeddedSignup() {
 
   if (!APP_ID || !CONFIG_ID) {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+      <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning">
         WhatsApp Oficial sin configurar. Define <code>NEXT_PUBLIC_META_APP_ID</code> y{" "}
         <code>NEXT_PUBLIC_META_CONFIG_ID</code> y vuelve a desplegar. Ver <code>DESPLIEGUE.md</code>.
       </div>
@@ -181,7 +181,7 @@ export function EmbeddedSignup() {
   }
 
   return (
-    <div className="space-y-2 rounded-xl border border-border bg-card p-4">
+    <div className="space-y-2 surface p-4">
       <p className="font-semibold text-foreground">WhatsApp Oficial · Meta</p>
       <p className="text-xs text-muted-foreground">
         Usa el primer botón para un número nuevo o que ya está en la API de Meta. Usa el segundo
@@ -207,9 +207,9 @@ export function EmbeddedSignup() {
         </button>
       </div>
       <div aria-live="polite">
-        {info && <p className="text-sm text-blue-700">{info}</p>}
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {ok && <p className="text-sm text-green-600">{ok}</p>}
+        {info && <p className="text-sm text-info">{info}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        {ok && <p className="text-sm text-success">{ok}</p>}
       </div>
     </div>
   );

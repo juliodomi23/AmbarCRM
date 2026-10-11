@@ -24,7 +24,7 @@ export function TabPlantillas({ plantillas }: { plantillas: any[] }) {
     <div className="space-y-5">
       <form
         onSubmit={crear}
-        className="space-y-3 rounded-xl border border-border bg-card p-4"
+        className="space-y-3 surface p-4"
       >
         <Campo
           label="Nombre"
@@ -54,7 +54,7 @@ export function TabPlantillas({ plantillas }: { plantillas: any[] }) {
         {plantillas.map((p) => (
           <div
             key={p.id}
-            className="flex items-start justify-between rounded-xl border border-border bg-card p-3"
+            className="flex items-start justify-between surface p-3"
           >
             <div>
               <p className="text-sm font-medium text-foreground">{p.nombre}</p>
@@ -62,7 +62,7 @@ export function TabPlantillas({ plantillas }: { plantillas: any[] }) {
             </div>
             <button
               onClick={() => borrar(p.id)}
-              className="text-xs text-red-600 hover:underline"
+              className="text-xs text-destructive hover:underline"
             >
               Borrar
             </button>

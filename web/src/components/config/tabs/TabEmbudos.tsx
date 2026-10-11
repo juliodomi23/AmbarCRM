@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton } from "@/components/ui";
 import { api } from "@/components/config/tabs/shared";
+import { confirmar } from "@/components/Confirmador";
 
 export function TabEmbudos({ embudos }: { embudos: any[] }) {
   const router = useRouter();
@@ -20,7 +21,12 @@ export function TabEmbudos({ embudos }: { embudos: any[] }) {
     }
   }
   async function borrarEmbudo(id: string) {
-    if (!confirm("¿Borrar embudo y todas sus etapas/oportunidades?")) return;
+    const ok = await confirmar({
+      titulo: "Borrar embudo",
+      mensaje: "Se borran el embudo y todas sus etapas y oportunidades.",
+      confirmar: "Borrar"
+    });
+    if (!ok) return;
     if (await api(`/api/embudos/${id}`, "DELETE")) router.refresh();
   }
   async function crearEtapa(embudoId: string) {
@@ -57,12 +63,12 @@ export function TabEmbudos({ embudos }: { embudos: any[] }) {
       </div>
 
       {embudos.map((e) => (
-        <div key={e.id} className="rounded-xl border border-border bg-card p-4">
+        <div key={e.id} className="surface p-4">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="font-semibold text-foreground">{e.nombre}</h3>
             <button
               onClick={() => borrarEmbudo(e.id)}
-              className="text-xs text-red-600 hover:underline"
+              className="text-xs text-destructive hover:underline"
             >
               Borrar embudo
             </button>
@@ -77,7 +83,8 @@ export function TabEmbudos({ embudos }: { embudos: any[] }) {
                 {et.nombre}
                 <button
                   onClick={() => borrarEtapa(et.id)}
-                  className="ml-1 opacity-80 hover:opacity-100"
+                  aria-label={`Quitar etapa ${et.nombre}`}
+                  className="ml-1 opacity-80 transition hover:opacity-100"
                 >
                   ×
                 </button>

@@ -36,7 +36,7 @@ export function TabAutomatizaciones({ ajustes }: { ajustes: any }) {
 
   return (
     <div className="max-w-lg space-y-4">
-      <div className="rounded-xl border border-border bg-card p-4">
+      <div className="surface p-4">
         <label className="flex items-start gap-3">
           <input
             type="checkbox"
@@ -56,7 +56,7 @@ export function TabAutomatizaciones({ ajustes }: { ajustes: any }) {
         </label>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-4">
+      <div className="surface p-4">
         <label className="flex items-start gap-3">
           <input
             type="checkbox"
@@ -76,7 +76,7 @@ export function TabAutomatizaciones({ ajustes }: { ajustes: any }) {
         </label>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      <div className="surface p-4 space-y-3">
         <label className="flex items-start gap-3">
           <input
             type="checkbox"
@@ -115,7 +115,7 @@ export function TabAutomatizaciones({ ajustes }: { ajustes: any }) {
         </label>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      <div className="surface p-4 space-y-3">
         <label className="flex items-start gap-3">
           <input
             type="checkbox"
@@ -152,7 +152,7 @@ export function TabAutomatizaciones({ ajustes }: { ajustes: any }) {
         </label>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      <div className="surface p-4 space-y-3">
         <label className="flex items-start gap-3">
           <input
             type="checkbox"
@@ -227,7 +227,7 @@ export function TabAutomatizaciones({ ajustes }: { ajustes: any }) {
         </label>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      <div className="surface p-4 space-y-3">
         <label className="flex items-start gap-3">
           <input
             type="checkbox"

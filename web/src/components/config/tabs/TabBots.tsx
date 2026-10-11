@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Boton, Campo } from "@/components/ui";
 import { api } from "@/components/config/tabs/shared";
 import { toast } from "@/components/Toaster";
+import { confirmar } from "@/components/Confirmador";
 import { ETIQUETAS_PERMISO, PERMISOS_BOT, type PermisoBot } from "@/lib/bot-permisos";
 
 export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
@@ -37,7 +38,12 @@ export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
     return (d.signingSecret as string | undefined) ?? null;
   }
   async function regenerarSecreto(b: any) {
-    if (!confirm("¿Regenerar el secreto de firma? n8n dejará de validar hasta que lo actualices.")) return;
+    const ok = await confirmar({
+      titulo: "Regenerar secreto de firma",
+      mensaje: "n8n dejará de validar hasta que lo actualices.",
+      confirmar: "Regenerar"
+    });
+    if (!ok) return;
     const secreto = await enviarYObtenerSecreto(`/api/bots/${b.id}`, "PATCH", { regenerarSecreto: true });
     if (secreto !== false) {
       setSecretoNuevo(secreto);
@@ -49,8 +55,12 @@ export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
       router.refresh();
   }
   async function regenerar(b: any) {
-    if (!confirm("¿Regenerar el token? El valor anterior dejará de funcionar."))
-      return;
+    const ok = await confirmar({
+      titulo: "Regenerar token",
+      mensaje: "El valor anterior dejará de funcionar.",
+      confirmar: "Regenerar"
+    });
+    if (!ok) return;
     if (await api(`/api/bots/${b.id}`, "PATCH", { regenerarToken: true }))
       router.refresh();
   }
@@ -60,14 +70,19 @@ export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
     if (await api(`/api/bots/${b.id}`, "PATCH", { permisos })) router.refresh();
   }
   async function borrar(b: any) {
-    if (!confirm(`¿Borrar el bot "${b.nombre}"?`)) return;
+    const ok = await confirmar({
+      titulo: "Borrar bot",
+      mensaje: `Se borra el bot "${b.nombre}".`,
+      confirmar: "Borrar"
+    });
+    if (!ok) return;
     if (await api(`/api/bots/${b.id}`, "DELETE")) router.refresh();
   }
 
   return (
     <div className="max-w-2xl space-y-5">
       {secretoNuevo && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm">
+        <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm">
           <p className="font-medium">Secreto de firma (cópialo ahora, no se volverá a mostrar):</p>
           <code className="block break-all">{secretoNuevo}</code>
           <button onClick={() => setSecretoNuevo(null)} className="mt-2 text-primary hover:underline">
@@ -77,7 +92,7 @@ export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
       )}
       <form
         onSubmit={crear}
-        className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2"
+        className="grid gap-3 surface p-4 sm:grid-cols-2"
       >
         <Campo
           label="Nombre del bot"
@@ -125,7 +140,7 @@ export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
         {bots.map((b) => (
           <div
             key={b.id}
-            className="space-y-2 rounded-xl border border-border bg-card p-4"
+            className="space-y-2 surface p-4"
           >
             <div className="flex items-center justify-between">
               <div>
@@ -138,14 +153,14 @@ export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
                 <button
                   onClick={() => toggle(b)}
                   className={
-                    b.activo ? "text-green-600" : "text-muted-foreground"
+                    b.activo ? "text-success" : "text-muted-foreground"
                   }
                 >
                   {b.activo ? "● Activo" : "○ Inactivo"}
                 </button>
                 <button
                   onClick={() => borrar(b)}
-                  className="text-red-600 hover:underline"
+                  className="text-destructive hover:underline"
                 >
                   Borrar
                 </button>

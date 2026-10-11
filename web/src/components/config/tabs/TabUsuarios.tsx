@@ -91,14 +91,14 @@ export function TabUsuarios({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+      <div className="rounded-xl border border-info/30 bg-info/10 p-4 text-sm text-info">
         Invita al equipo creando su acceso. El <b>puesto</b> describe su función —recepcionista,
         doctor o vendedor— y el <b>rol</b> define permisos: Admin configura el CRM; Agente trabaja
         la operación diaria.
       </div>
       <form
         onSubmit={crear}
-        className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2"
+        className="grid gap-3 surface p-4 sm:grid-cols-2"
       >
         <Campo
           label="Nombre"
@@ -147,9 +147,9 @@ export function TabUsuarios({
       <p className="text-xs text-muted-foreground">
         Los cambios de puesto pueden tardar hasta 5 minutos en aplicarse.
       </p>
-      <div className="overflow-x-auto rounded-xl border border-border bg-card">
-        <table className="w-full min-w-[880px] text-sm">
-          <thead className="bg-background text-left text-xs uppercase text-muted-foreground">
+      <div className="overflow-x-auto surface">
+        <table className="tabla min-w-[880px]">
+          <thead>
             <tr>
               <th className="px-4 py-3">Integrante</th>
               <th className="px-4 py-3">Rol</th>
@@ -162,7 +162,7 @@ export function TabUsuarios({
             {usuarios.map((usuario) => {
               const id = String(usuario.id);
               return (
-                <tr key={id} className="border-t border-border/60 align-top">
+                <tr key={id} className="align-top">
                   <td className="px-4 py-3">
                     <p className="font-medium text-foreground">{usuario.nombre}</p>
                     <p className="text-xs text-muted-foreground">{usuario.email}</p>

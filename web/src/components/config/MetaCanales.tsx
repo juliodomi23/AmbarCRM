@@ -6,6 +6,7 @@ import { EmbeddedSignup } from "@/components/config/EmbeddedSignup";
 import { ConexionManual } from "@/components/config/ConexionManual";
 import { Boton, Campo } from "@/components/ui";
 import { toast } from "@/components/Toaster";
+import { confirmar } from "@/components/Confirmador";
 import { errorDeBotones, errorDePlantilla, MAX_BOTONES, variablesDePlantilla, type BotonPlantilla } from "@/lib/meta/plantillaMeta";
 
 type Canal = {
@@ -95,12 +96,20 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
   }
 
   async function desconectar() {
-    if (!canal || !confirm(`¿Desconectar ${canal.nombre} de AmbarCRM?`)) return;
-    const borrarDatos = confirm(
-      "¿También quieres BORRAR las conversaciones de este número?\n\n" +
-      "Aceptar = borrar los chats y sus mensajes (no se puede deshacer)\n" +
-      "Cancelar = conservar el historial"
-    );
+    if (!canal) return;
+    const continuar = await confirmar({
+      titulo: `Desconectar ${canal.nombre}`,
+      mensaje: `Se desconecta ${canal.nombre} de AmbarCRM.`,
+      confirmar: "Desconectar"
+    });
+    if (!continuar) return;
+    // Aceptar = borrar los chats y sus mensajes; Cancelar = conservar el historial.
+    const borrarDatos = await confirmar({
+      titulo: "¿Borrar también las conversaciones?",
+      mensaje: "Se borran los chats de este número y sus mensajes. No se puede deshacer.",
+      confirmar: "Borrar conversaciones",
+      cancelar: "Conservar historial"
+    });
     const response = await fetch(`/api/canales/${canal.id}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -119,7 +128,7 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
       {vista === "canal" && <ConexionManual />}
 
       {vista === "plantillas" && canales.length === 0 && (
-        <p className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+        <p className="surface p-4 text-sm text-muted-foreground">
           Conecta un número en la pestaña Canal WhatsApp para crear plantillas de Meta.
         </p>
       )}
@@ -137,7 +146,7 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
       )}
 
       {vista === "canal" && canales.length > 0 && (
-        <section className="space-y-3 rounded-xl border border-border bg-card p-4">
+        <section className="space-y-3 surface p-4">
           <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-foreground">Números conectados</p>
@@ -162,7 +171,7 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
               <button type="button" onClick={activar} className="text-left text-xs font-medium text-primary hover:underline">
                 Activar número (si no recibe mensajes)
               </button>
-              <button type="button" onClick={desconectar} className="text-left text-xs text-red-600 hover:underline">
+              <button type="button" onClick={desconectar} className="text-left text-xs text-destructive hover:underline">
                 Desconectar de AmbarCRM
               </button>
             </div>
@@ -171,7 +180,7 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
       )}
 
       {vista === "plantillas" && canal && (
-        <section className="space-y-4 rounded-xl border border-border bg-card p-4">
+        <section className="space-y-4 surface p-4">
           <div>
             <p className="font-semibold text-foreground">Plantillas de Meta</p>
             <p className="text-xs text-muted-foreground">Crea y consulta plantillas sin salir del CRM.</p>
@@ -263,7 +272,7 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
                     ) : (
                       <span className="self-center text-xs text-muted-foreground">El cliente toca y responde con este texto</span>
                     )}
-                    <button type="button" onClick={() => setBotones(botones.filter((_, j) => j !== i))} className="text-xs text-red-600 hover:underline">
+                    <button type="button" onClick={() => setBotones(botones.filter((_, j) => j !== i))} className="text-xs text-destructive hover:underline">
                       Quitar
                     </button>
                   </div>
