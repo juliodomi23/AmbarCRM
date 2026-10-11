@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BRAND_PRESETS, variablesMarca, type BrandPreset } from "@/lib/brand";
 import {
@@ -24,12 +24,22 @@ type Personalizacion = {
   setNombre: (nombre: string) => void;
   apagadas: Set<string>;
   alternar: (clave: string) => void;
+  restablecer: () => void;
 };
 
 /** Secciones del menú que una empresa puede apagar; Inicio, Chat y Configuración son el núcleo. */
 const SECCIONES_OPCIONALES: DemoVista[] = ["embudo", "contactos", "tareas", "difusion", "automatizaciones", "modulos"];
+const PERSONALIZACION_INICIAL = {
+  preset: "ambar-rojo" as BrandPreset,
+  nombre: "Clínica Horizonte",
+  vertical: "clinica" as DemoVertical,
+};
+const CLAVE_PERSONALIZACION = "ambar-demo-personalizacion";
 
 const iniciales = (texto: string) => (texto.match(/\p{L}+/gu) ?? []).slice(0, 2).map((p) => p[0].toUpperCase()).join("") || "AR";
+const contarModulosActivos = (apagadas: Set<string>) => new Set(
+  VERTICALES.flatMap((giro) => giro.modulos.filter((modulo) => !apagadas.has(`${giro.id}:${modulo.nombre}`)).map((modulo) => modulo.nombre)),
+).size;
 
 function Interruptor({ activo, onClick, etiqueta }: { activo: boolean; onClick: () => void; etiqueta: string }) {
   return (
@@ -160,7 +170,7 @@ function MiniGrafica({ valores }: { valores: number[] }) {
   );
 }
 
-function VistaInicio({ irA }: { irA: (vista: DemoVista) => void }) {
+function VistaInicio({ irA, apagadas }: { irA: (vista: DemoVista) => void; apagadas: Set<string> }) {
   const actividad = [
     ["Mariana escribió por WhatsApp", "La conversación se asignó a Ana", "Hace 2 min"],
     ["Oportunidad movida a Propuesta", "Academia Prisma · $24,700", "Hace 18 min"],
@@ -183,16 +193,17 @@ function VistaInicio({ irA }: { irA: (vista: DemoVista) => void }) {
           ["Oportunidades", "38", "5 etapas activas", [2, 3, 5, 4, 7, 8]],
           ["Valor del embudo", "$428,600", "+$62,400 este mes", [3, 4, 4, 6, 7, 9]],
           ["Satisfacción", "4.8 / 5", "47 respuestas", [7, 7, 8, 8, 9, 9]],
-        ].map(([titulo, valor, detalle, datos]) => (
-          <button key={String(titulo)} onClick={() => irA(titulo === "Chats abiertos" || titulo === "Sin responder" ? "chat" : titulo === "Oportunidades" || titulo === "Valor del embudo" ? "embudo" : "inicio")} className="surface surface-lift min-h-36 p-4 text-left transition hover:-translate-y-1 hover:border-primary/30">
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-xs font-semibold text-muted-foreground">{String(titulo)}</p>
-              <MiniGrafica valores={datos as number[]} />
-            </div>
-            <p className="tnum mt-3 text-2xl font-bold">{String(valor)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{String(detalle)}</p>
-          </button>
-        ))}
+        ].map(([titulo, valor, detalle, datos]) => {
+          const destino: DemoVista | null = titulo === "Chats abiertos" || titulo === "Sin responder"
+            ? "chat"
+            : titulo === "Oportunidades" || titulo === "Valor del embudo"
+              ? "embudo"
+              : null;
+          const contenido = <><div className="flex items-start justify-between gap-2"><p className="text-xs font-semibold text-muted-foreground">{String(titulo)}</p><MiniGrafica valores={datos as number[]} /></div><p className="tnum mt-3 text-2xl font-bold">{String(valor)}</p><p className="mt-1 text-xs text-muted-foreground">{String(detalle)}</p></>;
+          return destino && !apagadas.has(destino)
+            ? <button key={String(titulo)} onClick={() => irA(destino)} className="surface surface-lift min-h-36 p-4 text-left transition hover:-translate-y-1 hover:border-primary/30">{contenido}</button>
+            : <div key={String(titulo)} className="surface min-h-36 p-4 text-left">{contenido}</div>;
+        })}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.25fr_.75fr]">
@@ -202,7 +213,7 @@ function VistaInicio({ irA }: { irA: (vista: DemoVista) => void }) {
               <h2 className="font-bold">Embudo comercial</h2>
               <p className="text-xs text-muted-foreground">Valor activo por etapa</p>
             </div>
-            <button onClick={() => irA("embudo")} className="text-sm font-semibold text-primary hover:underline">Abrir tablero</button>
+            {!apagadas.has("embudo") && <button onClick={() => irA("embudo")} className="text-sm font-semibold text-primary hover:underline">Abrir tablero</button>}
           </div>
           <div className="space-y-4">
             {[
@@ -245,11 +256,11 @@ function VistaInicio({ irA }: { irA: (vista: DemoVista) => void }) {
       <section className="surface overflow-hidden">
         <div className="grid gap-6 bg-mesh p-5 md:grid-cols-[1fr_auto] md:items-center">
           <div>
-            <Badge tono="info">22 módulos disponibles</Badge>
+            <Badge tono="info">{contarModulosActivos(apagadas)} módulos activos</Badge>
             <h2 className="mt-3 text-xl font-bold">Adapta el CRM al giro del negocio</h2>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Clínica, automotriz, inmobiliaria, retail, legal, viajes y educación comparten clientes, ventas y conversaciones.</p>
           </div>
-          <BotonPrimario onClick={() => irA("modulos")}>Explorar módulos</BotonPrimario>
+          {!apagadas.has("modulos") && <BotonPrimario onClick={() => irA("modulos")}>Explorar módulos</BotonPrimario>}
         </div>
       </section>
     </div>
@@ -490,12 +501,12 @@ function VistaAutomatizaciones() {
   );
 }
 
-function VistaModulos({ vertical, setVertical, apagadas }: { vertical: DemoVertical; setVertical: (vertical: DemoVertical) => void; apagadas: Set<string> }) {
+function VistaModulos({ vertical, setVertical, apagadas, nombre }: { vertical: DemoVertical; setVertical: (vertical: DemoVertical) => void; apagadas: Set<string>; nombre: string }) {
   const actual = VERTICALES.find((item) => item.id === vertical) ?? VERTICALES[0];
-  const totalModulos = 22;
+  const totalModulos = contarModulosActivos(apagadas);
   return (
     <div className="space-y-5">
-      <EncabezadoVista ceja={`${totalModulos} módulos construidos`} titulo="Explora AmbarCRM por giro" descripcion="El núcleo es el mismo; cada empresa activa solo las funciones que necesita." />
+      <EncabezadoVista ceja={`${totalModulos} módulos activos`} titulo={`Módulos de ${nombre || "tu negocio"}`} descripcion="El núcleo es el mismo; cada empresa activa solo las funciones que necesita." />
       <div className="flex gap-2 overflow-x-auto pb-1">
         {VERTICALES.map((item) => <button key={item.id} onClick={() => setVertical(item.id)} className={`min-h-10 shrink-0 rounded-xl px-4 text-sm font-semibold transition ${vertical === item.id ? "bg-primary text-primary-foreground shadow-glow" : "border bg-card hover:border-primary/40"}`}>{item.nombre}</button>)}
       </div>
@@ -521,6 +532,7 @@ function VistaConfiguracion({ p, vertical }: { p: Personalizacion; vertical: Dem
   const [tab, setTab] = useState("Marca");
   const tabs = ["Marca", "Módulos", "Canal WhatsApp", "Usuarios", "Embudos", "Plantillas", "Bots", "IA"];
   const giro = VERTICALES.find((item) => item.id === vertical) ?? VERTICALES[0];
+  const moduloVistaPrevia = giro.modulos.find((modulo) => !p.apagadas.has(`${vertical}:${modulo.nombre}`));
   const filaModulo = (clave: string, nombre: string, descripcion: string) => (
     <div key={clave} className="flex items-center gap-4 rounded-xl border p-4">
       <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{nombre}</p><p className="text-xs text-muted-foreground">{descripcion}</p></div>
@@ -529,7 +541,7 @@ function VistaConfiguracion({ p, vertical }: { p: Personalizacion; vertical: Dem
   );
   return (
     <div className="space-y-5">
-      <EncabezadoVista ceja="Administración" titulo="Configuración de la empresa" descripcion="Personaliza la operación sin crear una versión distinta del sistema. Pruébalo: los cambios se ven al instante en toda la demo." />
+      <EncabezadoVista ceja="Administración" titulo="Configuración de la empresa" descripcion="Personaliza la operación sin crear una versión distinta del sistema. Pruébalo: los cambios se ven al instante en toda la demo." accion={<button type="button" onClick={p.restablecer} className="min-h-10 rounded-xl border px-4 text-sm font-semibold hover:bg-muted">Restablecer demo</button>} />
       <div className="surface overflow-hidden lg:grid lg:grid-cols-[230px_1fr]">
         <nav className="flex gap-1 overflow-x-auto border-b p-3 lg:block lg:space-y-1 lg:border-b-0 lg:border-r">
           {tabs.map((item) => <button key={item} onClick={() => setTab(item)} className={`min-h-10 shrink-0 rounded-xl px-3 text-left text-sm font-semibold lg:w-full ${tab === item ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{item}</button>)}
@@ -555,7 +567,7 @@ function VistaConfiguracion({ p, vertical }: { p: Personalizacion; vertical: Dem
               </div>
               <div className="rounded-2xl bg-primary p-4 text-primary-foreground shadow-pop transition-colors">
                 <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/15 font-bold">{iniciales(p.nombre)}</span><strong className="truncate">{p.nombre || "Tu negocio"}</strong></div>
-                <div className="mt-5 space-y-2"><div className="rounded-xl bg-white/15 px-3 py-2 text-sm">Inicio</div><div className="rounded-xl px-3 py-2 text-sm opacity-75">Chat</div><div className="rounded-xl px-3 py-2 text-sm opacity-75">{giro.modulos[0]?.nombre ?? "Contactos"}</div></div>
+                <div className="mt-5 space-y-2"><div className="rounded-xl bg-white/15 px-3 py-2 text-sm">Inicio</div><div className="rounded-xl px-3 py-2 text-sm opacity-75">Chat</div><div className="rounded-xl px-3 py-2 text-sm opacity-75">{moduloVistaPrevia?.nombre ?? "Sin módulos activos"}</div></div>
               </div>
             </div>
           ) : tab === "Módulos" ? (
@@ -590,52 +602,99 @@ function VistaConfiguracion({ p, vertical }: { p: Personalizacion; vertical: Dem
 }
 
 function ContenidoVista({ vista, irA, vertical, setVertical, p }: { vista: DemoVista; irA: (vista: DemoVista) => void; vertical: DemoVertical; setVertical: (vertical: DemoVertical) => void; p: Personalizacion }) {
-  if (vista === "inicio") return <VistaInicio irA={irA} />;
+  if (vista === "inicio") return <VistaInicio irA={irA} apagadas={p.apagadas} />;
   if (vista === "chat") return <VistaChat />;
   if (vista === "embudo") return <VistaEmbudo />;
   if (vista === "contactos") return <VistaContactos />;
   if (vista === "tareas") return <VistaTareas />;
   if (vista === "difusion") return <VistaDifusion />;
   if (vista === "automatizaciones") return <VistaAutomatizaciones />;
-  if (vista === "modulos") return <VistaModulos vertical={vertical} setVertical={setVertical} apagadas={p.apagadas} />;
+  if (vista === "modulos") return <VistaModulos vertical={vertical} setVertical={setVertical} apagadas={p.apagadas} nombre={p.nombre} />;
   return <VistaConfiguracion p={p} vertical={vertical} />;
 }
 
 export function DemoCRM() {
   const [vista, setVista] = useState<DemoVista>("inicio");
-  const [vertical, setVertical] = useState<DemoVertical>("clinica");
+  const [vertical, setVertical] = useState<DemoVertical>(PERSONALIZACION_INICIAL.vertical);
   const [menu, setMenu] = useState(false);
   const [recorrido, setRecorrido] = useState<number | null>(0);
-  const [preset, setPreset] = useState<BrandPreset>("ambar-rojo");
-  const [nombre, setNombre] = useState("Clínica Horizonte");
+  const [preset, setPreset] = useState<BrandPreset>(PERSONALIZACION_INICIAL.preset);
+  const [nombre, setNombre] = useState(PERSONALIZACION_INICIAL.nombre);
   const [apagadas, setApagadas] = useState<Set<string>>(() => new Set());
+  const [personalizacionHidratada, setPersonalizacionHidratada] = useState(false);
+
+  useEffect(() => {
+    try {
+      const guardada = window.localStorage.getItem(CLAVE_PERSONALIZACION);
+      if (guardada) {
+        const datos = JSON.parse(guardada) as { preset?: string; nombre?: string; vertical?: string; apagadas?: unknown };
+        if (datos.preset && datos.preset in BRAND_PRESETS) setPreset(datos.preset as BrandPreset);
+        if (typeof datos.nombre === "string") setNombre(datos.nombre.slice(0, 40));
+        if (VERTICALES.some((giro) => giro.id === datos.vertical)) setVertical(datos.vertical as DemoVertical);
+        if (Array.isArray(datos.apagadas)) setApagadas(new Set(datos.apagadas.filter((clave): clave is string => typeof clave === "string")));
+      }
+    } catch {
+      window.localStorage.removeItem(CLAVE_PERSONALIZACION);
+    } finally {
+      setPersonalizacionHidratada(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!personalizacionHidratada) return;
+    try {
+      window.localStorage.setItem(CLAVE_PERSONALIZACION, JSON.stringify({ preset, nombre, vertical, apagadas: [...apagadas] }));
+    } catch {
+      // La demo sigue funcionando aunque el navegador bloquee el almacenamiento local.
+    }
+  }, [apagadas, nombre, personalizacionHidratada, preset, vertical]);
+
+  useEffect(() => {
+    if (apagadas.has(vista)) setVista("inicio");
+  }, [apagadas, vista]);
+
   const alternar = (clave: string) => setApagadas((prev) => { const sig = new Set(prev); if (sig.has(clave)) sig.delete(clave); else sig.add(clave); return sig; });
-  const personalizacion: Personalizacion = { preset, setPreset, nombre, setNombre, apagadas, alternar };
+  function restablecer() {
+    setPreset(PERSONALIZACION_INICIAL.preset);
+    setNombre(PERSONALIZACION_INICIAL.nombre);
+    setVertical(PERSONALIZACION_INICIAL.vertical);
+    setApagadas(new Set());
+    setMenu(false);
+    setVista("inicio");
+    setRecorrido(0);
+    try {
+      window.localStorage.removeItem(CLAVE_PERSONALIZACION);
+    } catch {
+      // El estado en memoria también se restablece si no hay almacenamiento disponible.
+    }
+  }
+  const personalizacion: Personalizacion = { preset, setPreset, nombre, setNombre, apagadas, alternar, restablecer };
   const navegacion = NAVEGACION_DEMO.filter((item) => !apagadas.has(item.vista));
+  const pasosRecorrido = PASOS_RECORRIDO.filter((paso) => !apagadas.has(paso.vista));
   const paleta = BRAND_PRESETS[preset];
-  const estiloMarca = variablesMarca({ nombre: paleta.nombre, logo: null, colorPrimario: paleta.primario, colorAcento: paleta.acento, preset }) as CSSProperties;
+  const estiloMarca = { ...variablesMarca({ nombre: paleta.nombre, logo: null, colorPrimario: paleta.primario, colorAcento: paleta.acento, preset }), "--brand-primary-foreground-dark": "220 25% 10%" } as CSSProperties;
   const tituloVista = useMemo(() => NAVEGACION_DEMO.find((item) => item.vista === vista)?.etiqueta ?? "Inicio", [vista]);
 
   function irA(nuevaVista: DemoVista) {
-    setVista(nuevaVista);
+    setVista(apagadas.has(nuevaVista) ? "inicio" : nuevaVista);
     setMenu(false);
   }
 
   function iniciarRecorrido() {
     setRecorrido(0);
-    setVista(PASOS_RECORRIDO[0].vista);
+    setVista(pasosRecorrido[0].vista);
   }
 
   function moverRecorrido(direccion: 1 | -1) {
     if (recorrido == null) return;
     const siguiente = recorrido + direccion;
-    if (siguiente >= PASOS_RECORRIDO.length) {
+    if (siguiente >= pasosRecorrido.length) {
       setRecorrido(null);
       return;
     }
     const valido = Math.max(0, siguiente);
     setRecorrido(valido);
-    setVista(PASOS_RECORRIDO[valido].vista);
+    setVista(pasosRecorrido[valido].vista);
   }
 
   const grupos = [...new Set(navegacion.map((item) => item.grupo))];
@@ -643,7 +702,7 @@ export function DemoCRM() {
     <aside className="flex h-full w-72 flex-col bg-primary text-primary-foreground">
       <div className="flex h-16 items-center gap-3 border-b border-white/10 px-4">
         <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/15 font-display text-sm font-bold">{iniciales(nombre)}</span>
-        <div className="min-w-0 flex-1"><p className="truncate font-display font-bold">{nombre || "AmbarCRM"}</p><p className="text-[10px] uppercase tracking-[.15em] text-primary-foreground/60">Demo interactiva</p></div>
+        <div className="min-w-0 flex-1"><p className="truncate font-display font-bold">{nombre || "Tu negocio"}</p><p className="text-[10px] uppercase tracking-[.15em] text-primary-foreground/60">Demo interactiva</p></div>
         <button onClick={() => setMenu(false)} aria-label="Cerrar menú" className="grid h-9 w-9 place-items-center rounded-lg hover:bg-white/10 md:hidden"><Icono nombre="cerrar" /></button>
       </div>
       <nav className="flex-1 overflow-y-auto px-3 py-4">
@@ -675,15 +734,15 @@ export function DemoCRM() {
             <button onClick={() => setMenu(true)} aria-label="Abrir menú" className="grid h-10 w-10 place-items-center rounded-xl border md:hidden"><Icono nombre="menu" /></button>
             <div className="min-w-0 flex-1"><p className="truncate font-bold">{tituloVista}</p><p className="hidden text-xs text-muted-foreground sm:block">Explora y haz clic: nada se guarda ni se envía.</p></div>
             <button onClick={iniciarRecorrido} className="hidden min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold hover:bg-muted lg:inline-flex"><Icono nombre="brillo" className="h-4 w-4 text-primary" /> Recorrido guiado</button>
-            <BotonPrimario onClick={() => irA("embudo")}>+ Oportunidad</BotonPrimario>
+            {!apagadas.has("embudo") && <BotonPrimario onClick={() => irA("embudo")}>+ Oportunidad</BotonPrimario>}
           </header>
           <main className="flex-1 overflow-auto p-4 pb-28 md:p-6 md:pb-28 xl:p-8"><div className="mx-auto max-w-[1500px]"><ContenidoVista vista={vista} irA={irA} vertical={vertical} setVertical={setVertical} p={personalizacion} /></div></main>
         </div>
       </div>
 
-      {recorrido != null && (
+      {recorrido != null && pasosRecorrido[recorrido] && (
         <section aria-live="polite" className="fixed inset-x-3 bottom-3 z-40 mx-auto max-w-2xl rounded-2xl border border-primary/20 bg-card/95 p-4 shadow-pop backdrop-blur md:bottom-5">
-          <div className="flex items-start gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">{recorrido + 1}</span><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="text-[10px] font-bold uppercase tracking-[.15em] text-primary">Recorrido · {recorrido + 1} de {PASOS_RECORRIDO.length}</p><button onClick={() => setRecorrido(null)} aria-label="Cerrar recorrido" className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-muted"><Icono nombre="cerrar" className="h-4 w-4" /></button></div><h2 className="mt-1 font-bold">{PASOS_RECORRIDO[recorrido].titulo}</h2><p className="mt-1 text-xs text-muted-foreground">{PASOS_RECORRIDO[recorrido].descripcion}</p><div className="mt-3 flex items-center justify-between"><div className="flex gap-1">{PASOS_RECORRIDO.map((_, index) => <span key={index} className={`h-1.5 rounded-full transition-all ${index === recorrido ? "w-6 bg-primary" : "w-1.5 bg-muted"}`} />)}</div><div className="flex gap-2"><button onClick={() => moverRecorrido(-1)} disabled={recorrido === 0} className="min-h-9 rounded-lg border px-3 text-xs font-semibold disabled:opacity-40">Atrás</button><button onClick={() => moverRecorrido(1)} className="min-h-9 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground">{recorrido === PASOS_RECORRIDO.length - 1 ? "Terminar" : "Siguiente"}</button></div></div></div></div>
+          <div className="flex items-start gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">{recorrido + 1}</span><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="text-[10px] font-bold uppercase tracking-[.15em] text-primary">Recorrido · {recorrido + 1} de {pasosRecorrido.length}</p><button onClick={() => setRecorrido(null)} aria-label="Cerrar recorrido" className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-muted"><Icono nombre="cerrar" className="h-4 w-4" /></button></div><h2 className="mt-1 font-bold">{pasosRecorrido[recorrido].titulo}</h2><p className="mt-1 text-xs text-muted-foreground">{pasosRecorrido[recorrido].descripcion}</p><div className="mt-3 flex items-center justify-between"><div className="flex gap-1">{pasosRecorrido.map((_, index) => <span key={index} className={`h-1.5 rounded-full transition-all ${index === recorrido ? "w-6 bg-primary" : "w-1.5 bg-muted"}`} />)}</div><div className="flex gap-2"><button onClick={() => moverRecorrido(-1)} disabled={recorrido === 0} className="min-h-9 rounded-lg border px-3 text-xs font-semibold disabled:opacity-40">Atrás</button><button onClick={() => moverRecorrido(1)} className="min-h-9 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground">{recorrido === pasosRecorrido.length - 1 ? "Terminar" : "Siguiente"}</button></div></div></div></div>
         </section>
       )}
     </div>
