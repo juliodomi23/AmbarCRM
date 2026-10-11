@@ -1,6 +1,8 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { credencialesDemo, imprimirCredencialesDemo } from "./lib/demo-seed.mjs";
+import { sembrarActividadDemo } from "./lib/demo-actividad.mjs";
+import { PERFIL_RETAIL } from "./lib/demo-perfiles.mjs";
 
 const { email, password, passwordGenerada } = credencialesDemo("retail@local.test");
 const prisma = new PrismaClient();
@@ -51,6 +53,12 @@ const ventasDemo = [
   ["DEMO-004", 3, "pagada", "mostrador", "efectivo", [["TAZ-004", 2], ["DIF-008", 1]]],
   ["DEMO-005", 4, "pendiente", "whatsapp", "enlace", [["PAN-006", 1], ["PAÑ-009", 1]]],
   ["DEMO-006", 5, "cancelada", "telefono", "otro", [["TEN-010", 1]]],
+  ["DEMO-007", 5, "entregada", "mostrador", "efectivo", [["LIB-005", 1], ["VEL-003", 1]], { dia: -1 }],
+  ["DEMO-008", 0, "pagada", "mostrador", "tarjeta", [["ARE-007", 2]], {}],
+  ["DEMO-009", 3, "pendiente", "tienda_en_linea", "enlace", [["DIF-008", 1], ["TAZ-004", 1]], { reserva: true, tipoEntrega: "envio", costoEnvio: 65, token: "de009000000000000000000000000009" }],
+  ["DEMO-010", 1, "entregada", "tienda_en_linea", "transferencia", [["CAM-001", 1]], { dia: -2, tipoEntrega: "envio", costoEnvio: 65, token: "de010000000000000000000000000010" }],
+  ["DEMO-011", 2, "lista", "tienda_en_linea", "tarjeta", [["PAÑ-009", 1]], { tipoEntrega: "recoger", token: "de011000000000000000000000000011" }],
+  ["DEMO-012", 4, "cancelada", "tienda_en_linea", "otro", [["LIB-005", 1]], { dia: -3, tipoEntrega: "recoger", token: "de012000000000000000000000000012" }],
 ];
 
 await prisma.$transaction(async (tx) => {
@@ -197,35 +205,39 @@ await prisma.$transaction(async (tx) => {
   }
 
   await tx.cotizacion.deleteMany({ where: { folio: { startsWith: "DEMO-COT-" } } });
-  await tx.cotizacion.create({
-    data: {
-      folio: "DEMO-COT-001",
-      contactoId: contactos[0].id,
-      creadoPorId: admin.id,
-      estado: "enviada",
-      vigencia: fechaMexico(10, 12),
-      notas: "Propuesta de ejemplo para revisar el documento público.",
-      condiciones: "Vigencia de 10 días. Entrega sujeta a disponibilidad.",
-      subtotal: 899,
-      descuento: 0,
-      impuestos: 143.84,
-      total: 1042.84,
-      ivaPorcentaje: 16,
-      preciosConIva: false,
-      tokenPublico: "c07a2ac10de0486a92a29dd10c0ffee1",
-      convertirVenta: true,
-      partidas: {
-        create: {
-          productoId: productos.get("CAM-001").id,
-          concepto: "Camisa lino arena",
-          cantidad: 1,
-          precio: 899,
-          descuento: 0,
-          total: 899,
+  const cotizacionesDemo = [
+    ["DEMO-COT-001", 0, "enviada", 10, [["CAM-001", 1]], "c07a2ac10de0486a92a29dd10c0ffee1"],
+    ["DEMO-COT-002", 2, "aceptada", 12, [["VEL-003", 12]], "c07a2ac10de0486a92a29dd10c0ffee2"],
+    ["DEMO-COT-003", 3, "borrador", 15, [["BOL-002", 1], ["ARE-007", 1]], "c07a2ac10de0486a92a29dd10c0ffee3"],
+    ["DEMO-COT-004", 1, "rechazada", 5, [["TAZ-004", 4]], "c07a2ac10de0486a92a29dd10c0ffee4"],
+    ["DEMO-COT-005", 5, "vencida", -3, [["PAN-006", 1]], "c07a2ac10de0486a92a29dd10c0ffee5"],
+  ];
+  for (const [folio, contactoIndice, estado, vigenciaDias, partidas, tokenPublico] of cotizacionesDemo) {
+    const lineas = partidas.map(([sku, cantidad]) => {
+      const producto = productos.get(sku);
+      return { producto, cantidad, total: producto.precio.mul(String(cantidad)).toDecimalPlaces(2) };
+    });
+    const subtotal = lineas.reduce((suma, linea) => suma.plus(linea.total), new Prisma.Decimal(0));
+    const impuestos = subtotal.mul("0.16").toDecimalPlaces(2);
+    const respondida = estado === "aceptada" || estado === "rechazada";
+    await tx.cotizacion.create({
+      data: {
+        folio, contactoId: contactos[Number(contactoIndice)].id, creadoPorId: admin.id, estado,
+        vigencia: fechaMexico(Number(vigenciaDias), 12),
+        notas: "Propuesta de ejemplo para revisar el documento público.",
+        condiciones: "Vigencia de 10 días. Entrega sujeta a disponibilidad.",
+        subtotal, impuestos, total: subtotal.plus(impuestos), ivaPorcentaje: 16, preciosConIva: false,
+        tokenPublico, convertirVenta: true,
+        respondidoPor: respondida ? contactos[Number(contactoIndice)].nombre : null,
+        respondidoAt: respondida ? fechaMexico(-1, 16) : null,
+        partidas: {
+          create: lineas.map(({ producto, cantidad, total }) => ({
+            productoId: producto.id, concepto: producto.nombre, cantidad, precio: producto.precio, descuento: 0, total,
+          })),
         },
       },
-    },
-  });
+    });
+  }
 
   await tx.venta.deleteMany({ where: { folio: { startsWith: "DEMO-" } } });
   await tx.compra.deleteMany({ where: { folio: { startsWith: "DEMO-C-" } } });
@@ -323,14 +335,27 @@ await prisma.$transaction(async (tx) => {
     }
   }
 
+  const caja = await tx.caja.findFirstOrThrow({ where: { nombre: "Caja principal" } });
+  await tx.turnoCaja.deleteMany({ where: { cajaId: caja.id } });
+  const turnoAyer = await tx.turnoCaja.create({
+    data: { cajaId: caja.id, usuarioId: equipo[1].id, fondoInicial: 500, abiertoAt: fechaMexico(-1, 9), cerradoAt: fechaMexico(-1, 20), estado: "cerrado" },
+  });
+  const turnoHoy = await tx.turnoCaja.create({
+    data: { cajaId: caja.id, usuarioId: equipo[1].id, fondoInicial: 500, abiertoAt: fechaMexico(0, 9), estado: "abierto" },
+  });
+  let efectivoTurnoAyer = new Prisma.Decimal(0);
+
   const ventasCreadas = new Map();
   for (let indice = 0; indice < ventasDemo.length; indice++) {
-    const [folio, contactoIndice, estado, canal, metodoPago, partidas] = ventasDemo[indice];
-    const aplicaStock = estado !== "borrador" && estado !== "cancelada";
+    const [folio, contactoIndice, estado, canal, metodoPago, partidas, extra = {}] = ventasDemo[indice];
+    const aplicaStock = estado !== "borrador" && estado !== "cancelada" && !extra.reserva;
     let subtotal = new Prisma.Decimal(0);
     for (const [sku, cantidad] of partidas) {
       subtotal = subtotal.plus(productos.get(sku).precio.mul(String(cantidad)).toDecimalPlaces(2));
     }
+    const costoEnvio = new Prisma.Decimal(String(extra.costoEnvio ?? 0));
+    const creadaAt = fechaMexico(extra.dia ?? (indice < 4 ? 0 : -indice + 3), 10 + (indice % 9));
+    const turno = canal === "mostrador" ? (extra.dia === -1 ? turnoAyer : turnoHoy) : null;
     const venta = await tx.venta.create({
       data: {
         folio,
@@ -340,14 +365,23 @@ await prisma.$transaction(async (tx) => {
         canal,
         metodoPago,
         subtotal,
-        total: subtotal,
+        costoEnvio,
+        total: subtotal.plus(costoEnvio),
         stockAplicado: aplicaStock,
         esCredito: folio === "DEMO-005",
-        tokenSeguimiento: canal === "tienda_en_linea" ? "de003000000000000000000000000003" : null,
-        tipoEntrega: canal === "tienda_en_linea" ? "recoger" : null,
-        createdAt: fechaMexico(indice < 4 ? 0 : -indice + 3, 10 + indice),
+        turnoId: turno?.id ?? null,
+        cajaId: turno ? caja.id : null,
+        vendidaAt: turno ? creadaAt : null,
+        tokenSeguimiento: extra.token ?? (folio === "DEMO-003" ? "de003000000000000000000000000003" : null),
+        tipoEntrega: extra.tipoEntrega ?? (canal === "tienda_en_linea" ? "recoger" : null),
+        direccionEntrega: extra.tipoEntrega === "envio" ? "Calle Ejemplo 123, Col. Centro (dato ficticio)" : null,
+        createdAt: creadaAt,
       },
     });
+    if (turno && estado !== "cancelada") {
+      await tx.pagoVenta.create({ data: { ventaId: venta.id, metodo: metodoPago, monto: subtotal } });
+      if (turno.id === turnoAyer.id && metodoPago === "efectivo") efectivoTurnoAyer = efectivoTurnoAyer.plus(subtotal);
+    }
     ventasCreadas.set(folio, venta);
     for (const [sku, cantidadValor] of partidas) {
       const producto = productos.get(sku);
@@ -361,6 +395,9 @@ await prisma.$transaction(async (tx) => {
           total: producto.precio.mul(cantidad).toDecimalPlaces(2),
         },
       });
+      if (extra.reserva) {
+        await tx.reservaPedido.create({ data: { ventaId: venta.id, productoId: producto.id, cantidad, activa: true } });
+      }
       if (aplicaStock) {
         const anterior = producto.stock;
         producto.stock = producto.stock.minus(cantidad);
@@ -384,6 +421,12 @@ await prisma.$transaction(async (tx) => {
     }
   }
 
+  const esperadoAyer = turnoAyer.fondoInicial.plus(efectivoTurnoAyer);
+  await tx.turnoCaja.update({
+    where: { id: turnoAyer.id },
+    data: { efectivoEsperado: esperadoAyer, efectivoContado: esperadoAyer, diferencia: 0 },
+  });
+
   const ventaCredito = ventasCreadas.get("DEMO-005");
   const cuenta = await tx.cuentaCliente.upsert({
     where: { contactoId: contactos[4].id },
@@ -403,6 +446,7 @@ await prisma.$transaction(async (tx) => {
       referencia: ventaCredito.folio,
     },
   });
+  await sembrarActividadDemo(tx, org, PERFIL_RETAIL);
 });
 
 imprimirCredencialesDemo({

@@ -1,6 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { credencialesDemo, imprimirCredencialesDemo } from "./lib/demo-seed.mjs";
+import { sembrarActividadDemo } from "./lib/demo-actividad.mjs";
+import { PERFIL_INMOBILIARIA } from "./lib/demo-perfiles.mjs";
 
 const { email, password, passwordGenerada } = credencialesDemo(
   "inmobiliaria@local.test",
@@ -153,6 +155,7 @@ await prisma.$transaction(async (tx) => {
     if (existente) await tx.cita.update({ where: { id: existente.id }, data: datos });
     else await tx.cita.create({ data: datos });
   }
+  await sembrarActividadDemo(tx, org, PERFIL_INMOBILIARIA);
 });
 
 imprimirCredencialesDemo({

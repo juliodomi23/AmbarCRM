@@ -1,6 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { credencialesDemo, imprimirCredencialesDemo } from "./lib/demo-seed.mjs";
+import { sembrarActividadDemo } from "./lib/demo-actividad.mjs";
+import { PERFIL_LEGAL } from "./lib/demo-perfiles.mjs";
 
 const { email, password, passwordGenerada } = credencialesDemo("legal@local.test");
 const prisma = new PrismaClient();
@@ -104,6 +106,7 @@ await prisma.$transaction(async (tx) => {
       estado: indice ? "pendiente" : "contrato_firmado", monto: 900,
     })) });
   }
+  await sembrarActividadDemo(tx, org, PERFIL_LEGAL);
 }, { timeout: 60_000 });
 
 imprimirCredencialesDemo({

@@ -1,6 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { credencialesDemo, imprimirCredencialesDemo } from "./lib/demo-seed.mjs";
+import { sembrarActividadDemo } from "./lib/demo-actividad.mjs";
+import { PERFIL_CLINICA } from "./lib/demo-perfiles.mjs";
 
 const { email, password, passwordGenerada } = credencialesDemo("admin@demo.test");
 const prisma = new PrismaClient();
@@ -142,31 +144,6 @@ await prisma.$transaction(async (tx) => {
     });
   }
 
-  let embudo = await tx.embudo.findFirst({ where: { nombre: "Pacientes" } });
-  if (!embudo)
-    embudo = await tx.embudo.create({
-      data: { nombre: "Pacientes", orden: 1 },
-    });
-  const etapasDatos = [
-    ["Nuevo contacto", "normal"],
-    ["Valoración agendada", "normal"],
-    ["En tratamiento", "normal"],
-    ["Tratamiento completado", "ganado"],
-  ];
-  const etapas = [];
-  for (let i = 0; i < etapasDatos.length; i++) {
-    const [nombre, tipo] = etapasDatos[i];
-    const existente = await tx.etapa.findFirst({
-      where: { embudoId: embudo.id, nombre },
-    });
-    etapas.push(
-      existente ??
-        (await tx.etapa.create({
-          data: { embudoId: embudo.id, nombre, tipo, orden: i + 1 },
-        })),
-    );
-  }
-
   const pacientes = [
     ["Ana García", "5551000001", "Consulta", "Penicilina", true],
     ["Carlos Mendoza", "5551000002", "Limpieza", "Ninguna", false],
@@ -203,26 +180,6 @@ await prisma.$transaction(async (tx) => {
         },
       }),
     );
-  }
-
-  for (let i = 0; i < 6; i++) {
-    const titulo = `${pacientes[i][2]} · ${pacientes[i][0]}`;
-    const etapa = etapas[i % etapas.length];
-    const existente = await tx.oportunidad.findFirst({
-      where: { contactoId: contactos[i].id, titulo },
-    });
-    const data = {
-      contactoId: contactos[i].id,
-      embudoId: embudo.id,
-      etapaId: etapa.id,
-      titulo,
-      valor: 800 + i * 650,
-      responsableId: admin.id,
-      estado: etapa.tipo === "ganado" ? "ganado" : "abierto",
-    };
-    if (existente)
-      await tx.oportunidad.update({ where: { id: existente.id }, data });
-    else await tx.oportunidad.create({ data });
   }
 
   const dias = [diaHoy, diaHoy, 0, 1, 2, 3, 4, 5];
@@ -277,56 +234,7 @@ await prisma.$transaction(async (tx) => {
     }
   }
 
-  const historiales = [
-    [
-      "Hola, quisiera agendar una valoración",
-      "Claro, tenemos espacio esta semana",
-      "Perfecto, gracias",
-    ],
-    [
-      "¿Cuánto cuesta una limpieza?",
-      "La valoración inicial no tiene costo",
-      "Quiero reservar",
-    ],
-    [
-      "Necesito información de ortodoncia",
-      "Revisamos tu caso en consulta",
-      "¿Puede ser por la tarde?",
-    ],
-  ];
-  for (let i = 0; i < 3; i++) {
-    let conversacion = await tx.conversacion.findFirst({
-      where: { contactoId: contactos[i].id },
-    });
-    if (!conversacion)
-      conversacion = await tx.conversacion.create({
-        data: {
-          contactoId: contactos[i].id,
-          responsableId: admin.id,
-          ultimoMensajeAt: new Date(),
-        },
-      });
-    for (let j = 0; j < historiales[i].length; j++) {
-      const contenido = historiales[i][j];
-      if (
-        !(await tx.mensaje.findFirst({
-          where: { conversacionId: conversacion.id, contenido },
-        }))
-      ) {
-        await tx.mensaje.create({
-          data: {
-            conversacionId: conversacion.id,
-            direccion: j % 2 === 0 ? "entrante" : "saliente",
-            contenido,
-            enviadoPor: j % 2 === 0 ? null : admin.id,
-            timestamp: new Date(
-              Date.now() - (historiales[i].length - j) * 60_000,
-            ),
-          },
-        });
-      }
-    }
-  }
+  await sembrarActividadDemo(tx, org, PERFIL_CLINICA);
 });
 
 imprimirCredencialesDemo({

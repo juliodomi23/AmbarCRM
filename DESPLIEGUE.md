@@ -99,3 +99,35 @@ pide ayuda antes de hacerlo en producción):
 ls /backups
 gunzip -c /backups/ambarcrm-AAAA-MM-DD-HHMM.sql.gz | psql -v ON_ERROR_STOP=1
 ```
+
+## 7. Sembrar la demo
+
+Carga las siete empresas de demostración (clínica, autos, inmobiliaria, retail, legal, viajes y
+academia) con datos ficticios "vivos": chats con mensajes recientes y etiquetas de contacto de
+colores, oportunidades en varias etapas, tareas vencidas / de hoy / próximas / sin fecha /
+completadas, reseñas con distintas calificaciones y orígenes y, en retail, caja con turno abierto
+y turno cerrado, pedidos en línea y cotizaciones en todos sus estados.
+
+Requisito: la BD ya tiene `schema.sql`, `multi-tenant.sql` y `actualizaciones.sql` aplicados.
+
+En EasyPanel: servicio **app** → **Console** (el directorio de trabajo ya es `/app`):
+
+```bash
+for giro in clinica automotriz inmobiliaria retail legal viajes academia; do
+  ALLOW_DEMO_SEED=1 node scripts/seed-demo-$giro.mjs
+done
+```
+
+- Cada seed imprime `Demo <giro> lista: /login?org=<slug>`, el correo y una **contraseña
+  aleatoria que solo se muestra esa vez**: cópiala al terminar. Para fijarla, pasa correo y
+  contraseña: `ALLOW_DEMO_SEED=1 node scripts/seed-demo-retail.mjs retail@ejemplo.com 'Clave-Segura-1!'`.
+- Empresas que crea: `demo-clinica`, `demo-auto`, `demo-inmobiliaria`, `demo-retail`,
+  `demo-legal`, `demo-viajes`, `demo-academia`. Solo toca esas; no modifica otras empresas.
+- Es idempotente: se puede repetir. Cada corrida vuelve a calcular las fechas respecto a "hoy"
+  (mensajes recientes, tareas vencidas y de hoy), así que conviene correrlo antes de cada demo.
+  Reinicia las reseñas y los turnos de caja de las empresas demo.
+- Los seeds se niegan a correr con `NODE_ENV=production` y sin `ALLOW_DEMO_SEED=1`. Si la consola
+  responde "bloqueados en producción", el servicio tiene `NODE_ENV=production`: es el bloqueo
+  funcionando. La demo debe vivir en su propio servicio y base de datos (sin esa variable), no en la
+  del cliente real.
+- La demo pública sin sesión (`/demo`, enlazada desde el login) no usa estos datos: es estática.
