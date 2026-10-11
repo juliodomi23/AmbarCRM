@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { BRAND_PRESETS, variablesMarca, type BrandPreset } from "@/lib/brand";
 import {
   CONVERSACIONES,
   CONTACTOS,
@@ -533,6 +535,9 @@ export function DemoCRM() {
   const [vertical, setVertical] = useState<DemoVertical>("clinica");
   const [menu, setMenu] = useState(false);
   const [recorrido, setRecorrido] = useState<number | null>(0);
+  const [preset, setPreset] = useState<BrandPreset>("ambar-rojo");
+  const paleta = BRAND_PRESETS[preset];
+  const estiloMarca = variablesMarca({ nombre: paleta.nombre, logo: null, colorPrimario: paleta.primario, colorAcento: paleta.acento, preset }) as CSSProperties;
   const tituloVista = useMemo(() => NAVEGACION_DEMO.find((item) => item.vista === vista)?.etiqueta ?? "Inicio", [vista]);
 
   function irA(nuevaVista: DemoVista) {
@@ -562,25 +567,25 @@ export function DemoCRM() {
     <aside className="flex h-full w-72 flex-col bg-primary text-primary-foreground">
       <div className="flex h-16 items-center gap-3 border-b border-white/10 px-4">
         <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/15 font-display text-lg font-bold">A</span>
-        <div className="min-w-0 flex-1"><p className="truncate font-display font-bold">AmbarCRM</p><p className="text-[10px] uppercase tracking-[.15em] text-white/55">Demo interactiva</p></div>
+        <div className="min-w-0 flex-1"><p className="truncate font-display font-bold">AmbarCRM</p><p className="text-[10px] uppercase tracking-[.15em] text-primary-foreground/60">Demo interactiva</p></div>
         <button onClick={() => setMenu(false)} aria-label="Cerrar menú" className="grid h-9 w-9 place-items-center rounded-lg hover:bg-white/10 md:hidden"><Icono nombre="cerrar" /></button>
       </div>
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         {grupos.map((grupo) => (
           <div key={grupo || "inicio"} className="mb-4">
-            {grupo && <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[.14em] text-white/50">{grupo}</p>}
+            {grupo && <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[.14em] text-primary-foreground/60">{grupo}</p>}
             <div className="space-y-1">
-              {NAVEGACION_DEMO.filter((item) => item.grupo === grupo).map((item) => <button key={item.vista} onClick={() => irA(item.vista)} className={`relative flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium transition ${vista === item.vista ? "bg-white/15 text-white before:absolute before:-left-3 before:h-6 before:w-1 before:rounded-r-full before:bg-white" : "text-white/75 hover:bg-white/10 hover:text-white"}`}><Icono nombre={item.icono} /><span className="flex-1">{item.etiqueta}</span>{item.vista === "chat" && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[10px] font-bold text-primary">3</span>}</button>)}
+              {NAVEGACION_DEMO.filter((item) => item.grupo === grupo).map((item) => <button key={item.vista} onClick={() => irA(item.vista)} className={`relative flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium transition ${vista === item.vista ? "bg-white/15 text-primary-foreground before:absolute before:-left-3 before:h-6 before:w-1 before:rounded-r-full before:bg-primary-foreground" : "text-primary-foreground/75 hover:bg-white/10 hover:text-primary-foreground"}`}><Icono nombre={item.icono} /><span className="flex-1">{item.etiqueta}</span>{item.vista === "chat" && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[10px] font-bold text-primary">3</span>}</button>)}
             </div>
           </div>
         ))}
       </nav>
-      <div className="border-t border-white/10 p-3"><div className="flex items-center gap-3 rounded-xl p-2"><span className="grid h-9 w-9 place-items-center rounded-full bg-white/15 text-xs font-bold">JD</span><div><p className="text-sm font-semibold">Julio Demo</p><p className="text-[11px] text-white/55">Administrador</p></div></div></div>
+      <div className="border-t border-white/10 p-3"><div className="flex items-center gap-3 rounded-xl p-2"><span className="grid h-9 w-9 place-items-center rounded-full bg-white/15 text-xs font-bold">JD</span><div><p className="text-sm font-semibold">Julio Demo</p><p className="text-[11px] text-primary-foreground/60">Administrador</p></div></div></div>
     </aside>
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="marca-local min-h-screen bg-background text-foreground" style={estiloMarca}>
       <div className="flex min-h-screen">
         <div className="hidden h-screen shrink-0 md:block">{sidebar}</div>
         {menu && <div className="fixed inset-0 z-50 md:hidden"><button className="absolute inset-0 bg-foreground/45" onClick={() => setMenu(false)} aria-label="Cerrar menú" /><div className="absolute inset-y-0 left-0">{sidebar}</div></div>}
@@ -588,7 +593,7 @@ export function DemoCRM() {
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex min-h-10 items-center justify-between gap-3 border-b bg-primary/5 px-4 py-2 text-xs">
             <p className="flex items-center gap-2 font-semibold"><span className="h-2 w-2 rounded-full bg-success" /> Entorno seguro · datos 100% ficticios</p>
-            <div className="flex items-center gap-3"><button onClick={iniciarRecorrido} className="hidden font-bold text-primary hover:underline sm:inline">Reiniciar recorrido</button><Link href="/login" className="font-bold text-primary hover:underline">Ir al acceso real</Link></div>
+            <div className="flex items-center gap-3"><div className="hidden items-center gap-1.5 sm:flex" role="group" aria-label="Color de marca">{(Object.keys(BRAND_PRESETS) as BrandPreset[]).map((clave) => <button key={clave} type="button" onClick={() => setPreset(clave)} title={BRAND_PRESETS[clave].nombre} aria-label={`Color de marca: ${BRAND_PRESETS[clave].nombre}`} aria-pressed={preset === clave} className={`h-5 w-5 rounded-full border-2 transition hover:scale-110 ${preset === clave ? "border-foreground" : "border-transparent"}`} style={{ background: `linear-gradient(135deg, ${BRAND_PRESETS[clave].primario}, ${BRAND_PRESETS[clave].acento})` }} />)}</div><div className="w-10"><ThemeToggle compact /></div><button onClick={iniciarRecorrido} className="hidden font-bold text-primary hover:underline sm:inline">Reiniciar recorrido</button><Link href="/login" className="font-bold text-primary hover:underline">Ir al acceso real</Link></div>
           </div>
           <header className="flex h-16 items-center gap-3 border-b bg-card/95 px-4 backdrop-blur md:px-6">
             <button onClick={() => setMenu(true)} aria-label="Abrir menú" className="grid h-10 w-10 place-items-center rounded-xl border md:hidden"><Icono nombre="menu" /></button>
