@@ -13,6 +13,7 @@ import { almacenIndexedDB } from "@/lib/caja-offline/almacen";
 import { calcularLineaLocal, horasDeCatalogo, leerCatalogoLocal, sincronizarCatalogo, type CatalogoLocal } from "@/lib/caja-offline/catalogo";
 import type { ProductoCatalogoCaja } from "@/lib/caja-offline/tipos";
 import { imprimirTicketLocal } from "@/lib/caja-offline/ticket";
+import { confirmar } from "@/components/Confirmador";
 import { descartarVenta, encolarVenta, folioSinRed, listarCola, reintentarVenta, subirCola, type VentaEnCola } from "@/lib/caja-offline/cola";
 
 type Caja = { id: string; nombre: string; sucursal: string | null };
@@ -443,7 +444,7 @@ export function CajaCliente({
       </div>
       {corte && <section className="surface grid gap-2 p-4 text-sm sm:grid-cols-3"><strong className="sm:col-span-3">Corte {turno ? "X" : "Z"}</strong><span>{corte.ventas} ventas · {formatoMoneda(corte.ventasTotal)}</span><span>Efectivo cobrado {formatoMoneda(corte.efectivoCobrado)}</span><span>Esperado {formatoMoneda(corte.efectivoEsperado)}</span><span>Entradas {formatoMoneda(corte.entradas)}</span><span>Salidas {formatoMoneda(corte.salidas)}</span>{corte.diferencia !== undefined && <b>Diferencia {formatoMoneda(corte.diferencia)}</b>}</section>}
       {modoSinRed && <PanelCola cola={cola} sesionCaducada={sesionCaducada} identidad={identidad} />}
-      {ventaLocal && <section className="surface flex flex-wrap items-center justify-between gap-3 p-4 text-sm"><div><strong>{ventaLocal.folio}</strong><p className="text-amber-700">Guardada sin internet · total {formatoMoneda(Number(ventaLocal.totalCobrado))}. Se subirá sola al volver la conexión.</p></div><span className="flex gap-2">{([80, 58] as const).map((ancho) => <Boton key={ancho} variante="ghost" onClick={() => imprimirTicketLocal(ventaLocal, { negocio: catalogoLocal?.negocio || "Ticket", caja: turno.caja.nombre, cajero: turno.usuario.nombre, zona: catalogoLocal?.catalogo.zona ?? "America/Mexico_City", ancho })}>Ticket {ancho} mm</Boton>)}</span></section>}
+      {ventaLocal && <section className="surface flex flex-wrap items-center justify-between gap-3 p-4 text-sm"><div><strong>{ventaLocal.folio}</strong><p className="text-warning">Guardada sin internet · total {formatoMoneda(Number(ventaLocal.totalCobrado))}. Se subirá sola al volver la conexión.</p></div><span className="flex gap-2">{([80, 58] as const).map((ancho) => <Boton key={ancho} variante="ghost" onClick={() => imprimirTicketLocal(ventaLocal, { negocio: catalogoLocal?.negocio || "Ticket", caja: turno.caja.nombre, cajero: turno.usuario.nombre, zona: catalogoLocal?.catalogo.zona ?? "America/Mexico_City", ancho })}>Ticket {ancho} mm</Boton>)}</span></section>}
       {venta && <section className="surface space-y-3 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><strong>{venta.folio}</strong><p className="text-sm text-success">Venta registrada</p></div><AbrirTicket ventaId={venta.id}>Imprimir / reimprimir ticket</AbrirTicket></div>{venta.contacto && <TarjetaLealtad contactoId={venta.contacto.id} />}</section>}
       <OperacionesCajaA2 turnoId={turno.id} contactoId={contactoId} puedeConfigurarCredito={usuario.rol === "admin" || normalizar(usuario.puesto) === "encargado de tienda"} />
       <p className="text-xs text-muted-foreground">Perfil: {usuario.puesto}{usuario.rol === "admin" ? " · Admin" : ""}</p>
@@ -454,17 +455,17 @@ export function CajaCliente({
 function PanelCola({ cola, sesionCaducada, identidad }: { cola: VentaEnCola[]; sesionCaducada: boolean; identidad: { orgId: string; userId: string } }) {
   if (cola.length === 0 && !sesionCaducada) return null;
   const refrescar = () => window.dispatchEvent(new Event("ambar-cola-cambio"));
-  return <section className="surface space-y-2 border-amber-500 p-4 text-sm">
+  return <section className="surface space-y-2 border-warning p-4 text-sm">
     <h2 className="font-bold">Ventas hechas sin internet · {cola.length} por subir</h2>
-    {sesionCaducada && <p className="text-red-700">Tu sesión caducó: <Link className="underline" href="/login">inicia sesión</Link> para subirlas. Se conservan en este equipo.</p>}
+    {sesionCaducada && <p className="text-destructive">Tu sesión caducó: <Link className="underline" href="/login">inicia sesión</Link> para subirlas. Se conservan en este equipo.</p>}
     {cola.map((venta) => <div key={venta.uuidCliente} className="flex flex-wrap items-center justify-between gap-2 border-t pt-2">
       <span><b>{venta.folio}</b> · {formatoMoneda(Number(venta.totalCobrado))} · {new Date(venta.vendidaAt).toLocaleString("es-MX")}</span>
-      <span className={venta.estado === "error" ? "text-red-700" : "text-muted-foreground"}>
+      <span className={venta.estado === "error" ? "text-destructive" : "text-muted-foreground"}>
         {venta.estado === "error" ? `Error: ${venta.ultimoError} (avisa al Encargado)` : venta.estado === "esperando_turno" ? "Abre turno para subirla" : venta.intentos ? `Reintentando (${venta.intentos})` : "En espera"}
       </span>
       {venta.estado === "error" && <span className="flex gap-2">
         <button className="underline" onClick={async () => { await reintentarVenta(almacenIndexedDB(), venta); refrescar(); }}>Reintentar</button>
-        <button className="underline" onClick={async () => { if (window.confirm(`¿Descartar ${venta.folio}? El rechazo queda registrado para el Encargado.`)) { await descartarVenta(almacenIndexedDB(), venta); refrescar(); } }}>Descartar</button>
+        <button className="underline" onClick={async () => { if (await confirmar({ titulo: `Descartar ${venta.folio}`, mensaje: "El rechazo queda registrado para el Encargado.", confirmar: "Descartar" })) { await descartarVenta(almacenIndexedDB(), venta); refrescar(); } }}>Descartar</button>
       </span>}
     </div>)}
     <p className="text-xs text-muted-foreground">Cuenta {identidad.userId}</p>
@@ -473,7 +474,7 @@ function PanelCola({ cola, sesionCaducada, identidad }: { cola: VentaEnCola[]; s
 
 function EstadoSinRed({ enLinea, catalogo }: { enLinea: boolean; catalogo: CatalogoLocal | null }) {
   const horas = catalogo ? horasDeCatalogo(catalogo) : null;
-  return <p className={`rounded-lg border px-3 py-2 text-xs ${enLinea ? "text-muted-foreground" : "border-amber-500 bg-amber-50 text-amber-900"}`}>
+  return <p className={`rounded-lg border px-3 py-2 text-xs ${enLinea ? "text-muted-foreground" : "border-warning bg-warning/10 text-warning"}`}>
     {enLinea ? "Con internet" : "Sin internet"} · {catalogo ? `catálogo ${catalogo.catalogo.version} de hace ${horas! < 1 ? "menos de 1 h" : `${Math.floor(horas!)} h`}${horas! > 24 ? " (desactualizado: conéctate para refrescarlo)" : ""}` : "catálogo no descargado: conéctate una vez para usar la caja sin internet"}
   </p>;
 }
@@ -495,5 +496,5 @@ function AjusteSinRed({ activo }: { activo: boolean }) {
 }
 
 function Historial({ turnos }: { turnos: Turno[] }) {
-  return <section className="surface overflow-hidden"><h2 className="p-4 font-bold">Cortes recientes</h2><div className="overflow-x-auto"><table className="w-full min-w-[600px] text-sm"><thead><tr className="border-t text-left text-xs uppercase text-muted-foreground"><th className="p-3">Caja</th><th className="p-3">Persona</th><th className="p-3">Apertura</th><th className="p-3">Estado</th><th className="p-3 text-right">Esperado</th><th className="p-3 text-right">Diferencia</th></tr></thead><tbody>{turnos.map((turno) => <tr key={turno.id} className="border-t"><td className="p-3">{turno.caja.nombre}</td><td className="p-3">{turno.usuario.nombre}</td><td className="p-3">{new Date(turno.abiertoAt).toLocaleString("es-MX")}</td><td className="p-3 capitalize">{turno.estado}</td><td className="p-3 text-right">{turno.efectivoEsperado === null ? "—" : formatoMoneda(turno.efectivoEsperado)}</td><td className="p-3 text-right">{turno.diferencia === null ? "—" : formatoMoneda(turno.diferencia)}</td></tr>)}</tbody></table></div></section>;
+  return <section className="surface overflow-hidden"><h2 className="p-4 font-bold">Cortes recientes</h2><div className="overflow-x-auto"><table className="tabla min-w-[600px]"><thead><tr className="border-t text-left text-xs uppercase text-muted-foreground"><th className="p-3">Caja</th><th className="p-3">Persona</th><th className="p-3">Apertura</th><th className="p-3">Estado</th><th className="p-3 text-right">Esperado</th><th className="p-3 text-right">Diferencia</th></tr></thead><tbody>{turnos.map((turno) => <tr key={turno.id}><td className="p-3">{turno.caja.nombre}</td><td className="p-3">{turno.usuario.nombre}</td><td className="p-3">{new Date(turno.abiertoAt).toLocaleString("es-MX")}</td><td className="p-3 capitalize">{turno.estado}</td><td className="p-3 text-right">{turno.efectivoEsperado === null ? "—" : formatoMoneda(turno.efectivoEsperado)}</td><td className="p-3 text-right">{turno.diferencia === null ? "—" : formatoMoneda(turno.diferencia)}</td></tr>)}</tbody></table></div></section>;
 }

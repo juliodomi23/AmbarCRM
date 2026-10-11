@@ -64,9 +64,9 @@ export function LealtadConfig({ modulo, canales }: { modulo: any; canales: any[]
         <p className="text-sm">
           Conectado a <b>{aurum.slug}</b>{" "}
           {aurum.estado === "error" ? (
-            <span className="text-red-600">· {aurum.error ?? "con error"}: vuelve a conectar</span>
+            <span className="text-destructive">· {aurum.error ?? "con error"}: vuelve a conectar</span>
           ) : (
-            <span className="text-green-700">· funcionando</span>
+            <span className="text-success">· funcionando</span>
           )}
         </p>
       )}

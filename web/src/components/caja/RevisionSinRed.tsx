@@ -41,16 +41,16 @@ export function RevisionSinRed({ datos }: { datos: Datos }) {
       <section className="surface p-4">
         <h2 className="mb-2 font-bold">Diferencias de precio por cajero</h2>
         {datos.diferenciasPorCajero.length === 0 ? <p className="text-sm text-muted-foreground">Sin diferencias pendientes.</p> : (
-          <table className="w-full text-sm"><thead><tr className="text-left"><th>Cajero</th><th className="text-right">Ventas</th><th className="text-right">Servidor − cobrado</th></tr></thead>
-            <tbody>{datos.diferenciasPorCajero.map((fila) => <tr key={fila.cajero?.id ?? "sin"} className="border-t"><td className="py-1">{fila.cajero?.nombre ?? "Sin cajero"}</td><td className="text-right">{fila.ventas}</td><td className="text-right">{formatoMoneda(Number(fila.diferencia))}</td></tr>)}</tbody></table>
+          <table className="tabla"><thead><tr className="text-left"><th>Cajero</th><th className="text-right">Ventas</th><th className="text-right">Servidor − cobrado</th></tr></thead>
+            <tbody>{datos.diferenciasPorCajero.map((fila) => <tr key={fila.cajero?.id ?? "sin"}><td className="py-1">{fila.cajero?.nombre ?? "Sin cajero"}</td><td className="text-right">{fila.ventas}</td><td className="text-right">{formatoMoneda(Number(fila.diferencia))}</td></tr>)}</tbody></table>
         )}
       </section>
 
       <section className="surface overflow-x-auto p-4">
         <h2 className="mb-2 font-bold">Ventas con marca ({datos.ventas.length})</h2>
         {datos.ventas.length === 0 ? <p className="text-sm text-muted-foreground">Nada por revisar.</p> : (
-          <table className="w-full min-w-[760px] text-sm"><thead><tr className="text-left"><th>Folio</th><th>Cajero</th><th>Vendida</th><th className="text-right">Cobrado</th><th className="text-right">Diferencia</th><th>Motivo</th><th /></tr></thead>
-            <tbody>{datos.ventas.map((venta) => <tr key={venta.id} className="border-t align-top">
+          <table className="tabla min-w-[760px]"><thead><tr className="text-left"><th>Folio</th><th>Cajero</th><th>Vendida</th><th className="text-right">Cobrado</th><th className="text-right">Diferencia</th><th>Motivo</th><th /></tr></thead>
+            <tbody>{datos.ventas.map((venta) => <tr key={venta.id} className="align-top">
               <td className="py-2">{venta.folio}</td><td>{venta.cajero?.nombre ?? "—"}<small className="block text-muted-foreground">{venta.caja?.nombre}</small></td>
               <td>{fecha(venta.vendidaAt)}<small className="block text-muted-foreground">subida {fecha(venta.subidaAt)}</small></td>
               <td className="text-right">{formatoMoneda(Number(venta.total))}</td>
@@ -65,8 +65,8 @@ export function RevisionSinRed({ datos }: { datos: Datos }) {
         <h2 className="mb-2 font-bold">Rechazadas por el servidor ({datos.rechazos.length})</h2>
         <p className="mb-2 text-xs text-muted-foreground">El efectivo ya se cobró: registra la venta a mano si corresponde y marca el rechazo como resuelto.</p>
         {datos.rechazos.length === 0 ? <p className="text-sm text-muted-foreground">Sin rechazos.</p> : (
-          <table className="w-full min-w-[640px] text-sm"><thead><tr className="text-left"><th>Folio</th><th>Cajero</th><th>Vendida</th><th className="text-right">Cobrado</th><th>Motivo</th><th /></tr></thead>
-            <tbody>{datos.rechazos.map((rechazo) => <tr key={rechazo.id} className="border-t align-top">
+          <table className="tabla min-w-[640px]"><thead><tr className="text-left"><th>Folio</th><th>Cajero</th><th>Vendida</th><th className="text-right">Cobrado</th><th>Motivo</th><th /></tr></thead>
+            <tbody>{datos.rechazos.map((rechazo) => <tr key={rechazo.id} className="align-top">
               <td className="py-2">{rechazo.folio ?? "—"}</td><td>{rechazo.cajero ?? "—"}</td><td>{fecha(rechazo.vendidaAt)}</td>
               <td className="text-right">{rechazo.total === null ? "—" : formatoMoneda(Number(rechazo.total))}</td><td>{rechazo.motivo}</td>
               <td className="text-right"><button className="underline" onClick={() => void resolver(rechazo.id, "rechazo")}>Resuelta</button></td>
@@ -78,7 +78,7 @@ export function RevisionSinRed({ datos }: { datos: Datos }) {
         <h2 className="mb-2 font-bold">Existencia negativa ({datos.inventarioNegativo.length})</h2>
         <p className="mb-2 text-xs text-muted-foreground">Se corrige con una entrada de inventario (Productos → movimientos). La alerta desaparece sola al volver a 0 o más.</p>
         {datos.inventarioNegativo.length === 0 ? <p className="text-sm text-muted-foreground">Ningún producto en negativo.</p> : (
-          <ul className="text-sm">{datos.inventarioNegativo.map((producto) => <li key={producto.id} className="flex justify-between border-t py-1"><span>{producto.nombre}{producto.sku ? ` · ${producto.sku}` : ""}</span><b className="text-red-700">{producto.stock} {producto.unidad}</b></li>)}</ul>
+          <ul className="text-sm">{datos.inventarioNegativo.map((producto) => <li key={producto.id} className="flex justify-between border-t py-1"><span>{producto.nombre}{producto.sku ? ` · ${producto.sku}` : ""}</span><b className="text-destructive">{producto.stock} {producto.unidad}</b></li>)}</ul>
         )}
       </section>
     </div>

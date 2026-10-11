@@ -65,7 +65,7 @@ export function TarjetaLealtad({ contactoId }: { contactoId: string }) {
     <section className="space-y-2 rounded-lg border border-border p-3">
       <span className="text-xs font-medium uppercase text-muted-foreground">Tarjeta de lealtad</span>
       {estado.tipo === "cargando" && <p className="text-xs text-muted-foreground">Consultando Aurum…</p>}
-      {estado.tipo === "error" && <p className="text-xs text-red-600">{estado.mensaje}</p>}
+      {estado.tipo === "error" && <p className="text-xs text-destructive">{estado.mensaje}</p>}
       {estado.tipo === "listo" && !estado.tarjeta && (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">Este contacto aún no tiene tarjeta.</p>

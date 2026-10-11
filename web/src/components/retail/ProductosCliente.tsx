@@ -10,7 +10,7 @@ import {
 } from "@/components/retail/ProductoFormModal";
 import type { ProductoRetail } from "@/components/retail/tipos";
 import { toast } from "@/components/Toaster";
-import { Boton, formatoMoneda } from "@/components/ui";
+import { Boton, EncabezadoPagina, formatoMoneda } from "@/components/ui";
 import {
   centavos,
   compararCantidades,
@@ -158,14 +158,11 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
 
   return (
     <div className="space-y-5 p-4 md:p-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Productos e inventario</h1>
-          <p className="text-sm text-muted-foreground">
-            Catálogo, existencias y trazabilidad de movimientos.
-          </p>
-        </div>
-        <div className="flex gap-2">
+      <EncabezadoPagina
+        titulo="Productos e inventario"
+        descripcion="Catálogo, existencias y trazabilidad de movimientos."
+        acciones={
+          <>
           <Link href="/productos/precios" className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">Precios y promos</Link>
           <Link href="/productos/etiquetas" className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">Etiquetas</Link>
           <Link href="/api/productos/exportar" className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">Exportar CSV</Link>
@@ -178,9 +175,9 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
           <Link href="/ventas" className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">
             Ver ventas
           </Link>
-          <Boton onClick={abrirNuevo}>+ Producto</Boton>
-        </div>
-      </header>
+          <Boton onClick={abrirNuevo}>+ Producto</Boton></>
+        }
+      />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi etiqueta="Productos activos" valor={String(activos.length)} />
@@ -209,9 +206,9 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
         </select>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-card">
-        <table className="w-full min-w-[850px] text-sm">
-          <thead className="text-left text-xs uppercase text-muted-foreground">
+      <div className="overflow-x-auto surface">
+        <table className="tabla min-w-[850px]">
+          <thead>
             <tr>
               <th className="px-4 py-3">Producto</th>
               <th className="px-4 py-3">Categoría</th>
@@ -226,7 +223,7 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
               const bajo = producto.activo && compararCantidades(producto.stock, producto.stockMinimo) <= 0;
               const ultimo = producto.movimientos?.[0];
               return (
-                <tr key={producto.id} className="border-t border-border">
+                <tr key={producto.id}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <ProductoFoto producto={producto} />
@@ -328,7 +325,7 @@ function ProductoFoto({ producto }: { producto: ProductoRetail }) {
 
 function Kpi({ etiqueta, valor, alerta = false }: { etiqueta: string; valor: string; alerta?: boolean }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
+    <div className="surface p-4 shadow-soft">
       <p className="text-xs uppercase text-muted-foreground">{etiqueta}</p>
       <p className={`mt-1 text-2xl font-bold ${alerta ? "text-warning" : ""}`}>{valor}</p>
     </div>

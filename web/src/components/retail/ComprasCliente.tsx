@@ -17,7 +17,7 @@ import type {
   ProveedorRetail,
 } from "@/components/retail/tipos";
 import { toast } from "@/components/Toaster";
-import { Boton, formatoMoneda } from "@/components/ui";
+import { Boton, EncabezadoPagina, formatoMoneda } from "@/components/ui";
 import {
   centavos,
   formatearCantidad,
@@ -126,21 +126,18 @@ export function ComprasCliente({
 
   return (
     <div className="space-y-5 p-4 md:p-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Compras y proveedores</h1>
-          <p className="text-sm text-muted-foreground">
-            Reabastecimiento, costos y recepción de mercancía.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <EncabezadoPagina
+        titulo="Compras y proveedores"
+        descripcion="Reabastecimiento, costos y recepción de mercancía."
+        acciones={
+          <>
           <Link href="/productos" className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">
             Ver inventario
           </Link>
           <Boton variante="ghost" onClick={() => setModalProveedor(true)}>+ Proveedor</Boton>
-          <Boton onClick={() => setModalCompra(true)}>+ Orden de compra</Boton>
-        </div>
-      </header>
+          <Boton onClick={() => setModalCompra(true)}>+ Orden de compra</Boton></>
+        }
+      />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi etiqueta="Órdenes por recibir" valor={String(pendientes.length)} />
@@ -156,7 +153,7 @@ export function ComprasCliente({
         <div className="space-y-3">
           <h2 className="font-semibold">Órdenes de compra</h2>
           {compras.map((compra) => (
-            <article key={compra.id} className="rounded-xl border border-border bg-card p-4">
+            <article key={compra.id} className="surface p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
@@ -209,7 +206,7 @@ export function ComprasCliente({
           )}
         </div>
 
-        <aside className="rounded-xl border border-border bg-card p-4">
+        <aside className="surface p-4">
           <h2 className="font-semibold">Proveedores</h2>
           <div className="mt-3 divide-y divide-border">
             {proveedores.map((proveedor) => (
@@ -248,7 +245,7 @@ export function ComprasCliente({
 
 function Kpi({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
+    <div className="surface p-4 shadow-soft">
       <p className="text-xs uppercase text-muted-foreground">{etiqueta}</p>
       <p className="mt-1 text-2xl font-bold">{valor}</p>
     </div>
