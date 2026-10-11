@@ -34,3 +34,26 @@ for (const archivo of lista) {
 }
 assert.deepEqual(sinCubrir, [], `Endpoints sin manejador en la demo:\n${sinCubrir.join("\n")}`);
 console.log(`check-demo OK · ${revisados} llamadas fetch revisadas en ${lista.length} archivos`);
+
+// ─── Personalización estable: el nombre y el color personalizados sobreviven al cambio de giro ───
+const { almacen } = await import("../src/lib/demo/almacen");
+const { BRAND_PRESETS } = await import("../src/lib/brand");
+const { atender } = await import("../src/lib/demo/api");
+almacen.restablecer("clinica");
+assert.equal(almacen.datos.marca.nombre, "Clínica Horizonte");
+almacen.reiniciar("retail"); // sin personalizar: toma lo del giro
+assert.equal(almacen.datos.marca.nombre, "Casa Ámbar Boutique");
+assert.equal(almacen.datos.marca.preset, "retail");
+await atender("PATCH", new URL("http://demo/api/ajustes"), { marcaNombre: "Mi Negocio", marcaPreset: "belleza", marcaColorPrimario: BRAND_PRESETS.belleza.primario, marcaColorAcento: BRAND_PRESETS.belleza.acento });
+almacen.reiniciar("legal"); // personalizado: se conserva
+assert.equal(almacen.datos.marca.nombre, "Mi Negocio");
+assert.equal(almacen.datos.marca.preset, "belleza");
+assert.equal(almacen.datos.giro, "legal");
+almacen.restablecer("clinica"); // «Restablecer demo» borra la personalización
+assert.equal(almacen.datos.marca.nombre, "Clínica Horizonte");
+almacen.marcarPersonalizado({ color: true });
+almacen.datos.marca.preset = "legal";
+almacen.reiniciar("retail"); // solo el color se personalizó: el nombre sí toma el del giro
+assert.equal(almacen.datos.marca.nombre, "Casa Ámbar Boutique");
+assert.equal(almacen.datos.marca.preset, "legal");
+console.log("check-demo OK · personalización estable al cambiar de giro");

@@ -24,6 +24,7 @@ export function BarraDemo({ onRecorrido }: { onRecorrido: () => void }) {
   }
   function cambiarColor(clave: BrandPreset) {
     const p = BRAND_PRESETS[clave];
+    almacen.marcarPersonalizado({ color: true });
     almacen.mutar((x) => void Object.assign(x.marca, { preset: clave, colorPrimario: p.primario, colorAcento: p.acento }));
   }
   function restablecer() {

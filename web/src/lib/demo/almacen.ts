@@ -193,6 +193,8 @@ export function construirDatos(giroId: GiroId): Datos {
 
 let datos: Datos = construirDatos(GIRO_INICIAL);
 let version = 0;
+/** Qué partes de la marca cambió la persona a mano: esas sobreviven al cambio de giro. */
+const personalizado = { nombre: false, color: false };
 const oyentes = new Set<() => void>();
 const eventos = new Set<(e: { conversacion_id: number; direccion: string }) => void>();
 
@@ -218,10 +220,32 @@ export const almacen = {
     this.notificar();
     return r;
   },
-  /** Vuelve a sembrar (mismo giro o uno nuevo) conservando el nombre y el color si se piden. */
-  reiniciar(giro: GiroId, conservarMarca?: Partial<Datos["marca"]>) {
+  get personalizado() {
+    return { ...personalizado };
+  },
+  /** Anota que la persona cambió a mano el nombre y/o el color de la marca. */
+  marcarPersonalizado(cambios: Partial<typeof personalizado>) {
+    Object.assign(personalizado, cambios);
+  },
+  /**
+   * Cambia de giro (o vuelve a sembrar el mismo): los datos son los del giro, pero el nombre y el color
+   * que la persona personalizó a mano se conservan; los que no, toman los del giro.
+   */
+  reiniciar(giro: GiroId) {
+    const previa = datos.marca;
     datos = construirDatos(giro);
-    if (conservarMarca) datos.marca = { ...datos.marca, ...conservarMarca };
+    if (personalizado.nombre) datos.marca.nombre = previa.nombre;
+    if (personalizado.color) {
+      Object.assign(datos.marca, { preset: previa.preset, colorPrimario: previa.colorPrimario, colorAcento: previa.colorAcento });
+    }
+    datos.marca.logo = previa.logo;
+    this.notificar();
+  },
+  /** «Restablecer demo»: todo vuelve al giro inicial, sin personalización. */
+  restablecer(giro: GiroId) {
+    personalizado.nombre = false;
+    personalizado.color = false;
+    datos = construirDatos(giro);
     this.notificar();
   },
   /** Bus del «tiempo real» simulado: lo escucha EventSourceDemo. */
