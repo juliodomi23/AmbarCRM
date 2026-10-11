@@ -14,7 +14,7 @@ const ARCHIVOS = ["components/AppShell.tsx", "components/CommandPalette.tsx", "c
 // Pantallas que la demo no pinta (o sin sentido sin servidor): su `fetch` nunca se ejecuta en /demo.
 const NO_USADOS = ["OpinionPublica", "TiendaPublica", "RespuestaCotizacion", "ReservaPublica", "GestionCita", "MetaCanales", "EmbeddedSignup", "ConexionManual", "RevisionSinRed", "TabClientes", "CitasConfig", "TabBots", "TabCamposPersonalizados", "TabAutomatizaciones", "TabIA", "EnviarPlantilla"];
 // Endpoints que la demo rechaza a propósito (error + toast «En la demo esto no se guarda»).
-const RECHAZADOS = [/^\/api\/lealtad\/conexion$/, /^\/api\/mensajes\/enviar$/, /^\/api\/(caja|wa|meta|canales|bots|ia)\//, /^\/api\/campos-personalizados\//, /^\/api\/(productos\/importar|ajustes)$/];
+const RECHAZADOS = [/^\/api\/lealtad\/conexion$/, /^\/api\/mensajes\/enviar$/, /^\/api\/(wa|meta|canales|bots|ia)\//, /^\/api\/campos-personalizados\//, /^\/api\/(productos\/importar|ajustes)$/];
 
 function archivos(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => (statSync(join(dir, n)).isDirectory() ? archivos(join(dir, n)) : n.endsWith(".tsx") ? [join(dir, n)] : []));

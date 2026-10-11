@@ -217,6 +217,23 @@ function sembrarRetail(d: Datos, a: AyudasSemilla) {
   d.extra.escalas = [{ id: a.id(), productoId: porSku.get("VEL-003")!.id, desde: 6, precio: 380 }];
   d.extra.promociones = [{ id: a.id(), nombre: "Temporada: 10 % en hogar", tipo: "porcentaje", productoId: null, categoria: "Hogar", valor: 10, inicia: fechaMexico(-3, 0), termina: fechaMexico(20, 0) }];
 
+  // Crédito de cliente (DEMO-005 es a crédito) y un apartado activo, como ejemplo de la Caja completa.
+  const ventaCredito = d.extra.ventas.find((v) => v.folio === "DEMO-005")!;
+  ventaCredito.esCredito = true;
+  d.extra.cuentasCredito = [{
+    contactoId: d.contactos[4].id, limiteCredito: 3000, saldo: ventaCredito.total, creadaAt: ventaCredito.createdAt,
+    movimientos: [{ id: a.id(), tipo: "cargo", monto: ventaCredito.total, createdAt: ventaCredito.createdAt, referencia: ventaCredito.folio }],
+  }];
+  const camisa = porSku.get("CAM-001")!;
+  const ventaApartado = {
+    id: a.id(), folio: "APA-0001", contactoId: d.contactos[0].id, creadoPorId: equipo[0].id, estado: "apartado", canal: "mostrador", metodoPago: "efectivo", subtotal: camisa.precio, descuento: 0, costoEnvio: 0,
+    total: camisa.precio, turnoId: turnoHoy.id, cajaId: caja.id, createdAt: fechaMexico(0, 10), tipoEntrega: null, notas: null,
+    partidas: [{ id: a.id(), productoId: camisa.id, cantidad: 1, precioUnitario: camisa.precio, total: camisa.precio, devoluciones: [] as any[] }], pagos: [{ metodo: "efectivo", monto: 300 }],
+  };
+  camisa.stock -= 1; // la existencia queda separada
+  d.extra.ventas.unshift(ventaApartado);
+  d.extra.apartados = [{ id: a.id(), estado: "activo", saldo: camisa.precio - 300, venceAt: fechaMexico(5, 20), contactoId: d.contactos[0].id, ventaId: ventaApartado.id }];
+
   d.modulos.caja.config = { puestosPermitidos: ["Cajero", "Encargado de tienda"], descuentoMaximoCajero: 10, apartadoDiasVigencia: 7 };
   d.modulos.pedidos_en_linea.config = { permiteEntrega: true, permiteRecoger: true, minimoCompra: "300.00", costoEnvio: "65.00", maxPorTelefono: 3, maxPorIp: 10, horasVencimiento: 48 };
   d.modulos.cotizaciones.config = { ivaPorcentaje: "16", preciosConIva: false };

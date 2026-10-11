@@ -337,11 +337,6 @@ ruta("POST", "/api/caja/ventas", ({ cuerpo }) => {
   return new Respuesta(201, { venta: { id: venta.id, folio: venta.folio, contacto: contacto ? { id: contacto.id, nombre: contacto.nombre, telefono: contacto.telefono } : null } });
 });
 
-// Operaciones de la caja que la demo muestra vacías.
-ruta("GET", "/api/caja/devoluciones", () => ({ ventas: [] }));
-ruta("GET", "/api/caja/apartados", () => ({ apartados: [] }));
-ruta("GET", "/api/caja/credito/:id", () => new Respuesta(404, { error: "sin cuenta de crédito" }));
-
 // ─── Cotizaciones ────────────────────────────────────────────────────────────────────────────
 const cotizaciones = () => (almacen.datos.extra.cotizaciones ??= []);
 
