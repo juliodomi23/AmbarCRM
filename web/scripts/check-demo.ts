@@ -8,13 +8,13 @@ import { resolver } from "../src/lib/demo/api/ruteo";
 import "../src/lib/demo/api";
 
 const RAIZ = fileURLToPath(new URL("../src/", import.meta.url));
-const CARPETAS = ["components/chat", "components/kanban", "components/contactos", "components/tareas", "components/citas", "components/caja", "components/retail", "components/cotizaciones", "components/pedidos", "components/config", "components/modulos", "components/lealtad"];
+const CARPETAS = ["components/chat", "components/kanban", "components/contactos", "components/tareas", "components/citas", "components/caja", "components/retail", "components/cotizaciones", "components/pedidos", "components/config", "components/modulos", "components/lealtad", "components/clientes", "components/difusion", "components/personal", "components/resenas"];
 const ARCHIVOS = ["components/AppShell.tsx", "components/CommandPalette.tsx", "components/PushSetup.tsx", "components/EtiquetaNueva.tsx", "components/CamposPersonalizadosForm.tsx"];
 
 // Pantallas que la demo no pinta (o sin sentido sin servidor): su `fetch` nunca se ejecuta en /demo.
-const NO_USADOS = ["TiendaPublica", "RespuestaCotizacion", "ReservaPublica", "GestionCita", "MetaCanales", "EmbeddedSignup", "ConexionManual", "VentasCliente", "ComprasCliente", "PreciosCliente", "ReportesRetailCliente", "RevisionSinRed", "ExpedienteCliente", "TabClientes", "LealtadConfig", "CitasConfig", "TabBots", "TabCamposPersonalizados", "TabAutomatizaciones", "TabIA", "EnviarPlantilla"];
+const NO_USADOS = ["OpinionPublica", "TiendaPublica", "RespuestaCotizacion", "ReservaPublica", "GestionCita", "MetaCanales", "EmbeddedSignup", "ConexionManual", "RevisionSinRed", "TabClientes", "CitasConfig", "TabBots", "TabCamposPersonalizados", "TabAutomatizaciones", "TabIA", "EnviarPlantilla"];
 // Endpoints que la demo rechaza a propósito (error + toast «En la demo esto no se guarda»).
-const RECHAZADOS = [/^\/api\/mensajes\/enviar$/, /^\/api\/(caja|wa|meta|canales|bots|ia)\//, /^\/api\/campos-personalizados\//, /^\/api\/(productos\/importar|ajustes)$/];
+const RECHAZADOS = [/^\/api\/lealtad\/conexion$/, /^\/api\/mensajes\/enviar$/, /^\/api\/(caja|wa|meta|canales|bots|ia)\//, /^\/api\/campos-personalizados\//, /^\/api\/(productos\/importar|ajustes)$/];
 
 function archivos(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => (statSync(join(dir, n)).isDirectory() ? archivos(join(dir, n)) : n.endsWith(".tsx") ? [join(dir, n)] : []));
@@ -26,7 +26,7 @@ const sinCubrir: string[] = [];
 for (const archivo of lista) {
   const fuente = readFileSync(archivo, "utf8");
   for (const m of fuente.matchAll(/fetch\(\s*([`"'])(\/api\/[^`"']*)\1/g)) {
-    const url = m[2].replace("${tipoFicha}", "pacientes").replace(/\$\{[^}]*\}/g, "1").split("?")[0];
+    const url = m[2].replace("${tipoFicha}", "pacientes").replace("${modo}", "pacientes").replace(/\$\{[^}]*\}/g, "1").split("?")[0];
     revisados++;
     const cubierto = ["GET", "POST", "PATCH", "PUT", "DELETE"].some((metodo) => resolver(metodo, url)) || RECHAZADOS.some((r) => r.test(url));
     if (!cubierto) sinCubrir.push(`${archivo.replace(RAIZ, "")}: ${m[2]}`);

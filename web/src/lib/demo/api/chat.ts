@@ -171,6 +171,3 @@ ruta("POST", "/api/ia/sugerir", ({ cuerpo }) => {
 
 // Plantillas de Meta: la demo no tiene canal conectado.
 ruta("GET", "/api/meta/templates", () => ({ plantillas: [] }));
-
-// Tarjeta de lealtad (Aurum): módulo sin conexión en la demo → el componente se oculta solo.
-ruta("GET", "/api/lealtad/contacto/:id", () => new Respuesta(404, { error: "sin conexión" }));

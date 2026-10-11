@@ -41,6 +41,11 @@ function sembrarClinica(d: Datos, a: AyudasSemilla) {
     d.contactos.push(nuevo);
     return nuevo;
   });
+  d.extra.expedientes = contactos.map((c, i) => ({
+    contactoId: c.id, fechaNacimiento: `${1988 + i}-05-12`, sexo: i % 2 === 0 ? "Femenino" : "Masculino", alergias: pacientes[i][3],
+    antecedentes: i % 3 === 0 ? "Sin enfermedades crónicas conocidas" : "Sin antecedentes relevantes", medicamentos: "Ninguno reportado",
+    observaciones: "Expediente inicial de demostración.", evoluciones: [] as any[],
+  }));
   d.extra.doctores = [
     { id: a.id(), nombre: "Dra. Elena Torres", especialidad: "Odontología general", cedula: "PROF-102938", color: "#0EA5E9", activo: true },
     { id: a.id(), nombre: "Dr. Mateo Salas", especialidad: "Ortodoncia", cedula: "PROF-564738", color: "#8B5CF6", activo: true },
@@ -54,6 +59,9 @@ function sembrarClinica(d: Datos, a: AyudasSemilla) {
       titulo: `${pacientes[i][2]} de ${pacientes[i][0]}`, notas: null, inicio, fin: new Date(new Date(inicio).getTime() + 45 * 60_000).toISOString(),
       estado: "programada",
     };
+  });
+  d.extra.expedientes.slice(0, 3).forEach((e, i) => {
+    e.evoluciones.push({ id: a.id(), contenido: "Valoración inicial: paciente estable y apto para continuar el tratamiento.", createdAt: fechaMexico(-3 - i, 11), doctorId: d.extra.doctores[i % 2].id, citaId: null, registradoPorId: d.usuarios[0].id });
   });
 }
 
@@ -110,7 +118,7 @@ const COTIZACIONES: CotDemo[] = [
 
 function sembrarRetail(d: Datos, a: AyudasSemilla) {
   const admin = d.usuarios[0];
-  const equipo = d.usuarios;
+  const equipo = d.usuarios.slice(1); // como el seed real: el equipo no incluye a la gerencia
   d.contactos.forEach((c, i) => {
     c.email = `cliente${i + 1}@casa-ambar.demo`;
     c.fuente = i % 2 === 0 ? "whatsapp" : "manual";
@@ -176,6 +184,37 @@ function sembrarRetail(d: Datos, a: AyudasSemilla) {
       tokenPublico, ventaId: null, oportunidadId: null, createdAt: fechaMexico(-vigenciaDias > 0 ? -vigenciaDias : -2, 12), partidas: lineas,
     };
   });
+
+  // Expedientes (ficha de clientes) y compras/proveedores/precios, como en el seed real.
+  d.extra.expedientes = d.contactos.map((c, i) => ({
+    contactoId: c.id, fechaNacimiento: null, sexo: null, alergias: null, antecedentes: i % 2 === 0 ? "Prefiere novedades por WhatsApp" : "Compra en tienda",
+    medicamentos: null, observaciones: i === 0 ? "Cliente frecuente" : null, evoluciones: [] as any[],
+  }));
+  d.extra.proveedores = [
+    ["Textiles del Norte", "Isabel Peña", "8110002201", "ventas@textiles-norte.demo"],
+    ["Taller Cerámico Sur", "René Casas", "8110002202", "pedidos@ceramica-sur.demo"],
+    ["Accesorios Central", "Pilar Díaz", "8110002203", "hola@accesorios-central.demo"],
+  ].map(([nombre, contactoNombre, telefono, email]) => ({ id: a.id(), nombre, contactoNombre, telefono, email, rfc: null, notas: null, activo: true }));
+  const encargado = equipo[2] ?? equipo[0];
+  d.extra.compras = ([
+    ["DEMO-C-001", 0, "recibida", [["CAM-001", 10, 400], ["TAZ-004", 8, 140]]],
+    ["DEMO-C-002", 2, "ordenada", [["BOL-002", 6, 900], ["TEN-010", 4, 690]]],
+  ] as Array<[string, number, string, Array<[string, number, number]>]>).map(([folio, pi, estado, partidas], i) => {
+    const lineas = partidas.map(([sku, cantidad, costoUnitario]) => ({ id: a.id(), productoId: porSku.get(sku)!.id, cantidad, costoUnitario, total: cantidad * costoUnitario }));
+    if (estado === "recibida") {
+      for (const l of lineas) {
+        const p = productos.find((x) => x.id === l.productoId)!;
+        const antes = p.stock;
+        p.stock += l.cantidad;
+        p.costo = l.costoUnitario;
+        p.movimientos.push({ id: a.id(), tipo: "compra", cantidad: l.cantidad, existenciaAntes: antes, existenciaDespues: p.stock, motivo: `Compra ${folio}`, createdAt: fechaMexico(-i, 9 + i), usuario: { nombre: encargado.nombre } });
+      }
+    }
+    return { id: a.id(), folio, proveedorId: d.extra.proveedores[pi].id, creadoPorId: encargado.id, estado, total: lineas.reduce((t, l) => t + l.total, 0), notas: null, createdAt: fechaMexico(-i, 9 + i), partidas: lineas };
+  });
+  d.extra.listasPrecio = [{ id: a.id(), nombre: "Mayoreo", tipo: "mayoreo" }];
+  d.extra.escalas = [{ id: a.id(), productoId: porSku.get("VEL-003")!.id, desde: 6, precio: 380 }];
+  d.extra.promociones = [{ id: a.id(), nombre: "Temporada: 10 % en hogar", tipo: "porcentaje", productoId: null, categoria: "Hogar", valor: 10, inicia: fechaMexico(-3, 0), termina: fechaMexico(20, 0) }];
 
   d.modulos.caja.config = { puestosPermitidos: ["Cajero", "Encargado de tienda"], descuentoMaximoCajero: 10, apartadoDiasVigencia: 7 };
   d.modulos.pedidos_en_linea.config = { permiteEntrega: true, permiteRecoger: true, minimoCompra: "300.00", costoEnvio: "65.00", maxPorTelefono: 3, maxPorIp: 10, horasVencimiento: 48 };

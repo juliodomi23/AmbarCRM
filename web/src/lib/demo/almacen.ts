@@ -184,6 +184,19 @@ export function construirDatos(giroId: GiroId): Datos {
     })),
     extra: {},
   };
+  // Chats personales (familia/amigos): viven en su propia pestaña y en /personal.
+  for (const [nombre, telefono, mensajesP] of [
+    ["Mamá", "5559900001", [["entrante", "¿Ya comiste? Avísame cuando llegues", 600], ["saliente", "Sí, ya voy para allá", 590]]],
+    ["Rodrigo (amigo)", "5559900002", [["entrante", "¿Nos vemos el sábado?", 2800]]],
+  ] as Array<[string, string, Array<["entrante" | "saliente", string, number]>]>) {
+    const cid = id();
+    datos.contactos.push({ id: cid, nombre, telefono, email: null, empresa: null, notas: null, fuente: "manual", responsableId: atiende(0).id, optOutDifusion: true, esPersonal: true, esCliente: false, etiquetaIds: [], campos: {}, createdAt: hace(60 * 24 * 30) });
+    const vid = id();
+    datos.conversaciones.push({ id: vid, contactoId: cid, canalId: null, responsableId: null, estado: "pendiente", botActivo: false, fijadoAt: null, noLeidos: 0, ultimoMensajeAt: hace(Math.min(...mensajesP.map((m) => m[2]))), csatScore: null });
+    for (const [dir, texto, min] of mensajesP) datos.mensajes.push({ id: id(), conversacionId: vid, direccion: dir, tipo: "texto", contenido: texto, mediaUrl: null, interna: false, status: "leido", timestamp: hace(min) });
+  }
+  // Tarjetas de lealtad (Aurum simulado): un sello por visita, un premio cada 8.
+  datos.extra.lealtad = datos.contactos.filter((c) => !c.esPersonal).slice(0, 5).map((c, i) => ({ contactoId: c.id, sellos: [5, 3, 7, 1, 6][i], premiosGanados: [1, 0, 2, 0, 1][i], premiosPendientes: [0, 0, 1, 0, 1][i] }));
   sembrarExtra(datos, giro.id, { id, atiende });
   secuencia = Math.max(secuencia, n + 1000);
   return datos;
