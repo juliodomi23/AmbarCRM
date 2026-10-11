@@ -198,7 +198,7 @@ export function ReservaPublica({ slug }: { slug: string }) {
               inputMode="tel" autoComplete="tel" className="w-full rounded-lg border bg-card px-3 py-2 text-sm" />
             <textarea value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="¿Algo que debamos saber? (opcional)"
               rows={2} className="w-full rounded-lg border bg-card px-3 py-2 text-sm" />
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
             <button type="submit" disabled={enviando}
               className="w-full rounded-lg bg-primary py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60">
               {enviando ? "Agendando…" : `Confirmar · ${formato(horario, { weekday: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}`}

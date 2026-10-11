@@ -51,7 +51,7 @@ export default function LoginPage() {
       <BrandRuntime marca={marca} />
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm bg-card rounded-2xl shadow-xl p-8 space-y-5"
+        className="surface surface-pop animate-fade-up w-full max-w-sm space-y-5 rounded-2xl p-6 sm:p-8"
       >
         <div className="text-center">
           {marca.logo ? <Image unoptimized width={192} height={56} src={marca.logo} alt={`Logo de ${marca.nombre}`} className="mx-auto mb-3 h-14 max-w-48 object-contain" /> : null}
@@ -120,7 +120,7 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}. Revisa tu correo y contraseña.
           </p>
         )}
@@ -128,7 +128,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={cargando}
-          className="w-full rounded-lg bg-primary py-2.5 font-medium text-white hover:bg-primary/90 disabled:opacity-60"
+          className="w-full rounded-lg bg-primary py-2.5 font-medium text-primary-foreground transition duration-150 hover:bg-primary/90 hover:shadow-glow active:scale-[.99] disabled:opacity-60"
         >
           {cargando ? "Entrando…" : "Entrar"}
         </button>
