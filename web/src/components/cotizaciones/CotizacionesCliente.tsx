@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { SelectorContacto } from "@/components/modulos/SelectorContacto";
 import { toast } from "@/components/Toaster";
-import { Boton, Modal } from "@/components/ui";
+import { Badge, Boton, EncabezadoPagina, Modal, type TonoBadge } from "@/components/ui";
+import { EmptyState } from "@/components/EmptyState";
 
 type Producto = { id: string; nombre: string; sku: string | null; precio: string; unidad: string; stock: string };
 type Cotizacion = {
@@ -15,6 +16,7 @@ type Cotizacion = {
 type Partida = { productoId: string; concepto: string; cantidad: string; precio: string; descuento: string };
 type Config = { ivaPorcentaje: string; preciosConIva: boolean; plantillaCotizacion?: { name: string; language: string } };
 
+const TONO_ESTADO: Record<string, TonoBadge> = { borrador: "neutral", enviada: "info", aceptada: "success", rechazada: "destructive", vencida: "warning" };
 const input = "w-full rounded-lg border border-input bg-card px-3 py-2 text-sm";
 const nuevaPartida = (): Partida => ({ productoId: "", concepto: "", cantidad: "1", precio: "0", descuento: "0" });
 
@@ -95,37 +97,37 @@ export function CotizacionesCliente({
 
   return (
     <main className="space-y-5 p-4 md:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-primary">Cotizaciones</h1>
-          <p className="text-sm text-muted-foreground">Propuestas con aceptación pública y totales calculados en el servidor.</p>
-        </div>
-        <div className="flex gap-2">
-          {esAdmin && <Boton variante="ghost" onClick={() => setConfigAbierta(true)}>Configurar IVA</Boton>}
-          <Boton onClick={() => setAbierto(true)}>+ Nueva cotización</Boton>
-        </div>
-      </header>
+      <EncabezadoPagina
+        titulo="Cotizaciones"
+        descripcion="Propuestas con aceptación pública y totales calculados en el servidor."
+        acciones={
+          <>
+            {esAdmin && <Boton variante="ghost" onClick={() => setConfigAbierta(true)}>Configurar IVA</Boton>}
+            <Boton onClick={() => setAbierto(true)}>+ Nueva cotización</Boton>
+          </>
+        }
+      />
 
-      <section className="overflow-x-auto rounded-xl border border-border bg-card">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b bg-muted/40 text-muted-foreground"><tr><th className="p-3">Folio</th><th className="p-3">Cliente</th><th className="p-3">Vigencia</th><th className="p-3">Estado</th><th className="p-3 text-right">Total</th><th className="p-3">Acciones</th></tr></thead>
+      <section className="surface overflow-x-auto">
+        <table className="tabla">
+          <thead><tr><th className="p-3">Folio</th><th className="p-3">Cliente</th><th className="p-3">Vigencia</th><th className="p-3">Estado</th><th className="p-3 text-right">Total</th><th className="p-3">Acciones</th></tr></thead>
           <tbody>
             {cotizaciones.map((cotizacion) => (
-              <tr key={cotizacion.id} className="border-b last:border-0">
+              <tr key={cotizacion.id}>
                 <td className="p-3 font-medium">{cotizacion.folio}</td>
                 <td className="p-3">{cotizacion.contacto.nombre}{cotizacion.oportunidad && <span className="block text-xs text-muted-foreground">{cotizacion.oportunidad.titulo}</span>}</td>
                 <td className="p-3">{new Date(cotizacion.vigencia).toLocaleDateString("es-MX", { timeZone: "UTC" })}</td>
-                <td className="p-3 capitalize">{cotizacion.estado}</td>
+                <td className="p-3"><Badge tono={TONO_ESTADO[cotizacion.estado] ?? "neutral"} punto className="capitalize">{cotizacion.estado}</Badge></td>
                 <td className="p-3 text-right font-medium">{moneda(cotizacion.total)}</td>
                 <td className="p-3"><div className="flex flex-wrap gap-2">
                   <Link href={`/cotizacion/${cotizacion.tokenPublico}`} target="_blank" className="text-primary hover:underline">Ver</Link>
-                  {!['aceptada','rechazada','vencida'].includes(cotizacion.estado) && <button onClick={() => enviarWhatsapp(cotizacion.id)} className="text-green-700 hover:underline">WhatsApp</button>}
+                  {!['aceptada','rechazada','vencida'].includes(cotizacion.estado) && <button onClick={() => enviarWhatsapp(cotizacion.id)} className="text-success hover:underline">WhatsApp</button>}
                   {cotizacion.venta && <Link href={`/ventas?venta=${cotizacion.venta.id}`} className="text-primary hover:underline">{cotizacion.venta.folio}</Link>}
                   {baseUrl && <button onClick={() => navigator.clipboard.writeText(`${baseUrl}/cotizacion/${cotizacion.tokenPublico}`).then(() => toast("Enlace copiado"))} className="text-muted-foreground hover:underline">Copiar enlace</button>}
                 </div></td>
               </tr>
             ))}
-            {!cotizaciones.length && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Todavía no hay cotizaciones.</td></tr>}
+            {!cotizaciones.length && <tr><td colSpan={6} className="p-4"><EmptyState titulo="Todavía no hay cotizaciones" descripcion="Crea la primera propuesta y compártela por WhatsApp o con un enlace público." /></td></tr>}
           </tbody>
         </table>
       </section>
@@ -144,7 +146,7 @@ export function CotizacionesCliente({
           <div className="space-y-3">
             {partidas.map((partida, indice) => (
               <div key={indice} className="space-y-2 rounded-lg border p-3">
-                <div className="flex gap-2"><select value={partida.productoId} onChange={(e) => elegirProducto(indice, e.target.value)} className={input}><option value="">Concepto libre</option>{productos.map((producto) => <option key={producto.id} value={producto.id}>{producto.nombre} · {moneda(producto.precio)}/{producto.unidad}</option>)}</select>{partidas.length > 1 && <button type="button" onClick={() => setPartidas((items) => items.filter((_, i) => i !== indice))} className="text-red-600">Quitar</button>}</div>
+                <div className="flex gap-2"><select value={partida.productoId} onChange={(e) => elegirProducto(indice, e.target.value)} className={input}><option value="">Concepto libre</option>{productos.map((producto) => <option key={producto.id} value={producto.id}>{producto.nombre} · {moneda(producto.precio)}/{producto.unidad}</option>)}</select>{partidas.length > 1 && <button type="button" onClick={() => setPartidas((items) => items.filter((_, i) => i !== indice))} className="text-destructive">Quitar</button>}</div>
                 <input aria-label="Concepto" value={partida.concepto} readOnly={!!partida.productoId} onChange={(e) => cambiarPartida(indice, { concepto: e.target.value })} placeholder="Concepto" className={input} />
                 <div className="grid grid-cols-3 gap-2"><input aria-label="Cantidad" value={partida.cantidad} onChange={(e) => cambiarPartida(indice, { cantidad: e.target.value })} type="number" min="0.001" step="0.001" className={input} /><input aria-label="Precio" value={partida.precio} readOnly={!!partida.productoId} onChange={(e) => cambiarPartida(indice, { precio: e.target.value })} type="number" min="0" step="0.01" className={input} /><input aria-label="Descuento" value={partida.descuento} onChange={(e) => cambiarPartida(indice, { descuento: e.target.value })} type="number" min="0" step="0.01" className={input} /></div>
               </div>
