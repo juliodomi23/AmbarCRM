@@ -67,7 +67,7 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full rounded-lg border border-input px-3 py-2 outline-none focus:ring-2 focus:ring-primary/40"
+            className="w-full rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
 
@@ -80,7 +80,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full rounded-lg border border-input px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-full rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-primary/40"
             />
             <button
               type="button"
@@ -115,7 +115,7 @@ export default function LoginPage() {
             value={org}
             onChange={(e) => setOrg(e.target.value)}
             placeholder="Solo si te dieron una"
-            className="w-full rounded-lg border border-input px-3 py-2 outline-none focus:ring-2 focus:ring-primary/40"
+            className="w-full rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
 
