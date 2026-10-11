@@ -147,7 +147,7 @@ export function ExpedienteCliente({
       </header>
 
       {soloBasico && (
-        <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">
+        <div className="surface p-5 text-sm text-muted-foreground">
           Puedes consultar los datos básicos y gestionar sus citas. El expediente y
           las evoluciones clínicas están disponibles únicamente para puestos autorizados.
         </div>
@@ -157,7 +157,7 @@ export function ExpedienteCliente({
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
         <form
           onSubmit={guardar}
-          className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-soft"
+          className="space-y-4 surface p-5"
         >
           <h2 className="font-semibold">
             {esClinica ? "Datos clínicos" : "Perfil del cliente"}
@@ -201,7 +201,7 @@ export function ExpedienteCliente({
         <section className="space-y-4">
           <form
             onSubmit={agregarEvolucion}
-            className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-soft"
+            className="space-y-3 surface p-5"
           >
             <h2 className="font-semibold">
               {esClinica ? "Nueva evolución" : "Nuevo servicio"}
@@ -244,7 +244,7 @@ export function ExpedienteCliente({
               {esClinica ? "Historial clínico" : "Historial de servicios"}
             </h2>
             {evoluciones.map((evolucion) => (
-              <article key={evolucion.id} className="rounded-xl border border-border bg-card p-4">
+              <article key={evolucion.id} className="surface p-4">
                 <p className="whitespace-pre-wrap text-sm">{evolucion.contenido}</p>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {new Intl.DateTimeFormat("es-MX", {

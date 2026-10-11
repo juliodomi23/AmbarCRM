@@ -70,7 +70,7 @@ export function EtiquetaNueva({ className = "" }: { className?: string }) {
       <button
         onClick={crear}
         disabled={guardando || !nombre.trim()}
-        className="rounded-lg bg-primary px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50"
+        className="rounded-lg bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
       >
         {guardando ? "…" : "Crear"}
       </button>

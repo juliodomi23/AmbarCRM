@@ -3,8 +3,9 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Boton, Campo, Modal } from "@/components/ui";
+import { Boton, Campo, EncabezadoPagina, Modal } from "@/components/ui";
 import { toast } from "@/components/Toaster";
+import { confirmar } from "@/components/Confirmador";
 import { EtiquetaNueva } from "@/components/EtiquetaNueva";
 import { AvatarNombre } from "@/components/AvatarNombre";
 import { EmptyState } from "@/components/EmptyState";
@@ -171,12 +172,12 @@ export function ContactosCliente({
   }
 
   async function borrar(c: Contacto) {
-    if (
-      !confirm(
-        `¿Borrar a ${c.nombre}? Se eliminarán sus oportunidades y conversaciones.`,
-      )
-    )
-      return;
+    const ok = await confirmar({
+      titulo: `Borrar a ${c.nombre}`,
+      mensaje: "Se eliminarán sus oportunidades y conversaciones.",
+      confirmar: "Borrar",
+    });
+    if (!ok) return;
     const res = await fetch(`/api/contactos/${c.id}`, { method: "DELETE" });
     if (res.ok) router.refresh();
   }
@@ -218,10 +219,12 @@ export function ContactosCliente({
   }
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-primary">Contactos</h1>
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-4 p-4 md:p-6">
+      <EncabezadoPagina
+        titulo="Contactos"
+        descripcion={`${filtrados.length} ${filtrados.length === 1 ? "contacto" : "contactos"}`}
+        acciones={
+        <>
           <input
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
@@ -308,13 +311,14 @@ export function ContactosCliente({
           )}
           <EtiquetaNueva />
           <Boton onClick={abrirNuevo}>+ Nuevo</Boton>
-        </div>
-      </div>
+        </>
+        }
+      />
 
       {/* Tabla (desktop) */}
-      <div className="hidden overflow-x-auto rounded-xl border border-border bg-card md:block">
-        <table className="w-full text-sm">
-          <thead className="bg-background text-left text-xs uppercase text-muted-foreground">
+      <div className="hidden overflow-x-auto surface md:block">
+        <table className="tabla">
+          <thead>
             <tr>
               <th className="px-4 py-3">Contacto</th>
               <th className="px-4 py-3">Empresa</th>
@@ -331,10 +335,7 @@ export function ContactosCliente({
           </thead>
           <tbody>
             {filtrados.map((c) => (
-              <tr
-                key={c.id}
-                className="h-10 border-t border-border/60 hover:bg-muted/60"
-              >
+              <tr key={c.id}>
                 <td className="px-4 py-1.5">
                   <div className="flex items-center gap-3">
                     <AvatarNombre nombre={c.nombre} className="h-8 w-8" />
@@ -369,7 +370,8 @@ export function ContactosCliente({
                         <button
                           key={et.id}
                           onClick={() => toggleEtiqueta(c, et)}
-                          className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                          aria-pressed={activa}
+                          className="rounded-full px-2 py-0.5 text-[10px] font-medium transition-opacity hover:opacity-80"
                           style={
                             activa
                               ? { background: et.color, color: "white" }
@@ -434,7 +436,7 @@ export function ContactosCliente({
                     ))}
                   <button
                     onClick={() => borrar(c)}
-                    className="text-red-600 hover:underline"
+                    className="text-destructive hover:underline"
                   >
                     Borrar
                   </button>
@@ -458,11 +460,11 @@ export function ContactosCliente({
       </div>
 
       {/* Tarjetas (móvil) */}
-      <div className="space-y-2 md:hidden">
+      <div className="stagger space-y-2 md:hidden">
         {filtrados.map((c) => (
           <div
             key={c.id}
-            className="rounded-xl border border-border bg-card p-4"
+            className="surface p-4"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex min-w-0 items-center gap-3">
@@ -538,7 +540,7 @@ export function ContactosCliente({
                 ))}
               <button
                 onClick={() => borrar(c)}
-                className="font-medium text-red-600"
+                className="font-medium text-destructive"
               >
                 Borrar
               </button>
@@ -546,9 +548,10 @@ export function ContactosCliente({
           </div>
         ))}
         {filtrados.length === 0 && (
-          <p className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-            Sin contactos.
-          </p>
+          <EmptyState
+            titulo="Sin contactos"
+            descripcion="Agrega el primer contacto para comenzar a gestionar conversaciones y oportunidades."
+          />
         )}
       </div>
 
