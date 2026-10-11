@@ -3,10 +3,11 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { resolver } from "../src/lib/demo/api/ruteo";
 import "../src/lib/demo/api";
 
-const RAIZ = new URL("../src/", import.meta.url).pathname;
+const RAIZ = fileURLToPath(new URL("../src/", import.meta.url));
 const CARPETAS = ["components/chat", "components/kanban", "components/contactos", "components/tareas", "components/citas", "components/caja", "components/retail", "components/cotizaciones", "components/pedidos", "components/config", "components/modulos", "components/lealtad"];
 const ARCHIVOS = ["components/AppShell.tsx", "components/CommandPalette.tsx", "components/PushSetup.tsx", "components/EtiquetaNueva.tsx", "components/CamposPersonalizadosForm.tsx"];
 
@@ -18,7 +19,7 @@ const RECHAZADOS = [/^\/api\/mensajes\/enviar$/, /^\/api\/(caja|wa|meta|canales|
 function archivos(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => (statSync(join(dir, n)).isDirectory() ? archivos(join(dir, n)) : n.endsWith(".tsx") ? [join(dir, n)] : []));
 }
-const lista = [...CARPETAS.flatMap((c) => archivos(join(RAIZ, c))), ...ARCHIVOS.map((a) => join(RAIZ, a))].filter((f) => !NO_USADOS.some((n) => f.includes(`/${n}.tsx`)));
+const lista = [...CARPETAS.flatMap((c) => archivos(join(RAIZ, c))), ...ARCHIVOS.map((a) => join(RAIZ, a))].filter((f) => !NO_USADOS.some((n) => f.replaceAll("\\", "/").includes(`/${n}.tsx`)));
 
 let revisados = 0;
 const sinCubrir: string[] = [];
