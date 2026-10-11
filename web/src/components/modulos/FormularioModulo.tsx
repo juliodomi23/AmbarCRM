@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton, Modal } from "@/components/ui";
 import { toast } from "@/components/Toaster";
+import { confirmar } from "@/components/Confirmador";
 import { SelectorContacto } from "@/components/modulos/SelectorContacto";
 
 export type OpcionCampo = { valor: string; etiqueta: string };
@@ -60,7 +61,6 @@ export function FormularioModulo({
   const edicion = valoresGuardados !== undefined;
   const [abierto, setAbierto] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const [confirmarBorrado, setConfirmarBorrado] = useState(false);
   const [valores, setValores] = useState<Record<string, string>>(() => valoresIniciales(campos, valoresGuardados));
 
   function cambiar(nombre: string, valor: string) {
@@ -87,12 +87,21 @@ export function FormularioModulo({
     });
     const data = await res.json().catch(() => ({}));
     setEnviando(false);
-    setConfirmarBorrado(false);
     if (!res.ok) return toast(data.error ?? "No se pudo completar", "error");
     toast(exito);
     if (!edicion) setValores(valoresIniciales(campos));
     setAbierto(false);
     router.refresh();
+  }
+
+  async function borrar() {
+    if (!eliminar) return;
+    const ok = await confirmar({
+      titulo: eliminar,
+      mensaje: "El registro se elimina de forma permanente. Esta acción no se puede deshacer.",
+      confirmar: eliminar.split(" ")[0],
+    });
+    if (ok) await solicitar("DELETE", null, "Eliminado");
   }
 
   return (
@@ -173,15 +182,9 @@ export function FormularioModulo({
                   {accion.etiqueta}
                 </Boton>
               ))}
-              {eliminar && !confirmarBorrado && (
-                <Boton type="button" variante="ghost" onClick={() => setConfirmarBorrado(true)}>
+              {eliminar && (
+                <Boton type="button" variante="ghost" disabled={enviando} onClick={borrar}>
                   {eliminar}
-                </Boton>
-              )}
-              {eliminar && confirmarBorrado && (
-                <Boton type="button" variante="danger" disabled={enviando}
-                  onClick={() => solicitar("DELETE", null, "Eliminado")}>
-                  ¿Seguro? Sí, {eliminar.toLowerCase()}
                 </Boton>
               )}
             </div>

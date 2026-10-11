@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { confirmar } from "@/components/Confirmador";
 import { Boton, Campo } from "@/components/ui";
 import { api } from "@/components/config/tabs/shared";
 
@@ -16,7 +17,13 @@ export function TabPlantillas({ plantillas }: { plantillas: any[] }) {
       router.refresh();
     }
   }
-  async function borrar(id: string) {
+  async function borrar(id: string, nombre: string) {
+    const ok = await confirmar({
+      titulo: "Borrar plantilla",
+      mensaje: `Se borra la plantilla "${nombre}". Esta acción no se puede deshacer.`,
+      confirmar: "Borrar"
+    });
+    if (!ok) return;
     if (await api(`/api/plantillas/${id}`, "DELETE")) router.refresh();
   }
 
@@ -61,7 +68,7 @@ export function TabPlantillas({ plantillas }: { plantillas: any[] }) {
               <p className="text-sm text-muted-foreground">{p.contenido}</p>
             </div>
             <button
-              onClick={() => borrar(p.id)}
+              onClick={() => borrar(p.id, p.nombre)}
               className="text-xs text-destructive hover:underline"
             >
               Borrar

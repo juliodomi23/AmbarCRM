@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Boton } from "@/components/ui";
+import { confirmar } from "@/components/Confirmador";
 import { toast } from "@/components/Toaster";
 
 type Plantilla = { name: string; language: string; status?: string };
@@ -40,6 +41,12 @@ export function LealtadConfig({ modulo, canales }: { modulo: any; canales: any[]
   }
 
   async function desconectar() {
+    const ok = await confirmar({
+      titulo: "Desconectar Aurum",
+      mensaje: "Se corta la conexión con Aurum. Podrás volver a conectarla con tu clave.",
+      confirmar: "Desconectar"
+    });
+    if (!ok) return;
     const res = await fetch("/api/lealtad/conexion", { method: "DELETE" });
     toast(res.ok ? "Aurum desconectado" : "No se pudo desconectar", res.ok ? "ok" : "error");
     if (res.ok) location.reload();

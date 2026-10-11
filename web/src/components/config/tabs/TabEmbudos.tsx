@@ -46,7 +46,13 @@ export function TabEmbudos({ embudos }: { embudos: any[] }) {
       router.refresh();
     }
   }
-  async function borrarEtapa(id: string) {
+  async function borrarEtapa(id: string, nombre: string) {
+    const ok = await confirmar({
+      titulo: "Quitar etapa",
+      mensaje: `Se quita la etapa "${nombre}" del embudo.`,
+      confirmar: "Quitar"
+    });
+    if (!ok) return;
     if (await api(`/api/etapas/${id}`, "DELETE")) router.refresh();
   }
 
@@ -82,7 +88,7 @@ export function TabEmbudos({ embudos }: { embudos: any[] }) {
               >
                 {et.nombre}
                 <button
-                  onClick={() => borrarEtapa(et.id)}
+                  onClick={() => borrarEtapa(et.id, et.nombre)}
                   aria-label={`Quitar etapa ${et.nombre}`}
                   className="ml-1 opacity-80 transition hover:opacity-100"
                 >

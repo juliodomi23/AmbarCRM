@@ -126,7 +126,7 @@ export default async function ReservasEnLineaPage() {
         {horarios.map((h) => (
           <div key={String(h.id)} className="flex items-center justify-between border-t pt-2 text-sm">
             <span>{DIAS[h.diaSemana]} · {horaTexto(h.inicioMin)}–{horaTexto(h.finMin)} · {h.doctor.nombre}</span>
-            {esAdmin && <BotonEliminar endpoint={`/api/reservas/horarios/${h.id}`} />}
+            {esAdmin && <BotonEliminar endpoint={`/api/reservas/horarios/${h.id}`} titulo="Quitar horario" mensaje="Se quita este horario de atención." />}
           </div>
         ))}
       </Seccion>
@@ -149,7 +149,7 @@ export default async function ReservasEnLineaPage() {
               {e.inicioMin === null || e.finMin === null ? "Cerrado" : `${horaTexto(e.inicioMin)}–${horaTexto(e.finMin)}`}
               {e.motivo ? ` · ${e.motivo}` : ""}
             </span>
-            {esAdmin && <BotonEliminar endpoint={`/api/reservas/excepciones/${e.id}`} />}
+            {esAdmin && <BotonEliminar endpoint={`/api/reservas/excepciones/${e.id}`} titulo="Quitar excepción" mensaje="Se quita esta excepción del calendario." />}
           </div>
         ))}
       </Seccion>
