@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Boton, Campo, Modal } from "@/components/ui";
 import { IconoCheck, IconoCerrar, IconoReloj } from "@/components/icons";
 import { EmptyState } from "@/components/EmptyState";
+import { confirmar } from "@/components/Confirmador";
+import { toast } from "@/components/Toaster";
 
 type Tarea = {
   id: string;
@@ -86,11 +88,12 @@ export function TareasCliente({
   }
 
   async function borrar(t: Tarea) {
-    if (!confirm(`¿Borrar la tarea "${t.titulo}"?`)) return;
+    if (!(await confirmar({ titulo: "Eliminar tarea", mensaje: `Se eliminará "${t.titulo}". Esta acción no se puede deshacer.` }))) return;
     setOcupada(t.id);
-    await fetch(`/api/tareas/${t.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/tareas/${t.id}`, { method: "DELETE" });
     router.refresh();
     setOcupada(null);
+    toast(res.ok ? "Tarea eliminada" : "No se pudo eliminar la tarea", res.ok ? "ok" : "error");
   }
 
   const completadas = tareas.filter((t) => t.completada);

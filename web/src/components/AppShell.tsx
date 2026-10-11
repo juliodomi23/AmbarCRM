@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { Toaster } from "@/components/Toaster";
+import { Confirmador } from "@/components/Confirmador";
 import { PushSetup } from "@/components/PushSetup";
 import { IdentidadOffline, limpiarCajaLocal } from "@/components/caja/IdentidadOffline";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -486,6 +487,7 @@ export function AppShell({
       </div>
       <CommandPalette abierto={paleta} onClose={() => setPaleta(false)} />
       <Toaster />
+      <Confirmador />
       <PushSetup />
       {identidad && <IdentidadOffline orgId={identidad.orgId} userId={identidad.userId} />}
     </div>
