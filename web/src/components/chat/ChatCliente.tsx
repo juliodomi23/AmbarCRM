@@ -146,6 +146,8 @@ export function ChatCliente({
     setPanelMovil(false);
   }
   const [enVivo, setEnVivo] = useState(false);
+  // Sube con cada evento en vivo de la conversación abierta: el panel de detalles se vuelve a leer.
+  const [versionPanel, setVersionPanel] = useState(0);
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroEtiqueta, setFiltroEtiqueta] = useState("");
@@ -303,6 +305,7 @@ export function ChatCliente({
       const esEntrante = payload.direccion === "entrante";
       if (convId === selRef.current) {
         cargarMensajes(convId);
+        setVersionPanel((v) => v + 1);
       }
       // Avisa si entra un mensaje y la conversación no está abierta o la pestaña no está activa.
       if (esEntrante && (document.hidden || convId !== selRef.current)) {
@@ -885,6 +888,7 @@ export function ChatCliente({
               setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, contacto: { ...c.contacto, nombre } } : c)))
             }
             onBorrada={() => quitarConversacion(seleccionada.id)}
+            version={versionPanel}
             onCambio={refrescarLista}
             onEtiquetas={(nombres) =>
               setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, etiquetas: nombres } : c)))
@@ -953,6 +957,7 @@ export function ChatCliente({
               setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, contacto: { ...c.contacto, nombre } } : c)))
             }
             onBorrada={() => quitarConversacion(seleccionada.id)}
+            version={versionPanel}
             onCambio={refrescarLista}
             onEtiquetas={(nombres) =>
               setConvs((prev) => prev.map((c) => (c.id === seleccionada.id ? { ...c, etiquetas: nombres } : c)))

@@ -329,6 +329,20 @@ async function main() {
     "el handoff deja una sola nota (la suya)",
   );
 
+  // Tiempo real: insertar la nota dispara el mismo NOTIFY del chat (trigger de mensajes).
+  const escucha = new pg.Client({ connectionString: adminUrl });
+  await escucha.connect();
+  await escucha.query("LISTEN nuevo_mensaje");
+  const avisos: { conversacion_id: number; direccion: string; org_id: number }[] = [];
+  escucha.on("notification", (n) => n.payload && avisos.push(JSON.parse(n.payload)));
+  const convVivo = await conversacion(96);
+  await llamar(postLabels, token("A"), convVivo, { labels: ["en-vivo"] });
+  for (let i = 0; i < 50 && !avisos.some((a) => String(a.conversacion_id) === convVivo); i++) await new Promise((r) => setTimeout(r, 100));
+  await escucha.end();
+  const aviso = avisos.find((a) => String(a.conversacion_id) === convVivo);
+  assert.ok(aviso, "el etiquetado del bot emitió el evento nuevo_mensaje de la conversación");
+  assert.equal(String(aviso.org_id), o, "el evento lleva la empresa");
+
   // ---------- 7. 429 por token ----------
   process.env.BOT_RATE_LIMIT_MAX = "3";
   const limitado = token("rl");

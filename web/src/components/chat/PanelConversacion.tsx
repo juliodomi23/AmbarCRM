@@ -60,6 +60,7 @@ export function PanelConversacion({
   usuarios,
   embudos,
   etiquetas = [],
+  version = 0,
   onCambio,
   onEtiquetas,
   onRenombrar,
@@ -70,6 +71,8 @@ export function PanelConversacion({
   usuarios: Usuario[];
   embudos: Embudo[];
   etiquetas?: EtiquetaDef[];
+  /** Cambia cuando llega un evento en vivo de esta conversación (p. ej. el bot etiquetó o escaló). */
+  version?: number;
   onCambio?: () => void;
   /** Cambiaron las etiquetas: el padre las refleja en la bandeja al instante. */
   onEtiquetas?: (nombres: string[]) => void;
@@ -135,17 +138,35 @@ export function PanelConversacion({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversacionId]);
 
-  // Sincroniza el formulario de datos del contacto cuando carga el detalle.
+  // Evento en vivo: relee estado, bot, responsable, etiquetas y oportunidades sin tocar los campos
+  // del contacto que se estén editando.
   useEffect(() => {
-    if (d)
+    if (!version) return;
+    let vigente = true;
+    fetch(`/api/conversaciones/${conversacionId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((nuevo: Detalle | null) => {
+        if (vigente && nuevo) setD((prev) => (prev && prev.id === nuevo.id ? { ...nuevo, contacto: prev.contacto } : prev));
+      })
+      .catch(() => {});
+    return () => {
+      vigente = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version]);
+
+  // Sincroniza el formulario de datos del contacto cuando carga el detalle.
+  const contactoCargado = d?.contacto;
+  useEffect(() => {
+    if (contactoCargado)
       setCForm({
-        telefono: d.contacto.telefono ?? "",
-        email: d.contacto.email ?? "",
-        empresa: d.contacto.empresa ?? "",
-        notas: d.contacto.notas ?? "",
-        campos: d.contacto.campos ?? {},
+        telefono: contactoCargado.telefono ?? "",
+        email: contactoCargado.email ?? "",
+        empresa: contactoCargado.empresa ?? "",
+        notas: contactoCargado.notas ?? "",
+        campos: contactoCargado.campos ?? {},
       });
-  }, [d]);
+  }, [contactoCargado]);
 
   async function guardarContacto() {
     if (!d) return;
