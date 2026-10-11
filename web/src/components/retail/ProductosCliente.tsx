@@ -215,7 +215,7 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
               <th className="px-4 py-3 text-right">Precio</th>
               <th className="px-4 py-3 text-right">Existencia</th>
               <th className="px-4 py-3">Último movimiento</th>
-              <th className="px-4 py-3 text-right">Acciones</th>
+              <th className="celda-fija px-4 py-3 text-right">Acciones</th>
             </tr>
           </thead>
           <tbody className="stagger">
@@ -270,7 +270,7 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
                       "Sin movimientos"
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="celda-fija px-4 py-3">
                     <div className="flex justify-end gap-2">
                       <Boton variante="ghost" onClick={() => abrirEditar(producto)}>
                         Editar

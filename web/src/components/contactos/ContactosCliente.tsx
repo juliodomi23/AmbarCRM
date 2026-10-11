@@ -330,7 +330,7 @@ export function ContactosCliente({
                   {campo.etiqueta}
                 </th>
               ))}
-              <th className="px-4 py-3"></th>
+              <th className="celda-fija px-4 py-3"><span className="sr-only">Acciones</span></th>
             </tr>
           </thead>
           <tbody className="stagger">
@@ -401,7 +401,7 @@ export function ContactosCliente({
                     {String(c.campos?.[campo.clave] ?? "—")}
                   </td>
                 ))}
-                <td className="px-4 py-1.5 text-right">
+                <td className="celda-fija px-4 py-1.5 text-right">
                   <button
                     onClick={() => abrirEditar(c)}
                     className="mr-3 text-primary hover:underline"
