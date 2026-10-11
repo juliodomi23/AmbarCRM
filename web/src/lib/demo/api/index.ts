@@ -6,6 +6,7 @@ import "./modulos-giro";
 import "./config";
 import "./retail";
 import "./extras";
+import "./giros";
 import { ErrorApi, Respuesta, resolver, endpointsSoportados } from "./ruteo";
 
 export { endpointsSoportados };

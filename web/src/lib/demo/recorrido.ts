@@ -6,6 +6,11 @@ export type PasoRecorrido = { ruta: string; titulo: string; descripcion: string;
 /** Pantalla principal del giro (primer módulo activo con pantalla propia en la demo). */
 export function rutaModuloGiro(d: Datos): { ruta: string; nombre: string } | null {
   const orden: Array<[string, string, string]> = [
+    ["legal", "/legal", "Expedientes"],
+    ["tours", "/tours", "Tours"],
+    ["alumnos", "/alumnos", "Alumnos"],
+    ["automotriz", "/automotriz", "Inventario"],
+    ["inmobiliaria", "/inmobiliaria", "Propiedades"],
     ["citas", "/citas", "Citas"],
     ["caja", "/caja", "Caja"],
     ["productos", "/productos", "Productos"],

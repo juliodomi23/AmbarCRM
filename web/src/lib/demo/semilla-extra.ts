@@ -1,6 +1,7 @@
 // Datos de los módulos por giro (citas, productos, caja, cotizaciones, pedidos…). Misma historia que los
 // seeds demo reales (web/scripts/seed-demo-clinica.mjs y seed-demo-retail.mjs).
 import { fechaEstaSemana, fechaMexico, indiceDiaHoy } from "./fechas";
+import { sembrarAcademia, sembrarAutomotriz, sembrarInmobiliaria, sembrarLegal, sembrarViajes } from "./semilla-giros";
 import type { ContactoD, Datos, GiroId, UsuarioD } from "./tipos";
 
 export type AyudasSemilla = { id: () => string; atiende: (i?: number) => UsuarioD };
@@ -225,4 +226,10 @@ export function sembrarExtra(datos: Datos, giro: GiroId, ayudas: AyudasSemilla) 
   if (giro === "clinica") sembrarClinica(datos, ayudas);
   else if (giro === "retail") sembrarRetail(datos, ayudas);
   else if (datos.modulos.citas?.activo) sembrarCitasGenericas(datos, ayudas, giro === "legal" ? "Asesoría" : giro === "automotriz" ? "Prueba de manejo" : "Visita");
+  const a = { id: ayudas.id };
+  if (giro === "legal") sembrarLegal(datos, a);
+  if (giro === "viajes") sembrarViajes(datos, a);
+  if (giro === "educacion") sembrarAcademia(datos, a);
+  if (giro === "automotriz") sembrarAutomotriz(datos, a);
+  if (giro === "inmobiliaria") sembrarInmobiliaria(datos, a);
 }

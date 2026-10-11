@@ -8,7 +8,7 @@ import { resolver } from "../src/lib/demo/api/ruteo";
 import "../src/lib/demo/api";
 
 const RAIZ = fileURLToPath(new URL("../src/", import.meta.url));
-const CARPETAS = ["components/chat", "components/kanban", "components/contactos", "components/tareas", "components/citas", "components/caja", "components/retail", "components/cotizaciones", "components/pedidos", "components/config", "components/modulos", "components/lealtad", "components/clientes", "components/difusion", "components/personal", "components/resenas"];
+const CARPETAS = ["components/chat", "components/kanban", "components/contactos", "components/tareas", "components/citas", "components/caja", "components/retail", "components/cotizaciones", "components/pedidos", "components/config", "components/modulos", "components/lealtad", "components/clientes", "components/difusion", "components/personal", "components/resenas", "components/automotriz", "components/inmobiliaria", "components/legal"];
 const ARCHIVOS = ["components/AppShell.tsx", "components/CommandPalette.tsx", "components/PushSetup.tsx", "components/EtiquetaNueva.tsx", "components/CamposPersonalizadosForm.tsx"];
 
 // Pantallas que la demo no pinta (o sin sentido sin servidor): su `fetch` nunca se ejecuta en /demo.
