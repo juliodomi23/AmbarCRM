@@ -25,7 +25,7 @@ Reglas que mandan sobre todo lo demás:
 
 ```
 /demo  (app/demo/page.tsx · server, solo metadata)
- └─ DemoApp (client, cargado con next/dynamic ssr:false → sin hidratación de fechas)
+ └─ DemoApp (client; instala la capa en useLayoutEffect y pinta el CRM solo tras montar → sin hidratación de fechas)
      ├─ AlmacenProvider        estado en memoria + versión (useSyncExternalStore)
      ├─ InstalarCapaDemo       instala (useLayoutEffect) y retira (cleanup) la capa de red simulada
      ├─ NavegacionDemo         contextos de next/navigation falsos + intercepción de clics en <a>
@@ -45,7 +45,7 @@ que `/login` y el CRM real nunca ven un `fetch` alterado:
 | Endpoint no soportado | `Response` JSON `501 {"error":"En la demo esto no se guarda"}` + `toast("En la demo esto no se guarda","error")`. Nunca se hace `fetch` real. |
 | `window.EventSource` | Se reemplaza por `EventSourceDemo`: dispara `open` y escucha un bus interno; cuando el almacén cambia (mensaje nuevo simulado, etc.) emite `message`. Nunca abre `/api/stream`. |
 | `navigator.sendBeacon`, `XMLHttpRequest.open` | Se envuelven igual (bloquean mismo origen no soportado). |
-| `Notification`/service worker | `PushSetup` pide `/api/push/suscribir`; la capa responde `{configurado:false}` y el componente no hace nada más. |
+| `Notification`, `navigator.serviceWorker.register` | `Notification` se reemplaza por un stub (`permission:"denied"`, así el chat no pide permiso) y `register` rechaza: `PushSetup` pedía `/sw.js` (una petición real que `fetch` no intercepta). |
 
 El `SessionProvider` del layout raíz (`next-auth`) pide `/api/auth/session` al montar: ese endpoint está
 en la lista y responde `{}` (sin sesión) desde la capa, así que **no se toca `Providers.tsx`**.
@@ -126,7 +126,7 @@ error + toast. Respuestas con la misma forma que las rutas reales.
 **Marco (AppShell, CommandPalette, PushSetup, next-auth)**
 `GET /api/modulos` · `PATCH /api/modulos` (activar/config) · `GET /api/shell` · `GET /api/buscar?q=` ·
 `GET|POST /api/push/suscribir` (inerte) · `GET /api/auth/session` · `/api/auth/csrf` y `/api/auth/signout`
-(→ toast «En la demo no hay sesión»).
+(«Cerrar sesión» responde `{url:"/login"}`: sale de la demo al acceso real).
 
 **Chat**
 `GET /api/conversaciones[?q=]` · `GET|PATCH|DELETE /api/conversaciones/:id` ·
@@ -206,12 +206,12 @@ respuesta ficticia del cliente). Se instala/retira junto con `fetch`, por eso no
 | R4 | `AppShell` es `h-screen` y la barra demo le quita alto; `fixed` de la navegación móvil. | Regla CSS acotada a `[data-demo-raiz]`; se verifica en 375 px. |
 | R5 | Deriva: si un `page.tsx` real cambia su mapeo de props, la demo no se entera. | Cada pantalla de la demo documenta el `page.tsx` que replica; `check-demo.ts` valida endpoints; se añade a la lista de revisión de MODULOS.md. |
 | R6 | `AppShell` solo lee `/api/modulos` al montar; apagar un módulo en Configuración no actualiza el menú sin recargar. | En el CRM real ocurre igual (hay que recargar). La demo conserva su comportamiento anterior (el menú cambia al instante) re-montando el `AppShell` con `key` al cambiar módulos/marca, sin tocar el componente. |
-| R7 | Hidratación: `AppShell` usa `new Date()` y localStorage. | `DemoApp` se carga con `ssr:false`. |
+| R7 | Hidratación: `AppShell` usa `new Date()` y localStorage. | `DemoApp` muestra «Cargando demo…» en servidor y pinta el CRM tras montar. No se usa `ssr:false` porque el `SessionProvider` raíz pediría `/api/auth/session` antes de que la capa existiera. |
 | R8 | Imágenes con `next/image` optimizado piden `/_next/image`. | En la demo solo se usan `data:` URIs / SVG o `unoptimized` (el logo del `AppShell` ya lo es). |
 | R9 | Mutaciones de objetos del almacén compartidos entre props y estado interno de componentes (`Board` copia `columnasIniciales`). | Las pantallas entregan copias (`structuredClone`) y los handlers devuelven la forma que el componente espera tras `refresh`. |
 | R10 | Cuota/tiempo: son muchas pantallas. | Fases ordenadas por valor; cada fase deja el build verde y se publica por separado. |
 
 ## 9. Props opcionales agregadas a componentes reales
 
-Ninguna por ahora. Se listan aquí (con el motivo y por qué el CRM real no cambia) si alguna fase las
+Ninguna hasta la Fase 1 (la capa externa bastó). Sí hubo un movimiento de código sin cambio de comportamiento: `MODULOS` y las funciones puras de acceso pasaron a `lib/modulos-catalogo.ts` y `lib/modulos.ts` las re-exporta. Se listan aquí (con el motivo y por qué el CRM real no cambia) si alguna fase las
 necesita.
