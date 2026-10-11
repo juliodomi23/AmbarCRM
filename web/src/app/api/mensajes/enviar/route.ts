@@ -107,12 +107,17 @@ async function manejarPOST(req: NextRequest) {
     datosMensaje = { tipo: "texto", contenido: plantilla.vistaPrevia, mediaUrl: null, mediaMime: null };
   } else if (esAudio) {
     // Cloud API recibe el audio mediante su endpoint de media; en local lo conservamos para reproducirlo.
+    const mimeAudio = (mediaMime ?? "audio/ogg").split(";")[0];
+    // Formatos de audio que acepta WhatsApp; webm (Chrome) llega ya convertido a ogg desde el navegador.
+    if (!["audio/ogg", "audio/mp4", "audio/mpeg", "audio/aac", "audio/amr"].includes(mimeAudio)) {
+      return NextResponse.json({ error: `WhatsApp no acepta audio en formato ${mimeAudio}` }, { status: 400 });
+    }
     const limpio = audioBase64.includes(",") ? audioBase64.split(",")[1] : audioBase64;
-    envio = provider.enviarAudio
+    envio = mimeAudio === "audio/ogg" && provider.enviarAudio
       ? await provider.enviarAudio(conv.contacto.telefono, limpio)
-      : await provider.enviarMedia(conv.contacto.telefono, audioBase64, "audio");
-    const urlLocal = await guardarMediaBase64(audioBase64, mediaMime ?? "audio/ogg");
-    datosMensaje = { tipo: "audio", contenido: null, mediaUrl: urlLocal, mediaMime: mediaMime ?? "audio/ogg" };
+      : await provider.enviarMedia(conv.contacto.telefono, audioBase64, "audio", undefined, mimeAudio);
+    const urlLocal = await guardarMediaBase64(audioBase64, mimeAudio);
+    datosMensaje = { tipo: "audio", contenido: null, mediaUrl: urlLocal, mediaMime: mimeAudio };
   } else if (esMedia) {
     const tipo = tipoDesdeMime(mediaMime ?? "");
     // A WhatsApp va el base64; en local guardamos el archivo para verlo en el hilo del CRM.

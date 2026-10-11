@@ -11,6 +11,7 @@ import { Boton, Lightbox, Modal } from "@/components/ui";
 import { AvatarNombre } from "@/components/AvatarNombre";
 import { EnviarPlantilla } from "@/components/chat/EnviarPlantilla";
 import { estadoVentana, textoRestante } from "@/lib/meta/ventana";
+import { webmAOgg } from "@/lib/audio/webm-a-ogg";
 
 type Embudo = { id: string; nombre: string; etapas: { id: string; nombre: string }[] };
 type Usuario = { id: string; nombre: string };
@@ -368,17 +369,27 @@ export function ChatCliente({
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mime = MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")
-        ? "audio/ogg;codecs=opus"
-        : "audio/webm";
-      const rec = new MediaRecorder(stream, { mimeType: mime });
+      // WhatsApp acepta ogg/opus (nota de voz) o mp4. Firefox graba ogg, Safari mp4 y Chrome solo
+      // webm/opus, que se reempaqueta a ogg antes de enviar.
+      const mime = ["audio/ogg;codecs=opus", "audio/webm;codecs=opus", "audio/mp4"].find((t) => MediaRecorder.isTypeSupported(t));
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
       chunksRef.current = [];
       rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       rec.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         setGrabando(false);
-        const blob = new Blob(chunksRef.current, { type: mime });
+        let blob = new Blob(chunksRef.current, { type: rec.mimeType || mime });
         if (blob.size < 1000) return; // muy corto, ignora
+        let tipoAudio = blob.type.split(";")[0];
+        if (tipoAudio === "audio/webm") {
+          try {
+            blob = new Blob([webmAOgg(new Uint8Array(await blob.arrayBuffer()))], { type: "audio/ogg" });
+            tipoAudio = "audio/ogg";
+          } catch {
+            toast("No se pudo preparar el audio para WhatsApp. Intenta grabarlo de nuevo.", "error");
+            return;
+          }
+        }
         const audioBase64 = await new Promise<string>((res) => {
           const r = new FileReader();
           r.onload = () => res(r.result as string);
@@ -388,7 +399,7 @@ export function ChatCliente({
         const resp = await fetch("/api/mensajes/enviar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversacionId: selId, audioBase64, mediaMime: mime.split(";")[0] })
+          body: JSON.stringify({ conversacionId: selId, audioBase64, mediaMime: tipoAudio })
         });
         setEnviando(false);
         const data = await resp.json().catch(() => ({}));
