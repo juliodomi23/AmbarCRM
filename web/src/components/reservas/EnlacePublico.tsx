@@ -9,9 +9,9 @@ export function EnlacePublico({ url }: { url: string }) {
     toast("Enlace copiado");
   }
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3">
+    <div className="surface flex flex-wrap items-center gap-2 p-3">
       <code className="min-w-0 flex-1 truncate text-sm">{url}</code>
-      <button type="button" onClick={copiar} className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground">
+      <button type="button" onClick={copiar} className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 active:scale-[.98]">
         Copiar
       </button>
       <a href={url} target="_blank" rel="noreferrer" className="text-sm font-medium text-primary hover:underline">
