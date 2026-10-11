@@ -45,7 +45,7 @@ export function GestionCita({ token }: { token: string }) {
           )}
           {cancelable && confirmar && (
             <div className="flex justify-center gap-3 text-sm">
-              <button type="button" onClick={cancelar} className="rounded-lg bg-destructive px-3 py-1.5 font-medium text-white">Sí, cancelar</button>
+              <button type="button" onClick={cancelar} className="rounded-lg bg-destructive px-3 py-1.5 font-medium text-destructive-foreground">Sí, cancelar</button>
               <button type="button" onClick={() => setConfirmar(false)}>No</button>
             </div>
           )}

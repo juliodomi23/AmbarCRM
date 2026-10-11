@@ -62,7 +62,7 @@ export function Confirmador() {
             ref={botonConfirmar}
             type="button"
             onClick={() => cerrar(true)}
-            className={`rounded-lg px-3.5 py-2 text-sm font-medium transition duration-150 active:scale-[.98] ${peligro ? "bg-destructive text-white hover:bg-destructive/90" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}
+            className={`rounded-lg px-3.5 py-2 text-sm font-medium transition duration-150 active:scale-[.98] ${peligro ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}
           >
             {actual.confirmar ?? (peligro ? "Eliminar" : "Aceptar")}
           </button>

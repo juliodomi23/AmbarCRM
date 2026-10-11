@@ -15,7 +15,10 @@ const config: Config = {
         primary: { DEFAULT: hsl("--primary"), foreground: hsl("--primary-foreground") },
         accent: { DEFAULT: hsl("--accent"), foreground: hsl("--accent-foreground") },
         "brand-from": hsl("--brand-from"), "brand-to": hsl("--brand-to"),
-        success: hsl("--success"), warning: hsl("--warning"), info: hsl("--info"), destructive: hsl("--destructive")
+        success: { DEFAULT: hsl("--success"), foreground: hsl("--success-foreground") },
+        warning: { DEFAULT: hsl("--warning"), foreground: hsl("--warning-foreground") },
+        info: { DEFAULT: hsl("--info"), foreground: hsl("--info-foreground") },
+        destructive: { DEFAULT: hsl("--destructive"), foreground: hsl("--destructive-foreground") }
       },
       fontFamily: { sans: ["var(--font-inter)", "sans-serif"], display: ["var(--font-jakarta)", "sans-serif"] },
       borderRadius: { lg: "var(--radius)", xl: "calc(var(--radius) + .25rem)", "2xl": "calc(var(--radius) + .65rem)" },

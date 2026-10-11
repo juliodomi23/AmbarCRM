@@ -29,7 +29,7 @@ export function Toaster() {
         <div
           key={t.id}
           role={t.tipo === "error" ? "alert" : "status"}
-          className={`animate-toast pointer-events-auto max-w-xs rounded-lg px-4 py-2.5 text-sm shadow-pop ${t.tipo === "error" ? "bg-destructive text-white" : "bg-primary text-primary-foreground"}`}
+          className={`animate-toast pointer-events-auto max-w-xs rounded-lg px-4 py-2.5 text-sm shadow-pop ${t.tipo === "error" ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"}`}
         >
           {t.msg}
         </div>

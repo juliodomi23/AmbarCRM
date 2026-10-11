@@ -60,7 +60,7 @@ export function PrimerosPasos({ pasos }: { pasos: Pasos }) {
             <li key={p.clave} className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-card/60">
               <span
                 className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${
-                  hecho ? "bg-success text-white" : "border-2 border-input bg-card"
+                  hecho ? "bg-success text-success-foreground" : "border-2 border-input bg-card"
                 }`}
               >
                 {hecho && <IconoCheck className="h-3.5 w-3.5" />}

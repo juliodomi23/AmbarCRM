@@ -592,7 +592,7 @@ export function ChatCliente({
               </button>
               <div className="flex shrink-0 flex-col items-center gap-1">
                 {c.noLeidos > 0 && (
-                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-success px-1 text-[10px] font-bold text-white">
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-success px-1 text-[10px] font-bold text-success-foreground">
                     {c.noLeidos}
                   </span>
                 )}

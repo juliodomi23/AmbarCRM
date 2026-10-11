@@ -138,7 +138,7 @@ export function PersonalCliente({ itemsIniciales }: { itemsIniciales: PersonalIt
                 <span className="block truncate text-xs text-muted-foreground">{i.preview}</span>
               </span>
               {i.noLeidos > 0 && (
-                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-muted-foreground px-1 text-[10px] font-bold text-white">
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-foreground px-1 text-[10px] font-bold text-background">
                   {i.noLeidos}
                 </span>
               )}

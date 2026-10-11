@@ -6,10 +6,10 @@ import { ZONA_CITAS } from "@/components/citas/fecha";
 import type { Cita, EstadoCita } from "@/components/citas/tipos";
 
 const ACCIONES: { estado: EstadoCita; etiqueta: string; clase: string }[] = [
-  { estado: "confirmada", etiqueta: "Confirmó", clase: "bg-success" },
-  { estado: "en_sala", etiqueta: "Ya llegó", clase: "bg-accent" },
-  { estado: "completada", etiqueta: "Atendido", clase: "bg-muted-foreground" },
-  { estado: "no_asistio", etiqueta: "No llegó", clase: "bg-warning" },
+  { estado: "confirmada", etiqueta: "Confirmó", clase: "bg-success text-success-foreground" },
+  { estado: "en_sala", etiqueta: "Ya llegó", clase: "bg-primary text-primary-foreground" },
+  { estado: "completada", etiqueta: "Atendido", clase: "bg-foreground text-background" },
+  { estado: "no_asistio", etiqueta: "No llegó", clase: "bg-warning text-warning-foreground" },
 ];
 
 export function DetalleCitaModal({
@@ -61,7 +61,7 @@ export function DetalleCitaModal({
                 disabled={guardando}
                 onClick={() => onCambiarEstado(accion.estado)}
                 className={[
-                  "rounded-lg px-3 py-2 text-sm font-medium text-white",
+                  "rounded-lg px-3 py-2 text-sm font-medium transition duration-150 hover:brightness-110 active:scale-[.98]",
                   "disabled:opacity-60",
                   accion.clase,
                   cita.estado === accion.estado ? "ring-2 ring-offset-2" : "",

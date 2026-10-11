@@ -130,7 +130,7 @@ export function TareasCliente({
           aria-pressed={t.completada}
           aria-label={t.completada ? `Marcar "${t.titulo}" como pendiente` : `Completar "${t.titulo}"`}
           className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 transition ${
-            t.completada ? "border-success bg-success text-white" : "border-muted-foreground/40 text-transparent hover:border-success hover:text-success/60"
+            t.completada ? "border-success bg-success text-success-foreground" : "border-muted-foreground/40 text-transparent hover:border-success hover:text-success/60"
           }`}
         >
           <IconoCheck className="h-3 w-3" />
