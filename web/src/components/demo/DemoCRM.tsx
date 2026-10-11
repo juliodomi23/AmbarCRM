@@ -16,6 +16,29 @@ import {
   VERTICALES,
 } from "./demo-data";
 
+/** Personalización que se ve en toda la demo: marca, nombre y qué módulos están prendidos. */
+type Personalizacion = {
+  preset: BrandPreset;
+  setPreset: (preset: BrandPreset) => void;
+  nombre: string;
+  setNombre: (nombre: string) => void;
+  apagadas: Set<string>;
+  alternar: (clave: string) => void;
+};
+
+/** Secciones del menú que una empresa puede apagar; Inicio, Chat y Configuración son el núcleo. */
+const SECCIONES_OPCIONALES: DemoVista[] = ["embudo", "contactos", "tareas", "difusion", "automatizaciones", "modulos"];
+
+const iniciales = (texto: string) => (texto.match(/\p{L}+/gu) ?? []).slice(0, 2).map((p) => p[0].toUpperCase()).join("") || "AR";
+
+function Interruptor({ activo, onClick, etiqueta }: { activo: boolean; onClick: () => void; etiqueta: string }) {
+  return (
+    <button type="button" role="switch" aria-checked={activo} aria-label={etiqueta} onClick={onClick} className={`relative h-6 w-11 shrink-0 rounded-full transition ${activo ? "bg-primary" : "bg-muted-foreground/30"}`}>
+      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${activo ? "left-[22px]" : "left-0.5"}`} />
+    </button>
+  );
+}
+
 const ICONOS: Record<string, string | string[]> = {
   inicio: "M3 12l9-9 9 9M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10",
   chat: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z",
@@ -467,7 +490,7 @@ function VistaAutomatizaciones() {
   );
 }
 
-function VistaModulos({ vertical, setVertical }: { vertical: DemoVertical; setVertical: (vertical: DemoVertical) => void }) {
+function VistaModulos({ vertical, setVertical, apagadas }: { vertical: DemoVertical; setVertical: (vertical: DemoVertical) => void; apagadas: Set<string> }) {
   const actual = VERTICALES.find((item) => item.id === vertical) ?? VERTICALES[0];
   const totalModulos = 22;
   return (
@@ -479,7 +502,7 @@ function VistaModulos({ vertical, setVertical }: { vertical: DemoVertical; setVe
       <section className="surface overflow-hidden">
         <div className="grid gap-6 bg-mesh p-5 md:grid-cols-[1fr_auto] md:items-center md:p-7"><div><Badge>{actual.nombre}</Badge><h2 className="mt-3 text-2xl font-bold">{actual.descripcion}</h2><p className="mt-2 max-w-2xl text-sm text-muted-foreground">“{actual.frase}”</p></div><div className="grid grid-cols-3 gap-2">{actual.metricas.map((metrica) => <div key={metrica.etiqueta} className="rounded-xl border bg-card/85 p-3 text-center shadow-soft"><p className="tnum text-lg font-bold">{metrica.valor}</p><p className="mt-1 text-[10px] text-muted-foreground">{metrica.etiqueta}</p></div>)}</div></div>
         <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
-          {actual.modulos.map((modulo, index) => <article key={modulo.nombre} className="group rounded-2xl border p-4 transition hover:-translate-y-1 hover:border-primary/35 hover:shadow-lift"><div className="flex items-start justify-between"><span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 font-bold text-primary">{index + 1}</span><Badge tono="success">Completo</Badge></div><h3 className="mt-4 font-bold">{modulo.nombre}</h3><p className="mt-1 min-h-10 text-sm text-muted-foreground">{modulo.descripcion}</p><button className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">Ver flujo <Icono nombre="flecha" className="h-4 w-4 transition-transform group-hover:translate-x-1" /></button></article>)}
+          {actual.modulos.map((modulo, index) => <article key={modulo.nombre} className={`group rounded-2xl border p-4 transition hover:-translate-y-1 hover:border-primary/35 hover:shadow-lift ${apagadas.has(`${vertical}:${modulo.nombre}`) ? "opacity-55" : ""}`}><div className="flex items-start justify-between"><span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 font-bold text-primary">{index + 1}</span>{apagadas.has(`${vertical}:${modulo.nombre}`) ? <Badge>Apagado</Badge> : <Badge tono="success">Activo</Badge>}</div><h3 className="mt-4 font-bold">{modulo.nombre}</h3><p className="mt-1 min-h-10 text-sm text-muted-foreground">{modulo.descripcion}</p><button className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">Ver flujo <Icono nombre="flecha" className="h-4 w-4 transition-transform group-hover:translate-x-1" /></button></article>)}
         </div>
       </section>
       <div className="grid gap-3 md:grid-cols-4">
@@ -494,19 +517,67 @@ function VistaModulos({ vertical, setVertical }: { vertical: DemoVertical; setVe
   );
 }
 
-function VistaConfiguracion() {
+function VistaConfiguracion({ p, vertical }: { p: Personalizacion; vertical: DemoVertical }) {
   const [tab, setTab] = useState("Marca");
-  const tabs = ["Marca", "Canal WhatsApp", "Usuarios", "Embudos", "Plantillas", "Bots", "IA", "Módulos"];
+  const tabs = ["Marca", "Módulos", "Canal WhatsApp", "Usuarios", "Embudos", "Plantillas", "Bots", "IA"];
+  const giro = VERTICALES.find((item) => item.id === vertical) ?? VERTICALES[0];
+  const filaModulo = (clave: string, nombre: string, descripcion: string) => (
+    <div key={clave} className="flex items-center gap-4 rounded-xl border p-4">
+      <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{nombre}</p><p className="text-xs text-muted-foreground">{descripcion}</p></div>
+      <Interruptor activo={!p.apagadas.has(clave)} onClick={() => p.alternar(clave)} etiqueta={`${p.apagadas.has(clave) ? "Activar" : "Apagar"} ${nombre}`} />
+    </div>
+  );
   return (
     <div className="space-y-5">
-      <EncabezadoVista ceja="Administración" titulo="Configuración de la empresa" descripcion="Personaliza la operación sin crear una versión distinta del sistema." />
+      <EncabezadoVista ceja="Administración" titulo="Configuración de la empresa" descripcion="Personaliza la operación sin crear una versión distinta del sistema. Pruébalo: los cambios se ven al instante en toda la demo." />
       <div className="surface overflow-hidden lg:grid lg:grid-cols-[230px_1fr]">
         <nav className="flex gap-1 overflow-x-auto border-b p-3 lg:block lg:space-y-1 lg:border-b-0 lg:border-r">
           {tabs.map((item) => <button key={item} onClick={() => setTab(item)} className={`min-h-10 shrink-0 rounded-xl px-3 text-left text-sm font-semibold lg:w-full ${tab === item ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{item}</button>)}
         </nav>
         <div className="p-5 md:p-7">
           <Badge>{tab}</Badge>
-          {tab === "Marca" ? <div className="mt-5 grid gap-6 md:grid-cols-[1fr_280px]"><div className="space-y-4"><label className="block text-sm font-semibold">Nombre del negocio<input defaultValue="Clínica Horizonte" className="mt-2 min-h-11 w-full rounded-xl border bg-background px-3 font-normal" /></label><div><p className="text-sm font-semibold">Preset visual</p><div className="mt-2 flex flex-wrap gap-2">{["Ámbar Rojo", "Salud", "Legal", "Retail", "Inmobiliaria", "Belleza"].map((preset, index) => <button key={preset} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${index === 1 ? "border-primary bg-primary/5 text-primary" : "hover:bg-muted"}`}>{preset}</button>)}</div></div><p className="rounded-xl bg-info/5 p-3 text-xs text-info">La marca también aparece en el inicio de sesión, reservas públicas y aplicación instalada.</p></div><div className="rounded-2xl bg-primary p-4 text-primary-foreground shadow-pop"><div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/15 font-bold">CH</span><strong>Clínica Horizonte</strong></div><div className="mt-5 space-y-2"><div className="rounded-xl bg-white/15 px-3 py-2 text-sm">Inicio</div><div className="rounded-xl px-3 py-2 text-sm text-white/70">Chat</div><div className="rounded-xl px-3 py-2 text-sm text-white/70">Pacientes</div></div></div></div> : <div className="mt-5"><h2 className="text-xl font-bold">{tab}</h2><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{({"Canal WhatsApp":"Conecta números, revisa el estado y administra la incorporación desde Meta.",Usuarios:"Crea administradores y agentes, asigna puestos y desactiva accesos cuando sea necesario.",Embudos:"Define varios procesos comerciales con etapas, colores y orden propio.",Plantillas:"Administra respuestas rápidas y plantillas de mensaje con variables validadas.",Bots:"Registra integraciones con token propio y alcance por canal.",IA:"Escribe instrucciones del negocio para sugerencias de respuesta revisadas por una persona.",Módulos:"Activa funciones por empresa y restringe las áreas sensibles por puesto."} as Record<string,string>)[tab]}</p><div className="mt-6 grid gap-3 sm:grid-cols-2">{["Configuración aislada por empresa", "Cambios auditables", "Validación en servidor", "Permisos administrativos"].map((item) => <div key={item} className="flex items-center gap-3 rounded-xl border p-4"><span className="grid h-8 w-8 place-items-center rounded-full bg-success/10 text-success"><Icono nombre="check" className="h-4 w-4" /></span><span className="text-sm font-semibold">{item}</span></div>)}</div></div>}
+          {tab === "Marca" ? (
+            <div className="mt-5 grid gap-6 md:grid-cols-[1fr_280px]">
+              <div className="space-y-4">
+                <label className="block text-sm font-semibold">Nombre del negocio<input value={p.nombre} onChange={(e) => p.setNombre(e.target.value)} maxLength={40} className="mt-2 min-h-11 w-full rounded-xl border bg-background px-3 font-normal" /></label>
+                <div>
+                  <p className="text-sm font-semibold">Preset visual</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(Object.keys(BRAND_PRESETS) as BrandPreset[]).map((clave) => (
+                      <button key={clave} type="button" onClick={() => p.setPreset(clave)} aria-pressed={p.preset === clave} className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${p.preset === clave ? "border-primary bg-primary/5 text-primary" : "hover:bg-muted"}`}>
+                        <span className="h-3.5 w-3.5 rounded-full" style={{ background: `linear-gradient(135deg, ${BRAND_PRESETS[clave].primario}, ${BRAND_PRESETS[clave].acento})` }} />
+                        {BRAND_PRESETS[clave].nombre}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="rounded-xl bg-info/5 p-3 text-xs text-info">La marca también aparece en el inicio de sesión, reservas públicas y aplicación instalada.</p>
+              </div>
+              <div className="rounded-2xl bg-primary p-4 text-primary-foreground shadow-pop transition-colors">
+                <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/15 font-bold">{iniciales(p.nombre)}</span><strong className="truncate">{p.nombre || "Tu negocio"}</strong></div>
+                <div className="mt-5 space-y-2"><div className="rounded-xl bg-white/15 px-3 py-2 text-sm">Inicio</div><div className="rounded-xl px-3 py-2 text-sm opacity-75">Chat</div><div className="rounded-xl px-3 py-2 text-sm opacity-75">{giro.modulos[0]?.nombre ?? "Contactos"}</div></div>
+              </div>
+            </div>
+          ) : tab === "Módulos" ? (
+            <div className="mt-5 space-y-6">
+              <div>
+                <h2 className="text-lg font-bold">Secciones del menú</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Apágalas y desaparecen del menú lateral al instante. Inicio, Chat y Configuración son el núcleo.</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {NAVEGACION_DEMO.filter((item) => SECCIONES_OPCIONALES.includes(item.vista)).map((item) => filaModulo(item.vista, item.etiqueta, item.grupo))}
+                </div>
+              </div>
+              <div>
+                <h2 className="text-lg font-bold">Módulos del giro · {giro.nombre}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Cada empresa activa solo lo que usa. Cambia de giro en «Módulos por giro».</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {giro.modulos.map((modulo) => filaModulo(`${vertical}:${modulo.nombre}`, modulo.nombre, modulo.descripcion))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-5"><h2 className="text-xl font-bold">{tab}</h2><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{({"Canal WhatsApp":"Conecta números, revisa el estado y administra la incorporación desde Meta.",Usuarios:"Crea administradores y agentes, asigna puestos y desactiva accesos cuando sea necesario.",Embudos:"Define varios procesos comerciales con etapas, colores y orden propio.",Plantillas:"Administra respuestas rápidas y plantillas de mensaje con variables validadas.",Bots:"Registra integraciones con token propio y alcance por canal.",IA:"Escribe instrucciones del negocio para sugerencias de respuesta revisadas por una persona.",Módulos:"Activa funciones por empresa y restringe las áreas sensibles por puesto."} as Record<string,string>)[tab]}</p><div className="mt-6 grid gap-3 sm:grid-cols-2">{["Configuración aislada por empresa", "Cambios auditables", "Validación en servidor", "Permisos administrativos"].map((item) => <div key={item} className="flex items-center gap-3 rounded-xl border p-4"><span className="grid h-8 w-8 place-items-center rounded-full bg-success/10 text-success"><Icono nombre="check" className="h-4 w-4" /></span><span className="text-sm font-semibold">{item}</span></div>)}</div></div>
+          )}
         </div>
       </div>
       <section className="surface grid gap-5 p-5 md:grid-cols-3">
@@ -518,7 +589,7 @@ function VistaConfiguracion() {
   );
 }
 
-function ContenidoVista({ vista, irA, vertical, setVertical }: { vista: DemoVista; irA: (vista: DemoVista) => void; vertical: DemoVertical; setVertical: (vertical: DemoVertical) => void }) {
+function ContenidoVista({ vista, irA, vertical, setVertical, p }: { vista: DemoVista; irA: (vista: DemoVista) => void; vertical: DemoVertical; setVertical: (vertical: DemoVertical) => void; p: Personalizacion }) {
   if (vista === "inicio") return <VistaInicio irA={irA} />;
   if (vista === "chat") return <VistaChat />;
   if (vista === "embudo") return <VistaEmbudo />;
@@ -526,8 +597,8 @@ function ContenidoVista({ vista, irA, vertical, setVertical }: { vista: DemoVist
   if (vista === "tareas") return <VistaTareas />;
   if (vista === "difusion") return <VistaDifusion />;
   if (vista === "automatizaciones") return <VistaAutomatizaciones />;
-  if (vista === "modulos") return <VistaModulos vertical={vertical} setVertical={setVertical} />;
-  return <VistaConfiguracion />;
+  if (vista === "modulos") return <VistaModulos vertical={vertical} setVertical={setVertical} apagadas={p.apagadas} />;
+  return <VistaConfiguracion p={p} vertical={vertical} />;
 }
 
 export function DemoCRM() {
@@ -536,6 +607,11 @@ export function DemoCRM() {
   const [menu, setMenu] = useState(false);
   const [recorrido, setRecorrido] = useState<number | null>(0);
   const [preset, setPreset] = useState<BrandPreset>("ambar-rojo");
+  const [nombre, setNombre] = useState("Clínica Horizonte");
+  const [apagadas, setApagadas] = useState<Set<string>>(() => new Set());
+  const alternar = (clave: string) => setApagadas((prev) => { const sig = new Set(prev); if (sig.has(clave)) sig.delete(clave); else sig.add(clave); return sig; });
+  const personalizacion: Personalizacion = { preset, setPreset, nombre, setNombre, apagadas, alternar };
+  const navegacion = NAVEGACION_DEMO.filter((item) => !apagadas.has(item.vista));
   const paleta = BRAND_PRESETS[preset];
   const estiloMarca = variablesMarca({ nombre: paleta.nombre, logo: null, colorPrimario: paleta.primario, colorAcento: paleta.acento, preset }) as CSSProperties;
   const tituloVista = useMemo(() => NAVEGACION_DEMO.find((item) => item.vista === vista)?.etiqueta ?? "Inicio", [vista]);
@@ -562,12 +638,12 @@ export function DemoCRM() {
     setVista(PASOS_RECORRIDO[valido].vista);
   }
 
-  const grupos = [...new Set(NAVEGACION_DEMO.map((item) => item.grupo))];
+  const grupos = [...new Set(navegacion.map((item) => item.grupo))];
   const sidebar = (
     <aside className="flex h-full w-72 flex-col bg-primary text-primary-foreground">
       <div className="flex h-16 items-center gap-3 border-b border-white/10 px-4">
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/15 font-display text-lg font-bold">A</span>
-        <div className="min-w-0 flex-1"><p className="truncate font-display font-bold">AmbarCRM</p><p className="text-[10px] uppercase tracking-[.15em] text-primary-foreground/60">Demo interactiva</p></div>
+        <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/15 font-display text-sm font-bold">{iniciales(nombre)}</span>
+        <div className="min-w-0 flex-1"><p className="truncate font-display font-bold">{nombre || "AmbarCRM"}</p><p className="text-[10px] uppercase tracking-[.15em] text-primary-foreground/60">Demo interactiva</p></div>
         <button onClick={() => setMenu(false)} aria-label="Cerrar menú" className="grid h-9 w-9 place-items-center rounded-lg hover:bg-white/10 md:hidden"><Icono nombre="cerrar" /></button>
       </div>
       <nav className="flex-1 overflow-y-auto px-3 py-4">
@@ -575,7 +651,7 @@ export function DemoCRM() {
           <div key={grupo || "inicio"} className="mb-4">
             {grupo && <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[.14em] text-primary-foreground/60">{grupo}</p>}
             <div className="space-y-1">
-              {NAVEGACION_DEMO.filter((item) => item.grupo === grupo).map((item) => <button key={item.vista} onClick={() => irA(item.vista)} className={`relative flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium transition ${vista === item.vista ? "bg-white/15 text-primary-foreground before:absolute before:-left-3 before:h-6 before:w-1 before:rounded-r-full before:bg-primary-foreground" : "text-primary-foreground/75 hover:bg-white/10 hover:text-primary-foreground"}`}><Icono nombre={item.icono} /><span className="flex-1">{item.etiqueta}</span>{item.vista === "chat" && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[10px] font-bold text-primary">3</span>}</button>)}
+              {navegacion.filter((item) => item.grupo === grupo).map((item) => <button key={item.vista} onClick={() => irA(item.vista)} className={`relative flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium transition ${vista === item.vista ? "bg-white/15 text-primary-foreground before:absolute before:-left-3 before:h-6 before:w-1 before:rounded-r-full before:bg-primary-foreground" : "text-primary-foreground/75 hover:bg-white/10 hover:text-primary-foreground"}`}><Icono nombre={item.icono} /><span className="flex-1">{item.etiqueta}</span>{item.vista === "chat" && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[10px] font-bold text-primary">3</span>}</button>)}
             </div>
           </div>
         ))}
@@ -601,7 +677,7 @@ export function DemoCRM() {
             <button onClick={iniciarRecorrido} className="hidden min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold hover:bg-muted lg:inline-flex"><Icono nombre="brillo" className="h-4 w-4 text-primary" /> Recorrido guiado</button>
             <BotonPrimario onClick={() => irA("embudo")}>+ Oportunidad</BotonPrimario>
           </header>
-          <main className="flex-1 overflow-auto p-4 pb-28 md:p-6 md:pb-28 xl:p-8"><div className="mx-auto max-w-[1500px]"><ContenidoVista vista={vista} irA={irA} vertical={vertical} setVertical={setVertical} /></div></main>
+          <main className="flex-1 overflow-auto p-4 pb-28 md:p-6 md:pb-28 xl:p-8"><div className="mx-auto max-w-[1500px]"><ContenidoVista vista={vista} irA={irA} vertical={vertical} setVertical={setVertical} p={personalizacion} /></div></main>
         </div>
       </div>
 
