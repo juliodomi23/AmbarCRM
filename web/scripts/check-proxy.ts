@@ -10,10 +10,10 @@ assert.ok(patron, "no se encontró el matcher");
 const regla = new RegExp(`^${patron.replace(/^\//, "/")}$`);
 const protegida = (ruta: string) => regla.test(ruta);
 
-for (const ruta of ["/cotizaciones", "/cotizaciones/nueva", "/reservas-en-linea", "/reservas-tours", "/resenas", "/pedidos-en-linea", "/ventas", "/caja", "/api/cotizaciones", "/api/productos"]) {
+for (const ruta of ["/cotizaciones", "/cotizaciones/nueva", "/reservas-en-linea", "/reservas-tours", "/resenas", "/pedidos-en-linea", "/ventas", "/caja", "/api/cotizaciones", "/api/productos", "/demografia", "/demos", "/demo-privado"]) {
   assert.equal(protegida(ruta), true, `${ruta} debe pasar por el middleware de sesión`);
 }
-for (const ruta of ["/cotizacion/abc123", "/opinion/mi-negocio", "/tienda/mi-negocio", "/tienda/pedido/tok", "/reservar/mi-negocio", "/reservar/cita/tok", "/api/public/tienda/x", "/api/v1/accounts/1", "/login", "/api/auth/session"]) {
+for (const ruta of ["/cotizacion/abc123", "/opinion/mi-negocio", "/tienda/mi-negocio", "/tienda/pedido/tok", "/reservar/mi-negocio", "/reservar/cita/tok", "/api/public/tienda/x", "/api/v1/accounts/1", "/login", "/api/auth/session", "/demo", "/demo/"]) {
   assert.equal(protegida(ruta), false, `${ruta} es pública (valida su propio token)`);
 }
-console.log("proxy: rutas públicas con barra, /cotizaciones y demás internas protegidas OK");
+console.log("proxy: rutas públicas con barra (y /demo exacta), /cotizaciones y demás internas protegidas OK");

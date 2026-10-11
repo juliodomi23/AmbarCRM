@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import Image from "next/image";
 import { BrandRuntime } from "@/components/BrandRuntime";
 import { DEFAULT_BRAND, BrandConfig } from "@/lib/brand";
+import Link from "next/link";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -132,6 +133,25 @@ export default function LoginPage() {
         >
           {cargando ? "Entrando…" : "Entrar"}
         </button>
+
+        <div className="relative flex items-center gap-3 py-1">
+          <span className="h-px flex-1 bg-border" />
+          <span className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">
+            ¿Quieres conocerlo primero?
+          </span>
+          <span className="h-px flex-1 bg-border" />
+        </div>
+
+        <Link
+          href="/demo"
+          className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-4 text-sm font-semibold text-primary transition hover:border-primary/50 hover:bg-primary/10"
+        >
+          Explorar demo interactiva
+          <span aria-hidden="true">→</span>
+        </Link>
+        <p className="text-center text-xs text-muted-foreground">
+          Sin registro · datos ficticios · 22 módulos
+        </p>
 
         {/* Marca de versión: si en producción no coincide con el último push, el deploy no corrió. */}
         <p className="text-center text-[10px] text-muted-foreground/60">v2026-07-04</p>
