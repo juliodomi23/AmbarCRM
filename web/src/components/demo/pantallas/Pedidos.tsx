@@ -18,7 +18,7 @@ export function PantallaPedidos() {
     permiteEntrega: c.permiteEntrega !== false, permiteRecoger: c.permiteRecoger !== false, minimoCompra: Number(c.minimoCompra ?? 0), costoEnvio: Number(c.costoEnvio ?? 0),
     maxPorTelefono: Number(c.maxPorTelefono ?? 3), maxPorIp: Number(c.maxPorIp ?? 10), horasVencimiento: Number(c.horasVencimiento ?? 48), plantillaPedido: c.plantillaPedido as { name: string; language: string } | undefined,
   };
-  const enlace = "https://demo.ambarcrm.com/tienda/casa-ambar-demo";
+  const enlace = `${window.location.origin}/demo#/tienda/casa-ambar-demo`;
   const productos = (d.extra.productos ?? []).slice().sort((a, b) => a.nombre.localeCompare(b.nombre)).map((p) => ({ id: p.id, nombre: p.nombre, precio: String(p.precio), unidad: p.unidad, visibleEnLinea: p.visibleEnLinea, agotadoManual: p.agotadoManual, etiquetasEnLinea: p.etiquetasEnLinea as string[] }));
   const pedidos = (d.extra.ventas ?? []).filter((v) => v.canal === "tienda_en_linea").sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 50).map((v) => ({ id: v.id, folio: v.folio as string, estado: v.estado as string, total: Number(v.total), contacto: { nombre: d.contactos.find((x) => x.id === v.contactoId)?.nombre ?? "" } }));
   return <div className="space-y-5 p-4 md:p-6"><EncabezadoPagina titulo="Pedidos en línea" descripcion="Publica tu catálogo, recibe pedidos y controla la disponibilidad real." /><EnlacePublico url={enlace} />
