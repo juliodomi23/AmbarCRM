@@ -8,6 +8,7 @@ import "./retail";
 import "./extras";
 import "./giros";
 import "./caja";
+import "./publico";
 import { ErrorApi, Respuesta, resolver, endpointsSoportados } from "./ruteo";
 
 export { endpointsSoportados };
