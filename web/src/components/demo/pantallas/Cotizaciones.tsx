@@ -23,7 +23,7 @@ export function PantallaCotizaciones() {
       abrirNueva={consulta.get("nueva") === "1"}
       contactoInicial={contacto ? { id: contacto.id, nombre: contacto.nombre } : null}
       oportunidadInicial=""
-      baseUrl="https://demo.ambarcrm.com"
+      baseUrl={`${window.location.origin}/demo#`}
     />
   );
 }
