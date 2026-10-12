@@ -19,7 +19,7 @@ export function PantallaResenas() {
   const panel = { ...resumenResenas(filas, zona), zona, tendencia: resumenResenas(recientes, zona).tendencia };
   const config = configResenas(d.modulos.resenas?.config);
   const esAdmin = d.usuarios[0].rol === "admin";
-  const enlace = "https://demo.ambarcrm.com/opinion/demo";
+  const enlace = `${window.location.origin}/demo#/opinion/demo`;
   const maximo = Math.max(1, ...panel.distribucion);
   return (
     <div className="space-y-5 p-4 md:p-6">
