@@ -25,6 +25,7 @@ import { PantallaColegiaturas } from "./pantallas/GiroColegiaturas";
 import { PantallaAsistenciaAcademia } from "./pantallas/GiroAsistenciaAcademia";
 import { PantallaLegalDetalle } from "./pantallas/GiroLegalDetalle";
 import { PantallaAutomotriz, PantallaInmobiliaria } from "./pantallas/GiroVehiculos";
+import { PantallaReservasEnLinea } from "./pantallas/ReservasEnLinea";
 import { PantallaChat } from "./pantallas/Chat";
 import { PantallaContactos } from "./pantallas/Contactos";
 import { PantallaEmbudos } from "./pantallas/Embudos";
@@ -70,6 +71,8 @@ export function Pantalla({ ruta }: { ruta: string }) {
       return <PantallaAutomotriz />;
     case "/inmobiliaria":
       return <PantallaInmobiliaria />;
+    case "/reservas-en-linea":
+      return <PantallaReservasEnLinea />;
     case "/resenas":
       return <PantallaResenas />;
     case "/lealtad":
