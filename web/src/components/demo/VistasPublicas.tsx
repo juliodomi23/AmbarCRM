@@ -209,6 +209,12 @@ export function VistaPublica({ ruta }: { ruta: string }) {
   const d = useDatos();
   const { query } = useNavegacionDemo();
   const [, base, a, b] = ruta.split("/");
+  // Igual que las páginas del servidor real: si el negocio no tiene el módulo, la página no existe
+  // (los componentes públicos asumen que ya se validó y no saben pintar un 404 de su API).
+  const activo = (clave: string) => Boolean((d.modulos as Record<string, { activo?: boolean } | undefined>)[clave]?.activo);
+  const requiere = { tienda: "pedidos_en_linea", reservar: "reservas_en_linea", opinion: "resenas" } as Record<string, string>;
+  const esGestion = (base === "tienda" && a === "pedido") || (base === "reservar" && a === "cita");
+  if (requiere[base] && !esGestion && !activo(requiere[base])) return <NoEncontrada ruta={ruta} />;
   if (base === "tienda" && a === "pedido" && b) return <SeguimientoPedido token={b} d={d} />;
   if (base === "tienda" && a) return <TiendaPublica slug={a} />;
   if (base === "reservar" && a === "cita" && b) return <GestionCita token={b} />;
