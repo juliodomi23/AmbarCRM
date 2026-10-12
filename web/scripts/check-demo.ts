@@ -8,11 +8,11 @@ import { resolver } from "../src/lib/demo/api/ruteo";
 import "../src/lib/demo/api";
 
 const RAIZ = fileURLToPath(new URL("../src/", import.meta.url));
-const CARPETAS = ["components/chat", "components/kanban", "components/contactos", "components/tareas", "components/citas", "components/caja", "components/retail", "components/cotizaciones", "components/pedidos", "components/config", "components/modulos", "components/lealtad", "components/clientes", "components/difusion", "components/personal", "components/resenas", "components/automotriz", "components/inmobiliaria", "components/legal"];
+const CARPETAS = ["components/chat", "components/kanban", "components/contactos", "components/tareas", "components/citas", "components/caja", "components/retail", "components/cotizaciones", "components/pedidos", "components/config", "components/modulos", "components/lealtad", "components/clientes", "components/difusion", "components/personal", "components/resenas", "components/automotriz", "components/inmobiliaria", "components/legal", "components/reservas"];
 const ARCHIVOS = ["components/AppShell.tsx", "components/CommandPalette.tsx", "components/PushSetup.tsx", "components/EtiquetaNueva.tsx", "components/CamposPersonalizadosForm.tsx"];
 
 // Pantallas que la demo no pinta (o sin sentido sin servidor): su `fetch` nunca se ejecuta en /demo.
-const NO_USADOS = ["OpinionPublica", "TiendaPublica", "RespuestaCotizacion", "ReservaPublica", "GestionCita", "MetaCanales", "EmbeddedSignup", "ConexionManual", "RevisionSinRed", "TabClientes", "CitasConfig", "TabBots", "TabCamposPersonalizados", "TabAutomatizaciones", "TabIA", "EnviarPlantilla"];
+const NO_USADOS = ["MetaCanales", "EmbeddedSignup", "ConexionManual", "RevisionSinRed", "TabClientes", "CitasConfig", "TabBots", "TabCamposPersonalizados", "TabAutomatizaciones", "TabIA", "EnviarPlantilla"];
 // Endpoints que la demo rechaza a propósito (error + toast «En la demo esto no se guarda»).
 const RECHAZADOS = [/^\/api\/lealtad\/conexion$/, /^\/api\/mensajes\/enviar$/, /^\/api\/(wa|meta|canales|bots|ia)\//, /^\/api\/campos-personalizados\//, /^\/api\/(productos\/importar|ajustes)$/];
 
@@ -20,6 +20,14 @@ function archivos(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => (statSync(join(dir, n)).isDirectory() ? archivos(join(dir, n)) : n.endsWith(".tsx") ? [join(dir, n)] : []));
 }
 const lista = [...CARPETAS.flatMap((c) => archivos(join(RAIZ, c))), ...ARCHIVOS.map((a) => join(RAIZ, a))].filter((f) => !NO_USADOS.some((n) => f.replaceAll("\\", "/").includes(`/${n}.tsx`)));
+
+// Endpoints públicos con URL armada en variables (base + sufijo): se comprueban a mano.
+for (const [metodo, url] of [
+  ["GET", "/api/public/tienda/x"], ["PUT", "/api/public/tienda/x"], ["POST", "/api/public/tienda/x"],
+  ["GET", "/api/public/reservas/x"], ["GET", "/api/public/reservas/x/horarios"], ["POST", "/api/public/reservas/x"],
+  ["GET", "/api/public/reservas/cita/t"], ["POST", "/api/public/reservas/cita/t"],
+  ["POST", "/api/public/opinion/x"], ["POST", "/api/public/cotizaciones/t/responder"],
+] as const) assert.ok(resolver(metodo, url), `Sin manejador público: ${metodo} ${url}`);
 
 let revisados = 0;
 const sinCubrir: string[] = [];
