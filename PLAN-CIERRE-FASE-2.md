@@ -1,13 +1,27 @@
 # Plan de cierre · Fase 2 (lo que falta)
 
-> Actualizado: 2026-10-10. Sustituye la sección "Orden de trabajo" de `PLAN-MODULOS-FASE-2.md`
+> Actualizado: 2026-10-11. Sustituye la sección "Orden de trabajo" de `PLAN-MODULOS-FASE-2.md`
 > para lo que queda. Las reglas de la §0 de ese plan siguen vigentes.
 > Escrito para que una sesión nueva (Claude o Codex) pueda ejecutarlo sin contexto previo.
+>
+> **Nota 11-oct-2026 (noche):** código congelado para revisión final, no se agrega nada nuevo.
+> Solo falta la revisión para cerrar fase 2. El despliegue espera a que Meta apruebe
+> (no tocar producción). La demo fiel (`DEMO-FIEL.md`, ruta `/demo`) queda como demo
+> pública para enseñar sin datos reales. Rama `modulos-fase-2` ya está subida a `origin`.
+
+## 0. Para una sesión nueva (empieza aquí)
+
+1. Rama `modulos-fase-2`, al día con `origin`. Producción = `meta-tech-provider`: **no tocar**.
+2. Verificado 11-oct: `tsc --noEmit` limpio y `scripts/check-demo.ts` OK. La regresión completa (§2) se corrió por última vez en b1a36d0; repetirla antes de cerrar.
+3. Pendiente real: revisión final del diff `modulos-fase-2` vs `meta-tech-provider` (§3.5 paso 1). Sin código nuevo.
+4. Después, con Meta aprobado: ensayo de migración con dump real, merge, despliegue (§3.5 pasos 2-8), repo a privado.
+5. Los archivos de la demo (`app/demo`, `components/demo`, `lib/demo`) **ya están commiteados**; siguen sin commitearse solo `web/src/app/login/page.tsx` y el prefijo `demo` de `web/src/proxy.ts` si aparecen como cambios locales.
+6. Diferidos hasta la aprobación: `docs/verificar-rls.md` y `docs/canales-token-legacy.md` (no correr contra prod).
 
 ## 1. Dónde estamos
 
-Rama `modulos-fase-2` (local, **todavía no subida a GitHub**). Producción = `meta-tech-provider`,
-no se toca ni se despliega hasta que Meta apruebe la App Review.
+Rama `modulos-fase-2` (ya subida a `origin`, **todavía no se mezcla a producción**). Producción = `meta-tech-provider`,
+no se toca ni se despliega hasta que Meta apruebe la App Review. No correr verificaciones contra prod hasta entonces.
 
 | Bloque | Estado | Commits |
 |---|---|---|
@@ -25,7 +39,10 @@ no se toca ni se despliega hasta que Meta apruebe la App Review.
 | **Pendientes menores del bot** (firma V2, round-robin sin Cajeros, `bot_on`) | ✅ | cc7b961, 91a930e, 42bc22a, f1c49e2 |
 | **Fixes de la revisión final** (CHECK de inventario negativo, CSV con negativos, matcher del proxy) | ✅ | a660486, bc11178, 2cdde94, a4379f7 |
 | **Fixes de cierre** (tours con Decimal, secreto de Aurum en header, prueba del bot determinista) | ✅ | e065f08, f6ac475, 1cad9e2 |
-| **Revisión final + despliegue** | ⏳ (despliegue espera a Meta) | — |
+| **Demo fiel en `/demo`** (componentes reales + API simulada, 5 pasos) | ✅ | 6db1add → 08a63b8 |
+| **Pulido de UI** (esqueletos, confirmaciones, móvil, modo oscuro) | ✅ | 78bc321 → e68f78a |
+| **Revisión final** | ⏳ última pendiente | — |
+| **Despliegue** | ⏸ espera a que Meta apruebe | — |
 
 Estado de pruebas en b1a36d0 (BD desechable): tsc, eslint y build OK; `actualizaciones.sql` 3 veces OK;
 aislamiento en 73 tablas; todas las pruebas de concurrencia, e2e (A1, A2, B, C, A3, A4) y
@@ -63,7 +80,11 @@ docker exec ambarcrm-prueba psql -U dueno -d crm -c "ALTER ROLE crm_app PASSWORD
 
 ## 3. Lo que falta, en orden
 
-### 3.1 Fix de A4 · el envío no es ingreso de producto (chico)
+> **Estado 11-oct-2026:** §3.1, §3.2 y §3.3 ya están hechos y revisados (ver tabla de §1; se dejan
+> como referencia de las reglas que se aplicaron). Lo único abierto es §3.5: revisión final y despliegue.
+> Sesión nueva: empezar por §3.5, sin escribir código nuevo.
+
+### 3.1 ✅ Fix de A4 · el envío no es ingreso de producto (chico)
 
 `ingresosNetosPorPartida` (`web/src/lib/venta-importes.ts`) reparte `venta.total` entre las partidas;
 en pedidos web ese total incluye `costoEnvio`. Eso infla el ingreso y la utilidad por producto, y una
@@ -75,7 +96,7 @@ devolución parcial reembolsa parte del envío.
 - Prueba: un pedido de $100 más $50 de envío, con costo $60, da utilidad de producto $40 y envíos $50.
   Al devolver todo, el reembolso es de $100.
 
-### 3.2 D · Reseñas de Google 🛑 (mediano)
+### 3.2 ✅ D · Reseñas de Google 🛑 (mediano)
 
 Especificación en `PLAN-MODULOS-FASE-2.md` §D (referencia: `productos-nfc/maquina-resenas`). Reglas clave:
 
@@ -100,7 +121,7 @@ Especificación en `PLAN-MODULOS-FASE-2.md` §D (referencia: `productos-nfc/maqu
 - Las tablas nuevas llevan `org_id` DEFAULT, RLS y GRANT, y deben pasar `test-aislamiento.ts`.
 - Commits: (1) tablas, página pública y panel; (2) solicitud automática con su prueba de concurrencia.
 
-### 3.3 A5 · Modo sin internet 🛑 (grande, el más delicado)
+### 3.3 ✅ A5 · Modo sin internet 🛑 (grande, el más delicado)
 
 Especificación en `PLAN-MODULOS-FASE-2.md` §A5. Reglas clave:
 
@@ -187,7 +208,8 @@ despliegue verificar `IP_HEADER` (paso 4) y correr el ensayo con un dump real (p
 
 | Paso | Tamaño |
 |---|---|
-| 3.1 fix A4 | 1 sesión corta |
-| 3.2 D | 1 sesión |
-| 3.3 A5 | 2-3 sesiones |
-| 3.5 revisión final | 1 sesión |
+| 3.1 fix A4 | ✅ hecho |
+| 3.2 D | ✅ hecho |
+| 3.3 A5 | ✅ hecho |
+| 3.5 revisión final | 1 sesión (única pendiente) |
+| 3.5 despliegue | tras la aprobación de Meta |

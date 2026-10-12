@@ -1,5 +1,7 @@
 # Canales con token de Meta sin cifrar (`config.token`)
 
+> **12-oct-2026 · DIFERIDO:** no correr contra producción hasta que Meta apruebe. La demo ya maneja token, así que probablemente ya no haga falta esta verificación por separado. Se confirma después de la aprobación.
+
 Solo lectura: esto **no se ejecutó** contra ninguna base. Córrelo tú, con el rol dueño y de preferencia
 en una réplica o fuera de horario.
 

@@ -1,5 +1,7 @@
 # Verificar que la app NO salta RLS
 
+> **12-oct-2026 · DIFERIDO:** no correr contra producción hasta que Meta apruebe. Se deja para después de la aprobación, para no arriesgar nada en prod.
+
 RLS no protege a: superusuarios, roles con `BYPASSRLS` ni **dueños de la tabla** (salvo `FORCE ROW LEVEL SECURITY`).
 Corre esto **conectado con el mismo usuario de `DATABASE_URL`** (`psql "$DATABASE_URL" -f …`), en cualquier entorno:
 

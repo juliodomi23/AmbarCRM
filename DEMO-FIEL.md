@@ -1,6 +1,9 @@
 # DEMO-FIEL · diseño de la demo pública fiel al CRM real
 
-Rama: `demo-fiel` (desde `modulos-fase-2`). Código de la demo: `web/src/lib/demo/` (almacén, API simulada,
+> **Estado 12-oct-2026:** demo integrada en `modulos-fase-2` y lista como demo pública en `/demo`.
+> Solo queda revisión final, sin código nuevo. No tocar producción hasta que Meta apruebe.
+
+Rama original: `demo-fiel` (desde `modulos-fase-2`, ya integrada). Código de la demo: `web/src/lib/demo/` (almacén, API simulada,
 instalación) y `web/src/components/demo/` (pantallas que arman las props de los componentes reales).
 
 ## 1. Objetivo y reglas
@@ -226,9 +229,12 @@ movimiento sin cambio de comportamiento: `MODULOS` y las funciones puras de acce
 * Giros: clínica, retail, legal, automotriz, inmobiliaria, viajes y educación (cada uno con su marca,
   usuarios, embudo, contactos, chats y tareas de los seeds demo). Citas en clínica/legal/automotriz/inmobiliaria;
   Caja, Productos, Cotizaciones y Pedidos en retail.
-* Pendiente: pantallas propias de legal, viajes, educación, automotriz e inmobiliaria, y de
-  Pacientes/Clientes, Compras, Ventas, Reseñas, Lealtad, Difusión y Personal: la demo muestra «Disponible
-  en la versión completa» dentro del marco real. Caja: apartados, devoluciones y crédito se muestran vacíos;
-  el ticket (`window.open`) y las páginas públicas (/tienda, /reservar, /cotizacion) no se abren.
+* Fases posteriores (todas integradas, commits 8ba605f → 08a63b8):
+  - Paso 1: nombre y color personalizados sobreviven al cambio de giro.
+  - Paso 2: Pacientes/Clientes, Ventas, Compras, Precios, Reportes, Reseñas, Lealtad, Difusión y Personal reales.
+  - Paso 3: pantallas de legal, viajes, academia, automotriz e inmobiliaria con componentes reales.
+  - Paso 4: caja completa con apartados, devoluciones y crédito simulados.
+  - Paso 5: páginas públicas dentro de la demo (/tienda, /reservar, /cotizacion, /opinion) validando el módulo como el servidor real.
+* Límite conocido: el ticket (`window.open`) sigue sin abrirse; `NoDisponible.tsx` queda solo como respaldo de rutas sin pantalla.
 * `web/scripts/check-demo.ts` valida que cada `fetch("/api/…")` de los componentes usados tenga manejador;
   `web/scripts/verificar-demo-red.mjs` (Playwright externo) comprueba que /demo no saca peticiones.
