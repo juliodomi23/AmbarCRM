@@ -116,3 +116,31 @@ export function contadoresShell(d: Datos) {
     tareasVencidas: d.tareas.filter((t) => !t.completada && t.venceAt && new Date(t.venceAt) < inicioHoy && t.responsableId === yo).length,
   };
 }
+
+// ─── Retail: ventas y compras con la forma de VentaRetail / CompraRetail ───────────────────────
+const productoBreve = (d: Datos, id: string) => {
+  const p = (d.extra.productos ?? []).find((x) => x.id === id);
+  return { id, nombre: p?.nombre ?? "—", sku: p?.sku ?? null, unidad: p?.unidad ?? "pieza" };
+};
+
+export function ventaVista(d: Datos, v: any) {
+  const contacto = v.contactoId ? contactoDe(d, v.contactoId) : null;
+  const creador = usuarioDe(d, v.creadoPorId);
+  return {
+    id: v.id, turnoId: v.turnoId ?? null, folio: v.folio, estado: v.estado, canal: v.canal, metodoPago: v.metodoPago ?? null, subtotal: v.subtotal, descuento: v.descuento ?? 0,
+    total: v.total, moneda: "MXN", notas: v.notas ?? null, createdAt: v.createdAt,
+    contacto: contacto ? { id: contacto.id, nombre: contacto.nombre, telefono: contacto.telefono } : null,
+    creadoPor: creador ? { id: creador.id, nombre: creador.nombre } : null,
+    partidas: v.partidas.map((l: any) => ({ id: l.id, cantidad: l.cantidad, precioUnitario: l.precioUnitario, total: l.total, producto: productoBreve(d, l.productoId) })),
+  };
+}
+
+export function compraVista(d: Datos, c: any) {
+  const proveedor = (d.extra.proveedores ?? []).find((p) => p.id === c.proveedorId);
+  const creador = usuarioDe(d, c.creadoPorId);
+  return {
+    id: c.id, folio: c.folio, estado: c.estado, total: c.total, moneda: "MXN", notas: c.notas ?? null, createdAt: c.createdAt, proveedor,
+    creadoPor: creador ? { id: creador.id, nombre: creador.nombre } : null,
+    partidas: c.partidas.map((l: any) => ({ id: l.id, cantidad: l.cantidad, costoUnitario: l.costoUnitario, total: l.total, producto: productoBreve(d, l.productoId) })),
+  };
+}

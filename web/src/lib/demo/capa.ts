@@ -7,6 +7,7 @@
 import { toast } from "@/components/Toaster";
 import { atender } from "./api";
 import { almacen } from "./almacen";
+import { irA } from "./navegacion";
 
 export const MENSAJE_NO_GUARDA = "En la demo esto no se guarda";
 
@@ -145,7 +146,9 @@ export function instalarCapa(): () => void {
     window.open = ((url?: string | URL, ...resto: any[]) => {
       const destino = url ? new URL(String(url), window.location.href) : null;
       if (destino && destino.origin === window.location.origin) {
-        toast(MENSAJE_NO_GUARDA, "error");
+        // Tickets y páginas públicas se muestran dentro de la demo (vista pública), no en otra pestaña del servidor.
+        if (/^\/(tienda|reservar|cotizacion|opinion|caja\/ticket)(\/|$)/.test(destino.pathname)) irA(`${destino.pathname}${destino.search}`);
+        else toast(MENSAJE_NO_GUARDA, "error");
         return null;
       }
       return originales!.open.call(window, url, ...resto);

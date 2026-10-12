@@ -184,6 +184,19 @@ export function construirDatos(giroId: GiroId): Datos {
     })),
     extra: {},
   };
+  // Chats personales (familia/amigos): viven en su propia pestaña y en /personal.
+  for (const [nombre, telefono, mensajesP] of [
+    ["Mamá", "5559900001", [["entrante", "¿Ya comiste? Avísame cuando llegues", 600], ["saliente", "Sí, ya voy para allá", 590]]],
+    ["Rodrigo (amigo)", "5559900002", [["entrante", "¿Nos vemos el sábado?", 2800]]],
+  ] as Array<[string, string, Array<["entrante" | "saliente", string, number]>]>) {
+    const cid = id();
+    datos.contactos.push({ id: cid, nombre, telefono, email: null, empresa: null, notas: null, fuente: "manual", responsableId: atiende(0).id, optOutDifusion: true, esPersonal: true, esCliente: false, etiquetaIds: [], campos: {}, createdAt: hace(60 * 24 * 30) });
+    const vid = id();
+    datos.conversaciones.push({ id: vid, contactoId: cid, canalId: null, responsableId: null, estado: "pendiente", botActivo: false, fijadoAt: null, noLeidos: 0, ultimoMensajeAt: hace(Math.min(...mensajesP.map((m) => m[2]))), csatScore: null });
+    for (const [dir, texto, min] of mensajesP) datos.mensajes.push({ id: id(), conversacionId: vid, direccion: dir, tipo: "texto", contenido: texto, mediaUrl: null, interna: false, status: "leido", timestamp: hace(min) });
+  }
+  // Tarjetas de lealtad (Aurum simulado): un sello por visita, un premio cada 8.
+  datos.extra.lealtad = datos.contactos.filter((c) => !c.esPersonal).slice(0, 5).map((c, i) => ({ contactoId: c.id, sellos: [5, 3, 7, 1, 6][i], premiosGanados: [1, 0, 2, 0, 1][i], premiosPendientes: [0, 0, 1, 0, 1][i] }));
   sembrarExtra(datos, giro.id, { id, atiende });
   secuencia = Math.max(secuencia, n + 1000);
   return datos;
@@ -193,6 +206,8 @@ export function construirDatos(giroId: GiroId): Datos {
 
 let datos: Datos = construirDatos(GIRO_INICIAL);
 let version = 0;
+/** Qué partes de la marca cambió la persona a mano: esas sobreviven al cambio de giro. */
+const personalizado = { nombre: false, color: false };
 const oyentes = new Set<() => void>();
 const eventos = new Set<(e: { conversacion_id: number; direccion: string }) => void>();
 
@@ -218,10 +233,32 @@ export const almacen = {
     this.notificar();
     return r;
   },
-  /** Vuelve a sembrar (mismo giro o uno nuevo) conservando el nombre y el color si se piden. */
-  reiniciar(giro: GiroId, conservarMarca?: Partial<Datos["marca"]>) {
+  get personalizado() {
+    return { ...personalizado };
+  },
+  /** Anota que la persona cambió a mano el nombre y/o el color de la marca. */
+  marcarPersonalizado(cambios: Partial<typeof personalizado>) {
+    Object.assign(personalizado, cambios);
+  },
+  /**
+   * Cambia de giro (o vuelve a sembrar el mismo): los datos son los del giro, pero el nombre y el color
+   * que la persona personalizó a mano se conservan; los que no, toman los del giro.
+   */
+  reiniciar(giro: GiroId) {
+    const previa = datos.marca;
     datos = construirDatos(giro);
-    if (conservarMarca) datos.marca = { ...datos.marca, ...conservarMarca };
+    if (personalizado.nombre) datos.marca.nombre = previa.nombre;
+    if (personalizado.color) {
+      Object.assign(datos.marca, { preset: previa.preset, colorPrimario: previa.colorPrimario, colorAcento: previa.colorAcento });
+    }
+    datos.marca.logo = previa.logo;
+    this.notificar();
+  },
+  /** «Restablecer demo»: todo vuelve al giro inicial, sin personalización. */
+  restablecer(giro: GiroId) {
+    personalizado.nombre = false;
+    personalizado.color = false;
+    datos = construirDatos(giro);
     this.notificar();
   },
   /** Bus del «tiempo real» simulado: lo escucha EventSourceDemo. */

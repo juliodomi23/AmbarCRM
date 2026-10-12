@@ -5,6 +5,7 @@ import { almacen, nuevoId } from "../almacen";
 import { ErrorApi, ruta } from "./ruteo";
 
 ruta("PATCH", "/api/ajustes", ({ cuerpo }) => {
+  const antes = { ...almacen.datos.marca };
   almacen.mutar((d) => {
     const m = d.marca;
     if ("marcaNombre" in cuerpo) m.nombre = String(cuerpo.marcaNombre ?? "").trim().slice(0, 80) || m.nombre;
@@ -13,6 +14,11 @@ ruta("PATCH", "/api/ajustes", ({ cuerpo }) => {
     if (/^#[0-9a-f]{6}$/i.test(cuerpo.marcaColorAcento ?? "")) m.colorAcento = cuerpo.marcaColorAcento;
     if (cuerpo.marcaPreset && cuerpo.marcaPreset in BRAND_PRESETS) m.preset = cuerpo.marcaPreset;
     for (const [k, v] of Object.entries(cuerpo)) if (!k.startsWith("marca")) d.ajustes[k] = v;
+  });
+  const ahora = almacen.datos.marca;
+  almacen.marcarPersonalizado({
+    ...(ahora.nombre !== antes.nombre ? { nombre: true } : {}),
+    ...(ahora.preset !== antes.preset || ahora.colorPrimario !== antes.colorPrimario || ahora.colorAcento !== antes.colorAcento ? { color: true } : {}),
   });
   return { ok: true };
 });

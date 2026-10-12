@@ -1,6 +1,7 @@
 // Datos de los módulos por giro (citas, productos, caja, cotizaciones, pedidos…). Misma historia que los
 // seeds demo reales (web/scripts/seed-demo-clinica.mjs y seed-demo-retail.mjs).
 import { fechaEstaSemana, fechaMexico, indiceDiaHoy } from "./fechas";
+import { sembrarAcademia, sembrarAutomotriz, sembrarInmobiliaria, sembrarLegal, sembrarViajes } from "./semilla-giros";
 import type { ContactoD, Datos, GiroId, UsuarioD } from "./tipos";
 
 export type AyudasSemilla = { id: () => string; atiende: (i?: number) => UsuarioD };
@@ -41,6 +42,11 @@ function sembrarClinica(d: Datos, a: AyudasSemilla) {
     d.contactos.push(nuevo);
     return nuevo;
   });
+  d.extra.expedientes = contactos.map((c, i) => ({
+    contactoId: c.id, fechaNacimiento: `${1988 + i}-05-12`, sexo: i % 2 === 0 ? "Femenino" : "Masculino", alergias: pacientes[i][3],
+    antecedentes: i % 3 === 0 ? "Sin enfermedades crónicas conocidas" : "Sin antecedentes relevantes", medicamentos: "Ninguno reportado",
+    observaciones: "Expediente inicial de demostración.", evoluciones: [] as any[],
+  }));
   d.extra.doctores = [
     { id: a.id(), nombre: "Dra. Elena Torres", especialidad: "Odontología general", cedula: "PROF-102938", color: "#0EA5E9", activo: true },
     { id: a.id(), nombre: "Dr. Mateo Salas", especialidad: "Ortodoncia", cedula: "PROF-564738", color: "#8B5CF6", activo: true },
@@ -54,6 +60,23 @@ function sembrarClinica(d: Datos, a: AyudasSemilla) {
       titulo: `${pacientes[i][2]} de ${pacientes[i][0]}`, notas: null, inicio, fin: new Date(new Date(inicio).getTime() + 45 * 60_000).toISOString(),
       estado: "programada",
     };
+  });
+  d.extra.citas.slice(0, 2).forEach((c, i) => void (c.tokenGestion = `demo-cita-${i + 1}`));
+  d.extra.serviciosReserva = [
+    { id: a.id(), nombre: "Consulta general", descripcion: "Valoración y plan de tratamiento.", duracionMin: 30, bufferMin: 0, precio: 0, activo: true, doctorIds: d.extra.doctores.map((x: any) => x.id) },
+    { id: a.id(), nombre: "Limpieza dental", descripcion: null, duracionMin: 45, bufferMin: 15, precio: 650, activo: true, doctorIds: [d.extra.doctores[0].id] },
+    { id: a.id(), nombre: "Revisión de ortodoncia", descripcion: null, duracionMin: 30, bufferMin: 0, precio: 400, activo: true, doctorIds: [d.extra.doctores[1].id] },
+  ];
+  d.extra.horariosDoctor = d.extra.doctores.flatMap((doc: any) =>
+    [1, 2, 3, 4, 5].flatMap((dia) => [
+      { id: a.id(), doctorId: doc.id, diaSemana: dia, inicioMin: 9 * 60, finMin: 14 * 60 },
+      { id: a.id(), doctorId: doc.id, diaSemana: dia, inicioMin: 16 * 60, finMin: 19 * 60 },
+    ]),
+  );
+  d.extra.excepcionesHorario = [{ id: a.id(), doctorId: d.extra.doctores[0].id, fecha: fechaMexico(12, 12), inicioMin: null, finMin: null, motivo: "Congreso de odontología" }];
+  d.modulos.reservas_en_linea.config = { anticipacionMin: 120, ventanaDias: 30, granularidadMin: 30, maxPorTelefono: 3 };
+  d.extra.expedientes.slice(0, 3).forEach((e, i) => {
+    e.evoluciones.push({ id: a.id(), contenido: "Valoración inicial: paciente estable y apto para continuar el tratamiento.", createdAt: fechaMexico(-3 - i, 11), doctorId: d.extra.doctores[i % 2].id, citaId: null, registradoPorId: d.usuarios[0].id });
   });
 }
 
@@ -110,7 +133,7 @@ const COTIZACIONES: CotDemo[] = [
 
 function sembrarRetail(d: Datos, a: AyudasSemilla) {
   const admin = d.usuarios[0];
-  const equipo = d.usuarios;
+  const equipo = d.usuarios.slice(1); // como el seed real: el equipo no incluye a la gerencia
   d.contactos.forEach((c, i) => {
     c.email = `cliente${i + 1}@casa-ambar.demo`;
     c.fuente = i % 2 === 0 ? "whatsapp" : "manual";
@@ -154,7 +177,8 @@ function sembrarRetail(d: Datos, a: AyudasSemilla) {
       pagos: t && estado !== "cancelada" ? [{ metodo: metodoPago, monto: subtotal }] : [],
     };
     if (aplicaStock) for (const [sku, n] of partidas) porSku.get(sku)!.stock -= n;
-    return venta;
+    const tokens: Record<string, string> = { "DEMO-003": "de003000000000000000000000000003", "DEMO-009": "de009000000000000000000000000009", "DEMO-010": "de010000000000000000000000000010", "DEMO-011": "de011000000000000000000000000011", "DEMO-012": "de012000000000000000000000000012" };
+    return { ...venta, tokenSeguimiento: tokens[folio] ?? null };
   });
   for (const p of productos) {
     const ventido = (inventarioInicial.get(p.id) ?? 0) - p.stock;
@@ -177,6 +201,54 @@ function sembrarRetail(d: Datos, a: AyudasSemilla) {
     };
   });
 
+  // Expedientes (ficha de clientes) y compras/proveedores/precios, como en el seed real.
+  d.extra.expedientes = d.contactos.map((c, i) => ({
+    contactoId: c.id, fechaNacimiento: null, sexo: null, alergias: null, antecedentes: i % 2 === 0 ? "Prefiere novedades por WhatsApp" : "Compra en tienda",
+    medicamentos: null, observaciones: i === 0 ? "Cliente frecuente" : null, evoluciones: [] as any[],
+  }));
+  d.extra.proveedores = [
+    ["Textiles del Norte", "Isabel Peña", "8110002201", "ventas@textiles-norte.demo"],
+    ["Taller Cerámico Sur", "René Casas", "8110002202", "pedidos@ceramica-sur.demo"],
+    ["Accesorios Central", "Pilar Díaz", "8110002203", "hola@accesorios-central.demo"],
+  ].map(([nombre, contactoNombre, telefono, email]) => ({ id: a.id(), nombre, contactoNombre, telefono, email, rfc: null, notas: null, activo: true }));
+  const encargado = equipo[2] ?? equipo[0];
+  d.extra.compras = ([
+    ["DEMO-C-001", 0, "recibida", [["CAM-001", 10, 400], ["TAZ-004", 8, 140]]],
+    ["DEMO-C-002", 2, "ordenada", [["BOL-002", 6, 900], ["TEN-010", 4, 690]]],
+  ] as Array<[string, number, string, Array<[string, number, number]>]>).map(([folio, pi, estado, partidas], i) => {
+    const lineas = partidas.map(([sku, cantidad, costoUnitario]) => ({ id: a.id(), productoId: porSku.get(sku)!.id, cantidad, costoUnitario, total: cantidad * costoUnitario }));
+    if (estado === "recibida") {
+      for (const l of lineas) {
+        const p = productos.find((x) => x.id === l.productoId)!;
+        const antes = p.stock;
+        p.stock += l.cantidad;
+        p.costo = l.costoUnitario;
+        p.movimientos.push({ id: a.id(), tipo: "compra", cantidad: l.cantidad, existenciaAntes: antes, existenciaDespues: p.stock, motivo: `Compra ${folio}`, createdAt: fechaMexico(-i, 9 + i), usuario: { nombre: encargado.nombre } });
+      }
+    }
+    return { id: a.id(), folio, proveedorId: d.extra.proveedores[pi].id, creadoPorId: encargado.id, estado, total: lineas.reduce((t, l) => t + l.total, 0), notas: null, createdAt: fechaMexico(-i, 9 + i), partidas: lineas };
+  });
+  d.extra.listasPrecio = [{ id: a.id(), nombre: "Mayoreo", tipo: "mayoreo" }];
+  d.extra.escalas = [{ id: a.id(), productoId: porSku.get("VEL-003")!.id, desde: 6, precio: 380 }];
+  d.extra.promociones = [{ id: a.id(), nombre: "Temporada: 10 % en hogar", tipo: "porcentaje", productoId: null, categoria: "Hogar", valor: 10, inicia: fechaMexico(-3, 0), termina: fechaMexico(20, 0) }];
+
+  // Crédito de cliente (DEMO-005 es a crédito) y un apartado activo, como ejemplo de la Caja completa.
+  const ventaCredito = d.extra.ventas.find((v) => v.folio === "DEMO-005")!;
+  ventaCredito.esCredito = true;
+  d.extra.cuentasCredito = [{
+    contactoId: d.contactos[4].id, limiteCredito: 3000, saldo: ventaCredito.total, creadaAt: ventaCredito.createdAt,
+    movimientos: [{ id: a.id(), tipo: "cargo", monto: ventaCredito.total, createdAt: ventaCredito.createdAt, referencia: ventaCredito.folio }],
+  }];
+  const camisa = porSku.get("CAM-001")!;
+  const ventaApartado = {
+    id: a.id(), folio: "APA-0001", contactoId: d.contactos[0].id, creadoPorId: equipo[0].id, estado: "apartado", canal: "mostrador", metodoPago: "efectivo", subtotal: camisa.precio, descuento: 0, costoEnvio: 0,
+    total: camisa.precio, turnoId: turnoHoy.id, cajaId: caja.id, createdAt: fechaMexico(0, 10), tipoEntrega: null, notas: null,
+    partidas: [{ id: a.id(), productoId: camisa.id, cantidad: 1, precioUnitario: camisa.precio, total: camisa.precio, devoluciones: [] as any[] }], pagos: [{ metodo: "efectivo", monto: 300 }],
+  };
+  camisa.stock -= 1; // la existencia queda separada
+  d.extra.ventas.unshift(ventaApartado);
+  d.extra.apartados = [{ id: a.id(), estado: "activo", saldo: camisa.precio - 300, venceAt: fechaMexico(5, 20), contactoId: d.contactos[0].id, ventaId: ventaApartado.id }];
+
   d.modulos.caja.config = { puestosPermitidos: ["Cajero", "Encargado de tienda"], descuentoMaximoCajero: 10, apartadoDiasVigencia: 7 };
   d.modulos.pedidos_en_linea.config = { permiteEntrega: true, permiteRecoger: true, minimoCompra: "300.00", costoEnvio: "65.00", maxPorTelefono: 3, maxPorIp: 10, horasVencimiento: 48 };
   d.modulos.cotizaciones.config = { ivaPorcentaje: "16", preciosConIva: false };
@@ -186,4 +258,10 @@ export function sembrarExtra(datos: Datos, giro: GiroId, ayudas: AyudasSemilla) 
   if (giro === "clinica") sembrarClinica(datos, ayudas);
   else if (giro === "retail") sembrarRetail(datos, ayudas);
   else if (datos.modulos.citas?.activo) sembrarCitasGenericas(datos, ayudas, giro === "legal" ? "Asesoría" : giro === "automotriz" ? "Prueba de manejo" : "Visita");
+  const a = { id: ayudas.id };
+  if (giro === "legal") sembrarLegal(datos, a);
+  if (giro === "viajes") sembrarViajes(datos, a);
+  if (giro === "educacion") sembrarAcademia(datos, a);
+  if (giro === "automotriz") sembrarAutomotriz(datos, a);
+  if (giro === "inmobiliaria") sembrarInmobiliaria(datos, a);
 }

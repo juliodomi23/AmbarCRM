@@ -25,7 +25,7 @@ export const GIROS: GiroConfig[] = [
       { nombre: "Recepción Horizonte", puesto: "Recepcionista" },
       { nombre: "Dr. Mateo Salas", puesto: "Doctor" },
     ],
-    modulos: { citas: { anticipacionHoras: 24 }, pacientes: {}, reservas_en_linea: {}, resenas: {} },
+    modulos: { citas: { anticipacionHoras: 24 }, pacientes: {}, reservas_en_linea: {}, resenas: {}, lealtad: { aurum: { slug: "demo-aurum", estado: "ok" } } },
   },
   {
     id: "retail",
@@ -39,7 +39,7 @@ export const GIROS: GiroConfig[] = [
       { nombre: "Elena Paz", puesto: "Encargado de inventario" },
       { nombre: "Paula Vega", puesto: "Encargado de tienda" },
     ],
-    modulos: { clientes: {}, productos: {}, compras: {}, ventas: {}, caja: {}, cotizaciones: {}, pedidos_en_linea: {}, resenas: {} },
+    modulos: { clientes: {}, productos: {}, compras: {}, ventas: {}, caja: {}, cotizaciones: {}, pedidos_en_linea: {}, resenas: {}, lealtad: { aurum: { slug: "demo-aurum", estado: "ok" } } },
   },
   {
     id: "legal",

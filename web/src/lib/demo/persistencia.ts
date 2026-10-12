@@ -10,6 +10,8 @@ const CLAVE = "ambar-demo-personalizacion";
 type Guardado = {
   giro?: string;
   marca?: { nombre?: string; preset?: string; colorPrimario?: string; colorAcento?: string };
+  /** Qué partes de la marca fueron personalizadas a mano (solo esas se restauran). */
+  personalizado?: { nombre?: boolean; color?: boolean };
   modulos?: Record<string, boolean>;
 };
 
@@ -28,12 +30,16 @@ export function cargarPersonalizacion() {
   if (!g) return;
   const giro = GIROS.find((x) => x.id === g.giro)?.id as GiroId | undefined;
   if (giro && giro !== almacen.datos.giro) almacen.reiniciar(giro);
+  // Compatibilidad: lo guardado antes de existir las marcas no traía `personalizado`.
+  const nombrePersonal = g.personalizado ? Boolean(g.personalizado.nombre) : typeof g.marca?.nombre === "string";
+  const colorPersonal = g.personalizado ? Boolean(g.personalizado.color) : Boolean(g.marca?.preset);
+  almacen.marcarPersonalizado({ nombre: nombrePersonal, color: colorPersonal });
   almacen.mutar((d) => {
     if (g.marca) {
-      if (typeof g.marca.nombre === "string") d.marca.nombre = g.marca.nombre.slice(0, 40);
-      if (g.marca.preset && g.marca.preset in BRAND_PRESETS) d.marca.preset = g.marca.preset as BrandPreset;
-      if (/^#[0-9a-f]{6}$/i.test(g.marca.colorPrimario ?? "")) d.marca.colorPrimario = g.marca.colorPrimario!;
-      if (/^#[0-9a-f]{6}$/i.test(g.marca.colorAcento ?? "")) d.marca.colorAcento = g.marca.colorAcento!;
+      if (nombrePersonal && typeof g.marca.nombre === "string") d.marca.nombre = g.marca.nombre.slice(0, 40);
+      if (colorPersonal && g.marca.preset && g.marca.preset in BRAND_PRESETS) d.marca.preset = g.marca.preset as BrandPreset;
+      if (colorPersonal && /^#[0-9a-f]{6}$/i.test(g.marca.colorPrimario ?? "")) d.marca.colorPrimario = g.marca.colorPrimario!;
+      if (colorPersonal && /^#[0-9a-f]{6}$/i.test(g.marca.colorAcento ?? "")) d.marca.colorAcento = g.marca.colorAcento!;
     }
     for (const [clave, activo] of Object.entries(g.modulos ?? {})) {
       if (d.modulos[clave] && typeof activo === "boolean") d.modulos[clave].activo = activo;
@@ -52,6 +58,7 @@ export function iniciarPersistencia() {
         JSON.stringify({
           giro: d.giro,
           marca: { nombre, preset, colorPrimario, colorAcento },
+          personalizado: almacen.personalizado,
           modulos: Object.fromEntries(Object.entries(d.modulos).map(([k, m]) => [k, m.activo])),
         } satisfies Guardado),
       );
@@ -68,5 +75,5 @@ export function restablecerDemo() {
   } catch {
     // sin almacenamiento: el estado en memoria igual se restablece
   }
-  almacen.reiniciar(GIRO_INICIAL);
+  almacen.restablecer(GIRO_INICIAL);
 }

@@ -90,12 +90,52 @@ for (const [ruta_, modulo, clave] of [["/api/pacientes", "pacientes", "pacientes
   });
   ruta("POST", ruta_, ({ cuerpo }) => {
     exigirModulo(modulo);
-    const c = contactoDe(almacen.datos, String(cuerpo.contactoId));
-    if (!c) throw new ErrorApi(400, "contacto inexistente");
-    almacen.mutar(() => void (c.esCliente = true));
-    return new Respuesta(201, { ok: true, id: c.id });
+    const d = almacen.datos;
+    let c = cuerpo.contactoId ? contactoDe(d, String(cuerpo.contactoId)) : undefined;
+    if (cuerpo.contactoId && !c) throw new ErrorApi(400, "contacto inexistente");
+    if (!c) {
+      const nombre = String(cuerpo.nombre ?? "").trim();
+      if (!nombre) throw new ErrorApi(400, "El nombre es obligatorio");
+      c = { id: nuevoId(), nombre, telefono: String(cuerpo.telefono ?? "").trim() || null, email: String(cuerpo.email ?? "").trim() || null, empresa: null, notas: null, fuente: "manual", responsableId: d.usuarios[0].id, optOutDifusion: false, esPersonal: false, esCliente: false, etiquetaIds: [], campos: {}, createdAt: ahora() };
+      d.contactos.push(c);
+    }
+    const contacto = c;
+    almacen.mutar(() => {
+      contacto.esCliente = true;
+      const exp = (d.extra.expedientes ??= []);
+      if (!exp.some((e) => e.contactoId === contacto.id)) {
+        exp.push({ contactoId: contacto.id, fechaNacimiento: cuerpo.fechaNacimiento || null, sexo: cuerpo.sexo || null, alergias: cuerpo.alergias || null, antecedentes: cuerpo.antecedentes || null, medicamentos: null, observaciones: null, evoluciones: [] });
+      }
+    });
+    return new Respuesta(201, { ok: true, id: contacto.id });
   });
 }
+
+// Expediente / ficha del contacto.
+const expediente = (id: string) => {
+  const e = (almacen.datos.extra.expedientes ?? []).find((x) => x.contactoId === id);
+  if (!e) throw new ErrorApi(404, "ficha inexistente");
+  return e;
+};
+ruta("PATCH", "/api/contactos/:id/expediente", ({ params, cuerpo }) => {
+  const e = expediente(params.id);
+  almacen.mutar(() => {
+    for (const k of ["fechaNacimiento", "sexo", "alergias", "antecedentes", "medicamentos", "observaciones"]) if (k in cuerpo) e[k] = cuerpo[k] || null;
+  });
+  return { ok: true };
+});
+ruta("POST", "/api/contactos/:id/expediente", ({ params, cuerpo }) => {
+  const e = expediente(params.id);
+  const contenido = String(cuerpo.contenido ?? "").trim();
+  if (!contenido) throw new ErrorApi(400, "La nota no puede estar vacía");
+  const d = almacen.datos;
+  const doctor = (d.extra.doctores ?? []).find((x) => x.id === String(cuerpo.doctorId)) ?? null;
+  const cita = (d.extra.citas ?? []).find((x) => x.id === String(cuerpo.citaId)) ?? null;
+  const yo = d.usuarios[0];
+  const evolucion = { id: nuevoId(), contenido, createdAt: ahora(), doctor, cita: cita ? { id: cita.id, titulo: cita.titulo } : null, registradoPor: { id: yo.id, nombre: yo.nombre } };
+  almacen.mutar(() => void e.evoluciones.unshift({ id: evolucion.id, contenido, createdAt: evolucion.createdAt, doctorId: doctor?.id ?? null, citaId: cita?.id ?? null, registradoPorId: yo.id }));
+  return new Respuesta(201, { evolucion });
+});
 
 // ─── Productos e inventario ──────────────────────────────────────────────────────────────────
 const productos = () => (almacen.datos.extra.productos ??= []);
@@ -296,11 +336,6 @@ ruta("POST", "/api/caja/ventas", ({ cuerpo }) => {
   const contacto = venta.contactoId ? contactoDe(d, venta.contactoId) : null;
   return new Respuesta(201, { venta: { id: venta.id, folio: venta.folio, contacto: contacto ? { id: contacto.id, nombre: contacto.nombre, telefono: contacto.telefono } : null } });
 });
-
-// Operaciones de la caja que la demo muestra vacías.
-ruta("GET", "/api/caja/devoluciones", () => ({ ventas: [] }));
-ruta("GET", "/api/caja/apartados", () => ({ apartados: [] }));
-ruta("GET", "/api/caja/credito/:id", () => new Respuesta(404, { error: "sin cuenta de crédito" }));
 
 // ─── Cotizaciones ────────────────────────────────────────────────────────────────────────────
 const cotizaciones = () => (almacen.datos.extra.cotizaciones ??= []);
