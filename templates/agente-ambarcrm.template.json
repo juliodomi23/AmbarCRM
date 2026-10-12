@@ -113,12 +113,13 @@
         "method": "POST",
         "url": "={{ $('Datos').item.json.handoff_url }}",
         "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [ { "name": "api_access_token", "value": "={{ $('⚙️ Configuración').item.json.apiToken }}" } ]
+        "specifyHeaders": "keypair",
+        "parametersHeaders": {
+          "values": [ { "name": "api_access_token", "valueProvider": "fieldValue", "value": "={{ $('⚙️ Configuración').item.json.apiToken }}" } ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"labels\": [\"escalado_humano\"]\n}"
+        "jsonBody": "{\n  \"labels\": [\"escalado_humano\", \"requiere_atencion\"]\n}"
       },
       "id": "88888888-8888-8888-8888-888888888888",
       "name": "escalar_a_humano",
@@ -132,8 +133,9 @@
         "method": "POST",
         "url": "={{ $('Datos').item.json.funnel_url }}",
         "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [ { "name": "api_access_token", "value": "={{ $('⚙️ Configuración').item.json.apiToken }}" } ]
+        "specifyHeaders": "keypair",
+        "parametersHeaders": {
+          "values": [ { "name": "api_access_token", "valueProvider": "fieldValue", "value": "={{ $('⚙️ Configuración').item.json.apiToken }}" } ]
         },
         "sendBody": true,
         "specifyBody": "json",
