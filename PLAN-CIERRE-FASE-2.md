@@ -13,7 +13,7 @@
 
 1. Rama `modulos-fase-2`, al día con `origin`. Producción = `meta-tech-provider`: **no tocar**.
 2. Verificado 11-oct: `tsc --noEmit` limpio y `scripts/check-demo.ts` OK. La regresión completa (§2) se corrió por última vez en b1a36d0; repetirla antes de cerrar.
-3. Pendiente real: revisión final del diff `modulos-fase-2` vs `meta-tech-provider` (§3.5 paso 1). Sin código nuevo.
+3. **Fase 2 en pausa (decisión 11-oct):** la revisión final se hace junto con el despliegue, cuando Meta apruebe. Mientras tanto no hay nada que hacer; se opera de forma manual.
 4. Después, con Meta aprobado: ensayo de migración con dump real, merge, despliegue (§3.5 pasos 2-8), repo a privado.
 5. Los archivos de la demo (`app/demo`, `components/demo`, `lib/demo`) **ya están commiteados**; siguen sin commitearse solo `web/src/app/login/page.tsx` y el prefijo `demo` de `web/src/proxy.ts` si aparecen como cambios locales.
 6. Diferidos hasta la aprobación: `docs/verificar-rls.md` y `docs/canales-token-legacy.md` (no correr contra prod).
