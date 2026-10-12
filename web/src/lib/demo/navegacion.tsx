@@ -40,6 +40,7 @@ export function irA(href: string, reemplazar = false) {
   else window.history.pushState(null, "", destino);
   window.dispatchEvent(new Event(EVENTO));
   document.querySelector("main")?.scrollTo?.(0, 0);
+  window.scrollTo?.(0, 0);
 }
 
 type Nav = { ruta: string; query: string; ir: (href: string, reemplazar?: boolean) => void };
@@ -79,16 +80,17 @@ export function NavegacionDemo({ children }: { children: React.ReactNode }) {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
       if (!a) return;
-      const href = a.getAttribute("href") ?? "";
+      let href = a.getAttribute("href") ?? "";
+      // Enlace absoluto a esta misma demo (p. ej. el enlace público que muestran los paneles): se resuelve dentro.
+      if (/^https?:\/\//.test(href)) {
+        const destino = new URL(href);
+        if (destino.origin !== window.location.origin || !destino.pathname.startsWith("/demo") || !destino.hash.startsWith("#/")) return;
+        href = destino.hash.slice(1);
+      }
       if (!href.startsWith("/") || href.startsWith("//")) return; // externos, mailto:, tel:, #…
       if (a.hasAttribute("data-demo-salir") || href === "/login") return; // salir de la demo
       e.preventDefault();
       e.stopPropagation();
-      // Páginas públicas del CRM (tienda, reservas, cotización…): son del servidor y no forman parte de la demo.
-      if (/^\/(tienda|reservar|cotizacion|opinion|caja\/ticket|privacidad|terminos|eliminacion-datos)(\/|$)/.test(href)) {
-        void fetch(href);
-        return;
-      }
       if (a.hasAttribute("download") || href.startsWith("/api/")) {
         void fetch(href); // la capa responde «En la demo esto no se guarda» (nunca sale)
         return;
