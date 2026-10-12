@@ -61,6 +61,20 @@ function sembrarClinica(d: Datos, a: AyudasSemilla) {
       estado: "programada",
     };
   });
+  d.extra.citas.slice(0, 2).forEach((c, i) => void (c.tokenGestion = `demo-cita-${i + 1}`));
+  d.extra.serviciosReserva = [
+    { id: a.id(), nombre: "Consulta general", descripcion: "Valoración y plan de tratamiento.", duracionMin: 30, bufferMin: 0, precio: 0, activo: true, doctorIds: d.extra.doctores.map((x: any) => x.id) },
+    { id: a.id(), nombre: "Limpieza dental", descripcion: null, duracionMin: 45, bufferMin: 15, precio: 650, activo: true, doctorIds: [d.extra.doctores[0].id] },
+    { id: a.id(), nombre: "Revisión de ortodoncia", descripcion: null, duracionMin: 30, bufferMin: 0, precio: 400, activo: true, doctorIds: [d.extra.doctores[1].id] },
+  ];
+  d.extra.horariosDoctor = d.extra.doctores.flatMap((doc: any) =>
+    [1, 2, 3, 4, 5].flatMap((dia) => [
+      { id: a.id(), doctorId: doc.id, diaSemana: dia, inicioMin: 9 * 60, finMin: 14 * 60 },
+      { id: a.id(), doctorId: doc.id, diaSemana: dia, inicioMin: 16 * 60, finMin: 19 * 60 },
+    ]),
+  );
+  d.extra.excepcionesHorario = [{ id: a.id(), doctorId: d.extra.doctores[0].id, fecha: fechaMexico(12, 12), inicioMin: null, finMin: null, motivo: "Congreso de odontología" }];
+  d.modulos.reservas_en_linea.config = { anticipacionMin: 120, ventanaDias: 30, granularidadMin: 30, maxPorTelefono: 3 };
   d.extra.expedientes.slice(0, 3).forEach((e, i) => {
     e.evoluciones.push({ id: a.id(), contenido: "Valoración inicial: paciente estable y apto para continuar el tratamiento.", createdAt: fechaMexico(-3 - i, 11), doctorId: d.extra.doctores[i % 2].id, citaId: null, registradoPorId: d.usuarios[0].id });
   });
@@ -163,7 +177,8 @@ function sembrarRetail(d: Datos, a: AyudasSemilla) {
       pagos: t && estado !== "cancelada" ? [{ metodo: metodoPago, monto: subtotal }] : [],
     };
     if (aplicaStock) for (const [sku, n] of partidas) porSku.get(sku)!.stock -= n;
-    return venta;
+    const tokens: Record<string, string> = { "DEMO-003": "de003000000000000000000000000003", "DEMO-009": "de009000000000000000000000000009", "DEMO-010": "de010000000000000000000000000010", "DEMO-011": "de011000000000000000000000000011", "DEMO-012": "de012000000000000000000000000012" };
+    return { ...venta, tokenSeguimiento: tokens[folio] ?? null };
   });
   for (const p of productos) {
     const ventido = (inventarioInicial.get(p.id) ?? 0) - p.stock;
