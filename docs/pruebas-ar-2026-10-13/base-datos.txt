@@ -1,0 +1,21 @@
+PRUEBA test-cobros-db.ts
+cobros DB: referencias de cliente/oportunidad, edición con historial, vencidos, sin día/inicio futuro, cierre de estados, MRR/proyección, IA una vez por cliente incluso con pagos en meses distintos y baja OK
+EXIT 0
+PRUEBA test-concurrencia-cobros.ts
+{"modo":"CON_PROTECCION","pagosAplicados":1,"mensualidades":1,"creadosPorCron":[0,1]}
+EXIT 0
+PRUEBA test-aislamiento.ts
+OK · aislamiento de lectura y escritura en 78 tablas
+EXIT 0
+PRUEBA test-referencias.ts
+OK · referencias de otra empresa rechazadas y recordatorios sin atascos
+EXIT 0
+PRUEBA test-cupos-concurrentes.ts
+OK · cupos concurrentes de tours y academia respetan la capacidad
+EXIT 0
+PRUEBA test-concurrencia-retail.ts
+OK · concurrencia retail {"ventas":{"aceptadas":3,"stockFinal":0},"ventaPorPeso":{"intentos":3,"aceptadas":2,"stockFinal":0.5},"ordenBloqueos":{"resueltas":2,"stocks":[0,0]},"movimientos":{"stockFinal":10},"compra":{"stockFinal":5,"movimientos":1},"cancelarEditar":{"estado":"entregada","stockFinal":9,"movimientos":2},"pagosTour":{"aceptados":3,"saldo":100},"colegiatura":{"solicitudes":5,"cargos":1}}
+EXIT 0
+PRUEBA test-reservas-concurrentes.ts
+OK · reservas en línea simultáneas: un lugar por especialista, sin duplicados
+EXIT 0

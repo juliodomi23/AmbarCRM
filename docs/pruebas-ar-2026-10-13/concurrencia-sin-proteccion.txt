@@ -1,0 +1,19 @@
+{"modo":"SIN_PROTECCION","pagosAplicados":2,"mensualidades":2,"creadosPorCron":[1,1]}
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: un solo pago debe aplicarse
+
+2 !== 1
+
+    at <anonymous> (D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\prisma\scripts\test-concurrencia-cobros.ts:57:10) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 2,
+  expected: 1,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.19.0

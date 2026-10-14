@@ -7,6 +7,50 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Contrato {
+  id BigInt @id @default(autoincrement())
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contactoId BigInt @map("contacto_id")
+  oportunidadId BigInt? @map("oportunidad_id")
+  tipo String
+  estado String?
+  montoCierre Decimal? @map("monto_cierre") @db.Decimal(12, 2)
+  anticipoPct Decimal? @default(50) @map("anticipo_pct") @db.Decimal(5, 2)
+  mensualidad Decimal? @db.Decimal(12, 2)
+  diaCobro Int? @map("dia_cobro")
+  inicioMensualidad DateTime? @map("inicio_mensualidad") @db.Date
+  fechaBaja DateTime? @map("fecha_baja") @db.Date
+  notas String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  contacto Contacto @relation(fields: [contactoId], references: [id], onDelete: Restrict)
+  oportunidad Oportunidad? @relation(fields: [oportunidadId], references: [id], onDelete: SetNull)
+  cobros Cobro[]
+  @@index([orgId, estado])
+  @@index([contactoId])
+  @@map("contratos")
+}
+
+model Cobro {
+  id BigInt @id @default(autoincrement())
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contratoId BigInt @map("contrato_id")
+  concepto String
+  periodo DateTime? @db.Date
+  monto Decimal @db.Decimal(12, 2)
+  vence DateTime? @db.Date
+  estado String @default("pendiente")
+  pagadoEn DateTime? @map("pagado_en") @db.Timestamptz(6)
+  metodo String?
+  referencia String?
+  nota String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  contrato Contrato @relation(fields: [contratoId], references: [id], onDelete: Restrict)
+  @@unique([contratoId, concepto, periodo])
+  @@index([orgId, estado, vence])
+  @@map("cobros")
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MULTI-TENANT (ver MULTI-TENANT.md)
 // Cada tabla de negocio lleva `orgId`. Su DEFAULT lo pone Postgres leyendo el
@@ -276,6 +320,7 @@ model Contacto {
   cotizaciones       Cotizacion[]
 
   solicitudesResena SolicitudResena[]
+  contratos Contrato[]
   @@unique([orgId, telefono])
   @@index([responsableId])
   @@index([listaPrecioId])
@@ -336,6 +381,8 @@ model Oportunidad {
   tareas       Tarea[]
   eventos      Evento[]
   cotizaciones Cotizacion[]
+
+  contratos Contrato[]
 
   @@index([etapaId, orden])
   @@index([embudoId])
