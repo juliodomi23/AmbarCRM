@@ -1,4 +1,6 @@
-import { db } from "@/lib/db";
+import { db, orgActual } from "@/lib/db";
+import { moduloVisibleEnOrg } from "@/lib/modulos-plataforma";
+import { moduloPorClave } from "@/lib/modulos-catalogo";
 import { puestoPuedeAcceder, type ClaveModulo } from "@/lib/modulos-catalogo";
 
 // El catálogo y las reglas puras viven en modulos-catalogo.ts; se re-exportan para no cambiar a nadie.
@@ -6,6 +8,7 @@ export * from "@/lib/modulos-catalogo";
 
 /** Se usa dentro de rutas y servicios: RLS limita siempre a la organización actual. */
 export async function moduloActivo(clave: ClaveModulo) {
+  if (!moduloVisibleEnOrg(moduloPorClave(clave)!, await orgActual())) return false;
   const modulo = await db.moduloOrg.findFirst({
     where: { clave, activo: true },
     select: { config: true },
@@ -23,6 +26,7 @@ export async function moduloActivo(clave: ClaveModulo) {
 }
 
 export async function moduloHabilitado(clave: ClaveModulo) {
+  if (!moduloVisibleEnOrg(moduloPorClave(clave)!, await orgActual())) return false;
   return Boolean(
     await db.moduloOrg.findFirst({
       where: { clave, activo: true },
@@ -35,6 +39,9 @@ export async function requireModuloActivo(
   clave: ClaveModulo,
   sesionActual?: { rol?: string; puesto?: string },
 ) {
+  if (!moduloVisibleEnOrg(moduloPorClave(clave)!, await orgActual())) {
+    return Response.json({ error: "módulo no activo" }, { status: 404 });
+  }
   const modulo = await db.moduloOrg.findFirst({
     where: { clave, activo: true },
     select: { config: true },

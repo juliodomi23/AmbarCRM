@@ -1,0 +1,21 @@
+
+> ambarcrm@0.1.0 lint
+> eslint .
+
+
+D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\src\components\ar\TarjetaServidor.tsx
+  12:18  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\src\components\ar\TarjetaServidor.tsx:12:18
+  10 |   const estilo = ESTILOS[s.estado];
+  11 |   const historial = s.historial;
+> 12 |   const inicio = Date.now() - 86400000;
+     |                  ^^^^^^^^^^ Cannot call impure function
+  13 |   const puntos = (campo: "ramPct" | "cpuPct" | "discoPct") => historial.map(h => `${Math.max(0, (h.fecha.getTime() - inicio) / 86400000 * 300)},${100 - h[campo]}`).join(" ");
+  14 |   return <article className={`surface min-w-0 !border-l-4 p-5 ${estilo.borde}`} data-servidor-id={String(s.id)}>
+  15 |     <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h2 className="break-words text-xl font-semibold">{s.nombre}</h2><p className="mt-1 text-xs text-muted-foreground">{s.proveedor} · {s.ip} · {s.propietario}</p></div><span className={`rounded-full px-3 py-1 text-xs font-semibold ${estilo.badge}`}>{s.activo ? s.estado === "sin-datos" ? "Sin datos" : s.estado : "Inactivo"}</span></div>  react-hooks/purity
+
+✖ 1 problem (1 error, 0 warnings)
+

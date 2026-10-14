@@ -1,5 +1,6 @@
 // Endpoints del marco (AppShell, paleta de comandos, push, next-auth) en la API simulada.
 import { MODULOS, puestoPuedeAcceder, puestosPermitidosModulo } from "@/lib/modulos-catalogo";
+import { moduloVisibleEnOrg } from "@/lib/modulos-plataforma";
 import { almacen } from "../almacen";
 import { contadoresShell, sesionDemo } from "../vistas";
 import { ruta, ErrorApi } from "./ruteo";
@@ -9,7 +10,7 @@ export function listarModulos() {
   const d = almacen.datos;
   const yo = sesionDemo(d);
   return {
-    modulos: MODULOS.map((m) => {
+    modulos: MODULOS.filter(m => moduloVisibleEnOrg(m, null)).map((m) => {
       const guardado = d.modulos[m.clave];
       const config = guardado?.config ?? {};
       return {

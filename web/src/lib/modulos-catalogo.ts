@@ -11,6 +11,13 @@ const ACCESO_LEGAL = {
 
 export const MODULOS = [
   {
+    clave: "servidores", area: "Ámbar Rojo", nombre: "Servidores",
+    descripcion: "Salud, vencimientos y cargas de la infraestructura de la plataforma.",
+    soloPlataforma: true,
+    acceso: { puestosPorDefecto: ["Administrador"] },
+    icono: "M3 3h18v7H3zM3 14h18v7H3zM7 6h.01M7 17h.01", ruta: "/servidores",
+  },
+  {
     clave: "contratos", area: "Ámbar Rojo", nombre: "Servicios contratados",
     descripcion: "Servicios por cliente, mensualidades y fechas de inicio.",
     acceso: { puestosPorDefecto: ["Administrador"] },
@@ -295,6 +302,7 @@ export function puestoPuedeAcceder(
   puesto?: string,
   rol?: string,
 ) {
+  if (clave === "servidores") return puesto === "Administrador";
   if (rol === "admin") return true;
   const permitidos = puestosPermitidosModulo(clave, config);
   if (permitidos.length === 0) return true;

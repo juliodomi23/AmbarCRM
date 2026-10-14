@@ -1,0 +1,2 @@
+HTTP 200
+{"generado":"2026-10-14T07:43:53.637Z","rojas":0,"amarillas":0,"lista":[],"texto":"Ámbar Rojo · 14/10\nNada en rojo hoy. 🟢"}

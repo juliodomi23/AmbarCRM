@@ -1,0 +1,39 @@
+{
+  "medidas": [
+    {
+      "ruta": "servidores",
+      "ancho": 375,
+      "viewport": 375,
+      "documento": 375,
+      "contenido": 375,
+      "anchoContenido": 375
+    },
+    {
+      "ruta": "panel-ar",
+      "ancho": 375,
+      "viewport": 375,
+      "documento": 375,
+      "contenido": 375,
+      "anchoContenido": 375
+    },
+    {
+      "ruta": "servidores",
+      "ancho": 1440,
+      "viewport": 1440,
+      "documento": 1440,
+      "contenido": 1184,
+      "anchoContenido": 1184
+    },
+    {
+      "ruta": "panel-ar",
+      "ancho": 1440,
+      "viewport": 1440,
+      "documento": 1440,
+      "contenido": 1184,
+      "anchoContenido": 1184
+    }
+  ],
+  "errores": [],
+  "demo": "Menú y Ctrl+K sin Servidores",
+  "fixtures": "Reportes y cobro parcial simulados únicamente en crm_servidores; se eliminan al terminar"
+}

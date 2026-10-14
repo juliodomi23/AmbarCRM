@@ -56,6 +56,8 @@ export function validarContrato(body: Record<string, unknown>) {
   if (!body || typeof body !== "object" || Array.isArray(body)) throw new RangeError("Datos de contrato inválidos");
   const contactoId = /^\d+$/.test(String(body.contactoId)) ? BigInt(String(body.contactoId)) : null;
   const oportunidadId = body.oportunidadId ? (/^\d+$/.test(String(body.oportunidadId)) ? BigInt(String(body.oportunidadId)) : null) : null;
+  const servidorId = body.servidorId ? (/^\d+$/.test(String(body.servidorId)) ? BigInt(String(body.servidorId)) : null) : null;
+  if (body.servidorId && !servidorId) throw new RangeError("Servidor inválido");
   const tipo = String(body.tipo ?? "");
   const estado = body.estado ? String(body.estado) : null;
   const diaCobro = body.diaCobro == null || body.diaCobro === "" ? null : Number(body.diaCobro);
@@ -66,7 +68,7 @@ export function validarContrato(body: Record<string, unknown>) {
   const anticipoPct = montoOpcional(body.anticipoPct === undefined ? "50" : body.anticipoPct);
   if (anticipoPct?.gt(100)) throw new RangeError("Anticipo: 0 a 100 %");
   return {
-    contactoId, oportunidadId, tipo, estado, diaCobro, anticipoPct,
+    contactoId, oportunidadId, servidorId, tipo, estado, diaCobro, anticipoPct,
     montoCierre: montoOpcional(body.montoCierre), mensualidad: montoOpcional(body.mensualidad),
     inicioMensualidad: fechaAR(body.inicioMensualidad), fechaBaja: fechaAR(body.fechaBaja),
     notas: String(body.notas ?? "").trim() || null,

@@ -232,7 +232,7 @@ export function TabClientes({
                       </span>
                     </div>
                     <div className="grid items-start gap-3 lg:grid-cols-2">
-                      {grupos.map((grupo) => {
+                      {grupos.map(grupo => ({ ...grupo, modulos: grupo.modulos.filter(modulo => !modulo.soloPlataforma || String(o.id) === "1") })).filter(grupo => grupo.modulos.length).map((grupo) => {
                         const claveArea = `${o.id}:${grupo.area}`;
                         const abierto = Boolean(areasAbiertas[claveArea]);
                         const activos = grupo.modulos.filter((modulo) =>

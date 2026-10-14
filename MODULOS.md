@@ -614,3 +614,83 @@ Pruebas: `check-contratos-cobros.ts`, `test-cobros-db.ts`,
   todas las tablas que tienen `org_id`.
 - [ ] Revisar las rutas principales de cada demo en escritorio (1440 × 900) y
   celular (390 × 844), incluyendo la barra inferior y el cajón Más.
+
+## Servidores de la plataforma
+
+`servidores` vive en `/servidores` y solo lo ve el **puesto Administrador de la org
+plataforma (id=1, la misma regla de Configuración → Clientes Ámbar CRM)**. El
+catálogo `soloPlataforma` filtra menú, Ctrl+K, configuración y demo; las APIs
+responden 404 en cualquier otra org, aunque exista una activación equivocada.
+No se vende a clientes. Contratos, Cobros y Panel AR conservan su acceso actual.
+
+Las tarjetas muestran semáforo, motivo, RAM/CPU/disco, historial de 24 h,
+vencimiento, costo anual y cargas. `estadoServidor()` reproduce `logic.py`:
+RAM o disco **>=80 %** amarillo, **>=90 %** rojo, más de 3 h sin reportar rojo.
+CPU es informativa. Sin reportes: gris. Inactivos no alertan. El costo solo se
+entrega a Administrador; ninguna respuesta de lectura incluye hash o token.
+Las cargas de clientes son contratos con `servidor_id` opcional, elegible desde
+Editar contrato; las demás cargas son texto libre, una por línea.
+
+`POST /api/servidores/heartbeat`, sin sesión, recibe el mismo JSON snake_case de
+`heartbeat.sh`. Un token aleatorio por servidor se muestra una sola vez al dar
+alta, regenerar o sembrar y solo su SHA-256 queda en la BD. Una función SECURITY
+DEFINER con search_path fijo resuelve org/servidor; la app sigue como `crm_app`
+sin BYPASSRLS. La ingesta revalida el hash bajo bloqueo después de resolverlo:
+regenerar invalida el anterior incluso con requests concurrentes. Acepta como
+máximo un reporte por minuto; los adicionales se descartan con 204 vacío.
+Un token inválido responde 401 y métricas fuera de rango, 400.
+
+El cron `POST /api/cron/limpiar-heartbeats` exige `x-api-key: WA_API_KEY` y
+elimina reportes de más de 30 días por tenant. Programarlo diariamente en n8n.
+`ultimo_reporte` sobrevive a la limpieza: el silencio sigue siendo rojo.
+
+Instalación futura (no ejecutada en VPS): conservar las mediciones del script
+actual, sustituir su URL por la del CRM y `TOKEN` por el nuevo token **de ese VPS**.
+La URL anterior incluía `SERVER_ID`; ahora la identidad la resuelve el token.
+
+```sh
+curl --fail-with-body -sS -X POST "$CRM/api/servidores/heartbeat" \
+  -H "Content-Type: application/json" \
+  -H "X-Heartbeat-Token: $TOKEN" \
+  -d "{\"ram_pct\":${RAM:-0},\"cpu_pct\":${CPU:-0},\"disco_pct\":${DISCO:-0},\"ram_total_mb\":${RAM_TOTAL:-0},\"uptime_horas\":${UPTIME:-0}}"
+```
+
+`GET /api/panel-ar/alertas` acepta Administrador plataforma o `x-api-key:
+WA_API_KEY` para n8n. Devuelve `generado`, `rojas`, `amarillas`, `lista` ordenada
+rojas primero y `texto` listo para WhatsApp, incluido «Nada en rojo hoy» cuando
+está vacío. Incluye salud de servidores, renovaciones <=30 días (rojo <=7) solo
+si los pagamos, y saldos de cobros vencidos mediante `saldoCobro()` de Panel AR.
+Atrasos >15 días son rojos; el resto amarillos, como el panel original. Los
+abonos restan saldo y los incobrables/cancelados/pagados quedan fuera.
+El bloque aparece arriba de `/panel-ar`. No envía mensajes.
+
+La plantilla inactiva `docs/n8n/ALERTAS-Diarias-WhatsApp.json` usa el endpoint
+nuevo. Configurar `AMBARCRM_URL` en n8n y una credencial HTTP Header Auth con
+header `x-api-key`, valor `WA_API_KEY`; seleccionar esa credencial al importar.
+El JSON no incluye secretos. Conectar el nodo de envío que ya usa el equipo.
+
+Seed idempotente (solo crea nombres ausentes, preserva ediciones y activación):
+
+```sh
+ORG_SLUG=inicial ALLOW_DEMO_SEED=1 node scripts/seed-servidores.mjs
+```
+
+Igual que `ajustes-ar.mjs`, usa la guarda de `scripts/lib/demo-seed.mjs`:
+**NODE_ENV=production lo bloquea incluso con ALLOW_DEMO_SEED=1**. Para la carga
+futura deliberada, ejecutar con `NODE_ENV` sin definir o con `NODE_ENV=development`,
+con la org destino explícita y después de respaldo. Aquí solo se probó en BD
+local desechable. No crea usuarios, cobros ni heartbeats; imprime los tokens de
+los servidores nuevos una sola vez tras confirmar la transacción. No guardar
+esa salida en logs compartidos.
+
+⚠️ Julio debe comparar **vence, costo_anual_mxn y cargas con la base real del
+panel original** antes de dar por bueno el seed: la copia local tenía cinco
+servidores y cero pagos, no representa producción. Costos quedan NULL; la fecha
+2027-05-11 de Ámbar Rojo viene del documento histórico y debe confirmarse.
+Pie Feliz vence marzo 2027, pero el día exacto queda NULL. Confirmar reparto del
+VPS Pruebas, cargas históricas de Futura Fortuna en baja, ambarcrm_demo,
+novegabienesraices.com y clientes sin contrato (Coparmex es alianza).
+
+Pruebas: `scripts/check-servidores.ts`, auditoría dinámica ampliada
+`prisma/scripts/test-aislamiento.ts`, y `prisma/scripts/test-servidores-e2e.ts`.
+Las FK compuestas impiden asociar heartbeats o contratos con servidores ajenos.

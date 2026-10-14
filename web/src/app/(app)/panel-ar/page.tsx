@@ -10,6 +10,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { FormularioModulo } from "@/components/modulos/FormularioModulo";
 import { FilaCobro } from "@/components/ar/FilaCobro";
 import { EstadoAR } from "@/components/ar/EstadoAR";
+import { AlertasAR } from "@/components/ar/AlertasAR";
+import { alertasAR } from "@/lib/alertas-ar-db";
 
 export const dynamic = "force-dynamic";
 export default async function PanelARPage() {
@@ -18,6 +20,7 @@ export default async function PanelARPage() {
   if(!(await moduloActivo("panel_ar")))redirect("/");
   const [panel,modulo] = await Promise.all([panelAR(BigInt(sesion.user.orgId)),db.moduloOrg.findFirst({where:{clave:"panel_ar"}})]);
   const config = configPanelAR(modulo?.config);
+  const alertas = sesion.user.orgId === "1" && sesion.user.puesto === "Administrador" ? await alertasAR(1n) : null;
   const esAdmin = sesion.user.rol==="admin";
   const totalMes = panel.cobradoMes.plus(panel.venceMes);
   const porcentaje = totalMes.gt(0) ? panel.cobradoMes.div(totalMes).mul(100).toNumber() : 0;
@@ -30,6 +33,7 @@ export default async function PanelARPage() {
   ];
   return <div className="min-w-0 space-y-6 p-4 md:p-6">
     <EncabezadoPagina titulo="Panel Ámbar Rojo" descripcion={`Operación comercial · ${panel.fecha} · MXN`} acciones={<a className="rounded-lg border bg-card px-3 py-2 text-sm font-medium hover:bg-muted" href="/api/panel-ar/exportar">Exportar CSV</a>} />
+    {alertas && <AlertasAR alertas={alertas} />}
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{principales.map(k=><article key={k.titulo} className={`surface !border-t-4 p-5 ${k.color}`}><p className="text-sm font-medium">{k.titulo}</p><strong className="mt-4 block text-4xl font-bold tracking-tight tnum">{k.valor}</strong><p className="mt-3 text-xs text-muted-foreground">{k.nota}</p></article>)}</section>
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{[["MRR proyectado","$"+panel.mrrProyectado.toFixed(2)],["Vence en 7 días","$"+panel.vence7Dias.toFixed(2)],["Por cobrar este mes","$"+panel.venceMes.toFixed(2)],["Desarrollo / pruebas",String(panel.clientesDesarrollo)],["Incobrables","$"+panel.incobrable.toFixed(2)]].map(([titulo,valor])=><article key={titulo} className="surface p-4"><p className="text-xs text-muted-foreground">{titulo}</p><strong className="mt-2 block text-xl tnum">{valor}</strong></article>)}</section>
     {(panel.sinDiaCobro>0 || panel.sinVencimiento>0) && <p className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">{panel.sinDiaCobro} contratos sin día de cobro · {panel.sinVencimiento} cargos sin vencimiento. Confirma las fechas para programar la cobranza.</p>}

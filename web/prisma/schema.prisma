@@ -21,6 +21,8 @@ model Contrato {
   inicioMensualidad DateTime? @map("inicio_mensualidad") @db.Date
   fechaBaja DateTime? @map("fecha_baja") @db.Date
   notas String?
+  servidorId BigInt? @map("servidor_id")
+  servidor Servidor? @relation(fields: [servidorId, orgId], references: [id, orgId], onDelete: Restrict)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   contacto Contacto @relation(fields: [contactoId], references: [id], onDelete: Restrict)
@@ -29,6 +31,44 @@ model Contrato {
   @@index([orgId, estado])
   @@index([contactoId])
   @@map("contratos")
+}
+
+model Servidor {
+  id BigInt @id @default(autoincrement())
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre String
+  proveedor String
+  ip String
+  propietario String
+  loPagamos Boolean @default(true) @map("lo_pagamos")
+  costoAnualMxn Decimal? @map("costo_anual_mxn") @db.Decimal(12, 2)
+  vence DateTime? @db.Date
+  activo Boolean @default(true)
+  ramTotalMb Int? @map("ram_total_mb")
+  notas String?
+  cargasLibres String? @map("cargas_libres")
+  heartbeatTokenHash String @unique @map("heartbeat_token_hash")
+  ultimoReporte DateTime? @map("ultimo_reporte") @db.Timestamptz(6)
+  heartbeats HeartbeatServidor[]
+  contratos Contrato[]
+  @@unique([orgId, nombre])
+  @@unique([id, orgId])
+  @@map("servidores")
+}
+
+model HeartbeatServidor {
+  id BigInt @id @default(autoincrement())
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  servidorId BigInt @map("servidor_id")
+  fecha DateTime @default(now()) @db.Timestamptz(6)
+  ramPct Float @map("ram_pct")
+  cpuPct Float @map("cpu_pct")
+  discoPct Float @map("disco_pct")
+  ramTotalMb Int @map("ram_total_mb")
+  uptimeHoras Float @map("uptime_horas")
+  servidor Servidor @relation(fields: [servidorId, orgId], references: [id, orgId], onDelete: Cascade)
+  @@index([orgId, servidorId, fecha])
+  @@map("heartbeats_servidor")
 }
 
 model Cobro {

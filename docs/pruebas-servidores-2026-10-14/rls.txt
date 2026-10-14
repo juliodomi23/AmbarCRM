@@ -1,0 +1,3 @@
+crm_app|f|f
+servidores|t
+heartbeats_servidor|t

@@ -1,0 +1,2 @@
+{"modo":"CON_PROTECCION","vencimientoSimple":{"estado":"cancelada","reservaActiva":false},"cruce":{"operacionesCumplidas":1,"accionesGanadoras":1,"estado":"cancelada","stockAplicado":false,"stock":1,"reservaActiva":false,"consistente":true},"pendienteABorrador":"409"}
+EXIT 0

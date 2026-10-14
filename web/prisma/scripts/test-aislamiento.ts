@@ -37,6 +37,7 @@ function identificador(valor: string) {
 }
 
 async function valorColumna(columna: Columna, tabla: string, indice: number) {
+  if (tabla === "servidores" && columna.column_name === "heartbeat_token_hash") return "a".repeat(64);
   if (tabla === "contratos" && columna.column_name === "tipo") return "bot_whatsapp";
   if (tabla === "cobros" && columna.column_name === "concepto") return "extra";
   if (columna.column_name === "org_id") return orgA.toString();
@@ -143,7 +144,7 @@ async function main() {
      ORDER BY c.table_name`,
   );
   assert.ok(tablas.rowCount && tablas.rowCount > 0, "No se encontraron tablas con org_id");
-  for (const tabla of ["contratos", "cobros"]) {
+  for (const tabla of ["contratos", "cobros", "servidores", "heartbeats_servidor"]) {
     assert.ok(tablas.rows.some((fila) => fila.table_name === tabla), `${tabla} debe estar incluida en la auditoría RLS`);
   }
 

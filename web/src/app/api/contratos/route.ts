@@ -7,6 +7,7 @@ import { paginacionListado } from "@/lib/paginacion";
 import { respuestaNegocio } from "@/lib/rutas-edicion";
 import { serializar } from "@/lib/serialize";
 import { filtroContratosAR } from "@/lib/ar-vistas";
+import { requireModuloActivo } from "@/lib/modulos";
 
 export const GET = conModulo("contratos", {}, async (_sesion, req: NextRequest) => {
   const where = filtroContratosAR(req.nextUrl.searchParams.get("bajas") === "1", (req.nextUrl.searchParams.get("q") ?? "").trim().slice(0,100));
@@ -16,6 +17,10 @@ export const GET = conModulo("contratos", {}, async (_sesion, req: NextRequest) 
 
 export const POST = conModulo("contratos", {}, async (sesion, req: NextRequest) => {
   const datos = validarContrato(await req.json());
+  if (datos.servidorId) {
+    const denegada = await requireModuloActivo("servidores", sesion);
+    if (denegada) return denegada;
+  }
   try { return Response.json(serializar({ contrato: await crearContrato(sesion.orgId!, datos) }), { status: 201 }); }
   catch (error) { return respuestaNegocio(error); }
 });

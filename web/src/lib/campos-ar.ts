@@ -2,7 +2,7 @@ import type { CampoFormulario, OpcionCampo } from "@/components/modulos/Formular
 import { ESTADOS_CONTRATO, METODOS_COBRO, TIPOS_CONTRATO } from "./contratos-cobros";
 
 const opciones = (valores: readonly string[]) => valores.map((valor) => ({ valor, etiqueta: valor.replaceAll("_", " ") }));
-export function camposContrato(contactos?: OpcionCampo[]): CampoFormulario[] {
+export function camposContrato(contactos?: OpcionCampo[], servidores?: OpcionCampo[]): CampoFormulario[] {
   return [
     { nombre: "contactoId", etiqueta: "Cliente", tipo: contactos ? "seleccion" : "contacto", requerido: true, opciones: contactos },
     { nombre: "tipo", etiqueta: "Servicio", tipo: "seleccion", opciones: opciones(TIPOS_CONTRATO) },
@@ -15,6 +15,7 @@ export function camposContrato(contactos?: OpcionCampo[]): CampoFormulario[] {
     { nombre: "fechaBaja", etiqueta: "Fecha de baja", tipo: "fecha" },
     { nombre: "oportunidadId", etiqueta: "ID de oportunidad (opcional)", tipo: "numero" },
     { nombre: "notas", etiqueta: "Notas y datos por confirmar", tipo: "textarea" },
+    ...(servidores ? [{ nombre: "servidorId", etiqueta: "Servidor", tipo: "seleccion" as const, opciones: [{ valor: "", etiqueta: "Sin servidor" }, ...servidores] }] : []),
   ];
 }
 

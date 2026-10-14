@@ -31,7 +31,7 @@ export function PantallaConfiguracion() {
       bots={[]}
       orgs={null}
       modulosPorOrg={null}
-      modulos={[...MODULOS]}
+      modulos={MODULOS.filter(m => !("soloPlataforma" in m && m.soloPlataforma))}
     />
   );
 }

@@ -1,0 +1,2 @@
+{"modo":"CON_PROTECCION","ultimoProducto":{"intentos":2,"ventas":1,"stockFinal":0},"uuidCliente":{"peticiones":5,"respuestasExitosas":5,"ventasGuardadas":1,"idsDistintos":1},"aperturaUsuario":{"intentos":2,"turnosAbiertos":1},"aperturaCaja":{"intentos":2,"turnosAbiertos":1},"cancelacionContraCorte":{"cancelacion":"rechazada409","cierre":"cumplido","esperadoGuardado":100,"esperadoSegunVentasFinales":100,"coincide":true}}
+EXIT 0

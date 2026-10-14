@@ -1,0 +1,188 @@
+{
+  "name": "[ALERTAS] AmbarCRM → WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "id": "trigger-alertas",
+      "name": "Diario 8:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "panel",
+              "name": "panel",
+              "value": "={{ $env.AMBARCRM_URL }}",
+              "type": "string"
+            },
+            {
+              "id": "mandar_si_no_hay_nada",
+              "name": "mandar_si_no_hay_nada",
+              "value": false,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "config-alertas",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        20,
+        300
+      ],
+      "notes": "Configura AMBARCRM_URL en n8n. El secreto va en una credencial HTTP Header Auth, header x-api-key, valor WA_API_KEY del CRM."
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.panel }}/api/panel-ar/alertas",
+        "options": {
+          "timeout": 20000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "get-alertas",
+      "name": "Panel — GET /api/alertas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        300
+      ],
+      "notes": "Selecciona una credencial HTTP Header Auth con x-api-key: WA_API_KEY. No incluir secretos en este JSON. La respuesta trae texto incluso sin alertas."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "hay-algo",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.rojas + $json.amarillas > 0 || $('Config').first().json.mandar_si_no_hay_nada }}",
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "hay-alertas",
+      "name": "¿Hay algo que decir?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        460,
+        300
+      ],
+      "notes": "Un mensaje diario que casi siempre dice 'todo bien' se deja de leer en dos semanas. Por eso por defecto solo manda cuando hay algo. Pon mandar_si_no_hay_nada = true si prefieres saber que el cron sigue vivo."
+    },
+    {
+      "parameters": {
+        "jsCode": "// El panel ya devuelve el texto listo en `texto`. Aquí solo se le pega el\n// enlace: la alerta sin el lugar donde arreglarla obliga a buscarla a mano.\nconst d = $input.first().json;\nconst panel = $('Config').first().json.panel;\n\nreturn [{\n  json: {\n    mensaje: `${d.texto}\\n\\n${panel}`,\n    rojas: d.rojas,\n    amarillas: d.amarillas,\n  },\n}];"
+      },
+      "id": "armar-mensaje",
+      "name": "Armar mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Falta el nodo de envío\n\nConecta «Armar mensaje» a donde quieras que llegue, mandando `{{ $json.mensaje }}`:\n\n- **Evolution API** (HTTP Request POST a `/message/sendText/<instancia>`)\n- **Chatwoot** (HTTP Request al endpoint de mensajes de una conversación)\n- **Telegram / correo** si prefieres no meter ruido en el WhatsApp de trabajo\n\nSe deja sin configurar a propósito: poner una credencial adivinada haría que el workflow *pareciera* funcionar y fallara callado el primer día.",
+        "height": 260,
+        "width": 380
+      },
+      "id": "nota-envio",
+      "name": "Nota — conectar el envío",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        900,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "Diario 8:30": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Panel — GET /api/alertas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Panel — GET /api/alertas": {
+      "main": [
+        [
+          {
+            "node": "¿Hay algo que decir?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay algo que decir?": {
+      "main": [
+        [
+          {
+            "node": "Armar mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Mexico_City",
+    "saveDataErrorExecution": "all"
+  },
+  "active": false
+}

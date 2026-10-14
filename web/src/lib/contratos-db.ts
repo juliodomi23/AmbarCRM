@@ -6,6 +6,10 @@ import { actualizarEmbudoAR } from "../../scripts/lib/ar-embudo.mjs";
 export type DatosContrato = ReturnType<typeof validarContrato>;
 
 async function validarReferencias(tx: Prisma.TransactionClient, datos: DatosContrato) {
+  if (datos.servidorId) {
+    const servidor = await tx.servidor.findFirst({ where: { id: datos.servidorId, orgId: 1n }, select: { id: true } });
+    if (!servidor) throw new ErrorRetail("Servidor inexistente o de otra empresa", 400);
+  }
   const contacto = await tx.contacto.findFirst({ where: { id: datos.contactoId } });
   if (!contacto) throw new ErrorRetail("Cliente inexistente o de otra empresa", 400);
   if (datos.oportunidadId) {

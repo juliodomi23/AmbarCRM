@@ -1592,3 +1592,54 @@ DO $$ BEGIN
       (monto_pagado BETWEEN 0 AND monto AND jsonb_typeof(pagos)='array');
   END IF;
 END $$;
+
+-- Infraestructura de la plataforma: sin credenciales del VPS ni tokens en claro.
+CREATE TABLE IF NOT EXISTS servidores (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  nombre TEXT NOT NULL, proveedor TEXT NOT NULL, ip TEXT NOT NULL, propietario TEXT NOT NULL,
+  lo_pagamos BOOLEAN NOT NULL DEFAULT true,
+  costo_anual_mxn NUMERIC(12,2) CHECK (costo_anual_mxn >= 0), vence DATE,
+  activo BOOLEAN NOT NULL DEFAULT true, ram_total_mb INTEGER CHECK (ram_total_mb >= 0),
+  notas TEXT, cargas_libres TEXT,
+  heartbeat_token_hash TEXT NOT NULL UNIQUE CHECK (heartbeat_token_hash ~ '^[a-f0-9]{64}$'),
+  ultimo_reporte TIMESTAMPTZ,
+  UNIQUE (org_id, nombre), UNIQUE (id, org_id)
+);
+CREATE TABLE IF NOT EXISTS heartbeats_servidor (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  servidor_id BIGINT NOT NULL, fecha TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ram_pct DOUBLE PRECISION NOT NULL CHECK (ram_pct BETWEEN 0 AND 100),
+  cpu_pct DOUBLE PRECISION NOT NULL CHECK (cpu_pct BETWEEN 0 AND 100),
+  disco_pct DOUBLE PRECISION NOT NULL CHECK (disco_pct BETWEEN 0 AND 100),
+  ram_total_mb INTEGER NOT NULL CHECK (ram_total_mb >= 0),
+  uptime_horas DOUBLE PRECISION NOT NULL CHECK (uptime_horas >= 0 AND uptime_horas < 'Infinity'::float8),
+  FOREIGN KEY (servidor_id, org_id) REFERENCES servidores(id, org_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS heartbeats_servidor_org_fecha_idx ON heartbeats_servidor(org_id, servidor_id, fecha);
+ALTER TABLE contratos ADD COLUMN IF NOT EXISTS servidor_id BIGINT;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='contratos'::regclass AND conname='contratos_servidor_org_fk') THEN
+    ALTER TABLE contratos ADD CONSTRAINT contratos_servidor_org_fk FOREIGN KEY (servidor_id, org_id) REFERENCES servidores(id, org_id) ON DELETE RESTRICT;
+  END IF;
+END $$;
+DO $$ DECLARE t TEXT; BEGIN
+  FOREACH t IN ARRAY ARRAY['servidores','heartbeats_servidor'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format('CREATE POLICY org_isolation ON %I USING (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint) WITH CHECK (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint)', t);
+  END LOOP;
+END $$;
+GRANT SELECT, INSERT, UPDATE, DELETE ON servidores, heartbeats_servidor TO crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+-- Resuelve únicamente la identidad; la lectura/escritura posterior sigue bajo RLS.
+CREATE OR REPLACE FUNCTION resolve_servidor_by_heartbeat_hash(token_hash TEXT)
+RETURNS TABLE(org_id BIGINT, servidor_id BIGINT)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+  SELECT s.org_id, s.id FROM public.servidores s JOIN public.orgs o ON o.id=s.org_id
+  WHERE s.heartbeat_token_hash=token_hash AND s.activo AND o.activo AND s.org_id=1
+$$;
+REVOKE ALL ON FUNCTION resolve_servidor_by_heartbeat_hash(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION resolve_servidor_by_heartbeat_hash(TEXT) TO crm_app;

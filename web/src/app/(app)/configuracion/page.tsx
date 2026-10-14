@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { db, runWithOrg } from "@/lib/db";
 import { MODULOS, puestoPuedeAcceder } from "@/lib/modulos";
+import { moduloVisibleEnOrg } from "@/lib/modulos-plataforma";
 import { puestosParaModulos } from "@/lib/puestos";
 import { getSesion } from "@/lib/session";
 import {
@@ -44,7 +45,7 @@ export default async function ConfiguracionPage() {
     modulosAccesibles: modulosActivos
       .filter((activo) => {
         const modulo = MODULOS.find((item) => item.clave === activo.clave);
-        return modulo && puestoPuedeAcceder(
+        return modulo && moduloVisibleEnOrg(modulo, session.user.orgId) && puestoPuedeAcceder(
           modulo.clave,
           activo.config,
           usuario.puesto,
@@ -79,7 +80,7 @@ export default async function ConfiguracionPage() {
       bots={serializar(bots)}
       orgs={orgs ? serializar(orgs) : null}
       modulosPorOrg={modulosPorOrg ? serializar(modulosPorOrg) : null}
-      modulos={[...MODULOS]}
+      modulos={MODULOS.filter(m => moduloVisibleEnOrg(m, session.user.orgId))}
     />
   );
 }

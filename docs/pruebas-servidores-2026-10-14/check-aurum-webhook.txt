@@ -1,0 +1,2 @@
+aurum webhook: header x-aurum-clave y ?clave= válidos, secretos incorrectos o vacíos rechazados OK
+EXIT 0

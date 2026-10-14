@@ -1,0 +1,9 @@
+VPS Ámbar Rojo: ya existe, se conserva sin cambios.
+VPS Villafuerte: ya existe, se conserva sin cambios.
+VPS Pruebas: ya existe, se conserva sin cambios.
+VPS Pie Feliz: ya existe, se conserva sin cambios.
+Seed ambar-rojo: 0 servidores nuevos; sin heartbeats ni porcentajes inventados. ⚠️ Confirmar vence, costo anual y cargas contra la BD real del panel original. Fuente: docs/11-infraestructura/infraestructura-n8n.md y docs/05-financiero/infraestructura-hosting.md; documentación histórica, no producción.
+Guarda sin ALLOW_DEMO_SEED: EXIT 1 esperado · Error: Define ALLOW_DEMO_SEED=1 para autorizar datos de demostración
+Guarda producción con autorización: EXIT 1 esperado · Error: Los seeds de demo están bloqueados en producción
+Guarda sin ORG_SLUG: EXIT 1 esperado · Error: Define ORG_SLUG; no se elige una organización por defecto
+Seed idempotente y guardas OK; no tokens impresos en segunda ejecución, sin reportes, sin escrituras al rechazo.

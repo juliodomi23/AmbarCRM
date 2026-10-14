@@ -10,6 +10,7 @@ import { configSinSecretos } from "@/lib/lealtad";
 import { referenciaPropia } from "@/lib/referencias";
 import { requireSesion } from "@/lib/session";
 import { conErrores } from "@/lib/errores-api";
+import { moduloVisibleEnOrg } from "@/lib/modulos-plataforma";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ async function manejarGET() {
     select: { clave: true, config: true },
   });
   return NextResponse.json({
-    modulos: MODULOS.map((m) => {
+    modulos: MODULOS.filter(m => moduloVisibleEnOrg(m, s.orgId)).map((m) => {
       const guardado = activos.find((a) => a.clave === m.clave);
       const config = configSinSecretos(configObjeto(guardado?.config));
       return {
@@ -60,6 +61,8 @@ async function manejarPATCH(req: NextRequest) {
   if ("error" in s) return s.error;
   const { clave, config } = await req.json().catch(() => ({}));
   const catalogo = moduloPorClave(String(clave));
+  if (catalogo && !moduloVisibleEnOrg(catalogo, s.orgId))
+    return NextResponse.json({ error: "módulo no activo" }, { status: 404 });
   if (
     !catalogo ||
     !config ||
@@ -122,6 +125,8 @@ async function manejarPOST(req: NextRequest) {
   const catalogo = moduloPorClave(String(clave));
   if (!orgId || !catalogo || typeof activo !== "boolean")
     return NextResponse.json({ error: "datos inválidos" }, { status: 400 });
+  if (!moduloVisibleEnOrg(catalogo, String(orgId)))
+    return NextResponse.json({ error: "módulo no activo" }, { status: 404 });
   await runWithOrg(BigInt(orgId), async () => {
     const actual = await db.moduloOrg.findFirst({
       where: { clave: String(clave) },

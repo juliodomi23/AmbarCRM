@@ -1,0 +1,2 @@
+{"descuentoCajero":{"promocionSinManual":201,"promocionMasQuinceManual":403},"listaPublica":{"caja":"80","cajaClienteSinLista":"80","ventas":"80","tienda":"80.00"},"costoUnitario":{"caja":"30.00","ventas":"30.00","pedidoPendiente":null}}
+EXIT 0

@@ -1,0 +1,2 @@
+contratos/cobros: MRR, inicio/baja, febrero 29–31 → 28, cargos exactos, IA una vez por cliente, permisos y cero envíos automáticos OK
+EXIT 0

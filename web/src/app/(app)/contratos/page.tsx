@@ -30,7 +30,8 @@ export default async function ContratosPage({searchParams}:{searchParams:Promise
     db.contacto.findMany({take:LIMITE_PANEL,select:{id:true,nombre:true},orderBy:{nombre:"asc"}}),
   ]);
   const clientes = new Map([...contactos,...contratos.map(c=>c.contacto)].map(c=>[String(c.id),c.nombre]));
-  const campos = camposContrato([...clientes].map(([valor,etiqueta])=>({valor,etiqueta})));
+  const servidores = await moduloActivo("servidores") ? await db.servidor.findMany({ select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }) : undefined;
+  const campos = camposContrato([...clientes].map(([valor,etiqueta])=>({valor,etiqueta})), servidores?.map(s => ({ valor: String(s.id), etiqueta: s.nombre })));
   const grupos = [
     {titulo:"Producción",estados:["produccion"]},{titulo:"Desarrollo y pruebas",estados:["en_desarrollo","en_pruebas"]},
     {titulo:"Pausados",estados:["pausado"]},{titulo:"Por confirmar",estados:[""]},{titulo:"Bajas e incobrables",estados:["baja","incobrable"]},

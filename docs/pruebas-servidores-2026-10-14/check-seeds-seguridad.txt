@@ -1,0 +1,2 @@
+seeds demo: bloqueo de producción, autorización y contraseña aleatoria OK
+EXIT 0
