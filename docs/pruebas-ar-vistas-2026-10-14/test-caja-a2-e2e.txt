@@ -1,0 +1,2 @@
+{"loginReal":{"cajero":true,"encargado":true},"devolucionTurnoCerrado":{"turnoOriginal":"cerrado","salidasOriginal":0,"salidasTurnoActual":1,"cambioLigado":true},"notaCredito":{"saldoInicial":"40","pagoAplicado":40,"saldoFinal":0},"apartados":{"cancelacionLiberaStock":1,"vencimientoLiberaStock":1,"cronSinLlave":401,"cronConLlave":200},"credito":{"cajeroConfiguraLimite":403,"cajeroSobreLimite":403,"encargadoSobreLimite":201,"abonoEntraAlTurno":1,"saldoFinal":130},"whatsappSinConversacionOficial":409}
+EXIT 0

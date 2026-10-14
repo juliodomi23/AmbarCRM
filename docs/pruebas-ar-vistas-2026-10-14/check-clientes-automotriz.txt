@@ -1,0 +1,2 @@
+verticales clientes, pacientes, automotriz e inmobiliaria OK
+EXIT 0

@@ -1,0 +1,12 @@
+    slug    | contratos | oportunidades | pie_feliz_web |   mrr   
+------------+-----------+---------------+---------------+---------
+ inicial    |        10 |            17 |             0 | 4400.00
+ ambar-rojo |        10 |            17 |             0 | 4400.00
+(2 rows)
+
+ fixtures_interfaz 
+-------------------
+                 0
+(1 row)
+
+EXIT 0

@@ -1,0 +1,12 @@
+ rolname | rolsuper | rolbypassrls 
+---------+----------+--------------
+ crm_app | f        | f
+(1 row)
+
+ column_name  | column_default 
+--------------+----------------
+ monto_pagado | 0
+ pagos        | '[]'::jsonb
+(2 rows)
+
+EXIT 0

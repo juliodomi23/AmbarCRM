@@ -1,0 +1,3 @@
+Ajustes AR (ambar-rojo): eliminados 0 contratos web de Pie Feliz y 0 cobros.
+Embudo: {"clientes":9,"creadas":0,"actualizadas":0}
+EXIT 0

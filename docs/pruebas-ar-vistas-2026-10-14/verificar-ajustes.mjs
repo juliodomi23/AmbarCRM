@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {createRequire} from 'node:module';
+const require=createRequire(new URL('../../web/package.json',import.meta.url));
+const {Pool}=require('pg');
+const leer=async n=>JSON.parse(await readFile(new URL(n,import.meta.url),'utf8'));
+const antes=await leer('ajustes-antes.json');
+const primera=await leer('ajustes-despues-1.json');
+const segunda=await leer('ajustes-despues-2.json');
+assert.deepEqual(antes.fueraAR,primera.fueraAR);
+assert.deepEqual(primera.fueraAR,segunda.fueraAR);
+assert.deepEqual(primera.conteosAR,segunda.conteosAR);
+assert.equal(antes.conteosAR.contratos,11);
+assert.equal(segunda.conteosAR.contratos,10);
+assert.equal(segunda.conteosAR.oportunidades,17);
+const url=process.env.ADMIN_DATABASE_URL;
+if(!url || new URL(url).hostname!=='127.0.0.1' || new URL(url).port!=='55453')throw Error('Solo BD desechable');
+const pool=new Pool({connectionString:url});
+try {
+  const {rows}=await pool.query(`SELECT o.slug,c.nombre,t.tipo,p.estado,p.motivo_perdida,p.valor,p.campos FROM contratos t JOIN contactos c ON c.id=t.contacto_id JOIN orgs o ON o.id=t.org_id LEFT JOIN oportunidades p ON p.contacto_id=c.id AND p.titulo='Servicio contratado · '||c.nombre WHERE o.slug IN ('ambar-rojo','inicial') ORDER BY o.slug,c.nombre,t.tipo`);
+  assert.equal(rows.filter(r=>r.nombre==='Pie Feliz'&&r.tipo==='web').length,0);
+  assert.ok(rows.every(r=>r.estado==='ganado'||r.estado==='perdido'));
+  assert.ok(rows.filter(r=>r.nombre==='Huipix').every(r=>r.estado==='perdido'&&r.motivo_perdida==='Cierre incobrable'));
+  assert.ok(rows.filter(r=>r.nombre==='Dentu').every(r=>r.campos.valorAnual&&r.valor==='14400.00'));
+  const aliado=await pool.query(`SELECT count(*)::int AS n FROM oportunidades p JOIN contactos c ON c.id=p.contacto_id JOIN orgs o ON o.id=p.org_id WHERE o.slug IN ('ambar-rojo','inicial') AND c.nombre='Coparmex'`);
+  assert.equal(aliado.rows[0].n,0);
+  const control=await pool.query(`SELECT count(*)::int AS n FROM contratos t JOIN contactos c ON c.id=t.contacto_id JOIN orgs o ON o.id=t.org_id WHERE o.slug='control-merge-ar' AND c.nombre='Pie Feliz' AND t.tipo='web'`);
+  assert.equal(control.rows[0].n,1);
+  console.log('OK: ajustes repetidos sin duplicar; 11 → 10 contratos y 10 → 17 oportunidades; otros tenants intactos por SHA-256 en 78 tablas; web de Pie Feliz ajena conservada; 9 clientes y 8 prospectos, Coparmex fuera; Ganado/Perdido y valor anual correctos');
+  console.log(JSON.stringify(rows));
+}finally{await pool.end();}

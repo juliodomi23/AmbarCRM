@@ -498,6 +498,13 @@ Un cliente puede tener varios contratos. Los datos no confirmados admiten NULL;
 se presentan como «por confirmar», sin convertirlos en ceros. Referencias de
 cliente y oportunidad se comprueban dentro de la transacción del tenant.
 
+La lista oculta bajas e incobrables; «Mostrar bajas» usa `?bajas=1` e indica
+cuántos contratos están ocultos. Tarjetas agrupadas, colores compartidos y detalle
+`/contratos/[id]` muestran servicio, mensualidad y fecha de cobro. Producción y
+pausa son acciones directas; baja exige Administrador, fecha y confirmación.
+Solo cancela cargos abiertos con vencimiento posterior a la baja, conserva
+deudas anteriores y pagos, y actualiza la oportunidad comercial del cliente.
+
 Al crear un contrato con cierre y porcentaje conocidos se generan anticipo y
 balance exactos, con vencimiento vacío hasta confirmarlo. Cobros permite definir
 o cambiar la fecha de cargos pendientes. La edición bloquea el contrato: con historial no permite
@@ -509,6 +516,12 @@ reasignar cliente ni reescribir el cierre o su porcentaje.
 cancelación e incobrable con nota obligatoria y solo para Administrador.
 El pago bloquea la fila y repetirlo devuelve `repetido: true`, sin volver a
 aplicarlo. Cancelados e incobrables no admiten pagos posteriores.
+
+«Registrar pago» admite abonos con fecha, método y referencia: conserva el monto
+original y muestra el saldo. `monto_pagado` y `pagos` amplían la tabla existente;
+la clave de cada abono y el bloqueo impiden repetirlo. «Nuevo cobro» admite
+anticipo, balance, mensualidad y extra; un periodo mensual duplicado devuelve 409.
+La lista agrupa vencidos, semana, mes, después, pagados e historial.
 
 `POST /api/cron/generar-cobros`, con `x-api-key: WA_API_KEY`, recorre las empresas
 activas, continúa si alguna falla y genera el mes siguiente en America/Mexico_City.
@@ -539,6 +552,19 @@ El reparto es informativo y configurable: proyecto CTO 70 % / CEO 30 %, mensuali
 contratos se cobran en meses distintos. Los cargos extra se indican «reparto por
 definir»: falta una regla de negocio para distribuirlos. Los pagos históricos sin
 fecha quedan fuera del ingreso del mes; no se inventan fechas ni métodos.
+
+El ingreso del mes suma los abonos efectivamente recibidos, aunque el cargo aún
+tenga saldo; cartera y CSV usan el saldo restante. KPI y barras CSS muestran
+cobrado/por cobrar y pipeline abierto, sin probabilidades ni dependencias nuevas.
+
+`ORG_SLUG=inicial ALLOW_DEMO_SEED=1 node scripts/ajustes-ar.mjs` ajusta únicamente
+esa organización: elimina la web de Pie Feliz y sus cobros y completa Comercial
+Ámbar Rojo con clientes ganados/perdidos. Repetirlo no duplica ni reescribe datos
+iguales. El seed replica ese resultado. Valores: cierre conocido (también cero),
+o mensualidad × 12 con indicación «valor anual». El embudo ofrece selector,
+búsqueda en servidor y conteos/paginación de hasta 200 por columna.
+La misma guarda del seed rechaza `NODE_ENV=production`, incluso con autorización.
+No cambiar esa guarda para ejecutar ajustes; revisar primero el entorno de la consola.
 
 `ALLOW_DEMO_SEED=1 node scripts/seed-ambar-rojo.mjs` prepara `ambar-rojo` en una
 base local. Está bloqueado en producción. Conserva ediciones posteriores, no

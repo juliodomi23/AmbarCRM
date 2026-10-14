@@ -1,0 +1,5 @@
+OK: cobro manual desde UI, abono 30 de 80 con saldo 50, liquidación 50 con saldo 0; duplicado mensual 409 visible; producción y pausa; baja con fecha y confirmación conserva el pagado y cancela el futuro; baja oculta y visible con ?bajas=1.
+Búsqueda en servidor de Dentu: OK
+Datos temporales eliminados (ver limpieza-interfaz.txt).
+Cero errores de JavaScript; ninguna confirmación de WhatsApp pulsada.
+EXIT 0

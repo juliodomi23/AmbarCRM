@@ -1,0 +1,2 @@
+{"pedidoConEnvio":{"ingresoProducto":100,"utilidad":40,"envios":50,"reembolso":100},"calculoManual":{"cobrado":180,"devolucion":60,"ingresoNeto":120,"costoNeto":80,"utilidad":40},"reporte":{"ingresoNeto":120,"costoNeto":80,"utilidad":40},"canceladaExcluible":true,"ventaViejaSinCosto":{"utilidad":null,"clasificacion":"sin costo"}}
+EXIT 0

@@ -1,0 +1,31 @@
+{
+  "pagoParcial": {
+    "monto": 80,
+    "recibido": 30,
+    "saldo": 50
+  },
+  "liquidacion": {
+    "recibido": 80,
+    "saldo": 0
+  },
+  "mensualidad": {
+    "id": 95,
+    "monto": 100,
+    "periodo": "2099-02"
+  },
+  "duplicado": {
+    "status": 409,
+    "body": {
+      "error": "Ya existe un cobro de mensualidad para 2099-02"
+    }
+  },
+  "produccionYPausa": "OK",
+  "baja": {
+    "estado": "baja",
+    "ocultaPorDefecto": true,
+    "visibleConBajas": true,
+    "conservaPago": true,
+    "cancelaFuturo": true
+  },
+  "errores": []
+}

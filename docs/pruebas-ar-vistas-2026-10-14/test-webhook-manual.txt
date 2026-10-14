@@ -1,0 +1,6 @@
+[meta/webhook] evento phone_number_id=9179195941220866 campos=messages
+[meta/webhook] firma inválida: revisa META_APP_SECRET o el App Secret del canal manual
+[meta/webhook] evento phone_number_id=9179195941220866 campos=messages
+[meta/webhook] firma inválida: revisa META_APP_SECRET o el App Secret del canal manual
+OK · webhook: firma del canal manual aceptada, firma equivocada rechazada, firma global intacta
+EXIT 0

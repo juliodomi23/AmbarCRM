@@ -1,0 +1,266 @@
+{
+  "vistas": [
+    {
+      "ruta": "/contratos",
+      "ancho": 375,
+      "documento": 375,
+      "mainVisible": 375,
+      "mainContenido": 375
+    },
+    {
+      "ruta": "/cobros",
+      "ancho": 375,
+      "documento": 375,
+      "mainVisible": 375,
+      "mainContenido": 375
+    },
+    {
+      "ruta": "/panel-ar",
+      "ancho": 375,
+      "documento": 375,
+      "mainVisible": 375,
+      "mainContenido": 375
+    },
+    {
+      "ruta": "/embudos",
+      "ancho": 375,
+      "documento": 375,
+      "mainVisible": 375,
+      "mainContenido": 375
+    },
+    {
+      "ruta": "/contratos",
+      "ancho": 1440,
+      "documento": 1440,
+      "mainVisible": 1184,
+      "mainContenido": 1184
+    },
+    {
+      "ruta": "/cobros",
+      "ancho": 1440,
+      "documento": 1440,
+      "mainVisible": 1184,
+      "mainContenido": 1184
+    },
+    {
+      "ruta": "/panel-ar",
+      "ancho": 1440,
+      "documento": 1440,
+      "mainVisible": 1184,
+      "mainContenido": 1184
+    },
+    {
+      "ruta": "/embudos",
+      "ancho": 1440,
+      "documento": 1440,
+      "mainVisible": 1184,
+      "mainContenido": 1184
+    }
+  ],
+  "bordeProduccion": {
+    "ancho": "4px",
+    "color": "rgb(5, 150, 105)"
+  },
+  "bordesKPI": [
+    {
+      "titulo": "MRR hoy",
+      "ancho": "4px",
+      "color": "rgb(5, 150, 105)"
+    },
+    {
+      "titulo": "Por cobrar vencido",
+      "ancho": "4px",
+      "color": "rgb(220, 38, 38)"
+    },
+    {
+      "titulo": "Cobrado del mes",
+      "ancho": "4px",
+      "color": "rgb(5, 150, 105)"
+    },
+    {
+      "titulo": "Clientes en producción",
+      "ancho": "4px",
+      "color": "rgb(37, 99, 235)"
+    }
+  ],
+  "badges": [
+    {
+      "estado": "produccion",
+      "tema": "claro",
+      "color": "rgb(6, 95, 70)",
+      "fondo": "rgb(236, 253, 245)",
+      "contraste": 7.29,
+      "tachado": "none"
+    },
+    {
+      "estado": "en_desarrollo",
+      "tema": "claro",
+      "color": "rgb(120, 53, 15)",
+      "fondo": "rgb(255, 251, 235)",
+      "contraste": 8.75,
+      "tachado": "none"
+    },
+    {
+      "estado": "en_pruebas",
+      "tema": "claro",
+      "color": "rgb(30, 64, 175)",
+      "fondo": "rgb(239, 246, 255)",
+      "contraste": 8.01,
+      "tachado": "none"
+    },
+    {
+      "estado": "pausado",
+      "tema": "claro",
+      "color": "rgb(51, 65, 85)",
+      "fondo": "rgb(241, 245, 249)",
+      "contraste": 9.45,
+      "tachado": "none"
+    },
+    {
+      "estado": "baja",
+      "tema": "claro",
+      "color": "rgb(153, 27, 27)",
+      "fondo": "rgb(254, 242, 242)",
+      "contraste": 7.6,
+      "tachado": "none"
+    },
+    {
+      "estado": "incobrable",
+      "tema": "claro",
+      "color": "rgb(69, 10, 10)",
+      "fondo": "rgb(254, 226, 226)",
+      "contraste": 13.22,
+      "tachado": "none"
+    },
+    {
+      "estado": "pagado",
+      "tema": "claro",
+      "color": "rgb(6, 95, 70)",
+      "fondo": "rgb(236, 253, 245)",
+      "contraste": 7.29,
+      "tachado": "none"
+    },
+    {
+      "estado": "pendiente",
+      "tema": "claro",
+      "color": "rgb(51, 65, 85)",
+      "fondo": "rgb(241, 245, 249)",
+      "contraste": 9.45,
+      "tachado": "none"
+    },
+    {
+      "estado": "vencido",
+      "tema": "claro",
+      "color": "rgb(153, 27, 27)",
+      "fondo": "rgb(254, 242, 242)",
+      "contraste": 7.6,
+      "tachado": "none"
+    },
+    {
+      "estado": "cancelado",
+      "tema": "claro",
+      "color": "rgb(51, 65, 85)",
+      "fondo": "rgb(241, 245, 249)",
+      "contraste": 9.45,
+      "tachado": "line-through"
+    },
+    {
+      "estado": "por_confirmar",
+      "tema": "claro",
+      "color": "rgb(51, 65, 85)",
+      "fondo": "rgb(241, 245, 249)",
+      "contraste": 9.45,
+      "tachado": "none"
+    },
+    {
+      "estado": "produccion",
+      "tema": "oscuro",
+      "color": "rgb(167, 243, 208)",
+      "fondo": "rgb(2, 44, 34)",
+      "contraste": 11.81,
+      "tachado": "none"
+    },
+    {
+      "estado": "en_desarrollo",
+      "tema": "oscuro",
+      "color": "rgb(253, 230, 138)",
+      "fondo": "rgb(69, 26, 3)",
+      "contraste": 12.03,
+      "tachado": "none"
+    },
+    {
+      "estado": "en_pruebas",
+      "tema": "oscuro",
+      "color": "rgb(191, 219, 254)",
+      "fondo": "rgb(23, 37, 84)",
+      "contraste": 10.34,
+      "tachado": "none"
+    },
+    {
+      "estado": "pausado",
+      "tema": "oscuro",
+      "color": "rgb(226, 232, 240)",
+      "fondo": "rgb(30, 41, 59)",
+      "contraste": 11.87,
+      "tachado": "none"
+    },
+    {
+      "estado": "baja",
+      "tema": "oscuro",
+      "color": "rgb(254, 202, 202)",
+      "fondo": "rgb(69, 10, 10)",
+      "contraste": 11.16,
+      "tachado": "none"
+    },
+    {
+      "estado": "incobrable",
+      "tema": "oscuro",
+      "color": "rgb(254, 202, 202)",
+      "fondo": "rgb(69, 10, 10)",
+      "contraste": 11.16,
+      "tachado": "none"
+    },
+    {
+      "estado": "pagado",
+      "tema": "oscuro",
+      "color": "rgb(167, 243, 208)",
+      "fondo": "rgb(2, 44, 34)",
+      "contraste": 11.81,
+      "tachado": "none"
+    },
+    {
+      "estado": "pendiente",
+      "tema": "oscuro",
+      "color": "rgb(226, 232, 240)",
+      "fondo": "rgb(30, 41, 59)",
+      "contraste": 11.87,
+      "tachado": "none"
+    },
+    {
+      "estado": "vencido",
+      "tema": "oscuro",
+      "color": "rgb(254, 202, 202)",
+      "fondo": "rgb(69, 10, 10)",
+      "contraste": 11.16,
+      "tachado": "none"
+    },
+    {
+      "estado": "cancelado",
+      "tema": "oscuro",
+      "color": "rgb(226, 232, 240)",
+      "fondo": "rgb(30, 41, 59)",
+      "contraste": 11.87,
+      "tachado": "line-through"
+    },
+    {
+      "estado": "por_confirmar",
+      "tema": "oscuro",
+      "color": "rgb(226, 232, 240)",
+      "fondo": "rgb(30, 41, 59)",
+      "contraste": 11.87,
+      "tachado": "none"
+    }
+  ],
+  "contrasteMinimo": 7.29,
+  "errores": []
+}

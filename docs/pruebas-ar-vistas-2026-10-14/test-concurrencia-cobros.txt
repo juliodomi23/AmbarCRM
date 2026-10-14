@@ -1,0 +1,2 @@
+{"modo":"CON_PROTECCION","pagosAplicados":1,"mensualidades":1,"creadosPorCron":[1,0]}
+EXIT 0
