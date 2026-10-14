@@ -30,10 +30,11 @@ export function cambiarCobro(orgId: bigint, id: bigint, body: Record<string, unk
     if (!cobro) throw new ErrorRetail("Cobro inexistente", 404);
     const pagos = (Array.isArray(cobro.pagos) ? cobro.pagos : []) as AbonoAR[];
     const clave = String(body.clavePago ?? "");
-    const previo = clave ? pagos.find(pago => pago.clave === clave) : undefined;
+    const previo = clave && (body.estado ?? "pagado") === "pagado" ? pagos.find(pago => pago.clave === clave) : undefined;
     if (previo) {
       const monto = body.monto === undefined ? null : montoOpcional(body.monto);
       if ((body.monto !== undefined && (!monto || !monto.eq(previo.monto))) || (body.metodo !== undefined && body.metodo !== previo.metodo)) throw new ErrorRetail("Ese pago ya se registró con otros datos", 409);
+      if ((body.referencia !== undefined && (String(body.referencia).trim() || null) !== previo.referencia) || (body.fechaPago !== undefined && String(body.fechaPago) !== hoyAR(new Date(previo.pagadoEn)))) throw new ErrorRetail("Ese pago ya se registró con otra fecha o referencia", 409);
       return { cobro, saldo: saldoCobro(cobro), repetido: true };
     }
     if (body.vence !== undefined && body.estado === undefined) {

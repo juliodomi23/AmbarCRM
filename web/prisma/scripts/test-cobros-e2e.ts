@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import bcrypt from "bcryptjs";
 import pg from "pg";
+import { Prisma } from "@prisma/client";
 import { dbRaw } from "../../src/lib/db";
 import { transaccionTenant } from "../../src/lib/retail-db";
 import { hoyAR, mesSiguiente } from "../../src/lib/contratos-cobros";
@@ -111,6 +112,40 @@ try {
   const csv = await fetch(`${baseUrl}/api/panel-ar/exportar`, { headers: { Cookie: cookie } });
   assert.equal(csv.status, 200);
   assert.match(await csv.text(), /Cobrado del mes/);
+  // Restaurar el módulo tras probar el apagado: las acciones nuevas usan la misma ruta.
+  await transaccionTenant(org.id, tx => tx.moduloOrg.update({where:{orgId_clave:{orgId:org.id,clave:"cobros"}},data:{config:configOriginal.config as Prisma.InputJsonValue,activo:true}}));
+  const manual = await api("/api/cobros","POST",{contratoId:String(contratoId),concepto:"extra",monto:"80",vence:hoyAR()});
+  assert.equal(manual.status,201);
+  const abono = {estado:"pagado",monto:"30",fechaPago:hoyAR(),metodo:"transferencia",referencia:"Recibo UI",clavePago:`ui-parcial-${sufijo}`};
+  const parciales = await Promise.all([api(`/api/cobros/${manual.data.cobro.id}`,"PATCH",abono),api(`/api/cobros/${manual.data.cobro.id}`,"PATCH",abono)]);
+  assert.ok(parciales.every(p=>p.status===200));
+  assert.equal(parciales.filter(p=>!p.data.repetido).length,1);
+  assert.equal(parciales[0].data.saldo,"50");
+  assert.equal(parciales[0].data.cobro.monto,"80");
+  assert.equal((await api(`/api/cobros/${manual.data.cobro.id}`,"PATCH",{...abono,monto:"60",clavePago:`sobrepago-${sufijo}`})).status,400);
+  assert.equal((await api(`/api/cobros/${manual.data.cobro.id}`,"PATCH",{...abono,monto:"50",clavePago:`saldo-ui-${sufijo}`})).data.cobro.estado,"pagado");
+  const mensualManual = {contratoId:String(contratoId),concepto:"mensualidad",periodo:"2099-02-01",monto:"100",vence:"2099-02-05"};
+  const futuro = await api("/api/cobros","POST",mensualManual);
+  assert.equal(futuro.status,201);
+  const duplicado = await api("/api/cobros","POST",mensualManual);
+  assert.equal(duplicado.status,409);
+  assert.match(duplicado.data.error,/Ya existe/);
+  const antesBaja = await fetch(`${baseUrl}/contratos`,{headers:{Cookie:cookie}});
+  assert.ok((await antesBaja.text()).includes(`data-contrato-id="${contratoId}"`));
+  assert.equal((await api(`/api/contratos/${contratoId}`,"PATCH",{estado:"baja",fechaBaja:hoyAR()})).status,400);
+  assert.equal((await api(`/api/contratos/${contratoId}`,"PATCH",{estado:"baja",fechaBaja:hoyAR(),confirmarBaja:true})).status,200);
+  assert.equal((await api(`/api/cobros/${futuro.data.cobro.id}`)).data.cobro.estado,"cancelado");
+  assert.equal((await api(`/api/cobros/${anticipo.id}`)).data.cobro.estado,"pagado","la baja conserva ingresos recibidos");
+  assert.ok(!(await fetch(`${baseUrl}/contratos`,{headers:{Cookie:cookie}}).then(r=>r.text())).includes(`data-contrato-id="${contratoId}"`));
+  assert.ok((await fetch(`${baseUrl}/contratos?bajas=1`,{headers:{Cookie:cookie}}).then(r=>r.text())).includes(`data-contrato-id="${contratoId}"`));
+  assert.ok(!(await api("/api/contratos")).data.contratos.some((c:{id:string})=>c.id===String(contratoId)));
+  assert.ok((await api("/api/contratos?bajas=1")).data.contratos.some((c:{id:string})=>c.id===String(contratoId)));
+  assert.equal((await api("/api/panel-ar")).data.mrr,"4400");
+  assert.equal((await api("/api/panel-ar")).data.cobradoMes,"230.01");
+  const oportunidadBaja = await transaccionTenant(org.id,tx=>tx.oportunidad.findFirstOrThrow({where:{contactoId:contactoId!,titulo:{startsWith:"Servicio contratado"}}}));
+  assert.equal(oportunidadBaja.estado,"perdido");
+  assert.match(oportunidadBaja.motivoPerdida!,/Baja/);
+  console.log("AR vistas E2E: ruta de Registrar pago, abonos concurrentes sin duplicar, saldo 50 → 0, cobro manual mensual, duplicado 409, baja confirmada cancela futuro y conserva ingresos, oculta por defecto y muestra ?bajas=1, oportunidad Perdido OK");
   console.log("cobros E2E: login orgSlug, seed MRR 4400, contrato → anticipo/balance → cron concurrente → mensualidad → pago, MRR 4500 y cobrado 150.01, IA 100, errores 400/404/409, permisos 403, módulo apagado 404, aislamiento bidireccional y CSV OK; cero envíos");
 } finally {
   if (contratoId) await admin.query("DELETE FROM cobros WHERE org_id=$1 AND contrato_id=$2", [String(org.id), String(contratoId)]);
