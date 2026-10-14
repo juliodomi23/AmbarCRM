@@ -1,0 +1,230 @@
+{
+  "views": [
+    {
+      "page": "contratos",
+      "width": 375,
+      "title": "Servicios contratados",
+      "viewport": 375,
+      "body": 375,
+      "main": 375
+    },
+    {
+      "modal": "Editar contrato",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 812
+      },
+      "cancelVisible": true
+    },
+    {
+      "modal": "Nuevo servicio contratado",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 812
+      },
+      "cancelVisible": true
+    },
+    {
+      "page": "cobros",
+      "width": 375,
+      "title": "Cobros y fechas de pago",
+      "viewport": 375,
+      "body": 375,
+      "main": 375
+    },
+    {
+      "modal": "Actualizar cobro",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 812
+      },
+      "cancelVisible": true
+    },
+    {
+      "modal": "Vencimiento del cobro",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 812
+      },
+      "cancelVisible": true
+    },
+    {
+      "modal": "Recordatorios manuales",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 812
+      },
+      "cancelVisible": true
+    },
+    {
+      "page": "panel-ar",
+      "width": 375,
+      "title": "Panel Ámbar Rojo",
+      "viewport": 375,
+      "body": 375,
+      "main": 375
+    },
+    {
+      "modal": "Reparto de comisiones",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 812
+      },
+      "cancelVisible": true
+    },
+    {
+      "page": "contratos",
+      "width": 1440,
+      "title": "Servicios contratados",
+      "viewport": 1440,
+      "body": 1440,
+      "main": 1184
+    },
+    {
+      "modal": "Editar contrato",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 900
+      },
+      "cancelVisible": true
+    },
+    {
+      "modal": "Nuevo servicio contratado",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 900
+      },
+      "cancelVisible": true
+    },
+    {
+      "page": "cobros",
+      "width": 1440,
+      "title": "Cobros y fechas de pago",
+      "viewport": 1440,
+      "body": 1440,
+      "main": 1184
+    },
+    {
+      "modal": "Actualizar cobro",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 900
+      },
+      "cancelVisible": true
+    },
+    {
+      "modal": "Vencimiento del cobro",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 900
+      },
+      "cancelVisible": true
+    },
+    {
+      "modal": "Recordatorios manuales",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 900
+      },
+      "cancelVisible": true
+    },
+    {
+      "page": "panel-ar",
+      "width": 1440,
+      "title": "Panel Ámbar Rojo",
+      "viewport": 1440,
+      "body": 1440,
+      "main": 1184
+    },
+    {
+      "modal": "Reparto de comisiones",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 900
+      },
+      "cancelVisible": true
+    },
+    {
+      "clienteSeleccionado": "Huipix",
+      "viewport": 375
+    },
+    {
+      "clienteSeleccionado": "Huipix",
+      "viewport": 1440
+    }
+  ],
+  "jsErrors": [],
+  "result": "OK: 6 vistas, 12 formularios, cliente seleccionado y cancelación; cero cambios ni envíos"
+}

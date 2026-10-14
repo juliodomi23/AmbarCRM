@@ -1,8 +1,9 @@
 # Revisión visual · módulos Ámbar Rojo
 
 Navegador Chromium instalado, app local `next start` en 127.0.0.1:3127,
-login real de la organización `ambar-rojo`. Datos del seed sin teléfonos ni
-correos reales. Viewports: escritorio 1440 × 900 y celular 375 × 812.
+login real de la organización `ambar-rojo`. Compilación final de las 21:31,
+servida tras reiniciar a las 22:02. Datos del seed sin teléfonos ni correos reales.
+Viewports: escritorio 1440 × 900 y celular 375 × 812.
 
 ## Páginas revisadas
 
@@ -31,22 +32,27 @@ botones y parte de los campos.
 Así los formularios conservan el componente Modal existente y ocupan la ventana
 completa. Modal y Confirmador no se modificaron.
 
-La causa se comprobó quitando esas clases en el DOM de la página real. Estas
-capturas son simulaciones del cambio, anteriores a su integración final:
+La corrección se verificó dentro de la app final, sin modificar el DOM. Los
+12 formularios ocupan x=0, y=0, ancho/alto=375/812 y 1440/900. Se desplazó cada
+formulario hasta sus botones y se comprobó que Cancelar lo cierra.
 
-- [Simulación 375 px](capturas/ar-2026-10-13/contrato-editar-simulacion-375.png).
-- [Simulación 1440 px](capturas/ar-2026-10-13/contrato-editar-simulacion-1440.png).
+## Formularios revisados en la app final
 
-Rectángulos medidos: x=0, y=0, ancho/alto=375/812 y 1440/900.
-El cliente aparece seleccionado; las acciones quedan accesibles mediante el
-scroll del formulario. No se envió ni eliminó ningún dato para estas capturas.
+| Formulario | 1440 px | 375 px |
+|---|---|---|
+| Editar contrato, botones accesibles | [Captura](capturas/ar-2026-10-13/contrato-editar-1440.png) | [Captura](capturas/ar-2026-10-13/contrato-editar-375.png) |
+| Cliente seleccionado al editar | [Captura](capturas/ar-2026-10-13/contrato-cliente-1440.png) | [Captura](capturas/ar-2026-10-13/contrato-cliente-375.png) |
+| Nuevo contrato | [Captura](capturas/ar-2026-10-13/contrato-nuevo-1440.png) | [Captura](capturas/ar-2026-10-13/contrato-nuevo-375.png) |
+| Pago / estado del cobro | [Captura](capturas/ar-2026-10-13/cobro-pago-1440.png) | [Captura](capturas/ar-2026-10-13/cobro-pago-375.png) |
+| Fecha de vencimiento | [Captura](capturas/ar-2026-10-13/cobro-fecha-1440.png) | [Captura](capturas/ar-2026-10-13/cobro-fecha-375.png) |
+| Configuración de plantilla | [Captura](capturas/ar-2026-10-13/cobro-plantilla-1440.png) | [Captura](capturas/ar-2026-10-13/cobro-plantilla-375.png) |
+| Configuración del reparto | [Captura](capturas/ar-2026-10-13/panel-reparto-1440.png) | [Captura](capturas/ar-2026-10-13/panel-reparto-375.png) |
 
-## Pendiente de integración
+[Mediciones y resultados](pruebas-ar-2026-10-13/visual.json): 6 vistas y 12
+formularios correctos, cero errores JavaScript ni desbordamiento horizontal.
+Se confirmó que el cliente seleccionado corresponde al contrato (Huipix).
+No se guardaron pagos, fechas ni configuraciones para tomar las capturas.
+No se pulsó ningún botón de envío de WhatsApp.
 
-**Falta comprobar los diálogos finales dentro de las tres páginas de la app
-después de reiniciar `next start`.** El servidor que sigue abierto conserva
-la compilación anterior y el arranque desde herramientas fue rechazado con
-`blocked by policy`. Se solicitó el reinicio al usuario.
-
-No se revisó en un celular físico ni con lector de pantalla. La simulación
-identifica la causa del recorte; falta la comprobación con la compilación final.
+La [prueba HTTP final](pruebas-ar-2026-10-13/e2e.txt) también pasó, con Exit 0.
+No se revisó en un celular físico ni con lector de pantalla.

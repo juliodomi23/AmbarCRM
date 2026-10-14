@@ -3,8 +3,8 @@
 Rama `modulos-ar`, creada desde `modulos-fase-2` (9f147e1). Trabajo local;
 sin despliegue, push, envíos reales ni acceso al chat de Villafuerte.
 
-**Implementación guardada. Pendiente: repetir la integración HTTP y de los
-diálogos contra el último build después del reinicio solicitado de la app.**
+**Implementación y verificación final completadas. La prueba HTTP pasa contra
+el build final; capturas de páginas y formularios guardadas en ambos tamaños.**
 
 ## Implementación y decisiones
 
@@ -90,7 +90,8 @@ tres veces con salida 0. La app se probó con `next start` en 127.0.0.1:3127.
 | Aislamiento | Exit 0: lectura y escritura aisladas en 78 tablas. |
 | Datos de cobros + regresión de referencias/cupos/retail/reservas | Todos con Exit 0. |
 | E2E real, flujo base | Pasó con login `orgSlug`, contrato → anticipo/balance → cron → mensualidad → pago; MRR 4500 y cobrado 150.01; permisos y aislamiento bidireccional. |
-| E2E final ampliado | Pendiente de reiniciar el proceso del puerto 3127. La configuración vacía recibe código anterior (`500 !== 400`); faltan los casos HTTP de vencimiento vacío y edición de fecha. Las funciones y transacciones finales pasan en los checks y pruebas de BD. |
+| E2E final ampliado | Exit 0: configuración vacía devuelve 400; cargos iniciales sin vencimiento, edición de fecha, pagos y cron concurrentes, MRR, comisiones, permisos, aislamiento y CSV correctos. |
+| Revisión visual final | 6 vistas y 12 formularios en 375 y 1440 px; sin errores JavaScript ni desbordamiento horizontal. Cliente seleccionado y cancelación comprobados; cero cambios ni envíos. |
 
 Las salidas completas, sin resumir cada prueba, están en:
 
@@ -98,8 +99,8 @@ Las salidas completas, sin resumir cada prueba, están en:
 - [Pruebas de base de datos y regresión](pruebas-ar-2026-10-13/base-datos.txt).
 - [Vencimientos por confirmar y edición de fecha](pruebas-ar-2026-10-13/cobros-datos.txt).
 - [Última ejecución HTTP sobre el servidor anterior](pruebas-ar-2026-10-13/e2e-servidor-anterior.txt).
-- [Repetición HTTP tras el aviso de Ready](pruebas-ar-2026-10-13/e2e.txt):
-  aún sirve la versión anterior y falla con `500 !== 400`.
+- [E2E final tras reinicio](pruebas-ar-2026-10-13/e2e.txt), Exit 0.
+- [Mediciones visuales finales](pruebas-ar-2026-10-13/visual.json).
 - [Sin protección](pruebas-ar-2026-10-13/concurrencia-sin-proteccion.txt) y
   [con protección](pruebas-ar-2026-10-13/concurrencia-con-proteccion.txt).
 - [Migración repetida](pruebas-ar-2026-10-13/migracion.txt) y
@@ -122,8 +123,10 @@ la compilación final con `npx next build`, los tipos y `prisma validate` pasaro
 
 La revisión automática rechazó el arranque desde herramientas (`blocked by policy`);
 el usuario inició/reinició el servidor local para permitir las pruebas HTTP.
-La última comprobación encuentra el proceso 56660 iniciado a las 19:39, anterior
-al build final de las 21:31. Está solicitado reiniciar ese proceso en el puerto 3127.
+El proceso final 140600, iniciado a las 22:02, sirve el build de las 21:31.
+Se verificó la configuración inválida con respuesta 400 y el listado sin la
+animación que recortaba el formulario. El fallo `500 !== 400` del servidor
+anterior queda como evidencia histórica; la ejecución final pasa.
 
 ## Límites de la verificación
 
@@ -137,6 +140,8 @@ Las capturas y comprobaciones visuales se documentan en
 [la revisión visual](revision-visual-2026-10-13.md).
 
 ## Archivos tocados
+
+[Lista exacta de archivos de la rama](pruebas-ar-2026-10-13/archivos-tocados.txt).
 
 - `web/prisma/schema.prisma`, `web/prisma/sql/actualizaciones.sql`:
   modelos, restricciones, aislamiento y permisos por defecto de AR.
