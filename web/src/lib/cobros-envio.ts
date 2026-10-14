@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { getProvider } from "@/lib/channel";
 import { estadoVentana } from "@/lib/meta/ventana";
 import { ErrorRetail } from "@/lib/retail-db";
+import { saldoCobro } from "@/lib/ar-vistas";
 
 /** Solo lo llama la acción manual de Cobros. El cron y el seed no importan este servicio. */
 export async function recordarCobro(id: bigint) {
@@ -21,14 +22,15 @@ export async function recordarCobro(id: bigint) {
   if (!abierta && (!plantilla?.name || !plantilla?.language)) throw new ErrorRetail("Fuera de la ventana de 24 h se necesita una plantilla aprobada", 409);
   const provider = getProvider("cloud_api", conversacion.canal.config, conversacion.canal.instancia);
   const vencimiento = cobro.vence?.toISOString().slice(0, 10) ?? "por definir";
-  const texto = `Hola ${contacto.nombre}, te recordamos el cobro de ${cobro.concepto} por $${cobro.monto.toFixed(2)} MXN, vencimiento ${vencimiento}.`;
+  const saldo = saldoCobro(cobro).toFixed(2);
+  const texto = `Hola ${contacto.nombre}, te recordamos el saldo de ${cobro.concepto} por $${saldo} MXN, vencimiento ${vencimiento}.`;
   let resultado;
   if (abierta) resultado = await provider.enviarTexto(contacto.telefono, texto);
   else {
     if (!provider.listarPlantillas || !provider.enviarPlantilla) throw new ErrorRetail("El canal no admite plantillas", 409);
     const aprobada = (await provider.listarPlantillas()).find((item) => item.name === plantilla!.name && item.language === plantilla!.language && item.status === "APPROVED");
     if (!aprobada) throw new ErrorRetail("La plantilla configurada no está aprobada", 409);
-    resultado = await provider.enviarPlantilla(contacto.telefono, { name: aprobada.name, language: aprobada.language }, [contacto.nombre, cobro.monto.toFixed(2), vencimiento]);
+    resultado = await provider.enviarPlantilla(contacto.telefono, { name: aprobada.name, language: aprobada.language }, [contacto.nombre, saldo, vencimiento]);
   }
   await db.mensaje.create({ data: { conversacionId: conversacion.id, direccion: "saliente", tipo: abierta ? "texto" : "plantilla", contenido: texto, status: resultado.ok ? "enviado" : "fallido", errorDetalle: resultado.ok ? null : resultado.error, waMessageId: resultado.waMessageId } });
   if (!resultado.ok) throw new ErrorRetail("El canal no pudo enviar el recordatorio", 409);

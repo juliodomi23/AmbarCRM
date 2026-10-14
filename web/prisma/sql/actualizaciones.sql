@@ -1582,3 +1582,13 @@ DO $$ DECLARE t TEXT; BEGIN
 END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON contratos, cobros TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+-- Abonos en el mismo cargo: conservar el monto original, el saldo y cada recibo.
+ALTER TABLE cobros ADD COLUMN IF NOT EXISTS monto_pagado NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE cobros ADD COLUMN IF NOT EXISTS pagos JSONB NOT NULL DEFAULT '[]'::jsonb;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='cobros'::regclass AND conname='cobros_abonos_validos') THEN
+    ALTER TABLE cobros ADD CONSTRAINT cobros_abonos_validos CHECK
+      (monto_pagado BETWEEN 0 AND monto AND jsonb_typeof(pagos)='array');
+  END IF;
+END $$;

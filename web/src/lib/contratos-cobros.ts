@@ -95,12 +95,12 @@ export function configPanelAR(valor: unknown) {
   };
 }
 
-type PagoComision = { id: bigint; contactoId: bigint; concepto: string; monto: Prisma.Decimal; periodo: Date | null; pagadoEn?: Date | null };
+type PagoComision = { id: bigint | string; contactoId: bigint; concepto: string; monto: Prisma.Decimal; periodo: Date | null; pagadoEn?: Date | null };
 
 /** El crédito se resta una vez por cliente y mes de servicio, repartido entre sus cobros. */
 export function repartirComisiones(pagos: PagoComision[], config: ReturnType<typeof configPanelAR>) {
   const creditos = new Map<string, Prisma.Decimal>();
-  return [...pagos].sort((a, b) => (a.pagadoEn?.getTime() ?? 0) - (b.pagadoEn?.getTime() ?? 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).map((pago) => {
+  return [...pagos].sort((a, b) => (a.pagadoEn?.getTime() ?? 0) - (b.pagadoEn?.getTime() ?? 0) || String(a.id).localeCompare(String(b.id), undefined, { numeric: true })).map((pago) => {
     const pendiente = !["anticipo", "balance", "mensualidad"].includes(pago.concepto);
     const mensual = pago.concepto === "mensualidad";
     const clave = `${pago.contactoId}:${pago.periodo?.toISOString().slice(0, 7)}`;

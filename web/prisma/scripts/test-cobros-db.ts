@@ -3,7 +3,7 @@ import pg from "pg";
 import { dbRaw } from "../../src/lib/db";
 import { transaccionTenant } from "../../src/lib/retail-db";
 import { crearContrato, editarContrato } from "../../src/lib/contratos-db";
-import { cambiarCobro, crearCobroExtra, generarCobros } from "../../src/lib/cobros-db";
+import { cambiarCobro, crearCobro, generarCobros } from "../../src/lib/cobros-db";
 import { validarContrato, fechaAR } from "../../src/lib/contratos-cobros";
 import { panelAR } from "../../src/lib/panel-ar-db";
 
@@ -37,8 +37,8 @@ try {
   await assert.rejects(() => editarContrato(org.id, a.id, { montoCierre: "200" }), /cobros registrados/);
   await assert.rejects(() => editarContrato(org.id, a.id, { contactoId: String(base.otro.id) }), /cobros registrados/);
   await editarContrato(org.id, a.id, { notas: "Nota editable", inicioMensualidad: "2026-09-01" });
-  await assert.rejects(() => crearCobroExtra(org.id, { contratoId: "abc", monto: "10" }));
-  const extra = await crearCobroExtra(org.id, { contratoId: String(a.id), monto: "10", vence: "2026-09-01" });
+  await assert.rejects(() => crearCobro(org.id, { contratoId: "abc", monto: "10" }));
+  const extra = await crearCobro(org.id, { contratoId: String(a.id), monto: "10", vence: "2026-09-01" });
   assert.equal((await generarCobros(org.id, "2026-10-13")).generados, 2, "no cobra antes del inicio ni sin día de cobro");
   assert.equal((await generarCobros(org.id, "2026-10-13")).generados, 0);
   assert.equal((await transaccionTenant(org.id, (tx) => tx.cobro.findUniqueOrThrow({ where: { id: extra.id } }))).estado, "vencido");
@@ -49,7 +49,8 @@ try {
   const mensuales = await transaccionTenant(org.id, (tx) => tx.cobro.findMany({ where: { concepto: "mensualidad" }, orderBy: { id: "asc" } }));
   await cambiarCobro(org.id, mensuales[0].id, { metodo: "transferencia" }, true);
   await cambiarCobro(org.id, mensuales[1].id, { metodo: "transferencia" }, true);
-  await admin.query("UPDATE cobros SET pagado_en='2026-10-13T12:00:00-06:00' WHERE org_id=$1 AND concepto='mensualidad'", [String(org.id)]);
+  // Los recibos de abonos conservan la fecha; ajustar también el recibo del fixture.
+  await admin.query(`UPDATE cobros SET pagado_en='2026-10-13T12:00:00-06:00', pagos=jsonb_set(pagos,'{0,pagadoEn}','"2026-10-13T18:00:00.000Z"') WHERE org_id=$1 AND concepto='mensualidad'`, [String(org.id)]);
   const octubre = await panelAR(org.id, "2026-10-13");
   assert.equal(octubre.mrr.toString(), "2200", "MRR sigue la regla de producción e inicio; día de cobro solo afecta la generación");
   assert.equal(octubre.mrrProyectado.toString(), "2700");
@@ -60,14 +61,34 @@ try {
   assert.equal(octubre.comisiones.ceo.toString(), "950");
   assert.equal(octubre.incobrable.toString(), "10");
   // El segundo contrato se paga otro mes: el crédito de ese periodo ya se descontó.
-  await admin.query("UPDATE cobros SET pagado_en='2026-11-13T12:00:00-06:00' WHERE id=$1", [String(mensuales[1].id)]);
+  await admin.query(`UPDATE cobros SET pagado_en='2026-11-13T12:00:00-06:00', pagos=jsonb_set(pagos,'{0,pagadoEn}','"2026-11-13T18:00:00.000Z"') WHERE id=$1`, [String(mensuales[1].id)]);
   const noviembre = await panelAR(org.id, "2026-11-13");
   assert.equal(noviembre.comisiones.creditoIA.toString(), "0");
   assert.equal(noviembre.comisiones.cto.toString(), "400");
   assert.equal((await panelAR(org.id, "2026-10-13")).comisiones.creditoIA.toString(), "100");
-  await editarContrato(org.id, b.id, { estado: "baja", fechaBaja: "2026-11-13" });
+  // La baja ahora exige confirmación explícita y cancela cargos futuros.
+  await editarContrato(org.id, b.id, { estado: "baja", fechaBaja: "2026-11-13", confirmarBaja: true });
   assert.equal((await panelAR(org.id, "2026-11-13")).mrr.toString(), "1400");
   assert.equal(fechaAR("2026-02-28")!.toISOString().slice(0, 10), "2026-02-28");
+  const parcial = await crearCobro(org.id, { contratoId: String(a.id), concepto: "extra", monto: "100", vence: "2026-10-01" });
+  const cuerpo = { monto: "30", metodo: "transferencia", fechaPago: "2026-10-13", clavePago: "parcial-concurrente-prueba" };
+  const abonos = await Promise.all([cambiarCobro(org.id, parcial.id, cuerpo, true), cambiarCobro(org.id, parcial.id, cuerpo, true)]);
+  assert.equal(abonos.filter(a => !a.repetido).length, 1, "reintentar un abono concurrente no duplica el ingreso");
+  assert.equal(abonos[0].cobro.monto.toString(), "100", "el importe original no se reduce al abonar");
+  assert.equal(abonos[0].cobro.montoPagado.toString(), "30");
+  await assert.rejects(() => cambiarCobro(org.id, parcial.id, { ...cuerpo, clavePago: "otro-pago-prueba", monto: "80" }, true), /saldo/);
+  const futuro = await crearCobro(org.id, { contratoId: String(a.id), concepto: "mensualidad", periodo: "2099-02-01", monto: "1200", vence: "2099-02-05" });
+  await assert.rejects(() => crearCobro(org.id, { contratoId: String(a.id), concepto: "mensualidad", periodo: "2099-02-01", monto: "1200" }), /Ya existe/);
+  await assert.rejects(() => editarContrato(org.id, a.id, { estado: "baja", fechaBaja: "2026-10-13" }), /confirma/);
+  await assert.rejects(() => editarContrato(org.id, a.id, { estado: "baja", fechaBaja: "2026-10-13", confirmarBaja: true }, false), /Administrador/);
+  await editarContrato(org.id, a.id, { estado: "baja", fechaBaja: "2026-10-13", confirmarBaja: true });
+  const cerrados = await transaccionTenant(org.id, tx => tx.cobro.findMany({ where: { id: { in: [parcial.id,futuro.id] } } }));
+  assert.equal(cerrados.find(c => c.id === futuro.id)?.estado, "cancelado");
+  assert.equal(cerrados.find(c => c.id === parcial.id)?.estado, "vencido", "la deuda anterior a la baja no se cancela");
+  const liquidado = await cambiarCobro(org.id, parcial.id, { ...cuerpo, monto: "70", clavePago: "liquidacion-parcial-prueba" }, true);
+  assert.equal(liquidado.cobro.estado, "pagado");
+  assert.equal((await panelAR(org.id, "2026-10-13")).cobradoMes.toString(), "1300", "el panel suma abonos recibidos, también de contratos dados de baja");
+  console.log("AR vistas DB: abono concurrente idempotente, saldo, sobrepago rechazado, mensualidad manual única, baja confirmada de Administrador y cancelación solo futura OK");
   console.log("cobros DB: referencias de cliente/oportunidad, edición con historial, vencidos, sin día/inicio futuro, cierre de estados, MRR/proyección, IA una vez por cliente incluso con pagos en meses distintos y baja OK");
 } finally {
   for (const tabla of ["cobros", "contratos", "oportunidades", "etapas", "embudos", "contactos", "modulos_org"]) await admin.query(`DELETE FROM ${tabla} WHERE org_id=$1`, [String(org.id)]);

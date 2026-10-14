@@ -38,6 +38,8 @@ model Cobro {
   concepto String
   periodo DateTime? @db.Date
   monto Decimal @db.Decimal(12, 2)
+  montoPagado Decimal @default(0) @map("monto_pagado") @db.Decimal(12, 2)
+  pagos Json @default("[]")
   vence DateTime? @db.Date
   estado String @default("pendiente")
   pagadoEn DateTime? @map("pagado_en") @db.Timestamptz(6)

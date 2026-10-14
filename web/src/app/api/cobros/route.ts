@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { conModulo } from "@/lib/con-modulo";
 import { db } from "@/lib/db";
-import { crearCobroExtra, incluirContrato } from "@/lib/cobros-db";
+import { crearCobro, incluirContrato } from "@/lib/cobros-db";
 import { paginacionListado } from "@/lib/paginacion";
 import { respuestaNegocio } from "@/lib/rutas-edicion";
 import { serializar } from "@/lib/serialize";
@@ -14,6 +14,6 @@ export const GET = conModulo("cobros", {}, async (_sesion, req: NextRequest) => 
 
 export const POST = conModulo("cobros", {}, async (sesion, req: NextRequest) => {
   const body = await req.json();
-  try { return Response.json(serializar({ cobro: await crearCobroExtra(sesion.orgId!, body) }), { status: 201 }); }
+  try { return Response.json(serializar({ cobro: await crearCobro(sesion.orgId!, body) }), { status: 201 }); }
   catch (error) { return respuestaNegocio(error); }
 });

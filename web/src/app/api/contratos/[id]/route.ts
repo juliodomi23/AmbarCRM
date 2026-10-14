@@ -16,6 +16,6 @@ export const PATCH = conModulo("contratos", {}, async (sesion, req: NextRequest,
   const id = await idDeRuta(props);
   if (!id) return noEncontrado();
   const datos = await req.json();
-  try { return Response.json(serializar({ contrato: await editarContrato(sesion.orgId!, id, datos) })); }
+  try { return Response.json(serializar({ contrato: await editarContrato(sesion.orgId!, id, datos, sesion.rol === "admin") })); }
   catch (error) { return respuestaNegocio(error); }
 });
