@@ -1,0 +1,2 @@
+Fixture local mínimo: org 1/ambar-rojo, admin de pruebas, MRR 4400 y balance pagado sin fecha. Sin servidores, seeds ni envíos.
+EXIT 0

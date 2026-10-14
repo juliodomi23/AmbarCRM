@@ -1,0 +1,2 @@
+Fixture local completado: Comercial Ámbar Rojo y seis etapas para el E2E existente de baja de contrato.
+EXIT 0

@@ -1,0 +1,55 @@
+{
+  "medidas": [
+    {
+      "vista": "cobros",
+      "ancho": 375,
+      "viewport": 375,
+      "documento": 375,
+      "contenido": 375,
+      "anchoContenido": 375
+    },
+    {
+      "vista": "cancelar",
+      "ancho": 375,
+      "viewport": 375,
+      "documento": 375,
+      "contenido": 375,
+      "anchoContenido": 375
+    },
+    {
+      "vista": "eliminar",
+      "ancho": 375,
+      "viewport": 375,
+      "documento": 375,
+      "contenido": 375,
+      "anchoContenido": 375
+    },
+    {
+      "vista": "cobros",
+      "ancho": 1440,
+      "viewport": 1440,
+      "documento": 1440,
+      "contenido": 1184,
+      "anchoContenido": 1184
+    },
+    {
+      "vista": "cancelar",
+      "ancho": 1440,
+      "viewport": 1440,
+      "documento": 1440,
+      "contenido": 1184,
+      "anchoContenido": 1184
+    },
+    {
+      "vista": "eliminar",
+      "ancho": 1440,
+      "viewport": 1440,
+      "documento": 1440,
+      "contenido": 1184,
+      "anchoContenido": 1184
+    }
+  ],
+  "errores": [],
+  "ui": "Confirmaciones reales PATCH 200 / DELETE 204; agente sin acciones; mensualidad sin Eliminar; sin desbordes; botones de confirmación >=44px"
+}
+EXIT 0

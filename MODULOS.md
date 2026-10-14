@@ -517,6 +517,23 @@ cancelación e incobrable con nota obligatoria y solo para Administrador.
 El pago bloquea la fila y repetirlo devuelve `repetido: true`, sin volver a
 aplicarlo. Cancelados e incobrables no admiten pagos posteriores.
 
+Administrador puede cancelar también un pago completo o un cargo con abonos:
+requiere motivo y confirmación. Conserva `pagos`, `monto_pagado`, método y fecha
+como registro; repetir la cancelación devuelve `repetido: true`. El saldo de un
+cancelado es cero y queda fuera del ingreso mensual, cartera, calendario del panel,
+comisiones, CSV y alertas. MRR actual/proyectado se calcula desde contratos:
+los cobros cancelados no aportan a esas métricas ni cambian el servicio contratado.
+Incobrable conserva las restricciones existentes.
+
+`DELETE /api/cobros/[id]`, protegido por `conModulo("cobros", { admin: true })`,
+solo elimina cancelados: bloquea la fila y borra en la misma transacción tenant.
+Otro estado devuelve 409: «Cancela el cobro antes de eliminarlo».
+Mensualidades con periodo devuelven 409: «Las mensualidades canceladas se conservan
+para que no se vuelvan a generar». Quedan visibles en Historial, conservando el
+índice único que evita su regeneración. Extras, anticipos y balances cancelados
+sí se eliminan (204). La UI ofrece estas acciones solo a Administrador y confirma
+cliente, concepto y monto antes de eliminar. Sin cambios de esquema ni SQL.
+
 «Registrar pago» admite abonos con fecha, método y referencia: conserva el monto
 original y muestra el saldo. `monto_pagado` y `pagos` amplían la tabla existente;
 la clave de cada abono y el bloqueo impiden repetirlo. «Nuevo cobro» admite

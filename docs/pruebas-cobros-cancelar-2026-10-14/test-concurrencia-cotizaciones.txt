@@ -1,0 +1,2 @@
+{"modo":"CON_PROTECCION","peticiones":2,"respuestasExitosas":2,"aceptacionesNuevas":1,"respuestasIdempotentes":1,"ventasCreadas":1,"stockFinal":1}
+EXIT 0

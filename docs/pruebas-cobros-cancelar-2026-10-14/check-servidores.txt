@@ -1,0 +1,2 @@
+servidores: límites exactos 80/90, 3 h, silencio tras limpieza, sin datos gris, fechas, vencimientos 7/30, WhatsApp vacío y orden, rangos y plataforma OK
+EXIT 0

@@ -1,0 +1,1 @@
+"node"   "D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\node_modules\.bin\\..\next\dist\bin\next" start --hostname 127.0.0.1 --port 3128

@@ -1,0 +1,2 @@
+{"destinoPorEstrella":["https://g.page/r/CresenaE2E/review"],"guardadas":5,"openRedirect":"ignorado","solicitudAutomatica":{"cita":"omitida","venta":"omitida"},"moduloApagado":404,"sinEnlaceValido":404,"agente":403,"enlaceMalo":400,"limitePorIp":{"ok":30,"bloqueadas":2}}
+EXIT 0

@@ -1,0 +1,5 @@
+App local 127.0.0.1:3128 detenida; PID verificado 36308.
+ambarcrm-cobros-cancelar-20261014
+STOP EXIT 0
+ambarcrm-cobros-cancelar-20261014
+REMOVE EXIT 0

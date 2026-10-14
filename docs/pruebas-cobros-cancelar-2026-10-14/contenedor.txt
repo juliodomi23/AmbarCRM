@@ -1,0 +1,1 @@
+/ambarcrm-cobros-cancelar-20261014 b3723056cf79e2fddb64e938670a520c53f9ee66af1cdc29c12a6cab2ddaefcc postgres:16 {"5432/tcp":[{"HostIp":"127.0.0.1","HostPort":"55453"}]} {"/var/lib/postgresql/data":""}

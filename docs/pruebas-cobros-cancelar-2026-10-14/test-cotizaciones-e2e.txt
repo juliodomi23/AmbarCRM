@@ -1,0 +1,2 @@
+{"loginReal":true,"totalServidor":{"enviadoPorNavegador":0.01,"subtotal":15.15,"impuestos":2.32,"total":16.82},"aislamiento":{"propia":200,"otraEmpresa":404},"paginaPublica":{"propia":200,"tokenInventado":404},"respuesta":{"primeraAceptacion":200,"repetidaIdempotente":200,"unaVenta":1,"stockFinal":1.5,"oportunidad":"ganado","eventosGanada":1},"vencimiento":{"aceptarVencida":409,"cronSinLlave":401,"cronConLlave":200,"estado":"vencida"}}
+EXIT 0

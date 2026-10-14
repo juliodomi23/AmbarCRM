@@ -1,0 +1,21 @@
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /next-auth.session-token/. Input:
+
+'next-auth.csrf-token=5abfb02c9fd7edb9614904d74b82ff569155519291b0c462b430765b69d5dda0%7Cbd96491f315336d257cd55df2f03d0725fb3b0f2b01293a6804e9147f3f7e403; next-auth.callback-url=http%3A%2F%2F127.0.0.1%3A3128; next-auth.callback-url=http%3A%2F%2F127.0.0.1%3A3128%2Fcobros'
+
+    at login (D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\prisma\scripts\test-cobros-cancelar-eliminar-e2e.ts:35:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async <anonymous> (D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\prisma\scripts\test-cobros-cancelar-eliminar-e2e.ts:82:18) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'next-auth.csrf-token=5abfb02c9fd7edb9614904d74b82ff569155519291b0c462b430765b69d5dda0%7Cbd96491f315336d257cd55df2f03d0725fb3b0f2b01293a6804e9147f3f7e403; next-auth.callback-url=http%3A%2F%2F127.0.0.1%3A3128; next-auth.callback-url=http%3A%2F%2F127.0.0.1%3A3128%2Fcobros',
+  expected: /next-auth.session-token/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v22.19.0
+EXIT 1

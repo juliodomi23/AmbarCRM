@@ -1,0 +1,2 @@
+caja: turnos, cobro mixto, descuentos, cortes, ticket, lealtad y permisos OK
+EXIT 0

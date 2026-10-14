@@ -1,0 +1,13 @@
+{
+  "medidas": [
+    {
+      "vista": "cobros",
+      "ancho": 375,
+      "viewport": 375,
+      "documento": 375,
+      "contenido": 375,
+      "anchoContenido": 375
+    }
+  ],
+  "errores": []
+}

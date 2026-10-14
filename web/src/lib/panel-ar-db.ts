@@ -15,19 +15,19 @@ export function panelAR(orgId: bigint, fecha = hoyAR()) {
     const finPagos = instanteLocal(siguiente.toISOString().slice(0,10), 0, ZONA_AR);
     const fin7 = new Date(hoy.getTime() + 7 * 86400000);
     const config = configPanelAR((await tx.moduloOrg.findFirst({ where: { clave: "panel_ar" } }))?.config);
-    const idsPagos = await tx.$queryRaw<{id: bigint}[]>`SELECT id FROM cobros WHERE
+    const idsPagos = await tx.$queryRaw<{id: bigint}[]>`SELECT id FROM cobros WHERE estado <> 'cancelado' AND (
       (jsonb_array_length(pagos) > 0 AND EXISTS (SELECT 1 FROM jsonb_array_elements(pagos) p WHERE
         (p->>'pagadoEn')::timestamptz >= ${inicioPagos} AND (p->>'pagadoEn')::timestamptz < ${finPagos}))
-      OR (jsonb_array_length(pagos)=0 AND estado='pagado' AND pagado_en >= ${inicioPagos} AND pagado_en < ${finPagos})`;
+      OR (jsonb_array_length(pagos)=0 AND estado='pagado' AND pagado_en >= ${inicioPagos} AND pagado_en < ${finPagos}))`;
     const abiertos = { estado: { in: ["pendiente", "vencido"] } };
     const [contratos, calendario, cargosPagados, pipeline, pendientes, totalPendientes, totalCalendario, totales] = await Promise.all([
       tx.contrato.findMany({ select: { contactoId: true, estado: true, mensualidad: true, diaCobro: true, inicioMensualidad: true, fechaBaja: true } }),
-      tx.cobro.findMany({ take: LIMITE_PANEL, where: { vence: { gte: mes, lt: siguiente } }, include: incluirContrato, orderBy: [{ vence: "asc" }, { id: "asc" }] }),
+      tx.cobro.findMany({ take: LIMITE_PANEL, where: { estado: { not: "cancelado" }, vence: { gte: mes, lt: siguiente } }, include: incluirContrato, orderBy: [{ vence: "asc" }, { id: "asc" }] }),
       tx.cobro.findMany({ where: { id: { in: idsPagos.map(p => p.id) } }, include: incluirContrato }),
       tx.oportunidad.groupBy({ by: ["etapaId"], where: { estado: "abierto" }, _sum: { valor: true } }),
       tx.cobro.findMany({ take: LIMITE_PANEL, where: abiertos, include: incluirContrato, orderBy: [{ vence: { sort: "asc", nulls: "last" } }, { id: "asc" }] }),
       tx.cobro.count({ where: abiertos }),
-      tx.cobro.count({ where: { vence: { gte: mes, lt: siguiente } } }),
+      tx.cobro.count({ where: { estado: { not: "cancelado" }, vence: { gte: mes, lt: siguiente } } }),
       tx.$queryRaw<{ vencido: Prisma.Decimal; semana: Prisma.Decimal; mes: Prisma.Decimal; incobrable: Prisma.Decimal; sin: bigint }[]>`
         SELECT COALESCE(SUM(monto-monto_pagado) FILTER(WHERE estado IN ('pendiente','vencido') AND vence < ${hoy}),0) AS vencido,
           COALESCE(SUM(monto-monto_pagado) FILTER(WHERE estado IN ('pendiente','vencido') AND vence BETWEEN ${hoy} AND ${fin7}),0) AS semana,
@@ -37,7 +37,7 @@ export function panelAR(orgId: bigint, fecha = hoyAR()) {
     ]);
     const pagos = cargosPagados.flatMap(cobro => abonosCobro(cobro).filter(abono => abono.pagadoEn >= inicioPagos && abono.pagadoEn < finPagos).map(abono => ({ ...cobro, ...abono, cobroId: cobro.id })));
     const periodos = pagos.filter(p => p.concepto === "mensualidad").map(p => ({ contrato: { contactoId: p.contrato.contactoId }, periodo: p.periodo }));
-    const cargosPrevios = periodos.length ? await tx.cobro.findMany({ where: { concepto: "mensualidad", OR: periodos }, include: incluirContrato }) : [];
+    const cargosPrevios = periodos.length ? await tx.cobro.findMany({ where: { estado: { not: "cancelado" }, concepto: "mensualidad", OR: periodos }, include: incluirContrato }) : [];
     const previos = cargosPrevios.flatMap(c => abonosCobro(c).filter(a => a.pagadoEn < finPagos && !pagos.some(p => p.id === a.id)).map(a => ({ ...c, ...a })));
     const comisiones = repartirComisiones([...previos, ...pagos].map(p => ({ ...p, contactoId: p.contrato.contactoId })), config);
     const sumar = (montos: (Prisma.Decimal | null)[]) => montos.reduce<Prisma.Decimal>((s,m) => s.plus(m ?? 0), new Prisma.Decimal(0));

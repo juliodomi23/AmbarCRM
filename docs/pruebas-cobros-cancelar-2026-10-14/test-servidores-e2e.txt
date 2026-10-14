@@ -1,0 +1,2 @@
+servidores E2E: alta/token único, sin datos, rangos, heartbeat concurrente 201/204/204, estado rojo, edición/cargas, rotación 401/201, demo catálogo oculto/API 404/página sin datos, puesto 403, saldo parcial del seed y atraso, incobrable excluido, n8n key 401/200, retención 30 días OK; cero envíos
+EXIT 0

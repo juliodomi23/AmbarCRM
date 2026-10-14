@@ -1,0 +1,2 @@
+OK · aislamiento de lectura y escritura en 80 tablas
+EXIT 0

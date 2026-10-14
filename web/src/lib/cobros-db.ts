@@ -49,7 +49,7 @@ export function cambiarCobro(orgId: bigint, id: bigint, body: Record<string, unk
     if (estado !== "pagado" && !esAdmin) throw new ErrorRetail("Solo Administrador puede cancelar o marcar incobrable", 403);
     if (estado !== "pagado" && !nota) throw new ErrorRetail("La nota es obligatoria");
     if (cobro.estado === estado) return { cobro, repetido: true };
-    if (!["pendiente", "vencido"].includes(cobro.estado)) throw new ErrorRetail("El cobro ya está cerrado", 409);
+    if (!["pendiente", "vencido"].includes(cobro.estado) && !(estado === "cancelado" && cobro.estado === "pagado")) throw new ErrorRetail("El cobro ya está cerrado", 409);
     const metodo = String(body.metodo ?? "");
     if (estado === "pagado" && !(METODOS_COBRO as readonly string[]).includes(metodo)) throw new ErrorRetail("Selecciona un método de pago válido");
     if (estado === "pagado") {
@@ -98,3 +98,14 @@ export function crearCobro(orgId: bigint, body: Record<string, unknown>) {
 }
 
 export const incluirContrato = { contrato: { include: { contacto: { select: { id: true, nombre: true } } } } } satisfies Prisma.CobroInclude;
+
+export function eliminarCobro(orgId: bigint, id: bigint) {
+  return transaccionTenant(orgId, async (tx) => {
+    await tx.$queryRaw`SELECT id FROM cobros WHERE id = ${id} FOR UPDATE`;
+    const cobro = await tx.cobro.findFirst({ where: { id } });
+    if (!cobro) throw new ErrorRetail("Cobro inexistente", 404);
+    if (cobro.estado !== "cancelado") throw new ErrorRetail("Cancela el cobro antes de eliminarlo", 409);
+    if (cobro.concepto === "mensualidad" && cobro.periodo) throw new ErrorRetail("Las mensualidades canceladas se conservan para que no se vuelvan a generar", 409);
+    await tx.cobro.delete({ where: { id } });
+  });
+}

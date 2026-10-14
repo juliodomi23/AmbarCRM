@@ -28,7 +28,7 @@ export function estiloAR(estado: string | null) {
   return ESTILOS_AR[estado as keyof typeof ESTILOS_AR] ?? ESTILOS_AR.por_confirmar;
 }
 export function saldoCobro(cobro: { monto: Prisma.Decimal; montoPagado?: Prisma.Decimal; estado: string }) {
-  return cobro.estado === "pagado" ? new Prisma.Decimal(0) : cobro.monto.minus(cobro.montoPagado ?? 0);
+  return ["pagado", "cancelado"].includes(cobro.estado) ? new Prisma.Decimal(0) : cobro.monto.minus(cobro.montoPagado ?? 0);
 }
 export function grupoCobro(cobro: { estado: string; vence: Date | null }, hoy: Date) {
   if (cobro.estado === "pagado") return "Pagados";
@@ -41,6 +41,7 @@ export function grupoCobro(cobro: { estado: string; vence: Date | null }, hoy: D
 
 export type AbonoAR = { clave: string; monto: string; pagadoEn: string; metodo: string; referencia: string | null };
 export function abonosCobro(cobro: { id: bigint; monto: Prisma.Decimal; estado: string; pagadoEn: Date | null; pagos: unknown }) {
+  if (cobro.estado === "cancelado") return [];
   const pagos = (Array.isArray(cobro.pagos) ? cobro.pagos : []) as AbonoAR[];
   if (pagos.length) return pagos.map((pago) => ({ id: `${cobro.id}:${pago.clave}`, monto: new Prisma.Decimal(pago.monto), pagadoEn: new Date(pago.pagadoEn) }));
   return cobro.estado === "pagado" && cobro.pagadoEn ? [{ id: String(cobro.id), monto: cobro.monto, pagadoEn: cobro.pagadoEn }] : [];

@@ -1,0 +1,20 @@
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+307 !== 401
+
+    at <anonymous> (D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\prisma\scripts\test-cobros-cancelar-eliminar-e2e.ts:84:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 307,
+  expected: 401,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.19.0
+EXIT 1

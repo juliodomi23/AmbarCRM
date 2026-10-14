@@ -1,0 +1,2 @@
+{"casos":288,"iguales":288,"conPromocion":252,"conVolumen":89,"conLista":49,"version":"b4c91242f7a5"}
+EXIT 0

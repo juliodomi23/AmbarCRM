@@ -1,0 +1,17 @@
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: área táctil de 44px
+    at verificar (file:///D:/AmbarRojo/Documentos%20de%20ambar%20rojo/docs/08-productos-internos/AmbarCRM/docs/pruebas-cobros-cancelar-2026-10-14/capturar.mjs:40:41)
+    at async file:///D:/AmbarRojo/Documentos%20de%20ambar%20rojo/docs/08-productos-internos/AmbarCRM/docs/pruebas-cobros-cancelar-2026-10-14/capturar.mjs:75:5 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v22.19.0
+EXIT 1

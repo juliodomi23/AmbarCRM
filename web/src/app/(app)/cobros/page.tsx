@@ -28,7 +28,7 @@ export default async function CobrosPage({searchParams}:{searchParams:Promise<{q
   const [cobros,total,abiertos,abonado,legacy,modulo] = await Promise.all([
     db.cobro.findMany({take:LIMITE_PANEL,skip:(pagina-1)*LIMITE_PANEL,where,include:incluirContrato,orderBy:[{vence:{sort:"asc",nulls:"last"}},{id:"asc"}]}),
     db.cobro.count({where}),db.cobro.aggregate({where:{estado:{in:["pendiente","vencido"]}},_sum:{monto:true,montoPagado:true}}),
-    db.cobro.aggregate({_sum:{montoPagado:true}}),db.cobro.aggregate({where:{estado:"pagado",pagos:{equals:[]}},_sum:{monto:true}}),
+    db.cobro.aggregate({where:{estado:{not:"cancelado"}},_sum:{montoPagado:true}}),db.cobro.aggregate({where:{estado:"pagado",pagos:{equals:[]}},_sum:{monto:true}}),
     db.moduloOrg.findFirst({where:{clave:"cobros"}}),
   ]);
   const hoy = hoyAR();

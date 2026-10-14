@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { conModulo } from "@/lib/con-modulo";
 import { db } from "@/lib/db";
-import { cambiarCobro, incluirContrato } from "@/lib/cobros-db";
+import { cambiarCobro, eliminarCobro, incluirContrato } from "@/lib/cobros-db";
 import { idDeRuta, noEncontrado, respuestaNegocio, type PropsId } from "@/lib/rutas-edicion";
 import { serializar } from "@/lib/serialize";
 
@@ -17,4 +17,13 @@ export const PATCH = conModulo("cobros", {}, async (sesion, req: NextRequest, pr
   const body = await req.json();
   try { return Response.json(serializar(await cambiarCobro(sesion.orgId!, id, body, sesion.rol === "admin"))); }
   catch (error) { return respuestaNegocio(error); }
+});
+
+export const DELETE = conModulo("cobros", { admin: true }, async (sesion, _req: NextRequest, props: PropsId) => {
+  const id = await idDeRuta(props);
+  if (!id) return noEncontrado();
+  try {
+    await eliminarCobro(sesion.orgId!, id);
+    return new Response(null, { status: 204 });
+  } catch (error) { return respuestaNegocio(error); }
 });

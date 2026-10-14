@@ -1,0 +1,14 @@
+BATERÍA http
+test-a3-e2e: EXIT 0
+test-a3-fixes-e2e: EXIT 0
+test-a4-e2e: EXIT 0
+test-caja-a2-e2e: EXIT 0
+test-caja-e2e: EXIT 0
+test-cobros-cancelar-eliminar-e2e: EXIT 1
+test-cobros-e2e: EXIT 1
+test-cotizaciones-e2e: EXIT 0
+test-pedidos-e2e: EXIT 0
+test-resenas-e2e: EXIT 0
+test-servidores-e2e: EXIT 0
+test-sinred-e2e: EXIT 0
+TOTAL 12; FALLOS 2

@@ -1,0 +1,21 @@
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /next-auth.session-token/. Input:
+
+'next-auth.csrf-token=d6cca9a4be812bfb2ad85cc3181286099259ef1b09313e901150ba041cd5aa42%7Cd26c4c0503ee10897299bcff7f85724890ade3c4909464696020418198473229; next-auth.callback-url=http%3A%2F%2F127.0.0.1%3A3128; next-auth.callback-url=http%3A%2F%2F127.0.0.1%3A3128%2Fpanel-ar'
+
+    at login (D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\prisma\scripts\test-cobros-e2e.ts:31:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async <anonymous> (D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\prisma\scripts\test-cobros-e2e.ts:40:12) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'next-auth.csrf-token=d6cca9a4be812bfb2ad85cc3181286099259ef1b09313e901150ba041cd5aa42%7Cd26c4c0503ee10897299bcff7f85724890ade3c4909464696020418198473229; next-auth.callback-url=http%3A%2F%2F127.0.0.1%3A3128; next-auth.callback-url=http%3A%2F%2F127.0.0.1%3A3128%2Fpanel-ar',
+  expected: /next-auth.session-token/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v22.19.0
+EXIT 1
