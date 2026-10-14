@@ -1,0 +1,77 @@
+concurrencia (15 pares de handoffs simultáneos): sin bloqueo → 14 pares con el mismo asesor; con FOR NO KEY UPDATE → 0
+round-robin con 1 Cajero y 2 asesores → asesor1, asesor2, asesor1, asesor2
+citas (15 pares de reservas simultáneas al mismo horario): sin bloqueo → 15 pares con doble reserva; con FOR UPDATE → 0
+reprogramación (15 pares al mismo hueco): sin bloqueo → 15 dobles; con FOR UPDATE → 0
+prisma:error 
+Invalid `db.mensaje.create()` invocation in
+D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\prisma\scripts\test-bot-api.ts:476:22
+
+  473 const visible = (await db.conversacion.findUnique({ where: { id } })) !== null;
+  474 let insertado = true;
+  475 try {
+→ 476   await db.mensaje.create(
+Error occurred during query execution:
+ConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: "42501", message: "new row violates row-level security policy for table \"mensajes\"", severity: "ERROR", detail: None, column: None, hint: None }), transient: false })
+simultáneas: 250 peticiones (2 empresas × 50 GET + 50 POST + 25 cruzadas) → 0 fugas
+prisma:error 
+Invalid `db.mensaje.create()` invocation in
+D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\prisma\scripts\test-bot-api.ts:476:22
+
+  473 const visible = (await db.conversacion.findUnique({ where: { id } })) !== null;
+  474 let insertado = true;
+  475 try {
+→ 476   await db.mensaje.create(
+Error occurred during query execution:
+ConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: "42501", message: "new row violates row-level security policy for table \"mensajes\"", severity: "ERROR", detail: None, column: None, hint: None }), transient: false })
+prisma:error 
+Invalid `prisma.$executeRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42501`. Message: `ERROR: permission denied for table auditoria_bot`
+prisma:error 
+Invalid `prisma.$executeRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42501`. Message: `ERROR: permission denied for table auditoria_bot`
+prisma:error Unique constraint failed on the (not available)
+prisma:error 
+Invalid `db.contacto.create()` invocation in
+D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\src\app\api\v1\accounts\[accountId]\conversations\[conversationId]\contacts\route.ts:67:34
+
+  64 
+  65 let creado;
+  66 try {
+→ 67   creado = await db.contacto.create(
+Unique constraint failed on the (not available)
+prisma:error Unique constraint failed on the (not available)
+prisma:error 
+Invalid `db.contacto.create()` invocation in
+D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\src\app\api\v1\accounts\[accountId]\conversations\[conversationId]\contacts\route.ts:67:34
+
+  64 
+  65 let creado;
+  66 try {
+→ 67   creado = await db.contacto.create(
+Unique constraint failed on the (not available)
+prisma:error Unique constraint failed on the (not available)
+prisma:error 
+Invalid `db.contacto.create()` invocation in
+D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\src\app\api\v1\accounts\[accountId]\conversations\[conversationId]\contacts\route.ts:67:34
+
+  64 
+  65 let creado;
+  66 try {
+→ 67   creado = await db.contacto.create(
+Unique constraint failed on the (not available)
+prisma:error Unique constraint failed on the (not available)
+prisma:error 
+Invalid `db.contacto.create()` invocation in
+D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\src\app\api\v1\accounts\[accountId]\conversations\[conversationId]\contacts\route.ts:67:34
+
+  64 
+  65 let creado;
+  66 try {
+→ 67   creado = await db.contacto.create(
+Unique constraint failed on the (not available)
+OK · API del bot
+EXIT 0

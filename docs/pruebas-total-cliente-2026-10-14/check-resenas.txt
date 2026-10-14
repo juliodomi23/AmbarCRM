@@ -1,0 +1,2 @@
+resenas: enlace de Google, origen, estrellas, config, semana local, QR y ruta pública OK
+EXIT 0

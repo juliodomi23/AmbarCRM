@@ -1,0 +1,5 @@
+Move-Item:
+Line |
+   2 |  … sperado' }; Move-Item -LiteralPath "$destino/app-local.txt" -Destinat …
+     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | The process cannot access the file because it is being used by another process.

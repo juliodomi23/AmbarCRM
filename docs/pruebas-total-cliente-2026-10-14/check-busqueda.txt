@@ -1,0 +1,2 @@
+búsqueda: patrón LIKE escapado OK
+EXIT 0

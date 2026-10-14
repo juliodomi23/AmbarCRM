@@ -179,6 +179,4 @@ export function Lightbox({ url, onClose }: { url: string | null; onClose: () => 
   );
 }
 
-export function formatoMoneda(valor: number, moneda = "MXN") {
-  return new Intl.NumberFormat("es-MX", { style: "currency", currency: moneda, maximumFractionDigits: 0 }).format(valor);
-}
+export { formatoMoneda } from "@/lib/formato-moneda";

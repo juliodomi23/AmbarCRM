@@ -1,0 +1,18 @@
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+locator.waitFor: Timeout 30000ms exceeded.
+Call log:
+  - waiting for getByRole('region', { name: 'Resumen de cobros del cliente' }) to be visible
+
+    at captura (D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\docs\pruebas-total-cliente-2026-10-14\test-total-cliente-ui.mjs:33:17)
+    at async file:///D:/AmbarRojo/Documentos%20de%20ambar%20rojo/docs/08-productos-internos/AmbarCRM/docs/pruebas-total-cliente-2026-10-14/test-total-cliente-ui.mjs:103:5 {
+  log: [
+    "  - waiting for getByRole('region', { name: 'Resumen de cobros del cliente' }) to be visible"
+  ],
+  name: 'TimeoutError'
+}
+
+Node.js v22.19.0
+EXIT 1

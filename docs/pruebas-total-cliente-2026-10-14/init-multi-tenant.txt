@@ -1,0 +1,53 @@
+CREATE TABLE
+INSERT 0 1
+DO
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "usuarios" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "embudos" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "etapas" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "contactos" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "etiquetas" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "contacto_etiquetas" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "oportunidades" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "canales_whatsapp" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "grupos" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "mensajes_grupo" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "bots" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "conversaciones" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "mensajes" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "plantillas_mensaje" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "notas" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "tareas" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "ajustes" does not exist, skipping
+psql:/tmp/multi-tenant.sql:81: NOTICE:  policy "org_isolation" for relation "eventos" does not exist, skipping
+DO
+CREATE FUNCTION
+CREATE FUNCTION
+psql:/tmp/multi-tenant.sql:179: NOTICE:  policy "org_isolation" for relation "mensajes_programados" does not exist, skipping
+DO
+psql:/tmp/multi-tenant.sql:179: NOTICE:  policy "org_isolation" for relation "push_suscripciones" does not exist, skipping
+GRANT
+GRANT
+GRANT
+GRANT
+ALTER DEFAULT PRIVILEGES
+ALTER DEFAULT PRIVILEGES
+ALTER DEFAULT PRIVILEGES
+CREATE FUNCTION
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+DO
+GRANT
+GRANT
+EXIT 0

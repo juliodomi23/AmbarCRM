@@ -1,0 +1,2 @@
+Total cliente DB OK: dos contratos, estados excluidos con abonos, pendiente sin pago, histórico sin abonos, parcial exacto, paridad KPI /cobros, saldo, primer abono/fecha histórica, mensualidades, más de LIMITE_PANEL, sin pagos/sin fechas y aislamiento RLS crm_app sin BYPASSRLS.
+EXIT 0

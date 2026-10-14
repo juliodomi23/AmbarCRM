@@ -1,0 +1,3 @@
+plantillaMeta OK
+botones, ventana y errores OK
+EXIT 0

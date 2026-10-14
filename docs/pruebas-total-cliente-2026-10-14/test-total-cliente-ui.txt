@@ -1,0 +1,2 @@
+UI OK: paridad con /cobros $1750.35; mismo total en ambas fichas; subtotales $1200.10/$550.25; saldo $449.95; primer abono 1 mar 2026; 2 mensualidades; sin pagos $0.00 y aviso, sin subtotal redundante ni fecha; 4 capturas 375/1440, una columna/fila y sin desbordes ni errores JS.
+EXIT 0

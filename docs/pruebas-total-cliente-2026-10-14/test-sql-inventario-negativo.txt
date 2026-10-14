@@ -1,0 +1,2 @@
+OK · el esquema permite existencia negativa (stock_minimo sigue >= 0)
+EXIT 0

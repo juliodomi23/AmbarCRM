@@ -1,0 +1,1 @@
+/ambarcrm-merge-ar-20261013 exited postgres:16 {"5432/tcp":[{"HostIp":"127.0.0.1","HostPort":"55453"}]}

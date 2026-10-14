@@ -1,0 +1,10 @@
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3128
+- Network:       http://127.0.0.1:3128
+✓ Ready in 478ms
+✓ Running next.config.mjs took 53ms
+⨯ Error: Attempted to call formatoMoneda() from the server but formatoMoneda is on the client. It's not possible to invoke a client function from the server, it can only be rendered as a Component or passed to props of a Client Component.
+    at <unknown> (D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\.next\server\chunks\ssr\_06d4ou8._.js:1:6512)
+    at r (D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\.next\server\chunks\ssr\src_19jdtot._.js:1:367) {
+  digest: '3068227043'
+}

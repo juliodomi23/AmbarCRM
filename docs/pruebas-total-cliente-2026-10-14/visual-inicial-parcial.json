@@ -1,0 +1,165 @@
+{
+  "medidas": [
+    {
+      "nombre": "varios-contratos",
+      "ancho": 375,
+      "viewport": 375,
+      "documento": 375,
+      "cajas": [
+        {
+          "x": 16,
+          "y": 685.25,
+          "width": 343,
+          "height": 141,
+          "scrollWidth": 341,
+          "clientWidth": 341
+        },
+        {
+          "x": 16,
+          "y": 838.25,
+          "width": 343,
+          "height": 102,
+          "scrollWidth": 341,
+          "clientWidth": 341
+        },
+        {
+          "x": 16,
+          "y": 952.25,
+          "width": 343,
+          "height": 102,
+          "scrollWidth": 341,
+          "clientWidth": 341
+        },
+        {
+          "x": 16,
+          "y": 1066.25,
+          "width": 343,
+          "height": 102,
+          "scrollWidth": 341,
+          "clientWidth": 341
+        },
+        {
+          "x": 16,
+          "y": 1180.25,
+          "width": 343,
+          "height": 102,
+          "scrollWidth": 341,
+          "clientWidth": 341
+        }
+      ]
+    },
+    {
+      "nombre": "sin-pagos",
+      "ancho": 375,
+      "viewport": 375,
+      "documento": 375,
+      "cajas": [
+        {
+          "x": 16,
+          "y": 681.25,
+          "width": 343,
+          "height": 141,
+          "scrollWidth": 341,
+          "clientWidth": 341
+        },
+        {
+          "x": 16,
+          "y": 834.25,
+          "width": 343,
+          "height": 102,
+          "scrollWidth": 341,
+          "clientWidth": 341
+        },
+        {
+          "x": 16,
+          "y": 948.25,
+          "width": 343,
+          "height": 102,
+          "scrollWidth": 341,
+          "clientWidth": 341
+        }
+      ]
+    },
+    {
+      "nombre": "varios-contratos",
+      "ancho": 1440,
+      "viewport": 1440,
+      "documento": 1440,
+      "cajas": [
+        {
+          "x": 280,
+          "y": 465.25,
+          "width": 334.671875,
+          "height": 141,
+          "scrollWidth": 333,
+          "clientWidth": 333
+        },
+        {
+          "x": 626.671875,
+          "y": 465.25,
+          "width": 188.328125,
+          "height": 141,
+          "scrollWidth": 186,
+          "clientWidth": 186
+        },
+        {
+          "x": 827,
+          "y": 465.25,
+          "width": 188.34375,
+          "height": 141,
+          "scrollWidth": 186,
+          "clientWidth": 186
+        },
+        {
+          "x": 1027.34375,
+          "y": 465.25,
+          "width": 188.328125,
+          "height": 141,
+          "scrollWidth": 186,
+          "clientWidth": 186
+        },
+        {
+          "x": 1227.671875,
+          "y": 465.25,
+          "width": 188.328125,
+          "height": 141,
+          "scrollWidth": 186,
+          "clientWidth": 186
+        }
+      ]
+    },
+    {
+      "nombre": "sin-pagos",
+      "ancho": 1440,
+      "viewport": 1440,
+      "documento": 1440,
+      "cajas": [
+        {
+          "x": 280,
+          "y": 465.25,
+          "width": 535,
+          "height": 141,
+          "scrollWidth": 533,
+          "clientWidth": 533
+        },
+        {
+          "x": 827,
+          "y": 465.25,
+          "width": 288.5,
+          "height": 141,
+          "scrollWidth": 287,
+          "clientWidth": 287
+        },
+        {
+          "x": 1127.5,
+          "y": 465.25,
+          "width": 288.5,
+          "height": 141,
+          "scrollWidth": 287,
+          "clientWidth": 287
+        }
+      ]
+    }
+  ],
+  "errores": []
+}

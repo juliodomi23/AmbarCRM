@@ -1,0 +1,378 @@
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+DO
+CREATE INDEX
+CREATE FUNCTION
+CREATE TABLE
+CREATE INDEX
+UPDATE 0
+DO
+DO
+DO
+ALTER TYPE
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+DO
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+ALTER TABLE
+psql:/tmp/actualizaciones.sql:405: NOTICE:  column "compra_id" of relation "movimientos_inventario" already exists, skipping
+DO
+psql:/tmp/actualizaciones.sql:447: NOTICE:  column "unidad" of relation "productos" already exists, skipping
+ALTER TABLE
+ALTER TABLE
+psql:/tmp/actualizaciones.sql:448: NOTICE:  column "vende_por_peso" of relation "productos" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "modulos_org" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "campos_personalizados" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "citas" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "doctores" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "expedientes_paciente" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "evoluciones_clinicas" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "vehiculos" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "propiedades" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "productos" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "ventas" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "venta_partidas" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "proveedores" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "compras" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "compra_partidas" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "movimientos_inventario" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "sucursales_legales" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "expedientes_legales" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "registros_expediente_legal" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "asesorias_legales" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "movimientos_legales" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "registros_operacion_legal" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "tours" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "itinerarios_tour" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "reservas_tour" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "pagos_tour" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "alumnos_academia" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "cursos_academia" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "inscripciones_academia" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "colegiaturas_academia" does not exist, skipping
+psql:/tmp/actualizaciones.sql:834: NOTICE:  policy "org_isolation" for relation "asistencias_academia" does not exist, skipping
+DO
+GRANT
+GRANT
+ setval 
+--------
+      1
+(1 row)
+
+CREATE FUNCTION
+CREATE INDEX
+CREATE EXTENSION
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+CREATE INDEX
+psql:/tmp/actualizaciones.sql:959: NOTICE:  policy "org_isolation" for relation "servicios_reserva" does not exist, skipping
+psql:/tmp/actualizaciones.sql:959: NOTICE:  policy "org_isolation" for relation "servicio_reserva_doctores" does not exist, skipping
+psql:/tmp/actualizaciones.sql:959: NOTICE:  policy "org_isolation" for relation "horarios_doctor" does not exist, skipping
+psql:/tmp/actualizaciones.sql:959: NOTICE:  policy "org_isolation" for relation "excepciones_horario" does not exist, skipping
+DO
+GRANT
+GRANT
+CREATE FUNCTION
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+psql:/tmp/actualizaciones.sql:1052: NOTICE:  policy "org_isolation" for relation "cajas" does not exist, skipping
+DO
+psql:/tmp/actualizaciones.sql:1052: NOTICE:  policy "org_isolation" for relation "turnos_caja" does not exist, skipping
+psql:/tmp/actualizaciones.sql:1052: NOTICE:  policy "org_isolation" for relation "movimientos_caja" does not exist, skipping
+psql:/tmp/actualizaciones.sql:1052: NOTICE:  policy "org_isolation" for relation "pagos_venta" does not exist, skipping
+GRANT
+GRANT
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+psql:/tmp/actualizaciones.sql:1171: NOTICE:  policy "org_isolation" for relation "devoluciones_venta" does not exist, skipping
+DO
+GRANT
+psql:/tmp/actualizaciones.sql:1171: NOTICE:  policy "org_isolation" for relation "devolucion_partidas" does not exist, skipping
+psql:/tmp/actualizaciones.sql:1171: NOTICE:  policy "org_isolation" for relation "apartados" does not exist, skipping
+psql:/tmp/actualizaciones.sql:1171: NOTICE:  policy "org_isolation" for relation "abonos_apartado" does not exist, skipping
+psql:/tmp/actualizaciones.sql:1171: NOTICE:  policy "org_isolation" for relation "cuentas_cliente" does not exist, skipping
+psql:/tmp/actualizaciones.sql:1171: NOTICE:  policy "org_isolation" for relation "movimientos_cuenta_cliente" does not exist, skipping
+psql:/tmp/actualizaciones.sql:1171: NOTICE:  policy "org_isolation" for relation "notas_credito_cliente" does not exist, skipping
+GRANT
+ALTER TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+DO
+psql:/tmp/actualizaciones.sql:1238: NOTICE:  policy "org_isolation" for relation "cotizaciones" does not exist, skipping
+GRANT
+psql:/tmp/actualizaciones.sql:1238: NOTICE:  policy "org_isolation" for relation "cotizacion_partidas" does not exist, skipping
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+psql:/tmp/actualizaciones.sql:1277: NOTICE:  policy "org_isolation" for relation "reservas_pedido" does not exist, skipping
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+DO
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+DO
+psql:/tmp/actualizaciones.sql:1376: NOTICE:  policy "org_isolation" for relation "listas_precios" does not exist, skipping
+GRANT
+psql:/tmp/actualizaciones.sql:1376: NOTICE:  policy "org_isolation" for relation "precios_volumen" does not exist, skipping
+psql:/tmp/actualizaciones.sql:1376: NOTICE:  policy "org_isolation" for relation "lista_precio_productos" does not exist, skipping
+psql:/tmp/actualizaciones.sql:1376: NOTICE:  policy "org_isolation" for relation "promociones" does not exist, skipping
+GRANT
+ALTER TABLE
+ALTER TABLE
+DO
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE TABLE
+psql:/tmp/actualizaciones.sql:1413: NOTICE:  policy "org_isolation" for relation "auditoria_bot" does not exist, skipping
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+GRANT
+REVOKE
+GRANT
+ALTER TABLE
+UPDATE 0
+ALTER TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+psql:/tmp/actualizaciones.sql:1470: NOTICE:  policy "org_isolation" for relation "resenas" does not exist, skipping
+psql:/tmp/actualizaciones.sql:1470: NOTICE:  policy "org_isolation" for relation "solicitudes_resena" does not exist, skipping
+DO
+GRANT
+GRANT
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+psql:/tmp/actualizaciones.sql:1519: NOTICE:  policy "org_isolation" for relation "cola_caja_rechazos" does not exist, skipping
+DO
+GRANT
+GRANT
+ALTER TABLE
+ALTER TABLE
+INSERT 0 0
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+psql:/tmp/actualizaciones.sql:1582: NOTICE:  policy "org_isolation" for relation "contratos" does not exist, skipping
+psql:/tmp/actualizaciones.sql:1582: NOTICE:  policy "org_isolation" for relation "cobros" does not exist, skipping
+DO
+GRANT
+GRANT
+ALTER TABLE
+ALTER TABLE
+DO
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+DO
+psql:/tmp/actualizaciones.sql:1633: NOTICE:  policy "org_isolation" for relation "servidores" does not exist, skipping
+psql:/tmp/actualizaciones.sql:1633: NOTICE:  policy "org_isolation" for relation "heartbeats_servidor" does not exist, skipping
+DO
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+EXIT 0

@@ -1,0 +1,1 @@
+/ambarcrm-total-cliente-20261014 06aa753b1587db717c5a42da81425068047c18f83fb852196ea3b1d99798730e postgres:16 {"5432/tcp":[{"HostIp":"127.0.0.1","HostPort":"55453"}]} {"/var/lib/postgresql/data":""}

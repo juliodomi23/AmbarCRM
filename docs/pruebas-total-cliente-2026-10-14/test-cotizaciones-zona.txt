@@ -1,0 +1,2 @@
+{"zona":"America/Mexico_City","ultimoDia20h":"aceptada","diaSiguiente0001":{"status":409,"mensaje":"La cotización está vencida"},"estadoTrasRollback":"borrador","cron":{"marcadas":1,"estado":"vencida"}}
+EXIT 0

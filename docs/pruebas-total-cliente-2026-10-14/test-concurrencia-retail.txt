@@ -1,0 +1,2 @@
+OK · concurrencia retail {"ventas":{"aceptadas":3,"stockFinal":0},"ventaPorPeso":{"intentos":3,"aceptadas":2,"stockFinal":0.5},"ordenBloqueos":{"resueltas":2,"stocks":[0,0]},"movimientos":{"stockFinal":10},"compra":{"stockFinal":5,"movimientos":1},"cancelarEditar":{"estado":"entregada","stockFinal":9,"movimientos":2},"pagosTour":{"aceptados":3,"saldo":100},"colegiatura":{"solicitudes":5,"cargos":1}}
+EXIT 0

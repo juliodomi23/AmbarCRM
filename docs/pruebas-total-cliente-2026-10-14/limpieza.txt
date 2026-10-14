@@ -1,0 +1,5 @@
+App local 127.0.0.1:3128 detenida
+ambarcrm-total-cliente-20261014
+ambarcrm-total-cliente-20261014
+ambarcrm-merge-ar-20261013
+/ambarcrm-merge-ar-20261013 running {"5432/tcp":[{"HostIp":"127.0.0.1","HostPort":"55453"}]}

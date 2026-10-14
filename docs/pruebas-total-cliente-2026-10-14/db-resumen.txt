@@ -1,0 +1,29 @@
+BATERÍA db
+test-aislamiento: EXIT 0
+test-bot-api: EXIT 0
+test-caja-dinero: EXIT 0
+test-cobros-db: EXIT 0
+test-concurrencia-caja-a2: EXIT 0
+test-concurrencia-caja: EXIT 0
+test-concurrencia-cobros: EXIT 0
+test-concurrencia-cotizaciones: EXIT 0
+test-concurrencia-nota-credito: EXIT 0
+test-concurrencia-pedidos: EXIT 0
+test-concurrencia-resenas: EXIT 0
+test-concurrencia-retail: EXIT 0
+test-concurrencia-sinred: EXIT 0
+test-concurrencia-varias-cajas: EXIT 0
+test-cotizaciones-zona: EXIT 0
+test-cupos-concurrentes: EXIT 0
+test-lealtad-aurum: EXIT 1
+test-paridad-precios: EXIT 0
+test-precios-promociones: EXIT 0
+test-referencias: EXIT 0
+test-reportes-cuadre: EXIT 0
+test-reservas-concurrentes: EXIT 0
+test-sql-inventario-negativo: EXIT 0
+test-total-cobrado-cliente: EXIT 0
+test-tours-dinero: EXIT 0
+test-vencimiento-pedidos: EXIT 0
+test-webhook-manual: EXIT 0
+TOTAL 27; FALLOS 1

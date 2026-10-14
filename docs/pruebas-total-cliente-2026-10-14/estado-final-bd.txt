@@ -1,0 +1,16 @@
+  relname  | relrowsecurity | relforcerowsecurity | dueno 
+-----------+----------------+---------------------+-------
+ contratos | t              | f                   | dueno
+ cobros    | t              | f                   | dueno
+(2 rows)
+
+ rolname | rolsuper | rolbypassrls 
+---------+----------+--------------
+ crm_app | f        | f
+(1 row)
+
+ slug 
+------
+(0 rows)
+
+EXIT 0
