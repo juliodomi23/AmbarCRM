@@ -1,0 +1,5 @@
+Comparación con 837616e:
+web/src/components/ar/HistorialServidor.tsx: 1 línea añadida, 1 eliminada; solo viewBox.
+Sin cambios en lógica, textos, API, SQL, Prisma, seeds, permisos, dependencias o estilos de otros componentes.
+Las capturas anteriores no se sobrescribieron; solo se añaden dos capturas específicas del historial.
+EXIT 0

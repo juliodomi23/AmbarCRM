@@ -1,0 +1,3 @@
+seguridad: SSRF, archivos por empresa, límites e intentos OK
+bot: 12 rutas /api/v1 pasan por conBot
+EXIT 0

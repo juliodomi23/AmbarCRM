@@ -1,0 +1,16 @@
+7ec298bafce3ca5e5d5f1fce39b5fc18d52ae8238873444282b58dff28c9d55d
+UPDATE 1
+ current_database 
+------------------
+ crm_pulido
+(1 row)
+
+ rolname | rolsuper | rolbypassrls 
+---------+----------+--------------
+ crm_app | f        | f
+(1 row)
+
+Seed AR: 18 contactos; 10 contratos; 5 cobros; MRR $4400.00; sin envíos.
+Acceso local: /login?org=ambar-rojo (la contraseña de un usuario existente no se modifica).
+Fixtures locales: 4 servidores; verde (24 puntos), amarillo (2 planos), rojo (1 punto), gris (0 puntos). IP de documentación 192.0.2.0/24. Sin tokens en claro ni envíos.
+EXIT 0

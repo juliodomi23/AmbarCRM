@@ -15,7 +15,7 @@ export function HistorialServidor({ historial, inicio }: { historial: Reporte[];
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold">Últimas 24 h</h3><span className="text-xs text-muted-foreground">{historial.length} {historial.length === 1 ? "reporte" : "reportes"}</span></div>
     {historial.length ? <>
       <ul className="mt-3 flex flex-wrap gap-4 text-xs" aria-label="Series del historial">{SERIES.map(serie => <li key={serie.campo} className="flex items-center gap-1.5"><svg viewBox="0 0 20 8" className={`h-2 w-5 ${serie.color}`} aria-hidden="true"><path d="M0 4H20" stroke="currentColor" strokeWidth="2" strokeDasharray={serie.trazo} /></svg>{serie.nombre}</li>)}</ul>
-      <svg viewBox="0 0 360 132" className="mt-2 w-full" role="img" aria-label="Uso de RAM, CPU y disco; escala de 0 a 100 por ciento">
+      <svg viewBox="-16 0 376 132" className="mt-2 w-full" role="img" aria-label="Uso de RAM, CPU y disco; escala de 0 a 100 por ciento">
         <desc>{SERIES.map(({ campo, nombre }) => `${nombre}: primer reporte ${historial[0][campo].toFixed(1)} %, último ${historial[historial.length - 1][campo].toFixed(1)} %`).join(". ")}. Los puntos indican reportes recibidos; no se extrapolan datos.</desc>
         {[0, 50, 100].map(valor => <g key={valor} className="text-muted-foreground"><path d={`M40 ${y(valor)}H350`} stroke="currentColor" opacity="0.2" /><text x="32" y={y(valor) + 4} textAnchor="end" fill="currentColor" fontSize="12">{valor} %</text></g>)}
         {SERIES.map(({ campo, color, trazo }) => <g key={campo} className={color}>

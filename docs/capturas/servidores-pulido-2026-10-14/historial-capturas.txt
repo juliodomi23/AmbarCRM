@@ -1,0 +1,235 @@
+{
+  "fixtures": "Datos ficticios solo en 127.0.0.1:55454/crm_pulido; no representan producción",
+  "resultados": [
+    {
+      "ancho": 375,
+      "archivo": "servidores-historial-375.png",
+      "viewport": 375,
+      "documento": 375,
+      "main": {
+        "ancho": 375,
+        "contenido": 375
+      },
+      "graficas": [
+        {
+          "viewBox": {
+            "x": -16,
+            "y": 0,
+            "ancho": 376,
+            "alto": 132
+          },
+          "rect": {
+            "izquierda": 36,
+            "derecha": 342,
+            "arriba": 337,
+            "abajo": 444.421875
+          },
+          "etiquetas": [
+            {
+              "texto": "0 %",
+              "x": 9.248002052307129,
+              "ancho": 22.751998901367188,
+              "completa": true
+            },
+            {
+              "texto": "50 %",
+              "x": 2.1440017223358154,
+              "ancho": 29.855998992919922,
+              "completa": true
+            },
+            {
+              "texto": "100 %",
+              "x": -3.193598508834839,
+              "ancho": 35.193599700927734,
+              "completa": true
+            }
+          ]
+        },
+        {
+          "viewBox": {
+            "x": -16,
+            "y": 0,
+            "ancho": 376,
+            "alto": 132
+          },
+          "rect": {
+            "izquierda": 36,
+            "derecha": 342,
+            "arriba": 1286.921875,
+            "abajo": 1394.34375
+          },
+          "etiquetas": [
+            {
+              "texto": "0 %",
+              "x": 9.248002052307129,
+              "ancho": 22.751998901367188,
+              "completa": true
+            },
+            {
+              "texto": "50 %",
+              "x": 2.1440017223358154,
+              "ancho": 29.855998992919922,
+              "completa": true
+            },
+            {
+              "texto": "100 %",
+              "x": -3.193598508834839,
+              "ancho": 35.193599700927734,
+              "completa": true
+            }
+          ]
+        },
+        {
+          "viewBox": {
+            "x": -16,
+            "y": 0,
+            "ancho": 376,
+            "alto": 132
+          },
+          "rect": {
+            "izquierda": 36,
+            "derecha": 342,
+            "arriba": 2244.84375,
+            "abajo": 2352.265625
+          },
+          "etiquetas": [
+            {
+              "texto": "0 %",
+              "x": 9.248002052307129,
+              "ancho": 22.751998901367188,
+              "completa": true
+            },
+            {
+              "texto": "50 %",
+              "x": 2.1440017223358154,
+              "ancho": 29.855998992919922,
+              "completa": true
+            },
+            {
+              "texto": "100 %",
+              "x": -3.193598508834839,
+              "ancho": 35.193599700927734,
+              "completa": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ancho": 1440,
+      "archivo": "servidores-historial-1440.png",
+      "viewport": 1440,
+      "documento": 1440,
+      "main": {
+        "ancho": 1184,
+        "contenido": 1184
+      },
+      "graficas": [
+        {
+          "viewBox": {
+            "x": -16,
+            "y": 0,
+            "ancho": 376,
+            "alto": 132
+          },
+          "rect": {
+            "izquierda": 304,
+            "derecha": 819,
+            "arriba": 646,
+            "abajo": 826.796875
+          },
+          "etiquetas": [
+            {
+              "texto": "0 %",
+              "x": 9.264193534851074,
+              "ancho": 22.73580551147461,
+              "completa": true
+            },
+            {
+              "texto": "50 %",
+              "x": 2.1457080841064453,
+              "ancho": 29.854291915893555,
+              "completa": true
+            },
+            {
+              "texto": "100 %",
+              "x": -3.181748390197754,
+              "ancho": 35.18174743652344,
+              "completa": true
+            }
+          ]
+        },
+        {
+          "viewBox": {
+            "x": -16,
+            "y": 0,
+            "ancho": 376,
+            "alto": 132
+          },
+          "rect": {
+            "izquierda": 880,
+            "derecha": 1395,
+            "arriba": 646,
+            "abajo": 826.796875
+          },
+          "etiquetas": [
+            {
+              "texto": "0 %",
+              "x": 9.264193534851074,
+              "ancho": 22.73580551147461,
+              "completa": true
+            },
+            {
+              "texto": "50 %",
+              "x": 2.1457080841064453,
+              "ancho": 29.854291915893555,
+              "completa": true
+            },
+            {
+              "texto": "100 %",
+              "x": -3.181748390197754,
+              "ancho": 35.18174743652344,
+              "completa": true
+            }
+          ]
+        },
+        {
+          "viewBox": {
+            "x": -16,
+            "y": 0,
+            "ancho": 376,
+            "alto": 132
+          },
+          "rect": {
+            "izquierda": 304,
+            "derecha": 819,
+            "arriba": 1677.296875,
+            "abajo": 1858.09375
+          },
+          "etiquetas": [
+            {
+              "texto": "0 %",
+              "x": 9.264193534851074,
+              "ancho": 22.73580551147461,
+              "completa": true
+            },
+            {
+              "texto": "50 %",
+              "x": 2.1457080841064453,
+              "ancho": 29.854291915893555,
+              "completa": true
+            },
+            {
+              "texto": "100 %",
+              "x": -3.181748390197754,
+              "ancho": 35.18174743652344,
+              "completa": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errores": []
+}
+EXIT 0

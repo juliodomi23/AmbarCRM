@@ -1,0 +1,2 @@
+cantidades retail: pieza 1.5 rechazada; 1.234 kg aceptado; 1.2345 rechazado
+EXIT 0
