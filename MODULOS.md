@@ -490,6 +490,68 @@ cd web
 ALLOW_DEMO_SEED=1 node scripts/seed-demo-retail.mjs
 ```
 
+## Ámbar Rojo · Servicios contratados
+
+`contratos` publica `/contratos`: alta y edición con `FormularioModulo`, cliente
+del CRM, servicio, estado, cierre, anticipo, mensualidad, día 1–28, inicio y baja.
+Un cliente puede tener varios contratos. Los datos no confirmados admiten NULL;
+se presentan como «por confirmar», sin convertirlos en ceros. Referencias de
+cliente y oportunidad se comprueban dentro de la transacción del tenant.
+
+Al crear un contrato con cierre y porcentaje conocidos se generan anticipo y
+balance exactos, con vencimiento vacío hasta confirmarlo. Cobros permite definir
+o cambiar la fecha de cargos pendientes. La edición bloquea el contrato: con historial no permite
+reasignar cliente ni reescribir el cierre o su porcentaje.
+
+## Ámbar Rojo · Cobros y fechas de pago
+
+`cobros` publica `/cobros`: cargos adicionales, vencimientos, pago manual,
+cancelación e incobrable con nota obligatoria y solo para Administrador.
+El pago bloquea la fila y repetirlo devuelve `repetido: true`, sin volver a
+aplicarlo. Cancelados e incobrables no admiten pagos posteriores.
+
+`POST /api/cron/generar-cobros`, con `x-api-key: WA_API_KEY`, recorre las empresas
+activas, continúa si alguna falla y genera el mes siguiente en America/Mexico_City.
+Solo genera para contratos en producción, con mensualidad positiva y día de cobro,
+cuya fecha de inicio ya llegó al vencimiento. Marca vencidos los cargos anteriores
+a hoy. Bloqueos e índice único impiden duplicados; un índice parcial cubre los
+cargos de cierre con periodo NULL. No envía mensajes.
+
+«Recordar por WhatsApp» es una acción manual: texto dentro de 24 h, plantilla
+configurada y aprobada fuera. Se configura en la pantalla de Cobros, con variables
+cliente, monto y vencimiento. El seed no crea canales ni conversaciones, y los
+teléfonos vacíos/de relleno se rechazan. `recordatoriosAutomaticos` permanece falso.
+
+## Ámbar Rojo · Panel
+
+`panel_ar` publica `/panel-ar`, sin tablas propias: MRR actual/proyectado, clientes
+únicos, cartera, calendario mensual, ingresos e incobrables, pipeline por etapa y
+CSV con la protección común contra fórmulas. Por defecto los tres módulos son
+solo para Administrador; no existe un puesto Socio en el catálogo actual.
+
+MRR actual cuenta producción con inicio cumplido y sin baja efectiva; el día de
+cobro afecta la generación de cargos, no cambia esa regla. MRR proyectado suma los
+servicios conocidos en desarrollo/pruebas o con inicio futuro. Los estados y
+mensualidades desconocidos se dejan pendientes; no se suman como ingresos seguros.
+
+El reparto es informativo y configurable: proyecto CTO 70 % / CEO 30 %, mensualidad
+50/50 tras crédito IA de $100 por cliente y mes de servicio, incluso si dos
+contratos se cobran en meses distintos. Los cargos extra se indican «reparto por
+definir»: falta una regla de negocio para distribuirlos. Los pagos históricos sin
+fecha quedan fuera del ingreso del mes; no se inventan fechas ni métodos.
+
+`ALLOW_DEMO_SEED=1 node scripts/seed-ambar-rojo.mjs` prepara `ambar-rojo` en una
+base local. Está bloqueado en producción. Conserva ediciones posteriores, no
+sobrescribe contraseñas y no importa teléfonos/correos reales. Activa también
+Cotizaciones; Tareas ya es una pantalla base y no requiere clave de módulo.
+El seed conserva las dudas con origen en `Contacto.notas` y las notas del contrato;
+`Nota` requiere oportunidad, así que no se creó otra tabla para notas de clientes.
+
+Pruebas: `check-contratos-cobros.ts`, `test-cobros-db.ts`,
+`test-concurrencia-cobros.ts` (también `COBROS_SIN_PROTECCION=1` en una BD desechable),
+`test-cobros-e2e.ts` con login real `orgSlug`, y auditoría RLS en
+`test-aislamiento.ts`. Migración en `actualizaciones.sql`, modelos en `schema.prisma`.
+
 ## Cómo agregar un módulo
 
 - [ ] Añadir la clave, ruta, descripción y acceso por puesto en `src/lib/modulos.ts`.

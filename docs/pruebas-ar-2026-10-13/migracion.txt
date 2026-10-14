@@ -1,0 +1,18 @@
+    setval     
+---------------
+ 1791941249748
+(1 row)
+
+actualizaciones.sql ejecución 1 : exit 0
+    setval     
+---------------
+ 1791941249748
+(1 row)
+
+actualizaciones.sql ejecución 2 : exit 0
+    setval     
+---------------
+ 1791941249748
+(1 row)
+
+actualizaciones.sql ejecución 3 : exit 0

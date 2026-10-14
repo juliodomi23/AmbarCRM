@@ -1,0 +1,10 @@
+
+> ambarcrm@0.1.0 build
+> prisma generate && next build
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+Error: 
+EPERM: operation not permitted, rename 'D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\node_modules\.prisma\client\query_engine-windows.dll.node.tmp65836' -> 'D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\node_modules\.prisma\client\query_engine-windows.dll.node'
+
+

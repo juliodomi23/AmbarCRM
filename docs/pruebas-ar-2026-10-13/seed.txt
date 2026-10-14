@@ -1,0 +1,20 @@
+SEED EJECUCIÓN 1
+Seed AR: 18 contactos; 11 contratos; 10 cobros; MRR $4400.00; sin envíos.
+Acceso local: /login?org=ambar-rojo (la contraseña de un usuario existente no se modifica).
+EXIT 0
+SEED EJECUCIÓN 2
+Seed AR: 18 contactos; 11 contratos; 10 cobros; MRR $4400.00; sin envíos.
+Acceso local: /login?org=ambar-rojo (la contraseña de un usuario existente no se modifica).
+EXIT 0
+SEED EJECUCIÓN 3
+Seed AR: 18 contactos; 11 contratos; 10 cobros; MRR $4400.00; sin envíos.
+Acceso local: /login?org=ambar-rojo (la contraseña de un usuario existente no se modifica).
+EXIT 0
+SEED EJECUCIÓN 4
+Seed AR: 18 contactos; 11 contratos; 10 cobros; MRR $4400.00; sin envíos.
+Acceso local: /login?org=ambar-rojo (la contraseña de un usuario existente no se modifica).
+EXIT 0
+SEED EJECUCIÓN 5
+Seed AR: 18 contactos; 11 contratos; 10 cobros; MRR $4400.00; sin envíos.
+Acceso local: /login?org=ambar-rojo (la contraseña de un usuario existente no se modifica).
+EXIT 0

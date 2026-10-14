@@ -1,0 +1,97 @@
+PRUEBA check-a3.ts
+{"code128":{"123456":16,"ABC123":67,"svg":true},"csv":{"formulasNeutralizadas":true,"importacionSinExistencia":true},"variantes":{"grupoId":true,"atributosJsonb":true}}
+EXIT 0
+PRUEBA check-arquitectura-modulos.ts
+arquitectura: conModulo, pestañas, paginación y checklist OK
+EXIT 0
+PRUEBA check-audio-ogg.ts
+audio: WebM/Opus → Ogg/Opus con CRC, duración y marcas correctas
+EXIT 0
+PRUEBA check-aurum-webhook.ts
+aurum webhook: header x-aurum-clave y ?clave= válidos, secretos incorrectos o vacíos rechazados OK
+EXIT 0
+PRUEBA check-busqueda.ts
+búsqueda: patrón LIKE escapado OK
+EXIT 0
+PRUEBA check-caja-a2.ts
+caja A2: devoluciones, apartados, crédito, bloqueos y WhatsApp OK
+EXIT 0
+PRUEBA check-caja-offline.ts
+caja offline: catálogo por identidad, sin red, 403 apagado, identidad ajena y cálculo local OK
+EXIT 0
+PRUEBA check-caja-sinred.ts
+caja sin red: cola FIFO, retroceso, 4xx visible, 401 conserva, otra identidad intacta, turno requerido, validación y apagado OK
+EXIT 0
+PRUEBA check-caja.ts
+caja: turnos, cobro mixto, descuentos, cortes, ticket, lealtad y permisos OK
+EXIT 0
+PRUEBA check-campos-personalizados.ts
+campos-personalizados OK
+EXIT 0
+PRUEBA check-cantidades-retail.ts
+cantidades retail: pieza 1.5 rechazada; 1.234 kg aceptado; 1.2345 rechazado
+EXIT 0
+PRUEBA check-citas.ts
+citas OK
+EXIT 0
+PRUEBA check-clientes-automotriz.ts
+verticales clientes, pacientes, automotriz e inmobiliaria OK
+EXIT 0
+PRUEBA check-contratos-cobros.ts
+contratos/cobros: MRR, inicio/baja, febrero 29–31 → 28, cargos exactos, IA una vez por cliente, permisos y cero envíos automáticos OK
+EXIT 0
+PRUEBA check-cotizaciones.ts
+{"totalesMasIva":{"subtotal":15.15,"descuento":0.65,"impuestos":2.32,"total":16.82},"preciosConIva":{"total":180,"impuestosIncluidos":24.83},"totalNavegadorIgnorado":true,"vigenciaMexico":{"ultimoDia20h":"vigente","diaSiguiente0001":"vencida"},"whatsapp":{"ventanaAbierta":"texto","ventanaCerradaSinPlantilla":"sin_plantilla","ventanaCerradaConPlantilla":"plantilla"}}
+EXIT 0
+PRUEBA check-demo.ts
+check-demo OK · 96 llamadas fetch revisadas en 59 archivos
+check-demo OK · personalización estable al cambiar de giro
+EXIT 0
+PRUEBA check-lealtad.ts
+lealtad: teléfonos, secretos, avisos y webhook OK
+EXIT 0
+PRUEBA check-legal.ts
+legal: módulos, validadores y SQL OK
+EXIT 0
+PRUEBA check-pedidos-en-linea.ts
+{"config":{"minimo":"250.50","envio":"49.90","maxTelefono":4,"maxIp":12,"horasVencimiento":36},"cantidades":{"duplicadasAcumuladas":"1","piezaFraccionaria":"rechazada","pesoTresDecimales":"aceptado"},"totalNavegadorIgnorado":true}
+EXIT 0
+PRUEBA check-permisos-modulos.ts
+permisos por puesto: sesión, configuración y servidor OK
+EXIT 0
+PRUEBA check-plantilla-meta.ts
+plantillaMeta OK
+botones, ventana y errores OK
+EXIT 0
+PRUEBA check-precios.ts
+{"motorUnico":true,"caminos":["src/lib/caja-db.ts","src/lib/caja-a2-db.ts","src/lib/cotizaciones-db.ts","src/lib/pedidos-db.ts","src/app/api/ventas/route.ts","src/app/api/public/tienda/[slug]/route.ts"],"vigenciaLocal":true}
+EXIT 0
+PRUEBA check-proxy.ts
+proxy: rutas públicas con barra (y /demo exacta), /cotizaciones y demás internas protegidas OK
+EXIT 0
+PRUEBA check-reportes-a4.ts
+{"costosEnTodosLosCaminos":["src/lib/caja-db.ts","src/lib/caja-a2-db.ts","src/lib/cotizaciones-db.ts","src/app/api/ventas/route.ts","src/lib/pedidos-db.ts","src/lib/venta-estado-db.ts"],"ingresoProrrateado":true,"devolucionesPorPeriodo":true,"zonaLocal":true,"csvProtegido":true,"permisos":true}
+EXIT 0
+PRUEBA check-resenas.ts
+resenas: enlace de Google, origen, estrellas, config, semana local, QR y ruta pública OK
+EXIT 0
+PRUEBA check-reservas.ts
+reservas: motor de horarios, zonas y excepciones OK
+EXIT 0
+PRUEBA check-retail.ts
+retail: productos, inventario, compras, proveedores, ventas y pedidos OK
+EXIT 0
+PRUEBA check-seeds-seguridad.ts
+seeds demo: bloqueo de producción, autorización y contraseña aleatoria OK
+EXIT 0
+PRUEBA check-seguridad.ts
+seguridad: SSRF, archivos por empresa, límites e intentos OK
+bot: 12 rutas /api/v1 pasan por conBot
+EXIT 0
+PRUEBA check-sw-push.ts
+sw: push y notificationclick intactos, cachés versionados con limpieza en activate, un solo registro
+EXIT 0
+PRUEBA check-viajes-academia.ts
+viajes y academia: catálogo, reservas, cobros, alumnos, cursos y asistencia OK
+EXIT 0
+TOTAL 31; FALLOS 0
