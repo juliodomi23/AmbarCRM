@@ -1,0 +1,2 @@
+Fixtures locales: 4 servidores; verde (24 puntos), amarillo (2 planos), rojo (1 punto), gris (0 puntos). IP de documentación 192.0.2.0/24. Sin tokens en claro ni envíos.
+EXIT 0

@@ -1,0 +1,15 @@
+[
+  {
+    "baseURL": "http://127.0.0.1:3130",
+    "navegaciones": 20,
+    "ediciones": 10,
+    "errores": []
+  },
+  {
+    "baseURL": "http://127.0.0.1:3129",
+    "navegaciones": 20,
+    "ediciones": 10,
+    "errores": []
+  }
+]
+EXIT 0

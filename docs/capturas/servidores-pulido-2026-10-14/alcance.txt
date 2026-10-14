@@ -1,0 +1,3 @@
+Base: be43875 (modulos-fase-2 al crear la rama; contiene ff52a18)
+Diff contra base en dominio, API, Prisma, scripts/seed, SQL, dependencias, UI global y AppShell: vacío
+EXIT 0

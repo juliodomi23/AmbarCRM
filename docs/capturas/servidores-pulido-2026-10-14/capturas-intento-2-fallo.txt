@@ -1,0 +1,25 @@
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   'Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.'
++ ]
+- []
+
+    at file:///D:/AmbarRojo/Documentos%20de%20ambar%20rojo/docs/08-productos-internos/AmbarCRM/docs/capturas/servidores-pulido-2026-10-14/capturar.mjs:117:10 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [
+    'Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.'
+  ],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.19.0
+EXIT 1

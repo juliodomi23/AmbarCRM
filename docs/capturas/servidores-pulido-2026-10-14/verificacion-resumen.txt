@@ -1,0 +1,8 @@
+Fallo intermedio corregido: React #418 en title SVG; evidencia previa conservada.
+tipos: EXIT 0
+lint: EXIT 0
+build: EXIT 0
+test-servidores-e2e: EXIT 0
+capturas: EXIT 0
+diagnostico-hidratacion: EXIT 0
+TOTAL 32; FALLOS 0

@@ -1,0 +1,2 @@
+{"config":{"minimo":"250.50","envio":"49.90","maxTelefono":4,"maxIp":12,"horasVencimiento":36},"cantidades":{"duplicadasAcumuladas":"1","piezaFraccionaria":"rechazada","pesoTresDecimales":"aceptado"},"totalNavegadorIgnorado":true}
+EXIT 0

@@ -1,0 +1,2 @@
+arquitectura: conModulo, pestañas, paginación y checklist OK
+EXIT 0

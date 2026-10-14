@@ -1,0 +1,130 @@
+{
+  "fixtures": "Datos ficticios exclusivos de PostgreSQL local 127.0.0.1:55454/crm_pulido; no representan producción",
+  "medidas": [
+    {
+      "ruta": "/servidores",
+      "ancho": 375,
+      "viewport": 375,
+      "documento": 375,
+      "contenido": 375,
+      "anchoContenido": 375,
+      "dialogo": null
+    },
+    {
+      "ruta": "/servidores · editar",
+      "ancho": 375,
+      "viewport": 375,
+      "documento": 375,
+      "contenido": 375,
+      "anchoContenido": 375,
+      "dialogo": {
+        "ancho": 341,
+        "contenido": 341
+      }
+    },
+    {
+      "ruta": "/servidores · formulario",
+      "ancho": 375,
+      "viewport": 375,
+      "documento": 375,
+      "contenido": 375,
+      "anchoContenido": 375,
+      "dialogo": {
+        "ancho": 341,
+        "contenido": 341
+      }
+    },
+    {
+      "ruta": "/panel-ar",
+      "ancho": 375,
+      "viewport": 375,
+      "documento": 375,
+      "contenido": 375,
+      "anchoContenido": 375,
+      "dialogo": null
+    },
+    {
+      "ruta": "/servidores",
+      "ancho": 1440,
+      "viewport": 1440,
+      "documento": 1440,
+      "contenido": 1184,
+      "anchoContenido": 1184,
+      "dialogo": null
+    },
+    {
+      "ruta": "/servidores · editar",
+      "ancho": 1440,
+      "viewport": 1440,
+      "documento": 1440,
+      "contenido": 1184,
+      "anchoContenido": 1184,
+      "dialogo": {
+        "ancho": 446,
+        "contenido": 446
+      }
+    },
+    {
+      "ruta": "/servidores · formulario",
+      "ancho": 1440,
+      "viewport": 1440,
+      "documento": 1440,
+      "contenido": 1184,
+      "anchoContenido": 1184,
+      "dialogo": {
+        "ancho": 446,
+        "contenido": 446
+      }
+    },
+    {
+      "ruta": "/panel-ar",
+      "ancho": 1440,
+      "viewport": 1440,
+      "documento": 1440,
+      "contenido": 1184,
+      "anchoContenido": 1184,
+      "dialogo": null
+    }
+  ],
+  "comprobaciones": [
+    {
+      "ancho": 375,
+      "estados": "verde, amarillo, rojo y gris",
+      "notas": "colapsadas",
+      "pendientes": "un indicador desplegable",
+      "cargas": "mismo color y baja como chip",
+      "historial": "24 puntos, 2 planos, 1 punto y vacío",
+      "acciones": {
+        "acciones": 803.0625,
+        "limite": 843
+      },
+      "confirmacion": "nombre del servidor, cancelar enfocado, cero POST al abrir/cancelar",
+      "alertas": [
+        "rojo",
+        "rojo",
+        "amarillo",
+        "amarillo"
+      ]
+    },
+    {
+      "ancho": 1440,
+      "estados": "verde, amarillo, rojo y gris",
+      "notas": "colapsadas",
+      "pendientes": "un indicador desplegable",
+      "cargas": "mismo color y baja como chip",
+      "historial": "24 puntos, 2 planos, 1 punto y vacío",
+      "acciones": {
+        "acciones": 954.65625,
+        "limite": 1000
+      },
+      "confirmacion": "nombre del servidor, cancelar enfocado, cero POST al abrir/cancelar",
+      "alertas": [
+        "rojo",
+        "rojo",
+        "amarillo",
+        "amarillo"
+      ]
+    }
+  ],
+  "errores": []
+}

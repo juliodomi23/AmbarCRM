@@ -1,0 +1,1 @@
+0f935027f676f4398c1a92686a6e73c88ed4b74cdfa82bba400b3988202bcf53 /ambarcrm-servidores-pulido-20261014 {"5432/tcp":[{"HostIp":"127.0.0.1","HostPort":"55454"}]} {"/var/lib/postgresql/data":""}

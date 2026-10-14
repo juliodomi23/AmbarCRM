@@ -1,0 +1,2 @@
+retail: productos, inventario, compras, proveedores, ventas y pedidos OK
+EXIT 0

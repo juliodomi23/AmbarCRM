@@ -1,0 +1,2 @@
+proxy: rutas públicas con barra (y /demo exacta), /cotizaciones y demás internas protegidas OK
+EXIT 0
