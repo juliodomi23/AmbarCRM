@@ -1,0 +1,5 @@
+App local 127.0.0.1:3128 detenida; PID verificado 38628.
+ambarcrm-nuevo-cobro-monto-20261014
+STOP EXIT 0
+ambarcrm-nuevo-cobro-monto-20261014
+REMOVE EXIT 0

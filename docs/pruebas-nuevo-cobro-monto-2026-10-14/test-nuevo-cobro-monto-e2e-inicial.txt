@@ -1,0 +1,50 @@
+OK: selector distingue 1200/800 y día 5; 800 propone 800, no 1200; extra/anticipo/balance vacíos; monto manual y borrado manual se conservan al cambiar contrato/concepto/búsqueda
+OK: sin mensualidad (null/0) sin propuesta; POST real guarda contrato 800/monto 800; aviso muestra cliente, concepto e importe; siguiente alta empieza vacía
+OK: capturas de lista y ficha a 375/1440; ficha contratoId 800 propone 800; cancelado muestra Pago revertido y pagado conserva Recibido; sin desbordes
+OK: monto manual 925 preservado incluso cuando el contrato de la ficha llega tarde; sin errores JS
+{
+  "medidas": [
+    {
+      "vista": "nuevo-cobro",
+      "ancho": 375,
+      "viewport": 375,
+      "documento": 375,
+      "formulario": 301,
+      "anchoFormulario": 301,
+      "izquierda": 37,
+      "derecha": 338
+    },
+    {
+      "vista": "nuevo-cobro-ficha",
+      "ancho": 375,
+      "viewport": 375,
+      "documento": 375,
+      "formulario": 301,
+      "anchoFormulario": 301,
+      "izquierda": 37,
+      "derecha": 338
+    },
+    {
+      "vista": "nuevo-cobro",
+      "ancho": 1440,
+      "viewport": 1440,
+      "documento": 1440,
+      "formulario": 398,
+      "anchoFormulario": 398,
+      "izquierda": 521,
+      "derecha": 919
+    },
+    {
+      "vista": "nuevo-cobro-ficha",
+      "ancho": 1440,
+      "viewport": 1440,
+      "documento": 1440,
+      "formulario": 398,
+      "anchoFormulario": 398,
+      "izquierda": 521,
+      "derecha": 919
+    }
+  ],
+  "errores": []
+}
+EXIT 0

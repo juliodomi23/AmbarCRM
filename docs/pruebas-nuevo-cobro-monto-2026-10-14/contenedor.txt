@@ -1,0 +1,1 @@
+/ambarcrm-nuevo-cobro-monto-20261014 ad9e4cb89cba6b59e09cc3ee3a19bb24f7a081317333886007835a23527ce327 postgres:16 {"5432/tcp":[{"HostIp":"127.0.0.1","HostPort":"55453"}]} {"/var/lib/postgresql/data":""}

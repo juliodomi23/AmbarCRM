@@ -1,0 +1,2 @@
+{"code128":{"123456":16,"ABC123":67,"svg":true},"csv":{"formulasNeutralizadas":true,"importacionSinExistencia":true},"variantes":{"grupoId":true,"atributosJsonb":true}}
+EXIT 0

@@ -1,0 +1,45 @@
+{
+  "medidas": [
+    {
+      "vista": "nuevo-cobro",
+      "ancho": 375,
+      "viewport": 375,
+      "documento": 375,
+      "formulario": 301,
+      "anchoFormulario": 301,
+      "izquierda": 37,
+      "derecha": 338
+    },
+    {
+      "vista": "nuevo-cobro-ficha",
+      "ancho": 375,
+      "viewport": 375,
+      "documento": 375,
+      "formulario": 301,
+      "anchoFormulario": 301,
+      "izquierda": 37,
+      "derecha": 338
+    },
+    {
+      "vista": "nuevo-cobro",
+      "ancho": 1440,
+      "viewport": 1440,
+      "documento": 1440,
+      "formulario": 398,
+      "anchoFormulario": 398,
+      "izquierda": 521,
+      "derecha": 919
+    },
+    {
+      "vista": "nuevo-cobro-ficha",
+      "ancho": 1440,
+      "viewport": 1440,
+      "documento": 1440,
+      "formulario": 398,
+      "anchoFormulario": 398,
+      "izquierda": 521,
+      "derecha": 919
+    }
+  ],
+  "errores": []
+}

@@ -1,0 +1,3 @@
+AR vistas E2E: ruta de Registrar pago, abonos concurrentes sin duplicar, saldo 50 → 0, cobro manual mensual, duplicado 409, baja confirmada cancela futuro y conserva ingresos, oculta por defecto y muestra ?bajas=1, oportunidad Perdido OK
+cobros E2E: login orgSlug, seed MRR 4400, contrato → anticipo/balance → cron concurrente → mensualidad → pago, MRR 4500 y cobrado 150.01, IA 100, errores 400/404/409, permisos 403, módulo apagado 404, aislamiento bidireccional y CSV OK; cero envíos
+EXIT 0

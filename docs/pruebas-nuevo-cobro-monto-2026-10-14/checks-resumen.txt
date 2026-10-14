@@ -1,0 +1,34 @@
+BATERÍA checks
+check-a3: EXIT 0
+check-arquitectura-modulos: EXIT 0
+check-audio-ogg: EXIT 0
+check-aurum-webhook: EXIT 0
+check-busqueda: EXIT 0
+check-caja-a2: EXIT 0
+check-caja-offline: EXIT 0
+check-caja-sinred: EXIT 0
+check-caja: EXIT 0
+check-campos-personalizados: EXIT 0
+check-cantidades-retail: EXIT 0
+check-citas: EXIT 0
+check-clientes-automotriz: EXIT 0
+check-contratos-cobros: EXIT 0
+check-cotizaciones: EXIT 0
+check-demo: EXIT 0
+check-lealtad: EXIT 0
+check-legal: EXIT 0
+check-pedidos-en-linea: EXIT 0
+check-permisos-modulos: EXIT 0
+check-plantilla-meta: EXIT 0
+check-precios: EXIT 0
+check-proxy: EXIT 0
+check-reportes-a4: EXIT 0
+check-resenas: EXIT 0
+check-reservas: EXIT 0
+check-retail: EXIT 0
+check-seeds-seguridad: EXIT 0
+check-seguridad: EXIT 0
+check-servidores: EXIT 0
+check-sw-push: EXIT 0
+check-viajes-academia: EXIT 0
+TOTAL 32; FALLOS 0

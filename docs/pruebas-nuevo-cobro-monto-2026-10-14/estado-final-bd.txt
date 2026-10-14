@@ -1,0 +1,17 @@
+ rolname | rolsuper | rolbypassrls 
+---------+----------+--------------
+ crm_app | f        | f
+(1 row)
+
+  relname  | relrowsecurity | propietario 
+-----------+----------------+-------------
+ cobros    | t              | dueno
+ contratos | t              | dueno
+(2 rows)
+
+ orgs_ui_restantes 
+-------------------
+                 0
+(1 row)
+
+EXIT 0

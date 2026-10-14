@@ -1,0 +1,2 @@
+sw: push y notificationclick intactos, cachés versionados con limpieza en activate, un solo registro
+EXIT 0

@@ -1,0 +1,3 @@
+OK: crm_app sin BYPASSRLS; sin nota 400; agente con acceso 403; estados cerrados 409; cancelación concurrente idempotente conserva pagos; saldo/cartera/ingreso/calendario/CSV/alertas excluyen cancelados; aislamiento 404 y módulo apagado 404
+OK: comisiones excluyen abonos cancelados del mes anterior; pago mensual cancelado fuera de ingresos/reparto; mensualidades con periodo 409; extras/anticipos/balances 204; delete concurrente 204/404; cron repetido genera 0 y conserva exactamente las filas
+EXIT 0

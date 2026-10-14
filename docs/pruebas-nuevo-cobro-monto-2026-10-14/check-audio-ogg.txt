@@ -1,0 +1,2 @@
+audio: WebM/Opus → Ogg/Opus con CRC, duración y marcas correctas
+EXIT 0
