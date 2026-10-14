@@ -206,3 +206,8 @@ servidores con `ORG_SLUG=inicial`; no hace falta volver a sembrar contratos/cobr
 
 Las pruebas del fast-forward y del seed, con tokens omitidos, quedan en
 [pruebas-merge-servidores-2026-10-14](pruebas-merge-servidores-2026-10-14/README.md).
+
+8. **Marcha atrás de Servidores.** Redesplegar `adc0836` (último commit antes de
+   servidores), conservando la BD. Las tablas `servidores` y `heartbeats_servidor`
+   son aditivas y quedan sin uso con ese código; los VPS recibirán 404 en el
+   heartbeat sin afectar nada más. No borrar tablas ni usar `reset --hard`/push forzado.
