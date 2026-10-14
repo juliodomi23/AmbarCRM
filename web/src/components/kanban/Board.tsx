@@ -29,7 +29,7 @@ export type Tarjeta = {
   contacto: { nombre: string; telefono: string | null };
   responsable: { nombre: string } | null;
 };
-export type Columna = { id: string; nombre: string; color: string; tipo: string; tarjetas: Tarjeta[] };
+export type Columna = { id: string; nombre: string; color: string; tipo: string; tarjetas: Tarjeta[]; total?: number };
 
 type Rango = "todo" | "hoy" | "semana" | "mes";
 
@@ -61,7 +61,7 @@ function TarjetaVista({ t, onBorrar, color }: { t: Tarjeta; onBorrar?: (id: stri
           <IconoCerrar className="h-3.5 w-3.5" />
         </button>
       )}
-      <p className="pr-5 text-sm font-medium text-foreground">{t.titulo}</p>
+      <p className="break-words pr-5 text-sm font-medium text-foreground">{t.titulo}</p>
       <div className="mt-1 flex items-center gap-2"><AvatarNombre nombre={t.contacto.nombre} className="h-7 w-7"/><div className="min-w-0"><p className="truncate text-xs text-muted-foreground">{t.contacto.nombre}</p><p className="text-[10px] text-muted-foreground">{t.diasEnEtapa === 0 ? "Ingresó hoy" : `${t.diasEnEtapa} días en la etapa`}</p></div></div>
       <div className="mt-2 flex items-center justify-between">
         <span className="text-sm font-semibold text-primary">{formatoMoneda(t.valor, t.moneda)}</span>
@@ -99,12 +99,12 @@ function ColumnaVista({ col, onBorrar, onChat }: { col: Columna; onBorrar: (id: 
   const { setNodeRef } = useDroppable({ id: `col-${col.id}` });
   const total = col.tarjetas.reduce((s, t) => s + t.valor, 0);
   return (
-    <div className="flex w-72 shrink-0 flex-col rounded-xl border border-border/50 bg-muted">
+    <div className="flex w-full shrink-0 flex-col rounded-xl border border-border/50 bg-muted md:w-72">
       <div className="flex items-center justify-between px-3 py-2.5">
         <div className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: col.color }} />
           <span className="text-sm font-semibold text-foreground">{col.nombre}</span>
-          <span className="text-xs text-muted-foreground">{col.tarjetas.length}</span>
+          <span className="text-xs text-muted-foreground">{col.tarjetas.length}{col.total !== undefined && col.total !== col.tarjetas.length ? ` / ${col.total}` : ""}</span>
         </div>
         <span className="text-xs font-medium text-muted-foreground">{formatoMoneda(total, "MXN")}</span>
       </div>
@@ -231,7 +231,7 @@ export function Board({ columnasIniciales }: { columnasIniciales: Columna[] }) {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 min-w-0 flex-col">
       <div className="flex items-center gap-1 px-4 pt-3">
         <span className="mr-1 text-xs text-muted-foreground">Ver:</span>
         {RANGOS.map((r) => (
@@ -255,7 +255,7 @@ export function Board({ columnasIniciales }: { columnasIniciales: Columna[] }) {
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
       >
-        <div className="stagger flex flex-1 gap-3 overflow-x-auto p-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4 md:flex-row md:overflow-x-auto">
           {colsVistas.map((c) => <ColumnaVista key={c.id} col={c} onBorrar={borrar} onChat={abrirChat} />)}
         </div>
         <DragOverlay>{activa ? <div className="w-72"><TarjetaVista t={activa} /></div> : null}</DragOverlay>

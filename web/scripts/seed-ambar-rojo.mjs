@@ -1,6 +1,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { credencialesDemo } from "./lib/demo-seed.mjs";
+import { actualizarEmbudoAR } from "./lib/ar-embudo.mjs";
 
 const slugOrg = process.env.ORG_SLUG ?? "ambar-rojo";
 const credenciales = credencialesDemo(process.env.ADMIN_EMAIL ?? "admin@ambar-rojo.local.test");
@@ -34,7 +35,6 @@ const clientes = [
   ] },
   { nombre: "Pie Feliz", contratos: [
     { tipo: "bot_whatsapp", estado: "baja", montoCierre: "7000", mensualidad: "1200", diaCobro: null, fechaBaja: "2026-07-08", pagado: true },
-    { tipo: "web", estado: "baja", montoCierre: "2000", mensualidad: null, diaCobro: null, fechaBaja: "2026-07-08", pagado: true },
   ] },
   { nombre: "Huipix", contratos: [
     { tipo: "bot_whatsapp", estado: "incobrable", montoCierre: "4000", mensualidad: null, diaCobro: null, fechaBaja: "2026-06-22", incobrable: true, notas: "Relación terminada; cierre nunca cobrado." },
@@ -57,6 +57,7 @@ try {
   await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('app.current_org', ${String(org.id)}, true)`;
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${org.id})`;
+    await tx.$queryRaw`SELECT id FROM contratos ORDER BY id FOR UPDATE`;
     usuarioCreado = !(await tx.usuario.findUnique({ where: { orgId_email: { orgId: org.id, email: credenciales.email } } }));
     const usuario = await tx.usuario.upsert({ where: { orgId_email: { orgId: org.id, email: credenciales.email } }, update: {}, create: { nombre: "Administración Ámbar Rojo", email: credenciales.email, passwordHash: await bcrypt.hash(credenciales.password, 10), rol: "admin", puesto: "Administrador" } });
     await tx.ajustes.upsert({ where: { orgId: org.id }, update: {}, create: { marcaNombre: "Ámbar Rojo Studios", nombreNegocio: "Ámbar Rojo Studios" } });
@@ -100,6 +101,7 @@ try {
         await tx.tarea.create({ data: { oportunidadId: op.id, titulo: "definir monto", descripcion: `Para CEO: ${nota}`, responsableId: null } });
       }
     }
+    await actualizarEmbudoAR(tx);
     const contratos = await tx.contrato.findMany({ where: { estado: "produccion" } });
     const mrr = contratos.reduce((total, contrato) => total.plus(contrato.mensualidad ?? 0), new Prisma.Decimal(0));
     console.log(`Seed AR: ${await tx.contacto.count()} contactos; ${await tx.contrato.count()} contratos; ${await tx.cobro.count()} cobros; MRR $${mrr.toFixed(2)}; sin envíos.`);

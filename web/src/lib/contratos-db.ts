@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { ErrorRetail, transaccionTenant } from "@/lib/retail-db";
 import { cargosCierre, validarContrato } from "@/lib/contratos-cobros";
+import { actualizarEmbudoAR } from "../../scripts/lib/ar-embudo.mjs";
 
 export type DatosContrato = ReturnType<typeof validarContrato>;
 
@@ -19,6 +20,7 @@ export function crearContrato(orgId: bigint, datos: DatosContrato) {
     const contrato = await tx.contrato.create({ data: datos });
     const cargos = cargosCierre(datos.montoCierre, datos.anticipoPct);
     if (cargos.length) await tx.cobro.createMany({ data: cargos.map((cargo) => ({ ...cargo, contratoId: contrato.id })) });
+    if (await tx.embudo.findFirst({ where: { nombre: "Comercial Ámbar Rojo" }, select: { id: true } })) await actualizarEmbudoAR(tx, contrato.contactoId);
     return contrato;
   });
 }
@@ -47,6 +49,7 @@ export function editarContrato(orgId: bigint, id: bigint, cambios: Record<string
       const cargos = cargosCierre(datos.montoCierre, datos.anticipoPct);
       if (cargos.length) await tx.cobro.createMany({ data: cargos.map((cargo) => ({ ...cargo, contratoId: id })) });
     }
+    if (await tx.embudo.findFirst({ where: { nombre: "Comercial Ámbar Rojo" }, select: { id: true } })) await actualizarEmbudoAR(tx, contrato.contactoId);
     return contrato;
   });
 }
