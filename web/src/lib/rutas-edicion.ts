@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ErrorCupo } from "@/lib/cupos-db";
+import { ErrorRetail } from "@/lib/retail-db";
 import { aBigInt } from "@/lib/ids";
 
 export type PropsId = { params: Promise<{ id: string }> };
@@ -13,7 +14,7 @@ export const noEncontrado = () => NextResponse.json({ error: "registro inexisten
 
 /** Errores de negocio (cupo, saldo, registro con historial) como respuesta para el usuario. */
 export function respuestaNegocio(error: unknown) {
-  if (error instanceof ErrorCupo) return NextResponse.json({ error: error.message }, { status: error.status });
+  if (error instanceof ErrorCupo || error instanceof ErrorRetail) return NextResponse.json({ error: error.message }, { status: error.status });
   throw error;
 }
 
