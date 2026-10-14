@@ -1,0 +1,3 @@
+AR vistas DB: abono concurrente idempotente, saldo, sobrepago rechazado, mensualidad manual única, baja confirmada de Administrador y cancelación solo futura OK
+cobros DB: referencias de cliente/oportunidad, edición con historial, vencidos, sin día/inicio futuro, cierre de estados, MRR/proyección, IA una vez por cliente incluso con pagos en meses distintos y baja OK
+EXIT 0

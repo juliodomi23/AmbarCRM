@@ -1,0 +1,6 @@
+UPDATE 1
+ id |    slug    
+----+------------
+  1 | ambar-rojo
+(1 row)
+

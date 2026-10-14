@@ -1,0 +1,16 @@
+UPDATE 1
+ id |  slug   
+----+---------
+  1 | inicial
+(1 row)
+
+ servidores 
+------------
+          4
+(1 row)
+
+ heartbeats 
+------------
+          0
+(1 row)
+

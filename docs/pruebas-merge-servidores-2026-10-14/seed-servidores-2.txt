@@ -1,0 +1,6 @@
+VPS Ámbar Rojo: ya existe, se conserva sin cambios.
+VPS Villafuerte: ya existe, se conserva sin cambios.
+VPS Pruebas: ya existe, se conserva sin cambios.
+VPS Pie Feliz: ya existe, se conserva sin cambios.
+Seed inicial: 0 servidores nuevos; sin heartbeats ni porcentajes inventados. ⚠️ Confirmar vence, costo anual y cargas contra la BD real del panel original. Fuente: docs/11-infraestructura/infraestructura-n8n.md y docs/05-financiero/infraestructura-hosting.md; documentación histórica, no producción.
+EXIT 0

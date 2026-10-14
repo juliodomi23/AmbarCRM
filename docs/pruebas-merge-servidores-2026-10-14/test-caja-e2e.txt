@@ -1,0 +1,2 @@
+{"login":{"puesto":"Cajero"},"permisosTurnos":{"cajeroCorteAjeno":404,"encargadoCorteAjeno":200,"encargadoCierraAjeno":200,"cajeroVeSoloPropios":true,"encargadoVeTodos":true},"apertura":201,"venta":{"pieza":1,"pesoKg":0.5,"total":"200","pagos":["efectivo","tarjeta"],"cambio":"20"},"ticket":{"propio":200,"otraEmpresa":404},"cancelarComoCajero":403,"cancelarTrasCorte":{"estado":409,"mensaje":"Este turno ya tuvo corte; registra una devolución"},"corteX":{"esperado":"600"},"corteZ":{"contado":590,"diferencia":"-10"},"stockFinal":{"pieza":2,"pesoKg":1.5}}
+EXIT 0

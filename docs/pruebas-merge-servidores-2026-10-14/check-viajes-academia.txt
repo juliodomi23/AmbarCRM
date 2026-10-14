@@ -1,0 +1,2 @@
+viajes y academia: catálogo, reservas, cobros, alumnos, cursos y asistencia OK
+EXIT 0

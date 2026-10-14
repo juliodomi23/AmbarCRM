@@ -1,0 +1,6 @@
+56edbb9 feat(ar): portar monitoreo de servidores y alertas de plataforma
+adc0836 feat(ar): documentar pruebas completas y revisión visual de las vistas
+72b7189 feat(ar): mostrar estados, saldos y acciones de cobro en vistas adaptables
+56edbb972bf6bb29cd3ee7396b633925fe2dc146
+adc08366952899bb00d1f81e94b78fef3e85569a
+56edbb972bf6bb29cd3ee7396b633925fe2dc146

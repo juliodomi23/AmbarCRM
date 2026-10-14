@@ -1,0 +1,1 @@
+Seed inicial/id=1: primera corrida 4 servidores y 4 tokens omitidos del log; segunda corrida 0 nuevos, 0 tokens, snapshot completo idéntico y 0 heartbeats. NODE_ENV sin definir. EXIT 0

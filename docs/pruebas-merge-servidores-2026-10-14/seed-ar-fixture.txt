@@ -1,0 +1,3 @@
+Seed AR: 18 contactos; 10 contratos; 5 cobros; MRR $4400.00; sin envíos.
+Acceso local: /login?org=inicial (la contraseña de un usuario existente no se modifica).
+EXIT 0

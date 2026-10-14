@@ -1,0 +1,2 @@
+OK · cupos concurrentes de tours y academia respetan la capacidad
+EXIT 0

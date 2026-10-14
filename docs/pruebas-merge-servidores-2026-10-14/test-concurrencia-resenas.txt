@@ -1,0 +1,2 @@
+{"modo":"CON_PROTECCION","dobleEvento":{"eventos":2,"solicitudes":1,"enviosWhatsApp":1},"rafaga":{"eventos":6,"solicitudes":1,"enviosWhatsApp":1},"reservadaAbandonada":{"hace2h":"enviada","hace10min":"bloquea"},"omitidasYFallidas":{"primera":"omitida","segunda":"fallida","tercera":"omitida"}}
+EXIT 0

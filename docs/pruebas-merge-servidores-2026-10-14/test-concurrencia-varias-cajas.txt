@@ -1,0 +1,2 @@
+{"sinProteccion":{"intentos":2,"ventas":2,"existenciaFinal":"0.000"},"conProteccion":{"intentos":2,"ventas":1,"rechazadas":1,"existenciaFinal":"0.000"}}
+EXIT 0

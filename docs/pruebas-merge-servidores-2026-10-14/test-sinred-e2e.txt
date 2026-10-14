@@ -1,0 +1,2 @@
+{"apagado":{"subida":403,"catalogo":403},"soloAdminEnciende":true,"subida":201,"reenvio":200,"ventasGuardadas":1,"identidadAjena":403,"turnoAjeno":"TURNO_AJENO","rechazosRegistrados":5,"precioDistinto":["precio_distinto"],"corteX":"195","existenciaNegativa":-3,"revision":2,"corteZTardia":{"esperado":"745","tardias":"50"}}
+EXIT 0

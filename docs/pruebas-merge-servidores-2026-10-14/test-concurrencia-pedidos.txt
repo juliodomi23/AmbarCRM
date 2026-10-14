@@ -1,0 +1,2 @@
+{"modo":"CON_PROTECCION","peticiones":2,"exitosas":1,"rechazadas":1,"pedidosCreados":1,"cantidadReservada":1,"stockFisico":1,"sobreventa":false,"pedidoContraCaja":{"exitosas":1,"rechazadas":1,"pedidos":0,"ventasCaja":1,"stockFisico":0,"reservado":0,"disponible":0},"idempotencia":{"peticiones":5,"exitosas":5,"ventas":1}}
+EXIT 0
