@@ -1,0 +1,2 @@
+citas OK
+EXIT 0

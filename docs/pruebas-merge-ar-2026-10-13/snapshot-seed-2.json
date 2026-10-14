@@ -1,0 +1,400 @@
+{
+  "fueraAR": {
+    "orgs": {
+      "count": 2,
+      "hash": "76bc0f26c4ab7eb13a7b82bbc8e26a4406e56de5c84bb9edcb3b9fba9b38ed04"
+    },
+    "abonos_apartado": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "ajustes": {
+      "count": 1,
+      "hash": "8a759c841b38499b08eefab82c2d9c2c3e374708be20e43fa9a1609d3be89f4b"
+    },
+    "alumnos_academia": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "apartados": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "asesorias_legales": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "asistencias_academia": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "auditoria_bot": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "bots": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "cajas": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "campos_personalizados": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "canales_whatsapp": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "citas": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "cobros": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "cola_caja_rechazos": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "colegiaturas_academia": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "compra_partidas": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "compras": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "contacto_etiquetas": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "contactos": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "contratos": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "conversaciones": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "cotizacion_partidas": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "cotizaciones": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "cuentas_cliente": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "cursos_academia": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "devolucion_partidas": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "devoluciones_venta": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "doctores": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "embudos": {
+      "count": 1,
+      "hash": "82dde1767c7e6cd0b5f7ca531c2aca39a3ce3bedf36c98565328e5b3b9e6c346"
+    },
+    "etapas": {
+      "count": 6,
+      "hash": "7b7b852f365fbcd91edc3170af448cfab2e4f9b3c3fa86e36e4256e67f6b887d"
+    },
+    "etiquetas": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "eventos": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "evoluciones_clinicas": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "excepciones_horario": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "expedientes_legales": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "expedientes_paciente": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "grupos": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "horarios_doctor": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "inscripciones_academia": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "itinerarios_tour": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "lista_precio_productos": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "listas_precios": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "mensajes": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "mensajes_grupo": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "mensajes_programados": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "modulos_org": {
+      "count": 1,
+      "hash": "35181fb28e32c600f0d9ecc70d8ad624bb841570dd1dd26b2267ac28abe958f6"
+    },
+    "movimientos_caja": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "movimientos_cuenta_cliente": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "movimientos_inventario": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "movimientos_legales": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "notas": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "notas_credito_cliente": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "oportunidades": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "pagos_tour": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "pagos_venta": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "plantillas_mensaje": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "precios_volumen": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "productos": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "promociones": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "propiedades": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "proveedores": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "push_suscripciones": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "registros_expediente_legal": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "registros_operacion_legal": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "resenas": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "reservas_pedido": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "reservas_tour": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "servicio_reserva_doctores": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "servicios_reserva": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "solicitudes_resena": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "sucursales_legales": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "tareas": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "tours": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "turnos_caja": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "usuarios": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "vehiculos": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "venta_partidas": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "ventas": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  "conteosAR": {
+    "abonos_apartado": 0,
+    "ajustes": 1,
+    "alumnos_academia": 0,
+    "apartados": 0,
+    "asesorias_legales": 0,
+    "asistencias_academia": 0,
+    "auditoria_bot": 0,
+    "bots": 0,
+    "cajas": 0,
+    "campos_personalizados": 0,
+    "canales_whatsapp": 0,
+    "citas": 0,
+    "cobros": 6,
+    "cola_caja_rechazos": 0,
+    "colegiaturas_academia": 0,
+    "compra_partidas": 0,
+    "compras": 0,
+    "contacto_etiquetas": 1,
+    "contactos": 18,
+    "contratos": 11,
+    "conversaciones": 0,
+    "cotizacion_partidas": 0,
+    "cotizaciones": 0,
+    "cuentas_cliente": 0,
+    "cursos_academia": 0,
+    "devolucion_partidas": 0,
+    "devoluciones_venta": 0,
+    "doctores": 0,
+    "embudos": 1,
+    "etapas": 6,
+    "etiquetas": 1,
+    "eventos": 0,
+    "evoluciones_clinicas": 0,
+    "excepciones_horario": 0,
+    "expedientes_legales": 0,
+    "expedientes_paciente": 0,
+    "grupos": 0,
+    "horarios_doctor": 0,
+    "inscripciones_academia": 0,
+    "itinerarios_tour": 0,
+    "lista_precio_productos": 0,
+    "listas_precios": 0,
+    "mensajes": 0,
+    "mensajes_grupo": 0,
+    "mensajes_programados": 0,
+    "modulos_org": 4,
+    "movimientos_caja": 0,
+    "movimientos_cuenta_cliente": 0,
+    "movimientos_inventario": 0,
+    "movimientos_legales": 0,
+    "notas": 0,
+    "notas_credito_cliente": 0,
+    "oportunidades": 10,
+    "pagos_tour": 0,
+    "pagos_venta": 0,
+    "plantillas_mensaje": 0,
+    "precios_volumen": 0,
+    "productos": 0,
+    "promociones": 0,
+    "propiedades": 0,
+    "proveedores": 0,
+    "push_suscripciones": 0,
+    "registros_expediente_legal": 0,
+    "registros_operacion_legal": 0,
+    "resenas": 0,
+    "reservas_pedido": 0,
+    "reservas_tour": 0,
+    "servicio_reserva_doctores": 0,
+    "servicios_reserva": 0,
+    "solicitudes_resena": 0,
+    "sucursales_legales": 0,
+    "tareas": 7,
+    "tours": 0,
+    "turnos_caja": 0,
+    "usuarios": 1,
+    "vehiculos": 0,
+    "venta_partidas": 0,
+    "ventas": 0
+  }
+}

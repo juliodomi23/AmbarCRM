@@ -1,0 +1,2 @@
+permisos por puesto: sesión, configuración y servidor OK
+EXIT 0

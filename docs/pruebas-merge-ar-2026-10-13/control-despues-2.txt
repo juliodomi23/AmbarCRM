@@ -1,0 +1,10 @@
+       slug       | clave | activo |                                         config                                         
+------------------+-------+--------+----------------------------------------------------------------------------------------
+ control-merge-ar | citas | t      | {"controlMerge": "conservar", "puestosPermitidos": ["Administrador", "Recepcionista"]}
+(1 row)
+
+              case              
+--------------------------------
+ OK: config restringida intacta
+(1 row)
+

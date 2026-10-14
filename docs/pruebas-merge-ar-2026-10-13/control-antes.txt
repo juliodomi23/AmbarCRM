@@ -1,0 +1,19 @@
+ALTER ROLE
+INSERT 0 1
+INSERT 0 1
+                                                       version                                                        
+----------------------------------------------------------------------------------------------------------------------
+ PostgreSQL 16.14 (Debian 16.14-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+(1 row)
+
+ rolname | rolsuper | rolbypassrls 
+---------+----------+--------------
+ crm_app | f        | f
+(1 row)
+
+       slug       | clave | activo |                                         config                                         
+------------------+-------+--------+----------------------------------------------------------------------------------------
+ control-merge-ar | citas | t      | {"controlMerge": "conservar", "puestosPermitidos": ["Administrador", "Recepcionista"]}
+(1 row)
+
+EXIT 0

@@ -1,0 +1,10 @@
+Primer intento de crear el control mediante psql -c desde PowerShell:
+psql: warning: extra command-line argument "puestosPermitidos\:[\Administrador\,\Recepcionista\],\controlMerge\:\conservar\}'::jsonb FROM orgs WHERE slug='control-merge-ar';" ignored
+ERROR:  unterminated quoted string at or near "'{\"
+LINE 1: ...s_org(org_id,clave,activo,config) SELECT id,'citas',true,'{\
+                                                                    ^
+EXIT 1
+
+Se corrigió el transporte del SQL: here-string por stdin a psql, sin cambiar
+actualizaciones.sql ni código de la aplicación. La preparación y ambas
+comparaciones posteriores pasan; ver control-antes.txt y control-despues-*.txt.

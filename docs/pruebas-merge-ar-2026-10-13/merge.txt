@@ -1,0 +1,10 @@
+bba4eee5989db09c5ea661c40d18073b9afb9a8c
+bba4eee merge: módulos Ámbar Rojo (contratos, cobros y panel AR)
+9739cd1 docs(ar): cerrar prueba HTTP y revisión visual de la compilación final
+06ae88d docs(ar): registrar pruebas, capturas y datos pendientes de confirmar
+874b790 fix(ar): dejar vencimientos por confirmar y permitir definir fechas
+5d61efe fix(ar): evitar recortes de formularios en filas editables
+45a13fb feat(ar): gestionar servicios, cobranza y MRR con datos por confirmar
+1f09eb0 feat(ar): aislar contratos y cobros y evitar pagos duplicados
+9f147e1 fix(template-n8n): cabeceras de las herramientas del agente y etiqueta requiere_atencion
+a0b5fe4 docs: fase 2 en pausa hasta la aprobación de Meta

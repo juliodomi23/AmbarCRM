@@ -1,0 +1,4 @@
+AURUM_URL: presente en entorno = False
+AURUM_SLUG: presente en entorno = False
+AURUM_CLAVE: presente en entorno = False
+AURUM_WEBHOOK_SECRET: presente en entorno = False

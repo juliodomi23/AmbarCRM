@@ -1,0 +1,3 @@
+OK: seed idempotente; mismos conteos en las 78 tablas con org_id; datos de todas las orgs ajenas intactos por SHA-256; tres intentos bloqueados sin cambios
+{"contactos":18,"contratos":11,"cobros":6,"oportunidades":10,"tareas":7}
+EXIT 0

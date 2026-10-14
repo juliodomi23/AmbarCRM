@@ -1,0 +1,4 @@
+Snapshot: 78 tablas con org_id; 2 orgs ajenas; AR sin crear
+Snapshot: 78 tablas con org_id; 2 orgs ajenas; AR 3
+Snapshot: 78 tablas con org_id; 2 orgs ajenas; AR 3
+Snapshot: 78 tablas con org_id; 2 orgs ajenas; AR 3

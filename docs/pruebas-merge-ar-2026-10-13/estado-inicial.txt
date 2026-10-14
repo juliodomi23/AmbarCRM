@@ -1,0 +1,21 @@
+git status --short
+?? PROMPT-MERGE-MODULOS-AR.md
+?? PROMPT-MODULOS-AR.md
+
+git rev-parse modulos-fase-2
+9f147e1e9e952420075f21cec7be826ccdb12f33
+git rev-parse origin/modulos-fase-2
+a0b5fe46b1968d323a896098eb7857f70fe09861
+
+git log --oneline modulos-fase-2..modulos-ar
+9739cd1 docs(ar): cerrar prueba HTTP y revisión visual de la compilación final
+06ae88d docs(ar): registrar pruebas, capturas y datos pendientes de confirmar
+874b790 fix(ar): dejar vencimientos por confirmar y permitir definir fechas
+5d61efe fix(ar): evitar recortes de formularios en filas editables
+45a13fb feat(ar): gestionar servicios, cobranza y MRR con datos por confirmar
+1f09eb0 feat(ar): aislar contratos y cobros y evitar pagos duplicados
+
+git rev-list --count modulos-fase-2..modulos-ar
+6
+git log --oneline origin/modulos-fase-2..modulos-fase-2
+9f147e1 fix(template-n8n): cabeceras de las herramientas del agente y etiqueta requiere_atencion

@@ -1,0 +1,6 @@
+Arranque solicitado: next start --hostname 127.0.0.1 --port 3128
+Resultado de la herramienta: rejected: blocked by policy
+No se intentó otro mecanismo para eludir el bloqueo.
+Se preparó iniciar-app-local.ps1 para ejecución manual por Julio.
+Segundo intento, solicitado por Julio: rejected: blocked by policy.
+Julio inició el script; /api/auth/csrf en 127.0.0.1:3128 devuelve HTTP 200.

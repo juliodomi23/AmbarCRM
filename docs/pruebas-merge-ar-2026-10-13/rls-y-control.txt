@@ -1,0 +1,23 @@
+ rolname | rolsuper | rolbypassrls 
+---------+----------+--------------
+ crm_app | f        | f
+(1 row)
+
+ table_name |                               column_default                               
+------------+----------------------------------------------------------------------------
+ cobros     | (NULLIF(current_setting('app.current_org'::text, true), ''::text))::bigint
+ contratos  | (NULLIF(current_setting('app.current_org'::text, true), ''::text))::bigint
+(2 rows)
+
+ tablename |  policyname   |                                         qual                                          |                                      with_check                                       
+-----------+---------------+---------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------
+ cobros    | org_isolation | (org_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::bigint) | (org_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::bigint)
+ contratos | org_isolation | (org_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::bigint) | (org_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::bigint)
+(2 rows)
+
+       slug       | clave |                                         config                                         
+------------------+-------+----------------------------------------------------------------------------------------
+ control-merge-ar | citas | {"controlMerge": "conservar", "puestosPermitidos": ["Administrador", "Recepcionista"]}
+(1 row)
+
+EXIT 0

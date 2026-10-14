@@ -1,0 +1,535 @@
+psql:/repo/web/prisma/sql/actualizaciones.sql:4: NOTICE:  column "marca_nombre" of relation "ajustes" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:5: NOTICE:  column "marca_logo" of relation "ajustes" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:6: NOTICE:  column "marca_color_primario" of relation "ajustes" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:7: NOTICE:  column "marca_color_acento" of relation "ajustes" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:8: NOTICE:  column "marca_preset" of relation "ajustes" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:11: NOTICE:  column "error_detalle" of relation "mensajes" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:12: NOTICE:  column "puesto" of relation "usuarios" already exists, skipping
+ALTER TABLE
+DO
+psql:/repo/web/prisma/sql/actualizaciones.sql:39: NOTICE:  relation "canales_whatsapp_phone_number_id_activo_uq" already exists, skipping
+CREATE INDEX
+CREATE FUNCTION
+psql:/repo/web/prisma/sql/actualizaciones.sql:55: NOTICE:  relation "modulos_org" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:56: NOTICE:  relation "modulos_org_org_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:110: NOTICE:  enum label "en_sala" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+UPDATE 0
+DO
+DO
+DO
+ALTER TYPE
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:120: NOTICE:  relation "campos_personalizados" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:121: NOTICE:  relation "campos_personalizados_org_entidad_orden_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:122: NOTICE:  column "campos" of relation "contactos" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:123: NOTICE:  column "campos" of relation "oportunidades" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:133: NOTICE:  relation "citas" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:134: NOTICE:  relation "citas_org_inicio_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:147: NOTICE:  relation "doctores" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:148: NOTICE:  relation "doctores_org_activo_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:150: NOTICE:  column "doctor_id" of relation "citas" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:151: NOTICE:  relation "citas_doctor_id_idx" already exists, skipping
+ALTER TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:165: NOTICE:  relation "expedientes_paciente" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:166: NOTICE:  relation "expedientes_paciente_org_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:177: NOTICE:  relation "evoluciones_clinicas" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:179: NOTICE:  relation "evoluciones_expediente_created_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:180: NOTICE:  relation "evoluciones_clinicas_org_idx" already exists, skipping
+DO
+psql:/repo/web/prisma/sql/actualizaciones.sql:215: NOTICE:  relation "vehiculos" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:216: NOTICE:  relation "vehiculos_org_estado_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:217: NOTICE:  relation "vehiculos_org_marca_modelo_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:242: NOTICE:  relation "propiedades" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:243: NOTICE:  relation "propiedades_org_estado_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:245: NOTICE:  relation "propiedades_org_ciudad_tipo_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:274: NOTICE:  relation "productos" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:276: NOTICE:  relation "productos_org_activo_nombre_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:278: NOTICE:  relation "productos_org_categoria_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:303: NOTICE:  relation "ventas" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:305: NOTICE:  relation "ventas_org_estado_created_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:306: NOTICE:  relation "ventas_contacto_id_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:321: NOTICE:  relation "venta_partidas" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:322: NOTICE:  relation "venta_partidas_venta_id_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:323: NOTICE:  relation "venta_partidas_producto_id_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:324: NOTICE:  relation "venta_partidas_org_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:341: NOTICE:  relation "proveedores" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:343: NOTICE:  relation "proveedores_org_activo_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:362: NOTICE:  relation "compras" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:364: NOTICE:  relation "compras_org_estado_created_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:365: NOTICE:  relation "compras_proveedor_id_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:380: NOTICE:  relation "compra_partidas" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:381: NOTICE:  relation "compra_partidas_compra_id_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:382: NOTICE:  relation "compra_partidas_producto_id_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:383: NOTICE:  relation "compra_partidas_org_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:403: NOTICE:  relation "movimientos_inventario" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:405: NOTICE:  column "compra_id" of relation "movimientos_inventario" already exists, skipping
+ALTER TABLE
+DO
+psql:/repo/web/prisma/sql/actualizaciones.sql:447: NOTICE:  column "unidad" of relation "productos" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:448: NOTICE:  column "vende_por_peso" of relation "productos" already exists, skipping
+ALTER TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:450: NOTICE:  relation "movimientos_producto_created_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:452: NOTICE:  relation "movimientos_venta_id_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:454: NOTICE:  relation "movimientos_compra_id_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:456: NOTICE:  relation "movimientos_inventario_org_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:471: NOTICE:  relation "sucursales_legales" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:473: NOTICE:  relation "sucursales_legales_org_activa_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:497: NOTICE:  relation "expedientes_legales" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:499: NOTICE:  relation "expedientes_legales_org_estado_updated_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:501: NOTICE:  relation "expedientes_legales_contacto_id_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:503: NOTICE:  relation "expedientes_legales_responsable_id_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:505: NOTICE:  relation "expedientes_legales_sucursal_id_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:524: NOTICE:  relation "registros_expediente_legal" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:526: NOTICE:  relation "registros_expediente_fecha_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:528: NOTICE:  relation "registros_expediente_legal_org_tipo_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:549: NOTICE:  relation "asesorias_legales" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:551: NOTICE:  relation "asesorias_legales_org_estado_fecha_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:553: NOTICE:  relation "asesorias_legales_contacto_id_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:555: NOTICE:  relation "asesorias_legales_expediente_id_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:573: NOTICE:  relation "movimientos_legales" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:575: NOTICE:  relation "movimientos_legales_org_tipo_fecha_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:577: NOTICE:  relation "movimientos_legales_expediente_id_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:592: NOTICE:  relation "registros_operacion_legal" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:594: NOTICE:  relation "registros_operacion_org_tipo_fecha_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:596: NOTICE:  relation "registros_operacion_usuario_id_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:622: NOTICE:  relation "tours" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:624: NOTICE:  relation "tours_org_estado_salida_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:636: NOTICE:  relation "itinerarios_tour" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:638: NOTICE:  relation "itinerarios_tour_dia_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:640: NOTICE:  relation "itinerarios_tour_org_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:659: NOTICE:  relation "reservas_tour" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:661: NOTICE:  relation "reservas_tour_org_estado_salida_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:662: NOTICE:  relation "reservas_tour_tour_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:663: NOTICE:  relation "reservas_tour_contacto_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:678: NOTICE:  relation "pagos_tour" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:679: NOTICE:  relation "pagos_tour_org_fecha_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:680: NOTICE:  relation "pagos_tour_reserva_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:698: NOTICE:  relation "alumnos_academia" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:700: NOTICE:  relation "alumnos_academia_org_estado_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:721: NOTICE:  relation "cursos_academia" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:723: NOTICE:  relation "cursos_academia_org_estado_idx" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:741: NOTICE:  relation "inscripciones_academia" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:743: NOTICE:  relation "inscripciones_academia_org_estado_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:745: NOTICE:  relation "inscripciones_academia_curso_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:762: NOTICE:  relation "colegiaturas_academia" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:764: NOTICE:  relation "colegiaturas_org_estado_vencimiento_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:766: NOTICE:  relation "colegiaturas_alumno_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:780: NOTICE:  relation "asistencias_academia" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:782: NOTICE:  relation "asistencias_org_fecha_estado_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:784: NOTICE:  relation "asistencias_curso_idx" already exists, skipping
+CREATE INDEX
+DO
+GRANT
+GRANT
+ setval 
+--------
+      2
+(1 row)
+
+CREATE FUNCTION
+psql:/repo/web/prisma/sql/actualizaciones.sql:889: NOTICE:  relation "mensajes_media_url_idx" already exists, skipping
+CREATE INDEX
+CREATE EXTENSION
+psql:/repo/web/prisma/sql/actualizaciones.sql:893: NOTICE:  extension "unaccent" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:911: NOTICE:  relation "servicios_reserva" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:917: NOTICE:  relation "servicio_reserva_doctores" already exists, skipping
+CREATE TABLE
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:926: NOTICE:  relation "horarios_doctor" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:927: NOTICE:  relation "horarios_doctor_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:937: NOTICE:  relation "excepciones_horario" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:938: NOTICE:  relation "excepciones_horario_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:940: NOTICE:  column "servicio_id" of relation "citas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:941: NOTICE:  column "token_gestion" of relation "citas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:942: NOTICE:  column "origen" of relation "citas" already exists, skipping
+ALTER TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:943: NOTICE:  relation "citas_token_gestion_uq" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:944: NOTICE:  relation "citas_doctor_inicio_idx" already exists, skipping
+DO
+GRANT
+GRANT
+CREATE FUNCTION
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:982: NOTICE:  relation "cajas" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:983: NOTICE:  relation "cajas_org_activa_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:999: NOTICE:  relation "turnos_caja" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1000: NOTICE:  relation "turnos_caja_org_estado_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1001: NOTICE:  relation "turnos_caja_caja_estado_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1002: NOTICE:  relation "turnos_caja_usuario_estado_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1004: NOTICE:  relation "turnos_caja_usuario_abierto_uq" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1006: NOTICE:  relation "turnos_caja_caja_abierta_uq" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1017: NOTICE:  relation "movimientos_caja" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1018: NOTICE:  relation "movimientos_caja_turno_created_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1019: NOTICE:  relation "movimientos_caja_org_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1021: NOTICE:  column "turno_id" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1022: NOTICE:  column "caja_id" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1023: NOTICE:  column "uuid_cliente" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1024: NOTICE:  column "cambio" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1026: NOTICE:  relation "ventas_org_uuid_cliente_uq" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1027: NOTICE:  relation "ventas_turno_id_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1028: NOTICE:  relation "ventas_caja_id_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1030: NOTICE:  column "descuento" of relation "venta_partidas" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1040: NOTICE:  relation "pagos_venta" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1041: NOTICE:  relation "pagos_venta_org_idx" already exists, skipping
+DO
+GRANT
+GRANT
+psql:/repo/web/prisma/sql/actualizaciones.sql:1057: NOTICE:  column "es_credito" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1070: NOTICE:  relation "devoluciones_venta" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1071: NOTICE:  relation "devoluciones_venta_original_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1072: NOTICE:  relation "devoluciones_venta_org_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1082: NOTICE:  relation "devolucion_partidas" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1083: NOTICE:  relation "devolucion_partidas_venta_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1084: NOTICE:  relation "devolucion_partidas_org_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1100: NOTICE:  relation "apartados" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1101: NOTICE:  relation "apartados_org_estado_vence_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1102: NOTICE:  relation "apartados_contacto_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1113: NOTICE:  relation "abonos_apartado" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1114: NOTICE:  relation "abonos_apartado_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1115: NOTICE:  relation "abonos_apartado_org_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1125: NOTICE:  relation "cuentas_cliente" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1126: NOTICE:  relation "cuentas_cliente_org_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1141: NOTICE:  relation "movimientos_cuenta_cliente" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1142: NOTICE:  relation "movimientos_cuenta_cliente_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1143: NOTICE:  relation "movimientos_cuenta_org_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1155: NOTICE:  relation "notas_credito_cliente" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1156: NOTICE:  relation "notas_credito_contacto_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1157: NOTICE:  relation "notas_credito_org_idx" already exists, skipping
+DO
+GRANT
+GRANT
+ALTER TABLE
+ALTER TABLE
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1209: NOTICE:  relation "cotizaciones" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1210: NOTICE:  relation "cotizaciones_org_estado_created_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1211: NOTICE:  relation "cotizaciones_contacto_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1212: NOTICE:  relation "cotizaciones_oportunidad_idx" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1224: NOTICE:  relation "cotizacion_partidas" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1225: NOTICE:  relation "cotizacion_partidas_cotizacion_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1226: NOTICE:  relation "cotizacion_partidas_producto_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1227: NOTICE:  relation "cotizacion_partidas_org_idx" already exists, skipping
+CREATE INDEX
+DO
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+psql:/repo/web/prisma/sql/actualizaciones.sql:1250: NOTICE:  column "visible_en_linea" of relation "productos" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1251: NOTICE:  column "agotado_manual" of relation "productos" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1252: NOTICE:  column "etiquetas_en_linea" of relation "productos" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1254: NOTICE:  column "token_seguimiento" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1255: NOTICE:  column "tipo_entrega" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1256: NOTICE:  column "direccion_entrega" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1257: NOTICE:  column "horario_deseado" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1258: NOTICE:  column "costo_envio" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1259: NOTICE:  column "pedido_ip" of relation "ventas" already exists, skipping
+ALTER TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1260: NOTICE:  relation "ventas_token_seguimiento_key" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1261: NOTICE:  relation "ventas_pedidos_telefono_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1262: NOTICE:  relation "ventas_pedidos_ip_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1273: NOTICE:  relation "reservas_pedido" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1274: NOTICE:  relation "reservas_pedido_producto_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1275: NOTICE:  relation "reservas_pedido_venta_idx" already exists, skipping
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+GRANT
+GRANT
+CREATE FUNCTION
+psql:/repo/web/prisma/sql/actualizaciones.sql:1303: NOTICE:  relation "listas_precios" already exists, skipping
+REVOKE
+GRANT
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+DO
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1304: NOTICE:  relation "listas_precios_org_tipo_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1306: NOTICE:  column "lista_precio_id" of relation "contactos" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1313: NOTICE:  relation "contactos_lista_precio_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1323: NOTICE:  relation "precios_volumen" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1324: NOTICE:  relation "precios_volumen_org_producto_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1333: NOTICE:  relation "lista_precio_productos" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1334: NOTICE:  relation "lista_precio_productos_org_producto_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1357: NOTICE:  relation "promociones" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1358: NOTICE:  relation "promociones_org_vigencia_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1359: NOTICE:  relation "promociones_producto_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1360: NOTICE:  relation "promociones_org_categoria_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1362: NOTICE:  column "descuento_promocion" of relation "venta_partidas" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1363: NOTICE:  column "promocion_descripcion" of relation "venta_partidas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1364: NOTICE:  column "descuento_promocion" of relation "cotizacion_partidas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1365: NOTICE:  column "promocion_descripcion" of relation "cotizacion_partidas" already exists, skipping
+ALTER TABLE
+DO
+GRANT
+GRANT
+psql:/repo/web/prisma/sql/actualizaciones.sql:1381: NOTICE:  column "grupo_id" of relation "productos" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1382: NOTICE:  column "atributos" of relation "productos" already exists, skipping
+ALTER TABLE
+DO
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1389: NOTICE:  relation "productos_grupo_id_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1392: NOTICE:  column "costo_unitario" of relation "venta_partidas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1395: NOTICE:  column "signing_secret" of relation "bots" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1396: NOTICE:  column "asesor_id" of relation "bots" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1409: NOTICE:  relation "auditoria_bot" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1410: NOTICE:  relation "auditoria_bot_org_fecha_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1411: NOTICE:  relation "auditoria_bot_conversacion_idx" already exists, skipping
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+GRANT
+REVOKE
+GRANT
+psql:/repo/web/prisma/sql/actualizaciones.sql:1424: NOTICE:  column "permisos" of relation "bots" already exists, skipping
+ALTER TABLE
+UPDATE 0
+ALTER TABLE
+ALTER TABLE
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1445: NOTICE:  relation "resenas" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1446: NOTICE:  relation "resenas_org_created_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1458: NOTICE:  relation "solicitudes_resena" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1459: NOTICE:  relation "solicitudes_resena_contacto_idx" already exists, skipping
+DO
+GRANT
+GRANT
+psql:/repo/web/prisma/sql/actualizaciones.sql:1478: NOTICE:  column "sin_red" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1479: NOTICE:  column "vendida_at" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1480: NOTICE:  column "subida_at" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1481: NOTICE:  column "turno_original_id" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1482: NOTICE:  column "revision_motivos" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1483: NOTICE:  column "diferencia_precio" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1484: NOTICE:  column "catalogo_version" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1485: NOTICE:  column "revision_resuelta_at" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1486: NOTICE:  column "revision_resuelta_por" of relation "ventas" already exists, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1488: NOTICE:  relation "ventas_revision_idx" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1489: NOTICE:  column "sin_red" of relation "movimientos_inventario" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1507: NOTICE:  relation "cola_caja_rechazos" already exists, skipping
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1508: NOTICE:  relation "cola_caja_rechazos_pendientes_idx" already exists, skipping
+DO
+GRANT
+GRANT
+psql:/repo/web/prisma/sql/actualizaciones.sql:1527: NOTICE:  constraint "productos_stock_check" of relation "productos" does not exist, skipping
+ALTER TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1530: NOTICE:  constraint "movimientos_inventario_existencia_antes_check" of relation "movimientos_inventario" does not exist, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1530: NOTICE:  constraint "movimientos_inventario_existencia_despues_check" of relation "movimientos_inventario" does not exist, skipping
+ALTER TABLE
+INSERT 0 0
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1555: NOTICE:  relation "contratos" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1556: NOTICE:  relation "contratos_org_estado_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1557: NOTICE:  relation "contratos_contacto_idx" already exists, skipping
+psql:/repo/web/prisma/sql/actualizaciones.sql:1571: NOTICE:  relation "cobros" already exists, skipping
+CREATE TABLE
+psql:/repo/web/prisma/sql/actualizaciones.sql:1574: NOTICE:  relation "cobros_cierre_unico" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+psql:/repo/web/prisma/sql/actualizaciones.sql:1575: NOTICE:  relation "cobros_org_estado_vence_idx" already exists, skipping
+DO
+GRANT
+GRANT
+EXIT 0

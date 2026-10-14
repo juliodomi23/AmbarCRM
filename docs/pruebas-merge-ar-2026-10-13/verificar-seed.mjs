@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+const leer = async nombre => JSON.parse(await readFile(new URL(nombre,import.meta.url),'utf8'));
+const antes = await leer('snapshot-antes.json');
+const primera = await leer('snapshot-seed-1.json');
+const segunda = await leer('snapshot-seed-2.json');
+const guardas = await leer('snapshot-guardas.json');
+assert.deepEqual(antes.fueraAR, primera.fueraAR);
+assert.deepEqual(primera.fueraAR, segunda.fueraAR);
+assert.deepEqual(primera.conteosAR, segunda.conteosAR);
+assert.deepEqual(segunda, guardas);
+console.log('OK: seed idempotente; mismos conteos en las 78 tablas con org_id; datos de todas las orgs ajenas intactos por SHA-256; tres intentos bloqueados sin cambios');
+console.log(JSON.stringify({contactos:segunda.conteosAR.contactos,contratos:segunda.conteosAR.contratos,cobros:segunda.conteosAR.cobros,oportunidades:segunda.conteosAR.oportunidades,tareas:segunda.conteosAR.tareas}));

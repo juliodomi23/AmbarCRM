@@ -1,0 +1,2 @@
+OK · reservas en línea simultáneas: un lugar por especialista, sin duplicados
+EXIT 0

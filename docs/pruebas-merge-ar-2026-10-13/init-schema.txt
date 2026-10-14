@@ -1,0 +1,73 @@
+DO
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+psql:/repo/schema.sql:180: NOTICE:  column "bot_activo" of relation "conversaciones" already exists, skipping
+ALTER TABLE
+psql:/repo/schema.sql:181: NOTICE:  column "etiquetas" of relation "conversaciones" already exists, skipping
+ALTER TABLE
+psql:/repo/schema.sql:182: NOTICE:  column "csat_score" of relation "conversaciones" already exists, skipping
+ALTER TABLE
+psql:/repo/schema.sql:183: NOTICE:  column "csat_enviado_at" of relation "conversaciones" already exists, skipping
+ALTER TABLE
+psql:/repo/schema.sql:184: NOTICE:  column "aviso_fuera_at" of relation "conversaciones" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+psql:/repo/schema.sql:203: NOTICE:  column "interna" of relation "mensajes" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+psql:/repo/schema.sql:268: NOTICE:  column "crear_lead_auto" of relation "ajustes" already exists, skipping
+ALTER TABLE
+psql:/repo/schema.sql:269: NOTICE:  column "csat_activo" of relation "ajustes" already exists, skipping
+ALTER TABLE
+psql:/repo/schema.sql:270: NOTICE:  column "csat_texto" of relation "ajustes" already exists, skipping
+psql:/repo/schema.sql:271: NOTICE:  column "horario_activo" of relation "ajustes" already exists, skipping
+ALTER TABLE
+ALTER TABLE
+psql:/repo/schema.sql:272: NOTICE:  column "horario_inicio" of relation "ajustes" already exists, skipping
+ALTER TABLE
+psql:/repo/schema.sql:273: NOTICE:  column "horario_fin" of relation "ajustes" already exists, skipping
+ALTER TABLE
+psql:/repo/schema.sql:274: NOTICE:  column "horario_dias" of relation "ajustes" already exists, skipping
+ALTER TABLE
+psql:/repo/schema.sql:275: NOTICE:  column "fuera_horario_texto" of relation "ajustes" already exists, skipping
+ALTER TABLE
+psql:/repo/schema.sql:276: NOTICE:  column "auto_resolver_activo" of relation "ajustes" already exists, skipping
+ALTER TABLE
+psql:/repo/schema.sql:277: NOTICE:  column "auto_resolver_horas" of relation "ajustes" already exists, skipping
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE FUNCTION
+DROP TRIGGER
+psql:/repo/schema.sql:303: NOTICE:  trigger "trg_notify_mensaje" for relation "mensajes" does not exist, skipping
+CREATE TRIGGER
+INSERT 0 6
+INSERT 0 1
+EXIT 0
