@@ -60,7 +60,7 @@ export function PanelListado({
         placeholder="Buscar…"
         className="w-full rounded-lg border bg-card px-3 py-2 text-sm"
       />
-      <section className="stagger overflow-hidden surface">
+      <section className={edicion ? "surface" : "stagger overflow-hidden surface"}>
         {visibles.map((item) => {
           const contenido = (
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
