@@ -60,6 +60,8 @@ SET config = jsonb_set(
   COALESCE(config, '{}'::jsonb),
   '{puestosPermitidos}',
   CASE
+    WHEN clave IN ('contratos', 'cobros', 'panel_ar') THEN
+      '["Administrador"]'::jsonb
     WHEN clave = 'pacientes' THEN
       '["Administrador", "Doctor", "Coordinador clínico"]'::jsonb
     WHEN clave IN ('legal', 'asesorias_legales', 'finanzas_legales', 'operacion_legal') THEN
@@ -1535,3 +1537,48 @@ SELECT DISTINCT c.org_id, c.contacto_id, e.id
  CROSS JOIN LATERAL unnest(c.etiquetas) AS t(nombre)
   JOIN etiquetas e ON e.org_id = c.org_id AND e.nombre = t.nombre
 ON CONFLICT DO NOTHING;
+
+-- Ámbar Rojo · contratos y cobros. NULL representa un dato pendiente de confirmar.
+CREATE TABLE IF NOT EXISTS contratos (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  contacto_id BIGINT NOT NULL REFERENCES contactos(id) ON DELETE RESTRICT,
+  oportunidad_id BIGINT REFERENCES oportunidades(id) ON DELETE SET NULL,
+  tipo TEXT NOT NULL CHECK (tipo IN ('bot_whatsapp','bot_facebook','agente_odoo','web','seo','panel','otro')),
+  estado TEXT CHECK (estado IN ('en_desarrollo','en_pruebas','produccion','pausado','baja','incobrable')),
+  monto_cierre NUMERIC(12,2) CHECK (monto_cierre >= 0),
+  anticipo_pct NUMERIC(5,2) DEFAULT 50 CHECK (anticipo_pct BETWEEN 0 AND 100),
+  mensualidad NUMERIC(12,2) CHECK (mensualidad >= 0),
+  dia_cobro INTEGER CHECK (dia_cobro BETWEEN 1 AND 28),
+  inicio_mensualidad DATE, fecha_baja DATE, notas TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS contratos_org_estado_idx ON contratos(org_id, estado);
+CREATE INDEX IF NOT EXISTS contratos_contacto_idx ON contratos(contacto_id);
+CREATE TABLE IF NOT EXISTS cobros (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  contrato_id BIGINT NOT NULL REFERENCES contratos(id) ON DELETE RESTRICT,
+  concepto TEXT NOT NULL CHECK (concepto IN ('anticipo','balance','mensualidad','extra')),
+  periodo DATE, monto NUMERIC(12,2) NOT NULL CHECK (monto >= 0), vence DATE,
+  estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente','pagado','vencido','incobrable','cancelado')),
+  pagado_en TIMESTAMPTZ,
+  metodo TEXT CHECK (metodo IN ('transferencia','tarjeta','efectivo','mercado_pago')),
+  referencia TEXT, nota TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK ((concepto = 'mensualidad' AND periodo IS NOT NULL AND EXTRACT(DAY FROM periodo) = 1)
+    OR (concepto <> 'mensualidad' AND periodo IS NULL)),
+  UNIQUE (contrato_id, concepto, periodo)
+);
+-- Un UNIQUE normal permite varios NULL: los cargos de cierre necesitan este índice parcial.
+CREATE UNIQUE INDEX IF NOT EXISTS cobros_cierre_unico ON cobros(contrato_id, concepto)
+  WHERE concepto IN ('anticipo','balance');
+CREATE INDEX IF NOT EXISTS cobros_org_estado_vence_idx ON cobros(org_id, estado, vence);
+DO $$ DECLARE t TEXT; BEGIN
+  FOREACH t IN ARRAY ARRAY['contratos', 'cobros'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format('CREATE POLICY org_isolation ON %I USING (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint) WITH CHECK (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint)', t);
+  END LOOP;
+END $$;
+GRANT SELECT, INSERT, UPDATE, DELETE ON contratos, cobros TO crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;

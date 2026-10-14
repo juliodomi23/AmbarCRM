@@ -11,6 +11,24 @@ const ACCESO_LEGAL = {
 
 export const MODULOS = [
   {
+    clave: "contratos", area: "Ámbar Rojo", nombre: "Servicios contratados",
+    descripcion: "Servicios por cliente, mensualidades y fechas de inicio.",
+    acceso: { puestosPorDefecto: ["Administrador"] },
+    icono: "M5 3h14v18H5zM8 7h8M8 11h8M8 15h5", ruta: "/contratos",
+  },
+  {
+    clave: "cobros", area: "Ámbar Rojo", nombre: "Cobros y fechas de pago",
+    descripcion: "Cargos, vencimientos y registro manual de pagos.",
+    acceso: { puestosPorDefecto: ["Administrador"] },
+    icono: "M12 2v20M17 6H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H6", ruta: "/cobros",
+  },
+  {
+    clave: "panel_ar", area: "Ámbar Rojo", nombre: "Panel Ámbar Rojo",
+    descripcion: "MRR, cartera, pipeline y reparto informativo de comisiones.",
+    acceso: { puestosPorDefecto: ["Administrador"] },
+    icono: "M4 20V10h4v10M10 20V4h4v16M16 20v-7h4v7", ruta: "/panel-ar",
+  },
+  {
     clave: "clientes",
     area: "CRM y agenda",
     nombre: "Clientes",

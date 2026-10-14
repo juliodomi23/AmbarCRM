@@ -37,6 +37,8 @@ function identificador(valor: string) {
 }
 
 async function valorColumna(columna: Columna, tabla: string, indice: number) {
+  if (tabla === "contratos" && columna.column_name === "tipo") return "bot_whatsapp";
+  if (tabla === "cobros" && columna.column_name === "concepto") return "extra";
   if (columna.column_name === "org_id") return orgA.toString();
   if (tabla === "cotizaciones" && columna.column_name === "token_publico") return "a".repeat(32);
   if (tabla === "movimientos_caja" && columna.column_name === "tipo") return "entrada";
@@ -141,6 +143,9 @@ async function main() {
      ORDER BY c.table_name`,
   );
   assert.ok(tablas.rowCount && tablas.rowCount > 0, "No se encontraron tablas con org_id");
+  for (const tabla of ["contratos", "cobros"]) {
+    assert.ok(tablas.rows.some((fila) => fila.table_name === tabla), `${tabla} debe estar incluida en la auditoría RLS`);
+  }
 
   await admin.query("SET session_replication_role = replica");
   const marcadores: Array<{ tabla: string; fila: string }> = [];
