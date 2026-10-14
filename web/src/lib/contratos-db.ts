@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { ErrorRetail, transaccionTenant } from "@/lib/retail-db";
-import { cargosCierre, fechaAR, hoyAR, validarContrato } from "@/lib/contratos-cobros";
+import { cargosCierre, validarContrato } from "@/lib/contratos-cobros";
 
 export type DatosContrato = ReturnType<typeof validarContrato>;
 
@@ -18,7 +18,7 @@ export function crearContrato(orgId: bigint, datos: DatosContrato) {
     await validarReferencias(tx, datos);
     const contrato = await tx.contrato.create({ data: datos });
     const cargos = cargosCierre(datos.montoCierre, datos.anticipoPct);
-    if (cargos.length) await tx.cobro.createMany({ data: cargos.map((cargo) => ({ ...cargo, contratoId: contrato.id, vence: fechaAR(hoyAR()) })) });
+    if (cargos.length) await tx.cobro.createMany({ data: cargos.map((cargo) => ({ ...cargo, contratoId: contrato.id })) });
     return contrato;
   });
 }
@@ -37,7 +37,7 @@ export function editarContrato(orgId: bigint, id: bigint, cambios: Record<string
     const contrato = await tx.contrato.update({ where: { id }, data: datos });
     if (!cobros) {
       const cargos = cargosCierre(datos.montoCierre, datos.anticipoPct);
-      if (cargos.length) await tx.cobro.createMany({ data: cargos.map((cargo) => ({ ...cargo, contratoId: id, vence: fechaAR(hoyAR()) })) });
+      if (cargos.length) await tx.cobro.createMany({ data: cargos.map((cargo) => ({ ...cargo, contratoId: id })) });
     }
     return contrato;
   });

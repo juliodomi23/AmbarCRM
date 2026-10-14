@@ -24,6 +24,12 @@ try {
   await assert.rejects(() => crearContrato(org.id, validarContrato({ contactoId: String(base.contacto.id), oportunidadId: String(base.oportunidad.id), tipo: "web" })), /oportunidad/);
   const a = await crearContrato(org.id, validarContrato({ contactoId: String(base.contacto.id), tipo: "web", estado: "produccion", mensualidad: "1200", diaCobro: 5, montoCierre: "100.01" }));
   const b = await crearContrato(org.id, validarContrato({ contactoId: String(base.contacto.id), tipo: "otro", estado: "produccion", mensualidad: "800", diaCobro: 5 }));
+  const anticipo = await transaccionTenant(org.id, (tx) => tx.cobro.findFirstOrThrow({ where: { contratoId: a.id, concepto: "anticipo" } }));
+  assert.equal(anticipo.vence, null, "no inventar una fecha de vencimiento para el cierre");
+  const fechado = await cambiarCobro(org.id, anticipo.id, { vence: "2099-01-15" }, true);
+  assert.equal(fechado.cobro.vence?.toISOString().slice(0, 10), "2099-01-15");
+  assert.equal(fechado.cobro.estado, "pendiente");
+  await cambiarCobro(org.id, anticipo.id, { vence: "" }, true);
   await crearContrato(org.id, validarContrato({ contactoId: String(base.otro.id), tipo: "web", estado: "produccion", mensualidad: "500", diaCobro: 5, inicioMensualidad: "2026-12-01" }));
   await crearContrato(org.id, validarContrato({ contactoId: String(base.otro.id), tipo: "otro", estado: "produccion", mensualidad: "200", diaCobro: null }));
   const clienteSinMensualidad = await transaccionTenant(org.id, (tx) => tx.contacto.create({ data: { nombre: "Proyecto sin mensualidad" } }));

@@ -26,6 +26,12 @@ export function cambiarCobro(orgId: bigint, id: bigint, body: Record<string, unk
     await tx.$queryRaw`SELECT id FROM cobros WHERE id = ${id} FOR UPDATE`;
     const cobro = await tx.cobro.findFirst({ where: { id } });
     if (!cobro) throw new ErrorRetail("Cobro inexistente", 404);
+    if (body.vence !== undefined && body.estado === undefined) {
+      if (!["pendiente", "vencido"].includes(cobro.estado)) throw new ErrorRetail("El cobro ya está cerrado", 409);
+      const vence = fechaAR(body.vence);
+      const estado = vence && vence < fechaAR(hoyAR())! ? "vencido" : "pendiente";
+      return { cobro: await tx.cobro.update({ where: { id }, data: { vence, estado } }), repetido: false };
+    }
     const estado = String(body.estado ?? "pagado");
     const nota = String(body.nota ?? "").trim() || null;
     if (!["pagado", "incobrable", "cancelado"].includes(estado)) throw new ErrorRetail("Estado inválido");

@@ -46,6 +46,7 @@ export default async function CobrosPage() {
           <div className="min-w-0"><h2 className="font-medium break-words">{cobro.contrato.contacto.nombre}</h2><p className="text-sm text-muted-foreground">{cobro.concepto} · {cobro.periodo?.toISOString().slice(0, 7) ?? cobro.contrato.tipo.replaceAll("_", " ")}</p><p className="text-xs text-muted-foreground">Vence: {cobro.vence?.toISOString().slice(0, 10) ?? "por confirmar"}</p></div>
           <div className="flex flex-wrap items-center gap-3"><strong>${cobro.monto.toFixed(2)}</strong><Badge tono={vencido ? "destructive" : cobro.estado === "pagado" ? "success" : "neutral"}>{vencido ? "vencido" : cobro.estado}</Badge>
             {abierto && <><FormularioModulo discreto boton="Registrar pago / estado" titulo="Actualizar cobro" endpoint={`/api/cobros/${cobro.id}`} valores={{ estado: "pagado", metodo: "transferencia", referencia: "", nota: "" }} campos={camposPago(esAdmin)} /><RecordarCobro id={String(cobro.id)} /></>}
+            {abierto && <FormularioModulo discreto boton={cobro.vence ? "Cambiar fecha" : "Definir vencimiento"} titulo="Vencimiento del cobro" endpoint={`/api/cobros/${cobro.id}`} valores={{ vence: cobro.vence?.toISOString().slice(0, 10) ?? "" }} campos={[{ nombre: "vence", etiqueta: "Vencimiento", tipo: "fecha", ayuda: "Déjalo vacío si aún está por confirmar." }]} />}
           </div>
         </article>;
       })}

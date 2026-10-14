@@ -64,6 +64,8 @@ try {
   assert.deepEqual(detalle.data.contrato.cobros.map((cobro: { monto: string }) => cobro.monto).sort(), ["50", "50.01"]);
   const anticipo = detalle.data.contrato.cobros.find((cobro: { concepto: string }) => cobro.concepto === "anticipo");
   const balance = detalle.data.contrato.cobros.find((cobro: { concepto: string }) => cobro.concepto === "balance");
+  assert.equal(anticipo.vence, null);
+  assert.equal((await api(`/api/cobros/${anticipo.id}`, "PATCH", { vence: hoyAR() })).status, 200);
   const pagos = await Promise.all([api(`/api/cobros/${anticipo.id}`, "PATCH", { estado: "pagado", metodo: "transferencia" }), api(`/api/cobros/${anticipo.id}`, "PATCH", { estado: "pagado", metodo: "transferencia" })]);
   assert.ok(pagos.every((pago) => pago.status === 200));
   assert.equal(pagos.filter((pago) => !pago.data.repetido).length, 1);
