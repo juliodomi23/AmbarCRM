@@ -2,7 +2,8 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { credencialesDemo } from "./lib/demo-seed.mjs";
 
-const credenciales = credencialesDemo("admin@ambar-rojo.local.test");
+const slugOrg = process.env.ORG_SLUG ?? "ambar-rojo";
+const credenciales = credencialesDemo(process.env.ADMIN_EMAIL ?? "admin@ambar-rojo.local.test");
 const prisma = new PrismaClient();
 let usuarioCreado = false;
 const fuente = "Prompt modulos-ar (13-oct-2026); docs/03-clientes/index.md, docs/05-financiero e índice/resumen de junio desactualizados.";
@@ -52,7 +53,7 @@ const prospectos = [
 ];
 
 try {
-  const org = await prisma.org.upsert({ where: { slug: "ambar-rojo" }, update: {}, create: { nombre: "Ámbar Rojo Studios", slug: "ambar-rojo" } });
+  const org = await prisma.org.upsert({ where: { slug: slugOrg }, update: {}, create: { nombre: "Ámbar Rojo Studios", slug: slugOrg } });
   await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('app.current_org', ${String(org.id)}, true)`;
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${org.id})`;
@@ -103,6 +104,6 @@ try {
     const mrr = contratos.reduce((total, contrato) => total.plus(contrato.mensualidad ?? 0), new Prisma.Decimal(0));
     console.log(`Seed AR: ${await tx.contacto.count()} contactos; ${await tx.contrato.count()} contratos; ${await tx.cobro.count()} cobros; MRR $${mrr.toFixed(2)}; sin envíos.`);
   }, { timeout: 30000 });
-  console.log("Acceso local: /login?org=ambar-rojo (la contraseña de un usuario existente no se modifica).");
+  console.log(`Acceso local: /login?org=${slugOrg} (la contraseña de un usuario existente no se modifica).`);
   if (credenciales.passwordGenerada && usuarioCreado) console.log(`Contraseña generada para usuario nuevo: ${credenciales.password}`);
 } finally { await prisma.$disconnect(); }
