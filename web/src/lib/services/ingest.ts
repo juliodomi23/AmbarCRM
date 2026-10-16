@@ -161,7 +161,7 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
     await dispatchABot(bot, {
       conversacionId: conversacion.id,
       contactoId: contacto.id,
-      telefono: m.telefono ?? "",
+      telefono: contacto.telefono ?? "",
       identificadorExterno: m.identificadorExterno,
       nombre: contacto.nombre,
       botActivo: conversacion.botActivo,

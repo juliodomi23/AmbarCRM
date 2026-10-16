@@ -21,6 +21,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ accountId
       where: { id: convId },
       include: {
         contacto: { include: { etiquetas: { include: { etiqueta: true } } } },
+        canal: { select: { proveedor: true } },
         responsable: { select: { id: true, nombre: true } }
       }
     });
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ accountId
     const etapa = oportunidad ? await db.etapa.findUnique({ where: { id: oportunidad.etapaId } }) : null;
 
     const sender = {
-      identifier: conv.contacto.telefono,
+      identifier: conv.canal?.proveedor === "cloud_api" ? conv.contacto.telefono : conv.contacto.identificadorExterno ?? conv.contacto.telefono,
       name: conv.contacto.nombre,
       phone_number: conv.contacto.telefono ? `+${conv.contacto.telefono}` : null
     };

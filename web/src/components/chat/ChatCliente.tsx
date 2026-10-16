@@ -12,6 +12,7 @@ import { AvatarNombre } from "@/components/AvatarNombre";
 import { EnviarPlantilla } from "@/components/chat/EnviarPlantilla";
 import { estadoVentana, textoRestante } from "@/lib/meta/ventana";
 import { webmAOgg } from "@/lib/audio/webm-a-ogg";
+import { IconoCanal } from "@/components/chat/IconoCanal";
 
 type Embudo = { id: string; nombre: string; etapas: { id: string; nombre: string }[] };
 type Usuario = { id: string; nombre: string };
@@ -31,6 +32,8 @@ export type ConversacionItem = {
   etiquetas: string[];
   canalId: string | null;
   canalNombre: string;
+  canalProveedor?: string | null;
+  ultimoEntranteAt?: string | null;
   canalActivo: boolean;
   botActivo: boolean;
 };
@@ -179,9 +182,14 @@ export function ChatCliente({
     const t = setInterval(() => setAhora(new Date()), 60_000);
     return () => clearInterval(t);
   }, []);
-  const ultimoEntrante = [...mensajes].reverse().find((m) => m.direccion === "entrante" && !m.interna)?.timestamp;
+  const proveedor = seleccionada?.canalProveedor ?? canales.find((c) => c.id === seleccionada?.canalId)?.proveedor ?? "cloud_api";
+  const esMessenger = proveedor === "messenger";
+  const esWhatsapp = proveedor === "cloud_api";
+  const ultimoCargado = [...mensajes].reverse().find((m) => m.direccion === "entrante" && !m.interna)?.timestamp;
+  const ultimoEntrante = [ultimoCargado, seleccionada?.ultimoEntranteAt].filter((f): f is string => !!f).sort().at(-1);
   const ventana = estadoVentana(ultimoEntrante, ahora);
-  const ventanaCerrada = !cargandoMsgs && mensajes.length > 0 && !ventana.abierta;
+  const puedeHumanAgent = !!ultimoEntrante && ahora.getTime() - new Date(ultimoEntrante).getTime() < 7 * 24 * 3600_000;
+  const ventanaCerrada = !cargandoMsgs && mensajes.length > 0 && !ventana.abierta && (esWhatsapp || (esMessenger && !puedeHumanAgent));
   const sinAsignarCount = convs.filter((c) => !c.esPersonal && !c.responsableId && c.estado !== "cerrada").length;
   const misCount = usuarioId ? convs.filter((c) => !c.esPersonal && c.responsableId === usuarioId).length : 0;
   const personalCount = convs.filter((c) => c.esPersonal).length;
@@ -311,7 +319,7 @@ export function ChatCliente({
       if (esEntrante && (document.hidden || convId !== selRef.current)) {
         const conv = convsRef.current.find((c) => c.id === convId);
         reproducirBeep();
-        notificar("Nuevo mensaje de WhatsApp", conv ? conv.contacto.nombre : "Tienes un mensaje nuevo");
+        notificar("Nuevo mensaje", conv ? conv.contacto.nombre : "Tienes un mensaje nuevo");
       }
       // Trae la lista actualizada del server (preview correcto + orden + no-leídos).
       refrescarLista();
@@ -589,6 +597,7 @@ export function ChatCliente({
                   <span className="flex items-center justify-between">
                     <span className="flex min-w-0 items-center gap-1">
                       {c.fijado && <span className="shrink-0 text-[10px]" title="Chat fijado">📌</span>}
+                      <IconoCanal proveedor={c.canalProveedor ?? canales.find((canal) => canal.id === c.canalId)?.proveedor} />
                       <span className="truncate text-sm font-medium text-foreground">{c.contacto.nombre}</span>
                     </span>
                     <span className="ml-2 shrink-0 text-[10px] text-muted-foreground">{hora(c.ultimoMensajeAt)}</span>
@@ -648,7 +657,7 @@ export function ChatCliente({
                 {seleccionada.contacto.nombre.slice(0, 2).toUpperCase()}
               </span>
               <div className="min-w-0 flex-1 leading-tight">
-                <p className="truncate text-sm font-semibold text-foreground">{seleccionada.contacto.nombre}</p>
+                <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-foreground"><IconoCanal proveedor={proveedor} />{seleccionada.contacto.nombre}</p>
                 {seleccionada.contacto.telefono && (
                   <p className="truncate text-xs text-muted-foreground">+{seleccionada.contacto.telefono}</p>
                 )}
@@ -777,7 +786,10 @@ export function ChatCliente({
               </div>
             )}
 
-            {mensajes.length > 0 && !cargandoMsgs && (
+            {esMessenger && mensajes.length > 0 && !cargandoMsgs && !ventana.abierta && <div role="status" className="border-t border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground">
+              Ventana de 24 h cerrada. {puedeHumanAgent ? "Puedes responder como asesor humano hasta 7 días desde el último mensaje del cliente. El bot no puede responder." : "Pasaron 7 días: espera un nuevo mensaje del cliente para responder. Las notas internas siguen disponibles."}
+            </div>}
+            {esWhatsapp && mensajes.length > 0 && !cargandoMsgs && (
               ventanaCerrada ? (
                 <div className="flex flex-wrap items-center gap-2 border-t border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground">
                   <span className="flex-1">
@@ -839,8 +851,8 @@ export function ChatCliente({
               </button>
               <button
                 type="button"
-                title="Nota interna (no se envía a WhatsApp)"
- aria-label="Nota interna (no se envía a WhatsApp)"
+                title="Nota interna (solo para el equipo)"
+ aria-label="Nota interna (solo para el equipo)"
                 onClick={() => setNotaInterna((v) => !v)}
                 className={`grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-muted ${notaInterna ? "bg-warning/10 text-warning" : "text-muted-foreground"}`}
               >
@@ -850,7 +862,7 @@ export function ChatCliente({
                 type="button"
                 title="Programar envío (escribe el mensaje primero)"
  aria-label="Programar envío (escribe el mensaje primero)"
-                disabled={enviando || notaInterna || ventanaCerrada || !texto.trim()}
+                disabled={enviando || notaInterna || ventanaCerrada || !esWhatsapp || !texto.trim()}
                 onClick={abrirProgramar}
                 className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-50"
               >
@@ -860,7 +872,7 @@ export function ChatCliente({
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
                 disabled={ventanaCerrada && !notaInterna}
-                placeholder={notaInterna ? "Nota interna (solo para el equipo)…" : ventanaCerrada ? "Ventana cerrada: envía una plantilla o una nota interna" : "Escribe un mensaje…"}
+                placeholder={notaInterna ? "Nota interna (solo para el equipo)…" : ventanaCerrada ? esMessenger ? "Ventana cerrada: espera un mensaje del cliente" : "Ventana cerrada: envía una plantilla o una nota interna" : "Escribe un mensaje…"}
                 className={`order-first min-w-0 flex-1 basis-[calc(100%-3rem)] rounded-full border px-4 py-2 text-sm outline-none focus:ring-2 sm:order-none sm:basis-auto ${notaInterna ? "border-warning/30 bg-warning/10 focus:ring-warning/40" : "border-input focus:ring-primary/30"}`}
               />
               <button
@@ -904,7 +916,7 @@ export function ChatCliente({
     {/* Imagen ampliada sin salir del chat */}
     <Lightbox url={imagenAbierta} onClose={() => setImagenAbierta(null)} />
 
-    {seleccionada && (
+    {seleccionada && esWhatsapp && (
       <EnviarPlantilla
         abierto={modalPlantilla}
         onClose={() => setModalPlantilla(false)}

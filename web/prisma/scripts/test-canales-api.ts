@@ -11,6 +11,7 @@ import { listarCanales } from "../../src/lib/services/config";
 import { listarBots } from "../../src/lib/services/bots";
 import { POST as entrada } from "../../src/app/api/canal-api/[canalId]/mensajes/route";
 import { POST as responder } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/messages/route";
+import { GET as leerConversacion } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/route";
 
 assert.equal(new URL(process.env.DATABASE_URL!).port, "55450", "solo BD desechable");
 for (const url of ["http://8.8.8.8", "https://localhost", "https://127.1", "https://[::ffff:127.0.0.1]", "https://10.0.0.1", "https://user:pass@example.com"]) assert.ok(validarUrlCanalApi(url));
@@ -62,13 +63,18 @@ try {
   assert.equal((await llamar(1, canales[0].apiKey, "cruzado")).status, 401);
   await runWithOrg(orgs[1].id, async () => { assert.equal(await db.mensaje.count(), 0); assert.equal(await db.contacto.count(), 0); });
   const token = randomBytes(24).toString("hex");
-  await runWithOrg(orgs[0].id, () => db.bot.create({ data: { nombre: "Bot API", apiToken: token, webhookUrl: "https://8.8.8.8/bot", canalId: BigInt(canales[0].id), permisos: ["enviar_mensaje", "notas_internas"] } }));
+  await runWithOrg(orgs[0].id, () => db.bot.create({ data: { nombre: "Bot API", apiToken: token, webhookUrl: "https://8.8.8.8/bot", canalId: BigInt(canales[0].id), permisos: ["leer_perfil", "enviar_mensaje", "notas_internas"] } }));
   const respuestas = await Promise.all(Array.from({ length: 8 }, () => llamar(0, canales[0].apiKey, "id-unico")));
   const resultados = await Promise.all(respuestas.map((r) => r.json()));
   assert.equal(resultados.filter((r) => !r.duplicado).length, 1, "8 entradas simultáneas crean un mensaje");
   assert.equal(dispatches.length, 1, "el bot se invoca una sola vez");
   assert.equal(dispatches[0].sender.identifier, "cliente"); assert.equal(dispatches[0].sender.phone_number, null);
   const conv = await runWithOrg(orgs[0].id, () => db.conversacion.findFirstOrThrow());
+  const perfil = await leerConversacion(new NextRequest("https://crm.prueba.test/api/v1/accounts/1/conversations/1", { headers: { api_access_token: token } }),
+    { params: Promise.resolve({ accountId: "1", conversationId: String(conv.id) }) });
+  const datosPerfil = await perfil!.json();
+  assert.equal(datosPerfil.meta.sender.identifier, "cliente", "GET conserva la identidad externa usada por n8n");
+  assert.equal(datosPerfil.meta.sender.phone_number, null);
   const postBot = (privado = false) => responder(new NextRequest("https://crm.prueba.test/api/v1/accounts/1/conversations/1/messages", {
     method: "POST", headers: { api_access_token: token }, body: JSON.stringify({ content: "respuesta", private: privado }),
   }), { params: Promise.resolve({ accountId: "1", conversationId: String(conv.id) }) });

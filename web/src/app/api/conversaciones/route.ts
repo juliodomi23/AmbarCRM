@@ -19,6 +19,8 @@ function mapearConv(c: any) {
     etiquetas: etiquetasDeContacto(c.contacto),
     canalId: c.canal?.id ?? null,
     canalNombre: c.canal?.nombre ?? "Sin canal",
+    canalProveedor: c.canal?.proveedor ?? null,
+    ultimoEntranteAt: c.ultimoEntranteAt,
     canalActivo: c.canal?.activo ?? true,
     botActivo: c.botActivo
   };

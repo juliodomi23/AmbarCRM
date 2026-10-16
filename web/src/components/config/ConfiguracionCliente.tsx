@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { EncabezadoPagina } from "@/components/ui";
 import { MarcaConfig } from "@/components/config/MarcaConfig";
 import { MetaCanales } from "@/components/config/MetaCanales";
-import { CanalExterno } from "@/components/config/CanalExterno";
+import { Canales } from "@/components/config/Canales";
 import { TabAutomatizaciones } from "@/components/config/tabs/TabAutomatizaciones";
 import { TabBots } from "@/components/config/tabs/TabBots";
 import { TabCamposPersonalizados } from "@/components/config/tabs/TabCamposPersonalizados";
@@ -16,7 +16,7 @@ import { TabPlantillas } from "@/components/config/tabs/TabPlantillas";
 import { TabUsuarios } from "@/components/config/tabs/TabUsuarios";
 
 const TABS = [
-  "Marca", "Embudos", "Usuarios", "Canal WhatsApp", "Plantillas",
+  "Marca", "Embudos", "Usuarios", "Canales", "Plantillas",
   "Plantillas de Meta", "Automatizaciones", "Bots", "IA", "Módulos",
   "Campos personalizados",
 ] as const;
@@ -44,7 +44,7 @@ export function ConfiguracionCliente({
     const t = new URLSearchParams(window.location.search).get("tab");
     const mapa: Record<string, Tab> = {
       embudos: "Embudos", marca: "Marca", usuarios: "Usuarios",
-      canal: "Canal WhatsApp", plantillas: "Plantillas",
+      canal: "Canales", plantillas: "Plantillas",
       meta: "Plantillas de Meta", automatizaciones: "Automatizaciones",
       bots: "Bots", ia: "IA", modulos: "Módulos", clientes: "Clientes Ámbar CRM",
     };
@@ -71,12 +71,7 @@ export function ConfiguracionCliente({
       {tab === "Usuarios" && (
         <TabUsuarios usuarios={usuarios} puestosSugeridos={puestosSugeridos} />
       )}
-      {tab === "Canal WhatsApp" && <div className="space-y-5">
-        <MetaCanales canales={canales.filter((c) => c.proveedor === "cloud_api")} />
-        {canales.filter((c) => c.proveedor !== "cloud_api").map((canal) => <CanalExterno key={canal.id} canal={canal} />)}
-        <CanalExterno />
-        <CanalExterno tipo="messenger" />
-      </div>}
+      {tab === "Canales" && <Canales canales={canales} />}
       {tab === "Plantillas" && <TabPlantillas plantillas={plantillas} />}
       {tab === "Plantillas de Meta" && <MetaCanales canales={canales.filter((c) => c.proveedor === "cloud_api")} vista="plantillas" />}
       {tab === "Automatizaciones" && <TabAutomatizaciones ajustes={ajustes} />}
