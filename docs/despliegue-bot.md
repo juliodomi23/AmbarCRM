@@ -28,7 +28,7 @@ Base64), `NEXTAUTH_URL` pública con HTTPS para adjuntos y `DATABASE_URL` con `c
 En Meta configura GET/POST `https://TU_CRM/api/messenger/webhook`; el verify token debe coincidir
 con el del entorno. En Configuración → Canales pega `page_id` y `page_access_token`. Al guardar,
 se suscriben `messages`, `message_deliveries`, `message_echoes`, `message_reads`, `standby`,
-`messaging_handovers`, `messaging_postbacks`. No hay login de Facebook. Si el permiso de perfil
+`messaging_handovers`, `messaging_postbacks`. También está disponible el login de Facebook descrito abajo. Si el permiso de perfil
 falla, el contacto usa su PSID; si el token de envío vence, la bandeja aparece desconectada con
 un aviso para reconectar. El bot puede responder en 24 h; el asesor usa HUMAN_AGENT hasta 7 días
 si Meta lo permite. No se puede garantizar ese permiso sin probar la app real.
@@ -42,6 +42,52 @@ cifrado con `META_TOKEN_ENCRYPTION_KEY`, y el ID en `config.appId`, en claro. El
 devuelve al crear, editar ni listar canales, ni se registra en bitácora. Al editar, omitirlos
 o dejarlos vacíos conserva los valores existentes; para cambiarlos, escribe los nuevos valores.
 Este ajuste no necesita SQL ni variables globales nuevas.
+
+### Conectar con Facebook (rama `messenger-login-facebook`, solo local hasta revisión)
+
+El formulario conserva el alta y edición manual. «Conectar con Facebook» prepara el intento;
+«Iniciar sesión en Facebook» abre el popup. Después se elige una página. Si ya existe en esa
+empresa, renueva el mismo canal, incluido un canal desconectado por token vencido. Los canales
+con app propia muestran un aviso para usar la conexión manual.
+
+En una futura instalación autorizada, ejecutar `actualizaciones.sql` **después** de
+`multi-tenant.sql`. Crea `messenger_login`, con RLS y GRANT para `crm_app`; añadir el modelo
+al cliente con `prisma generate`. No usar `prisma db push`. La tabla guarda tokens cifrados
+válidos durante diez minutos, ligados al admin y a su sesión/empresa; no se envían al navegador.
+No hay variables nuevas: usa `META_APP_ID`, `META_APP_SECRET`, `META_TOKEN_ENCRYPTION_KEY`
+y `NEXTAUTH_URL`. El SDK de WhatsApp, si se usa, debe tener el mismo `NEXT_PUBLIC_META_APP_ID`
+que `META_APP_ID`. Mantener alineadas las versiones pública y privada de Graph.
+
+Configuración pendiente en la **app global del CRM** (este trabajo no cambia la app de Meta):
+
+| Campo | Valor |
+|---|---|
+| Permisos a solicitar/aprobar | `pages_show_list`, `pages_messaging`, `pages_manage_metadata` |
+| Login | Habilitar login con JavaScript SDK y Client/Web OAuth Login según el panel de la app |
+| App Domains | Host exacto del CRM, por ejemplo `crm.ejemplo.com`, sin ruta |
+| Allowed Domains for the JavaScript SDK | Dominio/origen HTTPS del CRM; incluir cada host real usado por empresas |
+| Website / Site URL | `https://crm.ejemplo.com/` |
+| Valid OAuth Redirect URIs / retorno de la pantalla | `https://crm.ejemplo.com/configuracion`, con coincidencia exacta si el panel lo requiere; el popup y su retorno los gestiona `FB.login` |
+| Webhook de Messenger | Sigue siendo `https://crm.ejemplo.com/api/messenger/webhook` |
+
+Este flujo usa el retorno del SDK, sin un callback OAuth propio en el CRM ni un `redirect_uri`
+manual en el intercambio, igual que el patrón de Embedded Signup existente. Las rutas
+`/api/canales/messenger/facebook/paginas` y `/conectar` son POST autenticados; **no** son
+URLs de redirección. Registrar el host público HTTPS real y comprobar la configuración exacta
+del SDK en el panel antes de usar una app real. La configuración del panel y el popup no se
+han validado con Meta durante estas pruebas.
+
+Antes de la aprobación/acceso avanzado, solo las personas con rol en la app y acceso a la
+página pueden completar el login dentro de las restricciones de Meta. La conexión manual
+permite usar un token obtenido por los medios actuales, con los permisos que Meta ya haya
+concedido; no omite sus restricciones. Después de la aprobación y con la app publicada, los
+administradores de empresas podrán autorizar sus páginas sin copiar tokens. La aprobación no
+la realiza el código. No se solicita `pages_read_engagement`; ver la justificación y límites
+en [decisiones](canales-decisiones.md).
+
+Referencias para la configuración real: [SDK FB.login](https://developers.facebook.com/docs/javascript/reference/FB.login/),
+[tokens de larga duración](https://developers.facebook.com/docs/facebook-login/guides/access-tokens/get-long-lived/)
+y [Pages API](https://developers.facebook.com/docs/pages-api/getting-started/).
 
 El POST lee el cuerpo crudo y solo usa `entry[].id` sin autenticar para resolver la empresa
 con `resolve_org_by_page` y cargar el canal bajo RLS. Antes de leer mensajes o acuses, verifica
