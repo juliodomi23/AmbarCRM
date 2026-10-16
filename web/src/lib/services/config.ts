@@ -33,6 +33,7 @@ export async function listarCanales() {
       webhookUrl: typeof config.webhookUrl === "string" ? config.webhookUrl : null,
       pageId: typeof config.pageId === "string" ? config.pageId : null,
       appId: typeof config.appId === "string" ? config.appId : null,
+      tieneAppSecret: typeof config.appSecretEncrypted === "string",
       errorAutorizacion: typeof config.errorAutorizacion === "string" ? config.errorAutorizacion : null
     };
   });

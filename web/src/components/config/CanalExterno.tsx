@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Boton, Campo } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 
-export type CanalExternoDatos = { id: string; nombre: string; proveedor: string; webhookUrl?: string | null; pageId?: string | null; appId?: string | null; estado: string; errorAutorizacion?: string | null };
+export type CanalExternoDatos = { id: string; nombre: string; proveedor: string; webhookUrl?: string | null; pageId?: string | null; appId?: string | null; tieneAppSecret?: boolean; estado: string; errorAutorizacion?: string | null };
 
 export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDatos; tipo?: "api" | "messenger" }) {
   const esMessenger = (canal?.proveedor ?? tipo) === "messenger";
@@ -18,20 +18,21 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
   const [appSecret, setAppSecret] = useState("");
   const [secretos, setSecretos] = useState<{ apiKey: string; secret: string } | null>(null);
   const [guardando, setGuardando] = useState(false);
-  async function guardar(regenerar = false) {
+  async function guardar(regenerar = false, quitarApp = false) {
     setGuardando(true);
     try {
       const res = await fetch(canal ? `/api/canales/${canal.id}` : "/api/canales", {
         method: canal ? "PATCH" : "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ proveedor: esMessenger ? "messenger" : "api", nombre, webhook_url: webhook, regenerar,
           page_id: pageId, page_access_token: token || undefined,
-          app_id: appId || undefined, app_secret: appSecret || undefined }),
+          app_id: appId || undefined, app_secret: appSecret || undefined, quitar_app: quitarApp || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo guardar el canal");
       if (data.apiKey) setSecretos({ apiKey: data.apiKey, secret: data.secret });
       setToken("");
       setAppSecret("");
+      if (quitarApp) setAppId("");
       toast(esMessenger ? "Página de Messenger conectada" : "Canal API guardado", "ok");
       router.refresh();
     } catch (e) { toast(e instanceof Error ? e.message : "No se pudo guardar", "error"); }
@@ -50,6 +51,7 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
         <p className="text-xs text-muted-foreground">Si la página usa otra app de Meta, indica su ID y App Secret. Sin valores propios se usan los del CRM.</p>
       </> : <Campo label="Webhook de salida (https)" type="url" value={webhook} onChange={(e) => setWebhook(e.target.value)} required />}
       <div className="flex gap-2"><Boton type="submit" disabled={guardando}>Guardar</Boton>
+        {canal && esMessenger && (canal.appId || canal.tieneAppSecret) && <Boton type="button" disabled={guardando} onClick={() => void guardar(false, true)}>Quitar app propia</Boton>}
         {canal && !esMessenger && <Boton type="button" disabled={guardando} onClick={() => void guardar(true)}>Regenerar credenciales</Boton>}</div>
     </form>
     {secretos && <div className="space-y-2 rounded border border-border p-3 text-sm" role="status">
