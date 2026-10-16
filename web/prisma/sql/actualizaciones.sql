@@ -1689,3 +1689,17 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 $$;
 REVOKE ALL ON FUNCTION resolve_servidor_by_heartbeat_hash(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION resolve_servidor_by_heartbeat_hash(TEXT) TO crm_app;
+
+CREATE TABLE IF NOT EXISTS messenger_login (
+  id TEXT PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  user_id BIGINT NOT NULL, session_hash TEXT NOT NULL, state_hash TEXT NOT NULL,
+  canal_id BIGINT, paginas_encrypted TEXT, vence_at TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS messenger_login_org_vence_idx ON messenger_login(org_id, vence_at);
+ALTER TABLE messenger_login ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_isolation ON messenger_login;
+CREATE POLICY org_isolation ON messenger_login
+  USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+  WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
+GRANT SELECT, INSERT, UPDATE, DELETE ON messenger_login TO crm_app;
