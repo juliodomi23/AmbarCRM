@@ -115,6 +115,7 @@ export async function POST(req: NextRequest) {
       } as const;
       await db.mensaje.updateMany({
         where: {
+          canalId: canal.id,
           waMessageId: status.waMessageId,
           ...(status.status === "fallido"
             ? {}

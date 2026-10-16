@@ -211,6 +211,7 @@ type DatosDispatch = {
   conversacionId: bigint;
   contactoId: bigint;
   telefono: string;
+  identificadorExterno?: string;
   nombre: string;
   botActivo: boolean;
   mensaje: { id: bigint; tipo: string; contenido: string | null; mediaUrl: string | null };
@@ -226,7 +227,7 @@ export async function dispatchABot(bot: { webhookUrl: string; signingSecret?: st
     console.error(`dispatch a bot bloqueado: ${bot.webhookUrl} no es un destino público`);
     return;
   }
-  const sender = { identifier: d.telefono, name: d.nombre, phone_number: `+${d.telefono}` };
+  const sender = { identifier: d.identificadorExterno ?? d.telefono, name: d.nombre, phone_number: d.telefono ? `+${d.telefono}` : null };
   const attachments =
     d.mensaje.mediaUrl && d.mensaje.tipo !== "texto"
       ? [{ file_type: d.mensaje.tipo, data_url: absoluto(d.mensaje.mediaUrl) }]

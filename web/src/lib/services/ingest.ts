@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { getProvider, type MensajeEntranteNormalizado } from "@/lib/channel";
+import { getProvider, destinatarioDelCanal, type MensajeEntranteNormalizado } from "@/lib/channel";
 import { getAjustes } from "@/lib/services/config";
 import { botParaCanal, dispatchABot } from "@/lib/services/bots";
 import { crearLeadSiNoTiene } from "@/lib/services/funnel";
@@ -40,22 +40,34 @@ async function elegirResponsable(): Promise<bigint | null> {
 export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: bigint | null) {
   // Idempotencia: si ya existe ese wa_message_id, no hacemos nada.
   if (m.waMessageId) {
-    const existe = await db.mensaje.findUnique({ where: { waMessageId: m.waMessageId } });
+    const existe = await db.mensaje.findFirst({ where: { canalId, waMessageId: m.waMessageId } });
     if (existe) return { duplicado: true as const, mensajeId: existe.id };
   }
 
   const ajustes = await getAjustes();
   const canal = canalId ? await db.canalWhatsapp.findUnique({ where: { id: canalId } }) : null;
-  if (!canal || canal.proveedor !== "cloud_api") throw new Error("canal oficial de Meta inexistente");
-  const provider = getProvider("cloud_api", canal.config, canal.instancia);
+  if (!canal) throw new Error("canal inexistente");
+  const provider = getProvider(canal.proveedor, canal.config, canal.instancia);
+  const esWhatsapp = canal.proveedor === "cloud_api";
+  if (esWhatsapp ? !m.telefono : !m.identificadorExterno) throw new Error("falta identidad del contacto");
 
   // --- Contacto ---
-  let contacto = await db.contacto.findFirst({ where: { telefono: m.telefono } });
+  let contacto = await db.contacto.findFirst({ where: esWhatsapp
+    ? { telefono: m.telefono }
+    : { canalId: canal.id, identificadorExterno: m.identificadorExterno } });
+  const telefonoDisponible = !esWhatsapp && m.telefono
+    ? !(await db.contacto.findFirst({ where: { telefono: m.telefono, ...(contacto ? { id: { not: contacto.id } } : {}) } }))
+    : false;
   if (!contacto) {
     const responsableId = ajustes.autoAsignar ? await elegirResponsable() : null;
     contacto = await db.contacto.create({
-      data: { nombre: m.nombre ?? m.telefono, telefono: m.telefono, fuente: "whatsapp", responsableId }
+      data: { nombre: m.nombre ?? m.telefono ?? m.identificadorExterno!, telefono: esWhatsapp || telefonoDisponible ? m.telefono : null,
+        ...(!esWhatsapp ? { canalId: canal.id, identificadorExterno: m.identificadorExterno } : {}),
+        fuente: esWhatsapp ? "whatsapp" : "otro", responsableId }
     });
+  }
+  if (!esWhatsapp && !contacto.telefono && telefonoDisponible) {
+    contacto = await db.contacto.update({ where: { id: contacto.id }, data: { telefono: m.telefono } });
   }
 
   // --- Conversación ---
@@ -71,6 +83,8 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
 
   // Contacto personal (familia/amigos): guarda solo texto, sin bot, sin lead, sin media.
   const esPersonal = contacto.esPersonal;
+  const destinatario = destinatarioDelCanal(canal.proveedor, contacto);
+  const contexto = { conversacionId: conversacion.id, ultimoEntranteAt: m.timestamp, humano: false };
 
   // El media de WhatsApp viene cifrado: lo descargamos y guardamos local para poder verlo.
   // Se hace ANTES de crear el mensaje para que el INSERT (y el NOTIFY del SSE) ya traiga la URL servible.
@@ -143,11 +157,11 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
   }
 
   // --- Fuera de horario: responde el autocontestador y no molesta al bot (máx. 1 cada 4 h por chat) ---
-  if (ajustes.horarioActivo && ajustes.fueraHorarioTexto?.trim() && contacto.telefono && estaFueraDeHorario(ajustes)) {
+  if (ajustes.horarioActivo && ajustes.fueraHorarioTexto?.trim() && destinatario && estaFueraDeHorario(ajustes)) {
     const haceMenosDe4h = conversacion.avisoFueraAt && Date.now() - conversacion.avisoFueraAt.getTime() < 4 * 60 * 60 * 1000;
     if (!haceMenosDe4h) {
       const texto = aplicarVariables(ajustes.fueraHorarioTexto, contacto);
-      const envio = await provider.enviarTexto(contacto.telefono, texto);
+      const envio = await provider.enviarTexto(destinatario, texto, contexto);
       await db.mensaje.create({
         data: { conversacionId: conversacion.id, direccion: "saliente", tipo: "texto", contenido: texto, status: envio.ok ? "enviado" : "fallido", waMessageId: envio.waMessageId }
       });
@@ -162,7 +176,8 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
     await dispatchABot(bot, {
       conversacionId: conversacion.id,
       contactoId: contacto.id,
-      telefono: m.telefono,
+      telefono: m.telefono ?? "",
+      identificadorExterno: m.identificadorExterno,
       nombre: contacto.nombre,
       botActivo: conversacion.botActivo,
       mensaje: { id: mensaje.id, tipo: m.tipo, contenido: m.contenido ?? null, mediaUrl: mediaUrl ?? null }
@@ -170,9 +185,9 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
   }
 
   // --- Bienvenida automática (solo si NO hay bot; el bot saluda por su cuenta) ---
-  if (!bot && esNuevaConversacion && ajustes.bienvenidaActiva && ajustes.bienvenidaTexto?.trim() && contacto.telefono) {
+  if (!bot && esNuevaConversacion && ajustes.bienvenidaActiva && ajustes.bienvenidaTexto?.trim() && destinatario) {
     const texto = aplicarVariables(ajustes.bienvenidaTexto, contacto);
-    const envio = await provider.enviarTexto(contacto.telefono, texto);
+    const envio = await provider.enviarTexto(destinatario, texto, contexto);
     await db.mensaje.create({
       data: {
         conversacionId: conversacion.id,

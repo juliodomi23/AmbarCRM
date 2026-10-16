@@ -11,27 +11,57 @@ ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS marca_preset TEXT;
 ALTER TABLE mensajes ADD COLUMN IF NOT EXISTS error_detalle TEXT;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS puesto TEXT NOT NULL DEFAULT 'Agente';
 
--- Solo WhatsApp Cloud API oficial de Meta.
+-- Retirar proveedores antiguos sin alterar los canales actuales.
 DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-    WHERE t.typname = 'proveedor_canal' AND e.enumlabel <> 'cloud_api'
+    WHERE t.typname = 'proveedor_canal' AND e.enumlabel NOT IN ('cloud_api', 'messenger', 'api')
   ) THEN
     UPDATE canales_whatsapp
     SET activo = false, estado = 'desconectado'
-    WHERE proveedor::text <> 'cloud_api';
+    WHERE proveedor::text NOT IN ('cloud_api', 'messenger', 'api');
 
     ALTER TYPE proveedor_canal RENAME TO proveedor_canal_old;
-    CREATE TYPE proveedor_canal AS ENUM ('cloud_api');
+    CREATE TYPE proveedor_canal AS ENUM ('cloud_api', 'messenger', 'api');
     ALTER TABLE canales_whatsapp ALTER COLUMN proveedor DROP DEFAULT;
     ALTER TABLE canales_whatsapp
-      ALTER COLUMN proveedor TYPE proveedor_canal USING 'cloud_api'::proveedor_canal;
+      ALTER COLUMN proveedor TYPE proveedor_canal USING
+        (CASE WHEN proveedor::text IN ('cloud_api', 'messenger', 'api') THEN proveedor::text ELSE 'cloud_api' END)::proveedor_canal;
     ALTER TABLE canales_whatsapp ALTER COLUMN proveedor SET DEFAULT 'cloud_api';
     DROP TYPE proveedor_canal_old;
   END IF;
 END $$;
+
+ALTER TYPE proveedor_canal ADD VALUE IF NOT EXISTS 'messenger';
+ALTER TYPE proveedor_canal ADD VALUE IF NOT EXISTS 'api';
+
+ALTER TABLE contactos ADD COLUMN IF NOT EXISTS canal_id BIGINT REFERENCES canales_whatsapp(id) ON DELETE SET NULL;
+ALTER TABLE contactos ADD COLUMN IF NOT EXISTS identificador_externo TEXT;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'contactos'::regclass AND conname = 'contactos_canal_id_fkey') THEN
+    ALTER TABLE contactos ADD CONSTRAINT contactos_canal_id_fkey FOREIGN KEY (canal_id) REFERENCES canales_whatsapp(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS contactos_canal_identificador_uq
+  ON contactos(canal_id, identificador_externo) WHERE identificador_externo IS NOT NULL;
+
+ALTER TABLE mensajes ADD COLUMN IF NOT EXISTS canal_id BIGINT REFERENCES canales_whatsapp(id) ON DELETE SET NULL;
+UPDATE mensajes m SET canal_id = c.canal_id FROM conversaciones c
+  WHERE c.id = m.conversacion_id AND m.canal_id IS DISTINCT FROM c.canal_id;
+ALTER TABLE mensajes DROP CONSTRAINT IF EXISTS mensajes_wa_message_id_key;
+CREATE UNIQUE INDEX IF NOT EXISTS mensajes_canal_id_wa_message_id_key ON mensajes(canal_id, wa_message_id);
+
+CREATE OR REPLACE FUNCTION mensaje_fijar_canal() RETURNS trigger
+  LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  SELECT canal_id INTO NEW.canal_id FROM conversaciones WHERE id = NEW.conversacion_id;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS trg_mensaje_fijar_canal ON mensajes;
+CREATE TRIGGER trg_mensaje_fijar_canal BEFORE INSERT OR UPDATE OF conversacion_id, canal_id
+  ON mensajes FOR EACH ROW EXECUTE FUNCTION mensaje_fijar_canal();
 
 -- Un phone_number_id de Meta solo puede estar activo en una organización.
 CREATE UNIQUE INDEX IF NOT EXISTS canales_whatsapp_phone_number_id_activo_uq

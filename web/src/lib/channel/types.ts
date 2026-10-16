@@ -6,7 +6,8 @@ export type TipoMensaje =
 /** Mensaje entrante ya normalizado (sin importar el proveedor). */
 export interface MensajeEntranteNormalizado {
   waMessageId: string;          // id único del proveedor -> idempotencia
-  telefono: string;             // remitente en E.164 (sin '+', solo dígitos)
+  telefono?: string;
+  identificadorExterno?: string;
   nombre?: string;              // pushName / perfil
   tipo: TipoMensaje;
   contenido?: string;           // texto o caption
@@ -96,9 +97,9 @@ export interface DatosConexion {
 
 /** Contrato común de todos los proveedores. */
 export interface ChannelProvider {
-  readonly nombre: "cloud_api";
+  readonly nombre: ProveedorCanal;
 
-  enviarTexto(telefono: string, texto: string): Promise<ResultadoEnvio>;
+  enviarTexto(destinatario: string, texto: string, contexto?: ContextoEnvio): Promise<ResultadoEnvio>;
 
   /** Envía una plantilla oficial previamente aprobada por WhatsApp. */
   enviarPlantilla?(telefono: string, plantilla: PlantillaOficial, variables?: string[]): Promise<ResultadoEnvio>;
@@ -120,7 +121,8 @@ export interface ChannelProvider {
     mediaUrl: string,
     tipo: TipoMensaje,
     caption?: string,
-    mimetype?: string
+    mimetype?: string,
+    contexto?: ContextoEnvio
   ): Promise<ResultadoEnvio>;
 
   /** Envía un audio como nota de voz (PTT). Recibe base64 (sin prefijo data:). */
@@ -153,4 +155,12 @@ export interface ChannelProvider {
   /** Lista los grupos del número. */
   listarGruposWA?(instancia: string): Promise<{ jid: string; nombre: string }[]>;
 
+}
+
+export type ProveedorCanal = "cloud_api" | "messenger" | "api";
+
+export interface ContextoEnvio {
+  conversacionId?: bigint;
+  ultimoEntranteAt?: Date | null;
+  humano?: boolean;
 }

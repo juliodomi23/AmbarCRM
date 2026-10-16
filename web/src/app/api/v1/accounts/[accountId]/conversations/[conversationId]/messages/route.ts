@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getProvider } from "@/lib/channel";
+import { getProvider, destinatarioDelCanal, responderTexto } from "@/lib/channel";
 import { botAutorizado, conBot, denegarSinPermiso } from "@/lib/bot-auth";
 import { auditarBot } from "@/lib/services/bots";
 import { aBigInt } from "@/lib/ids";
@@ -45,13 +45,14 @@ export async function POST(
       return NextResponse.json({ id: Number(nota.id), content, message_type: "outgoing", private: true });
     }
 
-    if (!conv.contacto.telefono) return NextResponse.json({ error: "el contacto no tiene teléfono" }, { status: 422 });
-
-    if (!conv.canal || conv.canal.proveedor !== "cloud_api") {
-      return NextResponse.json({ error: "canal oficial de Meta inexistente" }, { status: 400 });
+    if (!conv.canal) {
+      return NextResponse.json({ error: "canal inexistente" }, { status: 400 });
     }
-    const provider = getProvider("cloud_api", conv.canal.config, conv.canal.instancia);
-    const envio = await provider.enviarTexto(conv.contacto.telefono, content);
+    if (!destinatarioDelCanal(conv.canal.proveedor, conv.contacto)) {
+      return NextResponse.json({ error: "el contacto no tiene destinatario para este canal" }, { status: 422 });
+    }
+    const provider = getProvider(conv.canal.proveedor, conv.canal.config, conv.canal.instancia);
+    const envio = await responderTexto(provider, conv.contacto, content, { conversacionId: conv.id, humano: false });
 
     const mensaje = await db.mensaje.create({
       data: {
@@ -60,6 +61,7 @@ export async function POST(
         tipo: "texto",
         contenido: content,
         status: envio.ok ? "enviado" : "fallido",
+        errorDetalle: envio.ok ? null : envio.error,
         waMessageId: envio.waMessageId
         // enviadoPor null => lo mandó el bot
       }

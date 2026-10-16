@@ -13,7 +13,7 @@ DO $$ BEGIN
   CREATE TYPE direccion_msg    AS ENUM ('entrante', 'saliente');
   CREATE TYPE tipo_msg         AS ENUM ('texto','imagen','audio','video','documento','ubicacion','plantilla');
   CREATE TYPE status_msg       AS ENUM ('pendiente','enviado','entregado','leido','fallido');
-  CREATE TYPE proveedor_canal  AS ENUM ('cloud_api');
+  CREATE TYPE proveedor_canal  AS ENUM ('cloud_api', 'messenger', 'api');
   CREATE TYPE estado_canal     AS ENUM ('conectado', 'desconectado');
   CREATE TYPE tipo_evento      AS ENUM ('creada','etapa_cambio','ganada','perdida','nota','tarea','mensaje','asignacion');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS contactos (
   id             BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   nombre         TEXT            NOT NULL,
   telefono       TEXT            UNIQUE,          -- E.164, llave natural de WhatsApp
+  identificador_externo TEXT,
+  canal_id       BIGINT,
   email          TEXT,
   empresa        TEXT,
   avatar_url     TEXT,
@@ -194,12 +196,16 @@ CREATE TABLE IF NOT EXISTS mensajes (
   media_mime     TEXT,
   interna        BOOLEAN       NOT NULL DEFAULT FALSE,
   status         status_msg    NOT NULL DEFAULT 'enviado',
-  wa_message_id  TEXT          UNIQUE,        -- idempotencia de webhooks
+  wa_message_id  TEXT,
+  canal_id       BIGINT        REFERENCES canales_whatsapp(id) ON DELETE SET NULL,
   enviado_por    BIGINT        REFERENCES usuarios(id) ON DELETE SET NULL, -- null = cliente/bot
   "timestamp"    TIMESTAMPTZ   NOT NULL DEFAULT now(),
   created_at     TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_msg_conv ON mensajes(conversacion_id, "timestamp");
+CREATE UNIQUE INDEX IF NOT EXISTS mensajes_canal_id_wa_message_id_key ON mensajes(canal_id, wa_message_id);
+CREATE UNIQUE INDEX IF NOT EXISTS contactos_canal_identificador_uq
+  ON contactos(canal_id, identificador_externo) WHERE identificador_externo IS NOT NULL;
 ALTER TABLE mensajes ADD COLUMN IF NOT EXISTS interna BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- ---------- plantillas de mensaje (respuestas rápidas) ----------
