@@ -1,4 +1,5 @@
-import { db } from "@/lib/db";
+import { db, orgActual } from "@/lib/db";
+import { transaccionTenant } from "@/lib/retail-db";
 import { getProvider, destinatarioDelCanal, type MensajeEntranteNormalizado } from "@/lib/channel";
 import { getAjustes } from "@/lib/services/config";
 import { botParaCanal, dispatchABot } from "@/lib/services/bots";
@@ -51,79 +52,60 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
   const esWhatsapp = canal.proveedor === "cloud_api";
   if (esWhatsapp ? !m.telefono : !m.identificadorExterno) throw new Error("falta identidad del contacto");
 
-  // --- Contacto ---
-  let contacto = await db.contacto.findFirst({ where: esWhatsapp
-    ? { telefono: m.telefono }
-    : { canalId: canal.id, identificadorExterno: m.identificadorExterno } });
-  const telefonoDisponible = !esWhatsapp && m.telefono
-    ? !(await db.contacto.findFirst({ where: { telefono: m.telefono, ...(contacto ? { id: { not: contacto.id } } : {}) } }))
-    : false;
-  if (!contacto) {
-    const responsableId = ajustes.autoAsignar ? await elegirResponsable() : null;
-    contacto = await db.contacto.create({
-      data: { nombre: m.nombre ?? m.telefono ?? m.identificadorExterno!, telefono: esWhatsapp || telefonoDisponible ? m.telefono : null,
-        ...(!esWhatsapp ? { canalId: canal.id, identificadorExterno: m.identificadorExterno } : {}),
-        fuente: esWhatsapp ? "whatsapp" : "otro", responsableId }
-    });
-  }
-  if (!esWhatsapp && !contacto.telefono && telefonoDisponible) {
-    contacto = await db.contacto.update({ where: { id: contacto.id }, data: { telefono: m.telefono } });
-  }
-
-  // --- Conversación ---
-  let conversacion = await db.conversacion.findUnique({
-    where: { contactoId_canalId: { contactoId: contacto.id, canalId: canalId as any } }
-  });
-  const esNuevaConversacion = !conversacion;
-  if (!conversacion) {
-    conversacion = await db.conversacion.create({
-      data: { contactoId: contacto.id, canalId: canalId ?? undefined, responsableId: contacto.responsableId }
-    });
-  }
-
-  // Contacto personal (familia/amigos): guarda solo texto, sin bot, sin lead, sin media.
-  const esPersonal = contacto.esPersonal;
-  const destinatario = destinatarioDelCanal(canal.proveedor, contacto);
-  const contexto = { conversacionId: conversacion.id, ultimoEntranteAt: m.timestamp, humano: false };
-
-  // El media de WhatsApp viene cifrado: lo descargamos y guardamos local para poder verlo.
-  // Se hace ANTES de crear el mensaje para que el INSERT (y el NOTIFY del SSE) ya traiga la URL servible.
-  // Para contactos personales omitimos la descarga y guardado de media.
+  const identidad = esWhatsapp ? { telefono: m.telefono } : { canalId: canal.id, identificadorExterno: m.identificadorExterno };
+  const previo = await db.contacto.findFirst({ where: identidad });
   let mediaUrl = m.mediaUrl;
   let mediaMime = m.mediaMime;
-  if (m.tipo !== "texto" && m.raw && provider.descargarMedia && !esPersonal) {
+  if (m.tipo !== "texto" && m.raw && provider.descargarMedia && !previo?.esPersonal) {
     const media = await provider.descargarMedia(m.raw, canal.instancia || "");
     if (media) {
       mediaUrl = await guardarMediaBase64(media.base64, media.mime);
       mediaMime = media.mime;
     }
   }
-
+  const orgId = await orgActual();
+  if (orgId == null) throw new Error("ingesta sin empresa");
+  const responsableId = ajustes.autoAsignar ? await elegirResponsable() : null;
   const esSaliente = m.direccion === "saliente";
-
-  const mensaje = await db.mensaje.create({
-    data: {
-      conversacionId: conversacion.id,
-      direccion: esSaliente ? "saliente" : "entrante",
-      tipo: m.tipo,
-      contenido: m.contenido,
-      mediaUrl,
-      mediaMime,
-      status: esSaliente ? "enviado" : "entregado",
-      waMessageId: m.waMessageId,
-      timestamp: m.timestamp
+  const guardado = await transaccionTenant(orgId, async (tx) => {
+    // Serializa la identidad y el mensaje antes de disparar efectos externos.
+    await tx.$queryRaw`SELECT id FROM canales_whatsapp WHERE id = ${canal.id} FOR UPDATE`;
+    const existente = await tx.mensaje.findFirst({ where: { canalId: canal.id, waMessageId: m.waMessageId } });
+    if (existente) return { duplicado: true as const, mensajeId: existente.id, conversacionId: existente.conversacionId };
+    let contacto = await tx.contacto.findFirst({ where: identidad });
+    const telefonoDisponible = m.telefono && !esWhatsapp
+      ? !(await tx.contacto.findFirst({ where: { telefono: m.telefono, ...(contacto ? { id: { not: contacto.id } } : {}) } }))
+      : false;
+    if (!contacto) contacto = await tx.contacto.create({ data: {
+      nombre: m.nombre ?? m.telefono ?? m.identificadorExterno!,
+      telefono: esWhatsapp || telefonoDisponible ? m.telefono : null,
+      ...(!esWhatsapp ? { canalId: canal.id, identificadorExterno: m.identificadorExterno } : {}),
+      fuente: esWhatsapp ? "whatsapp" : "otro", responsableId,
+    } });
+    if (!esWhatsapp && !contacto.telefono && telefonoDisponible) {
+      contacto = await tx.contacto.update({ where: { id: contacto.id }, data: { telefono: m.telefono } });
     }
-  });
-
-  await db.conversacion.update({
-    where: { id: conversacion.id },
-    data: m.historico
+    let conversacion = await tx.conversacion.findUnique({ where: { contactoId_canalId: { contactoId: contacto.id, canalId: canal.id } } });
+    const esNuevaConversacion = !conversacion;
+    if (!conversacion) conversacion = await tx.conversacion.create({ data: {
+      contactoId: contacto.id, canalId: canal.id, responsableId: contacto.responsableId,
+    } });
+    const mensaje = await tx.mensaje.create({ data: {
+      conversacionId: conversacion.id, direccion: esSaliente ? "saliente" : "entrante",
+      tipo: m.tipo, contenido: m.contenido, mediaUrl, mediaMime,
+      status: esSaliente ? "enviado" : "entregado", waMessageId: m.waMessageId, timestamp: m.timestamp,
+    } });
+    await tx.conversacion.update({ where: { id: conversacion.id }, data: m.historico
       ? { ultimoMensajeAt: m.timestamp }
-      : esSaliente
-      // Respondió desde el celular mediante Coexistence: se limpia el contador en el CRM.
-      ? { ultimoMensajeAt: m.timestamp, noLeidos: 0 }
-      : { noLeidos: { increment: 1 }, ultimoMensajeAt: m.timestamp, estado: "abierta" }
+      : esSaliente ? { ultimoMensajeAt: m.timestamp, noLeidos: 0 }
+      : { noLeidos: { increment: 1 }, ultimoMensajeAt: m.timestamp, estado: "abierta" } });
+    return { duplicado: false as const, contacto, conversacion, mensaje, esNuevaConversacion };
   });
+  if (guardado.duplicado) return guardado;
+  const { contacto, conversacion, mensaje, esNuevaConversacion } = guardado;
+  const esPersonal = contacto.esPersonal;
+  const destinatario = destinatarioDelCanal(canal.proveedor, contacto);
+  const contexto = { conversacionId: conversacion.id, ultimoEntranteAt: m.timestamp, humano: false };
 
   // El historial de Coexistence solo reconstruye el chat. No debe generar leads,
   // notificaciones, respuestas automáticas, CSAT ni llamadas a bots.

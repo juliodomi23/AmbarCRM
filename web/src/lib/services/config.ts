@@ -13,7 +13,6 @@ export function listarUsuarios() {
 
 export async function listarCanales() {
   const canales = await db.canalWhatsapp.findMany({
-    where: { proveedor: "cloud_api" },
     orderBy: { id: "asc" }
   });
   return canales.map((canal) => {
@@ -30,7 +29,10 @@ export async function listarCanales() {
       createdAt: canal.createdAt,
       credencialesConfiguradas: Boolean(config.tokenEncrypted || config.token),
       wabaId: typeof config.wabaId === "string" ? config.wabaId : null,
-      phoneNumberId: typeof config.phoneNumberId === "string" ? config.phoneNumberId : null
+      phoneNumberId: typeof config.phoneNumberId === "string" ? config.phoneNumberId : null,
+      webhookUrl: typeof config.webhookUrl === "string" ? config.webhookUrl : null,
+      pageId: typeof config.pageId === "string" ? config.pageId : null,
+      errorAutorizacion: typeof config.errorAutorizacion === "string" ? config.errorAutorizacion : null
     };
   });
 }

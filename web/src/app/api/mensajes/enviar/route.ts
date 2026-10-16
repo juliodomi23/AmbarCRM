@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getProvider, type TipoMensaje } from "@/lib/channel";
+import { getProvider, destinatarioDelCanal, type TipoMensaje } from "@/lib/channel";
 import { guardarMediaBase64 } from "@/lib/storage";
 import { serializar } from "@/lib/serialize";
 import { estadoVentana } from "@/lib/meta/ventana";
@@ -74,16 +74,15 @@ async function manejarPOST(req: NextRequest) {
     include: { contacto: true, canal: true }
   });
   if (!conv) return NextResponse.json({ error: "conversación inexistente" }, { status: 404 });
-  if (!conv.contacto.telefono) {
-    return NextResponse.json({ error: "el contacto no tiene teléfono" }, { status: 400 });
+  if (!conv.canal) {
+    return NextResponse.json({ error: "la conversación no tiene canal" }, { status: 400 });
   }
+  const destinatario = destinatarioDelCanal(conv.canal.proveedor, conv.contacto);
+  if (!destinatario) return NextResponse.json({ error: "el contacto no tiene destinatario para este canal" }, { status: 400 });
+  const provider = getProvider(conv.canal.proveedor, conv.canal.config, conv.canal.instancia);
+  const contexto = { conversacionId: conv.id, humano: true };
 
-  if (!conv.canal || conv.canal.proveedor !== "cloud_api") {
-    return NextResponse.json({ error: "la conversación no tiene un canal oficial de Meta" }, { status: 400 });
-  }
-  const provider = getProvider("cloud_api", conv.canal.config, conv.canal.instancia);
-
-  if (!plantilla) {
+  if (!plantilla && conv.canal.proveedor === "cloud_api") {
     const ultimoEntrante = await db.mensaje.findFirst({
       where: { conversacionId: conv.id, direccion: "entrante" },
       orderBy: { timestamp: "desc" },
@@ -100,7 +99,7 @@ async function manejarPOST(req: NextRequest) {
   if (plantilla) {
     if (!provider.enviarPlantilla) return NextResponse.json({ error: "el canal no admite plantillas" }, { status: 400 });
     envio = await provider.enviarPlantilla(
-      conv.contacto.telefono,
+      destinatario,
       { name: plantilla.name, language: plantilla.language },
       plantilla.variables
     );
@@ -114,18 +113,18 @@ async function manejarPOST(req: NextRequest) {
     }
     const limpio = audioBase64.includes(",") ? audioBase64.split(",")[1] : audioBase64;
     envio = mimeAudio === "audio/ogg" && provider.enviarAudio
-      ? await provider.enviarAudio(conv.contacto.telefono, limpio)
-      : await provider.enviarMedia(conv.contacto.telefono, audioBase64, "audio", undefined, mimeAudio);
+      ? await provider.enviarAudio(destinatario, limpio)
+      : await provider.enviarMedia(destinatario, audioBase64, "audio", undefined, mimeAudio, contexto);
     const urlLocal = await guardarMediaBase64(audioBase64, mimeAudio);
     datosMensaje = { tipo: "audio", contenido: null, mediaUrl: urlLocal, mediaMime: mimeAudio };
   } else if (esMedia) {
     const tipo = tipoDesdeMime(mediaMime ?? "");
     // A WhatsApp va el base64; en local guardamos el archivo para verlo en el hilo del CRM.
-    envio = await provider.enviarMedia(conv.contacto.telefono, mediaBase64, tipo, caption?.trim() || undefined, mediaMime);
+    envio = await provider.enviarMedia(destinatario, mediaBase64, tipo, caption?.trim() || undefined, mediaMime, contexto);
     const urlLocal = await guardarMediaBase64(mediaBase64, mediaMime ?? "application/octet-stream");
     datosMensaje = { tipo, contenido: caption?.trim() || null, mediaUrl: urlLocal, mediaMime: mediaMime ?? null };
   } else {
-    envio = await provider.enviarTexto(conv.contacto.telefono, texto);
+    envio = await provider.enviarTexto(destinatario, texto, contexto);
     datosMensaje = { tipo: "texto", contenido: texto, mediaUrl: null, mediaMime: null };
   }
 

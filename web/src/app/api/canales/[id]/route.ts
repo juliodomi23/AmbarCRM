@@ -4,6 +4,8 @@ import { requireSesion } from "@/lib/session";
 import { META_GRAPH_URL } from "@/lib/meta/config";
 import { tokenFromChannelConfig } from "@/lib/meta/credentials";
 import { conErrores } from "@/lib/errores-api";
+import { editarCanalApi } from "@/lib/services/canales";
+import { ErrorRetail } from "@/lib/retail-db";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,16 @@ async function manejarPATCH(req: NextRequest, props: { params: Promise<{ id: str
   if ("error" in s) return s.error;
 
   const body = await req.json().catch(() => ({}));
+  const canal = await db.canalWhatsapp.findUnique({ where: { id: BigInt(params.id) } });
+  if (!canal) return NextResponse.json({ error: "canal inexistente" }, { status: 404 });
+  if (canal.proveedor === "api") {
+    try {
+      return NextResponse.json(await editarCanalApi(canal.id, body), { headers: { "Cache-Control": "no-store" } });
+    } catch (e) {
+      if (e instanceof ErrorRetail) return NextResponse.json({ error: e.message }, { status: e.status });
+      throw e;
+    }
+  }
   const data: Record<string, unknown> = {};
   for (const k of ["nombre", "activo"]) {
     if (k in body) data[k] = body[k];

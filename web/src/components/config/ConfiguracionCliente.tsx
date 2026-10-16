@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { EncabezadoPagina } from "@/components/ui";
 import { MarcaConfig } from "@/components/config/MarcaConfig";
 import { MetaCanales } from "@/components/config/MetaCanales";
+import { CanalExterno } from "@/components/config/CanalExterno";
 import { TabAutomatizaciones } from "@/components/config/tabs/TabAutomatizaciones";
 import { TabBots } from "@/components/config/tabs/TabBots";
 import { TabCamposPersonalizados } from "@/components/config/tabs/TabCamposPersonalizados";
@@ -70,9 +71,13 @@ export function ConfiguracionCliente({
       {tab === "Usuarios" && (
         <TabUsuarios usuarios={usuarios} puestosSugeridos={puestosSugeridos} />
       )}
-      {tab === "Canal WhatsApp" && <MetaCanales canales={canales} />}
+      {tab === "Canal WhatsApp" && <div className="space-y-5">
+        <MetaCanales canales={canales.filter((c) => c.proveedor === "cloud_api")} />
+        {canales.filter((c) => c.proveedor === "api").map((canal) => <CanalExterno key={canal.id} canal={canal} />)}
+        <CanalExterno />
+      </div>}
       {tab === "Plantillas" && <TabPlantillas plantillas={plantillas} />}
-      {tab === "Plantillas de Meta" && <MetaCanales canales={canales} vista="plantillas" />}
+      {tab === "Plantillas de Meta" && <MetaCanales canales={canales.filter((c) => c.proveedor === "cloud_api")} vista="plantillas" />}
       {tab === "Automatizaciones" && <TabAutomatizaciones ajustes={ajustes} />}
       {tab === "Bots" && <TabBots bots={bots} canales={canales} />}
       {tab === "IA" && <TabIA ajustes={ajustes} />}

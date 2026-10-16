@@ -15,7 +15,7 @@ export function generarToken(): string {
 
 /** Lista para la UI: nunca incluye el secreto de firma (solo si ya tiene uno). */
 export async function listarBots() {
-  const bots = await db.bot.findMany({ orderBy: { id: "asc" }, include: { canal: true } });
+  const bots = await db.bot.findMany({ orderBy: { id: "asc" }, include: { canal: { select: { id: true, nombre: true, proveedor: true } } } });
   return bots.map(({ signingSecret, ...bot }) => ({ ...bot, firmaActiva: signingSecret != null }));
 }
 
