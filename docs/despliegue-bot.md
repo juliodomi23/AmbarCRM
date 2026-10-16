@@ -16,7 +16,8 @@ Variables de Messenger:
 ```env
 MESSENGER_VERIFY_TOKEN=un-valor-aleatorio-para-verificar-el-webhook
 # Se reutilizan las variables existentes de Meta:
-META_APP_SECRET=secreto-de-la-misma-app-que-firma-los-eventos
+META_APP_SECRET=secreto-de-la-app-global-de-Tech-Provider
+META_APP_ID=id-de-la-app-global-de-Tech-Provider
 META_GRAPH_VERSION=v26.0
 ```
 
@@ -32,11 +33,31 @@ falla, el contacto usa su PSID; si el token de envío vence, la bandeja aparece 
 un aviso para reconectar. El bot puede responder en 24 h; el asesor usa HUMAN_AGENT hasta 7 días
 si Meta lo permite. No se puede garantizar ese permiso sin probar la app real.
 
+Si la página usa la app global de Tech Provider, deja los campos opcionales de app vacíos:
+se usan `META_APP_SECRET` para la firma y `META_APP_ID` para omitir los ecos propios.
+Si usa **otra app de Meta** (por ejemplo SEMBID mientras se aprueba Tech Provider), indica
+el **ID de esa app** (`app_id`) y su **App Secret** (`app_secret`) en el formulario de Messenger.
+Cada campo sustituye su global correspondiente. El secreto se guarda en `config.appSecretEncrypted`
+cifrado con `META_TOKEN_ENCRYPTION_KEY`, y el ID en `config.appId`, en claro. El secreto no se
+devuelve al crear, editar ni listar canales, ni se registra en bitácora. Al editar, omitirlos
+o dejarlos vacíos conserva los valores existentes; para cambiarlos, escribe los nuevos valores.
+Este ajuste no necesita SQL ni variables globales nuevas.
+
+El POST lee el cuerpo crudo y solo usa `entry[].id` sin autenticar para resolver la empresa
+con `resolve_org_by_page` y cargar el canal bajo RLS. Antes de leer mensajes o acuses, verifica
+la firma del cuerpo completo con el secreto de **ese canal**. Con secreto propio, el global
+no autoriza la página; si el cifrado no se puede leer, también se rechaza. Sin entradas conocidas
+autorizadas, una firma inválida para una página conocida responde 401 sin escrituras ni consultas
+a Graph. Las páginas desconocidas se confirman con 200 sin procesar. Un cuerpo con varias páginas
+valida cada entrada por separado: solo procesa las autorizadas y responde 200 si autorizó alguna,
+para confirmar esa entrega sin dar acceso a las demás páginas. Los reenvíos se deduplican por canal.
+Una página ya activa devuelve 409 con «esa página ya está conectada», incluso si pertenece a otra empresa.
+
 Para API libre no hay variables globales nuevas: clave y secreto independientes por canal.
 Ver [contrato y ejemplos](canal-api.md). La API v1 y el formato del evento entrante para n8n
 permanecen estables; sin teléfono, `sender.identifier` lleva el ID externo/PSID y `phone_number`
-es null. Los flujos que exijan un número deben tratarlo como opcional. Se usa el `META_APP_ID`
-existente para reconocer los ecos de la propia app.
+es null. Los flujos que exijan un número deben tratarlo como opcional. Los ecos propios se reconocen
+con el `appId` del canal, o con `META_APP_ID` cuando no hay ID propio.
 
 Esta guía lleva a una base **ya en producción** (multi-tenant, app conectada como `crm_app`) el conjunto
 completo del bot: seguridad, auditoría, citas y cotizaciones. Todo el SQL es aditivo e idempotente.

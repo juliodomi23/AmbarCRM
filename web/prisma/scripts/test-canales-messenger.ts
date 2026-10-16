@@ -151,6 +151,7 @@ try {
     assert.equal((await enviarPropio("global-no-autoriza", process.env.META_APP_SECRET)).status, 401);
     const acuseSinFirma = JSON.stringify({ object: "page", entry: [{ id: paginaPropia, messaging: [{ read: { mids: ["app-propia-1"] } }] }] });
     assert.equal((await postRaw(acuseSinFirma, "sha256=incorrecta")).status, 401);
+    assert.equal((await POST(new NextRequest("https://crm.prueba.test/api/messenger/webhook", { method: "POST", body: acuseSinFirma }))).status, 401);
     assert.deepEqual(await estadoEmpresa(orgs[1].id), antesRechazo, "firma inválida no escribe mensajes, acuses ni datos asociados");
     assert.equal(llamadasGraph, graphAntes, "no consulta Graph sin autenticar");
     const raw = JSON.stringify({ object: "page", entry: [{ id: paginaPropia, messaging: [evento("raw-alterado")] }] });
@@ -167,6 +168,13 @@ try {
       await runWithOrg(orgs[0].id, async () => assert.equal(await db.mensaje.count({ where: { canalId: BigInt(global.id), waMessageId: `mixto-${indice}` } }), indice === 1 ? 1 : 0));
     }
     assert.equal((await webhook([evento("desconocida")], "99999999999999999999")).status, 200);
+    assert.equal((await postRaw(JSON.stringify({ object: "page", entry: [{ id: "99999999999999999999", messaging: [evento("desconocida-sin-firma")] }] }), "sha256=incorrecta")).status, 200);
+    const antesMixtoInvalido = await Promise.all(orgs.map((org) => estadoEmpresa(org.id)));
+    const mixtoInvalido = JSON.stringify({ object: "page", entry: [
+      { id: paginaGlobal, messaging: [evento("mixto-no-autorizado")] }, { id: paginaPropia, messaging: [evento("mixto-no-autorizado")] },
+    ] });
+    assert.equal((await postRaw(mixtoInvalido, firma(mixtoInvalido, "secreto-ajeno"))).status, 401);
+    assert.deepEqual(await Promise.all(orgs.map((org) => estadoEmpresa(org.id))), antesMixtoInvalido);
     await db.canalWhatsapp.update({ where: { id }, data: { config: { ...config, appSecretEncrypted: "encv1:roto" } } });
     const antesCifradoRoto = await estadoEmpresa(orgs[1].id);
     assert.equal((await enviarPropio("cifrado-roto-global", process.env.META_APP_SECRET)).status, 401);
@@ -208,6 +216,17 @@ try {
       const rechazo = resultados.find((r) => r.status === "rejected");
       assert.ok(rechazo?.status === "rejected" && duplicada(rechazo.reason), "la UNIQUE resuelve la carrera con el mismo 409 legible");
     } finally { esperarSuscripcion = undefined; }
+    const secretoNuevo = "secreto-messenger-renovado";
+    const renovado = await guardarCanalMessenger({ app_secret: secretoNuevo, app_id: "789" }, id);
+    const configNueva = (await db.canalWhatsapp.findUniqueOrThrow({ where: { id } })).config as Record<string, string>;
+    assert.equal(decryptMetaToken(configNueva.appSecretEncrypted), secretoNuevo);
+    assert.equal(configNueva.appId, "789");
+    assert.equal(configNueva.tokenEncrypted, config.tokenEncrypted);
+    assert.equal((await enviarPropio("secreto-anterior")).status, 401);
+    assert.equal((await enviarPropio("secreto-renovado", secretoNuevo)).status, 200);
+    const despues = JSON.stringify({ renovado, lista: await listarCanales(), auditoria: await db.auditoriaBot.findMany(), eventos: await db.evento.findMany() },
+      (_clave, valor) => typeof valor === "bigint" ? String(valor) : valor);
+    for (const privado of [secretoPropio, secretoNuevo, configNueva.appSecretEncrypted, "app_secret", "appSecretEncrypted"]) assert.ok(!despues.includes(privado), "tampoco expone secretos tras procesar y editar");
   });
   console.log("OK · Messenger simulado: configuración cifrada y privada, firma por página y global, rechazo sin escrituras/Graph, cuerpos mixtos, PSID, aislamiento, ecos, acuses, ventanas, bot, token y media firmada");
 } finally { globalThis.fetch = fetchOriginal; await dbRaw.$disconnect(); }
