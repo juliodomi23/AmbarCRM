@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Boton, Campo } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 
-export type CanalExternoDatos = { id: string; nombre: string; proveedor: string; webhookUrl?: string | null; pageId?: string | null; estado: string; errorAutorizacion?: string | null };
+export type CanalExternoDatos = { id: string; nombre: string; proveedor: string; webhookUrl?: string | null; pageId?: string | null; appId?: string | null; estado: string; errorAutorizacion?: string | null };
 
 export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDatos; tipo?: "api" | "messenger" }) {
   const esMessenger = (canal?.proveedor ?? tipo) === "messenger";
@@ -14,6 +14,8 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
   const [webhook, setWebhook] = useState(canal?.webhookUrl ?? "");
   const [pageId, setPageId] = useState(canal?.pageId ?? "");
   const [token, setToken] = useState("");
+  const [appId, setAppId] = useState(canal?.appId ?? "");
+  const [appSecret, setAppSecret] = useState("");
   const [secretos, setSecretos] = useState<{ apiKey: string; secret: string } | null>(null);
   const [guardando, setGuardando] = useState(false);
   async function guardar(regenerar = false) {
@@ -22,12 +24,14 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
       const res = await fetch(canal ? `/api/canales/${canal.id}` : "/api/canales", {
         method: canal ? "PATCH" : "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ proveedor: esMessenger ? "messenger" : "api", nombre, webhook_url: webhook, regenerar,
-          page_id: pageId, page_access_token: token || undefined }),
+          page_id: pageId, page_access_token: token || undefined,
+          app_id: appId || undefined, app_secret: appSecret || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo guardar el canal");
       if (data.apiKey) setSecretos({ apiKey: data.apiKey, secret: data.secret });
       setToken("");
+      setAppSecret("");
       toast(esMessenger ? "Página de Messenger conectada" : "Canal API guardado", "ok");
       router.refresh();
     } catch (e) { toast(e instanceof Error ? e.message : "No se pudo guardar", "error"); }
@@ -41,6 +45,9 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
       {esMessenger ? <>
         <Campo label="ID de la página (page_id)" value={pageId} onChange={(e) => setPageId(e.target.value)} required />
         <Campo label={canal ? "Token de la página (vacío para conservar)" : "Token de acceso de la página"} type="password" autoComplete="new-password" value={token} onChange={(e) => setToken(e.target.value)} required={!canal} />
+        <Campo label="ID de la app de Meta (opcional)" value={appId} onChange={(e) => setAppId(e.target.value)} maxLength={40} />
+        <Campo label="App Secret (opcional; vacío para conservar)" type="password" autoComplete="new-password" value={appSecret} onChange={(e) => setAppSecret(e.target.value)} maxLength={8192} />
+        <p className="text-xs text-muted-foreground">Si la página usa otra app de Meta, indica su ID y App Secret. Sin valores propios se usan los del CRM.</p>
       </> : <Campo label="Webhook de salida (https)" type="url" value={webhook} onChange={(e) => setWebhook(e.target.value)} required />}
       <div className="flex gap-2"><Boton type="submit" disabled={guardando}>Guardar</Boton>
         {canal && !esMessenger && <Boton type="button" disabled={guardando} onClick={() => void guardar(true)}>Regenerar credenciales</Boton>}</div>

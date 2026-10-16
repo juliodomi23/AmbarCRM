@@ -56,6 +56,14 @@ export async function guardarCanalMessenger(body: Record<string, unknown>, id?: 
     config.tokenEncrypted = encryptMetaToken(body.page_access_token.trim());
   }
   if (!config.tokenEncrypted) throw new ErrorRetail("falta el token de acceso de la página");
+  if (body.app_secret != null && body.app_secret !== "") {
+    if (typeof body.app_secret !== "string" || !body.app_secret.trim() || body.app_secret.length > 8192) throw new ErrorRetail("app_secret inválido");
+    config.appSecretEncrypted = encryptMetaToken(body.app_secret.trim());
+  }
+  if (body.app_id != null && body.app_id !== "") {
+    if (typeof body.app_id !== "string" || !/^\d{1,40}$/.test(body.app_id.trim())) throw new ErrorRetail("app_id inválido");
+    config.appId = body.app_id.trim();
+  }
   config.pageId = pageId;
   delete config.errorAutorizacion;
   try { await suscribirPagina(config); }

@@ -8,6 +8,7 @@ import { GET, POST } from "../../src/app/api/messenger/webhook/route";
 import { POST as respuestaBot } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/messages/route";
 import { urlMediaPublica, firmaMediaValida } from "../../src/lib/channel/media-publica";
 import { listarCanales } from "../../src/lib/services/config";
+import { decryptMetaToken } from "../../src/lib/meta/credentials";
 
 assert.equal(new URL(process.env.DATABASE_URL!).port, "55450");
 process.env.META_APP_SECRET = "secreto-meta-de-pruebas";
@@ -107,5 +108,28 @@ try {
   assert.ok(firmaMediaValida(archivo, url.searchParams.get("vence"), url.searchParams.get("firma")));
   assert.equal(firmaMediaValida(archivo.replace("123-", "124-"), url.searchParams.get("vence"), url.searchParams.get("firma")), false);
   assert.equal(firmaMediaValida(archivo, "1", url.searchParams.get("firma")), false);
+  await runWithOrg(orgs[1].id, async () => {
+    const secretoPropio = "secreto-app-propia-messenger";
+    const creado = await guardarCanalMessenger({ nombre: "App propia", page_id: `${paginas[1]}3`, page_access_token: "token-propio",
+      app_secret: secretoPropio, app_id: "456" });
+    const id = BigInt(creado.id);
+    const configurado = await db.canalWhatsapp.findUniqueOrThrow({ where: { id } });
+    const config = configurado.config as Record<string, string>;
+    assert.ok(config.appSecretEncrypted.startsWith("encv1:"));
+    assert.equal(decryptMetaToken(config.appSecretEncrypted), secretoPropio);
+    assert.ok(!JSON.stringify(config).includes(secretoPropio));
+    assert.equal(config.appId, "456");
+    const editado = await guardarCanalMessenger({ nombre: "App propia editada" }, id);
+    await guardarCanalMessenger({ app_secret: "", app_id: "" }, id);
+    assert.deepEqual((await db.canalWhatsapp.findUniqueOrThrow({ where: { id } })).config, config, "editar sin credenciales o con vacíos las conserva");
+    const lista = await listarCanales();
+    assert.equal(lista.find((c) => c.id === id)?.appId, "456");
+    const bitacora = { auditoria: await db.auditoriaBot.findMany(), eventos: await db.evento.findMany() };
+    const publico = JSON.stringify({ creado, editado, lista, bitacora }, (_clave, valor) => typeof valor === "bigint" ? String(valor) : valor);
+    for (const privado of [secretoPropio, config.appSecretEncrypted, "app_secret", "appSecretEncrypted"]) assert.ok(!publico.includes(privado), `no expone ${privado === secretoPropio ? "el secreto" : "campos privados"}`);
+    for (const entrada of [{ app_secret: 123 }, { app_secret: "   " }, { app_id: "invalido" }]) {
+      await assert.rejects(() => guardarCanalMessenger(entrada, id), /inválido/);
+    }
+  });
   console.log("OK · Messenger simulado: verificación, firma antes de JSON, PSID, perfil denegado, aislamiento, ecos, acuses, ventanas, texto/adjuntos, bot fallido, token y media firmada");
 } finally { globalThis.fetch = fetchOriginal; await dbRaw.$disconnect(); }
