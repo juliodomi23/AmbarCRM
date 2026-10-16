@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, dbRaw, runWithOrg } from "@/lib/db";
 import { verifyMetaWebhookSignature } from "@/lib/meta/signature";
+import { decryptMetaToken } from "@/lib/meta/credentials";
 import { normalizarMessenger, perfilMessenger } from "@/lib/channel/messenger";
 import { ingestarEntrante } from "@/lib/services/ingest";
 
@@ -15,23 +16,47 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ error: "verificación inválida" }, { status: 403 });
 }
 
+function firmaDelCanal(config: Record<string, unknown>, raw: string, firma: string | null) {
+  const cifrado = config.appSecretEncrypted;
+  if (cifrado == null) return verifyMetaWebhookSignature(raw, firma);
+  if (typeof cifrado !== "string" || !cifrado) return false;
+  try {
+    return verifyMetaWebhookSignature(raw, firma, decryptMetaToken(cifrado));
+  } catch {
+    return false;
+  }
+}
+
+const firmaInvalida = () => NextResponse.json({ error: "firma inválida" }, { status: 401 });
+
 export async function POST(req: NextRequest) {
   const raw = await req.text();
-  if (!verifyMetaWebhookSignature(raw, req.headers.get("x-hub-signature-256"))) {
-    return NextResponse.json({ error: "firma inválida" }, { status: 401 });
-  }
+  const firma = req.headers.get("x-hub-signature-256");
   let payload;
-  try { payload = JSON.parse(raw); } catch { return NextResponse.json({ error: "JSON inválido" }, { status: 400 }); }
-  if (payload?.object !== "page" || !Array.isArray(payload.entry)) return NextResponse.json({ ok: true });
+  try { payload = JSON.parse(raw); } catch {
+    return verifyMetaWebhookSignature(raw, firma) ? NextResponse.json({ error: "JSON inválido" }, { status: 400 }) : firmaInvalida();
+  }
+  if (!Array.isArray(payload?.entry)) {
+    return verifyMetaWebhookSignature(raw, firma) ? NextResponse.json({ ok: true }) : firmaInvalida();
+  }
+  let autorizada = false;
+  let rechazada = false;
   for (const entry of payload.entry) {
-    if (!entry?.id || !Array.isArray(entry.messaging)) continue;
+    if (!["string", "number"].includes(typeof entry?.id)) continue;
     const pageId = String(entry.id);
+    if (!/^\d{1,40}$/.test(pageId)) continue;
     const filas = await dbRaw.$queryRawUnsafe<{ org: bigint | null }[]>("SELECT resolve_org_by_page($1) AS org", pageId);
     const org = filas[0]?.org;
     if (org == null) continue;
     await runWithOrg(org, async () => {
       const canal = await db.canalWhatsapp.findFirst({ where: { proveedor: "messenger", activo: true, config: { path: ["pageId"], equals: pageId } } });
       if (!canal) return;
+      if (!firmaDelCanal(canal.config as Record<string, unknown>, raw, firma)) {
+        rechazada = true;
+        return;
+      }
+      autorizada = true;
+      if (payload.object !== "page" || !Array.isArray(entry.messaging)) return;
       for (const mensaje of normalizarMessenger({ entry: [entry] })) {
         const existente = await db.contacto.findFirst({ where: { canalId: canal.id, identificadorExterno: mensaje.identificadorExterno } });
         const perfil = existente ? {} : await perfilMessenger(canal.config as Record<string, unknown>, mensaje.identificadorExterno!);
@@ -53,5 +78,6 @@ export async function POST(req: NextRequest) {
       }
     });
   }
+  if (rechazada && !autorizada) return firmaInvalida();
   return NextResponse.json({ ok: true });
 }

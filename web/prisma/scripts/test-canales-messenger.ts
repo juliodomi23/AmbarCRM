@@ -19,7 +19,9 @@ let tokenInvalido = false;
 const envios: any[] = [];
 const suscripciones: any[] = [];
 let siguiente = 0;
+let llamadasGraph = 0;
 globalThis.fetch = async (url, init) => {
+  llamadasGraph++;
   const direccion = String(url);
   assert.ok(direccion.startsWith("https://graph.facebook.com/"), `no debe llamar a servicios reales: ${direccion}`);
   if (direccion.endsWith("/subscribed_apps")) {
@@ -35,17 +37,21 @@ globalThis.fetch = async (url, init) => {
 };
 const orgs = await Promise.all(["a", "b"].map((letra) => dbRaw.org.create({ data: { nombre: `Messenger ${letra}`, slug: `msg-${letra}-${Date.now()}` } })));
 const paginas = [String(Date.now()) + "1", String(Date.now()) + "2"];
-const firma = (raw: string) => `sha256=${createHmac("sha256", process.env.META_APP_SECRET!).update(raw).digest("hex")}`;
+const firma = (raw: string, secreto = process.env.META_APP_SECRET!) => `sha256=${createHmac("sha256", secreto).update(raw).digest("hex")}`;
 const postRaw = (raw: string, signature = firma(raw)) => POST(new NextRequest("https://crm.prueba.test/api/messenger/webhook", { method: "POST", body: raw, headers: { "x-hub-signature-256": signature } }));
 const evento = (mid: string, extras: object = {}) => ({ sender: { id: "psid-cliente" }, recipient: { id: paginas[0] }, timestamp: Date.now(), message: { mid, text: "Hola", ...extras } });
 const webhook = (messaging: unknown[], pagina = paginas[0]) => postRaw(JSON.stringify({ object: "page", entry: [{ id: pagina, messaging }] }));
+const estadoEmpresa = (orgId: bigint) => runWithOrg(orgId, () => Promise.all([
+  db.contacto.findMany(), db.conversacion.findMany(), db.mensaje.findMany(), db.oportunidad.findMany(),
+  db.evento.findMany(), db.auditoriaBot.findMany(), db.ajustes.findMany(),
+]));
 try {
   const canales = await Promise.all(orgs.map((org, i) => runWithOrg(org.id, () => guardarCanalMessenger({ nombre: "Página", page_id: paginas[i], page_access_token: `token-pagina-${i}` }))));
   assert.deepEqual(suscripciones[0].subscribed_fields, CAMPOS_MESSENGER);
   const verificacion = await GET(new NextRequest("https://crm.prueba.test/api/messenger/webhook?hub.mode=subscribe&hub.verify_token=verify-messenger&hub.challenge=abc123"));
   assert.equal(verificacion.status, 200); assert.equal(await verificacion.text(), "abc123");
   assert.equal((await GET(new NextRequest("https://crm.prueba.test/api/messenger/webhook?hub.mode=subscribe&hub.verify_token=malo&hub.challenge=x"))).status, 403);
-  assert.equal((await postRaw("{inválido", "sha256=mal" )).status, 401, "rechaza antes de parsear");
+  assert.equal((await postRaw("{inválido", "sha256=mal" )).status, 401, "JSON inválido sin firma válida se rechaza");
   await runWithOrg(orgs[0].id, async () => assert.equal(await db.mensaje.count(), 0));
   assert.equal((await postRaw("{inválido")).status, 400);
   assert.equal((await webhook([evento("m-1")])).status, 200);
@@ -130,6 +136,40 @@ try {
     for (const entrada of [{ app_secret: 123 }, { app_secret: "   " }, { app_id: "invalido" }]) {
       await assert.rejects(() => guardarCanalMessenger(entrada, id), /inválido/);
     }
+    const paginaPropia = config.pageId;
+    const enviarPropio = (mid: string, secreto = secretoPropio, extras: object = {}) => {
+      const raw = JSON.stringify({ object: "page", entry: [{ id: paginaPropia, messaging: [evento(mid, extras)] }] });
+      return postRaw(raw, firma(raw, secreto));
+    };
+    assert.equal((await enviarPropio("app-propia-1")).status, 200);
+    assert.equal(await db.mensaje.count({ where: { canalId: id, waMessageId: "app-propia-1" } }), 1);
+    const antesRechazo = await estadoEmpresa(orgs[1].id);
+    const graphAntes = llamadasGraph;
+    assert.equal((await enviarPropio("global-no-autoriza", process.env.META_APP_SECRET)).status, 401);
+    const acuseSinFirma = JSON.stringify({ object: "page", entry: [{ id: paginaPropia, messaging: [{ read: { mids: ["app-propia-1"] } }] }] });
+    assert.equal((await postRaw(acuseSinFirma, "sha256=incorrecta")).status, 401);
+    assert.deepEqual(await estadoEmpresa(orgs[1].id), antesRechazo, "firma inválida no escribe mensajes, acuses ni datos asociados");
+    assert.equal(llamadasGraph, graphAntes, "no consulta Graph sin autenticar");
+    const raw = JSON.stringify({ object: "page", entry: [{ id: paginaPropia, messaging: [evento("raw-alterado")] }] });
+    assert.equal((await postRaw(raw + " ", firma(raw, secretoPropio))).status, 401, "firma sobre el cuerpo crudo exacto");
+    const paginaGlobal = `${paginas[0]}4`;
+    const global = await runWithOrg(orgs[0].id, () => guardarCanalMessenger({ nombre: "App global", page_id: paginaGlobal, page_access_token: "token-global" }));
+    for (const [indice, secreto] of [secretoPropio, process.env.META_APP_SECRET!].entries()) {
+      const mixto = JSON.stringify({ object: "page", entry: [
+        { id: paginaGlobal, messaging: [evento(`mixto-${indice}`)] },
+        { id: paginaPropia, messaging: [evento(`mixto-${indice}`)] },
+      ] });
+      assert.equal((await postRaw(mixto, firma(mixto, secreto))).status, 200);
+      assert.equal(await db.mensaje.count({ where: { canalId: id, waMessageId: `mixto-${indice}` } }), indice === 0 ? 1 : 0);
+      await runWithOrg(orgs[0].id, async () => assert.equal(await db.mensaje.count({ where: { canalId: BigInt(global.id), waMessageId: `mixto-${indice}` } }), indice === 1 ? 1 : 0));
+    }
+    assert.equal((await webhook([evento("desconocida")], "99999999999999999999")).status, 200);
+    await db.canalWhatsapp.update({ where: { id }, data: { config: { ...config, appSecretEncrypted: "encv1:roto" } } });
+    const antesCifradoRoto = await estadoEmpresa(orgs[1].id);
+    assert.equal((await enviarPropio("cifrado-roto-global", process.env.META_APP_SECRET)).status, 401);
+    assert.equal((await enviarPropio("cifrado-roto-propio")).status, 401);
+    assert.deepEqual(await estadoEmpresa(orgs[1].id), antesCifradoRoto, "un secreto ilegible no habilita el global");
+    await db.canalWhatsapp.update({ where: { id }, data: { config } });
   });
-  console.log("OK · Messenger simulado: verificación, firma antes de JSON, PSID, perfil denegado, aislamiento, ecos, acuses, ventanas, texto/adjuntos, bot fallido, token y media firmada");
+  console.log("OK · Messenger simulado: configuración cifrada y privada, firma por página y global, rechazo sin escrituras/Graph, cuerpos mixtos, PSID, aislamiento, ecos, acuses, ventanas, bot, token y media firmada");
 } finally { globalThis.fetch = fetchOriginal; await dbRaw.$disconnect(); }
