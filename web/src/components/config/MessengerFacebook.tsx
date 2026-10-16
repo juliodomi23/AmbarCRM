@@ -15,7 +15,7 @@ async function solicitar(ruta: string, body: object, state?: string) {
     method: "POST", headers: { "Content-Type": "application/json", ...(state ? { "x-messenger-state": state } : {}) },
     body: JSON.stringify(body),
   });
-  const data = await res.json();
+  const data = await res.json().catch(() => ({ error: `El servidor respondió ${res.status} sin detalle. Usa la conexión manual.` }));
   if (!res.ok) throw new Error(data.error || "No se pudo conectar con Facebook. Usa la conexión manual.");
   return data;
 }

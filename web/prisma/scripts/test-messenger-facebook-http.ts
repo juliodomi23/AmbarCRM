@@ -71,7 +71,7 @@ try {
   const permisos = await post("paginas", { accion: "iniciar" });
   const estadoPermisos = await permisos.json();
   const rechazo = await post("paginas", { code: "permisos" }, `${admin}; ${cookieDe(permisos)}`, estadoPermisos.state);
-  assert.equal(rechazo.status, 502);
+  assert.equal(rechazo.status, 424);
   const error = await rechazo.text();
   assert.match(error, /no tiene permiso.*conexión manual/); assert.ok(!error.includes("TOKEN-SECRETO"));
   for (const endpoint of ["paginas", "conectar"]) {

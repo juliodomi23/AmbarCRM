@@ -75,7 +75,7 @@ export async function guardarCanalMessenger(body: Record<string, unknown>, id?: 
   config.pageId = pageId;
   delete config.errorAutorizacion;
   try { await suscribirPagina(config); }
-  catch (e) { throw new ErrorRetail(e instanceof Error ? e.message : "Meta no permitió suscribir la página", 502); }
+  catch (e) { throw new ErrorRetail(e instanceof Error ? e.message : "Meta no permitió suscribir la página", 424); }
   const data = { nombre, config: config as Record<string, string>, estado: "conectado" as const };
   try {
     if (canal && soloAppGlobal) {

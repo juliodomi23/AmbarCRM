@@ -10,7 +10,7 @@ async function graph(path: string, init: RequestInit) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.error) {
     const permiso = [10, 200, 299].includes(Number(data.error?.code)) || res.status === 403;
-    throw new ErrorRetail(permiso ? ERROR_PERMISOS_META : "Meta no pudo validar la conexión. Vuelve a iniciar sesión o usa la conexión manual.", 502);
+    throw new ErrorRetail(permiso ? ERROR_PERMISOS_META : "Meta no pudo validar la conexión. Vuelve a iniciar sesión o usa la conexión manual.", 424);
   }
   return data;
 }
@@ -22,7 +22,7 @@ async function intercambiar(params: Record<string, string>) {
     body: new URLSearchParams({ client_id: appId, client_secret: appSecret, ...params }),
   });
   if (typeof data.access_token !== "string" || !data.access_token || data.access_token.length > 8192) {
-    throw new ErrorRetail("Meta no devolvió una credencial válida. Usa la conexión manual.", 502);
+    throw new ErrorRetail("Meta no devolvió una credencial válida. Usa la conexión manual.", 424);
   }
   return data.access_token as string;
 }
@@ -45,7 +45,7 @@ export async function paginasDeFacebook(code: string): Promise<PaginaFacebook[]>
   for (let n = 0; n < 20; n++) {
     const params = new URLSearchParams({ fields: "id,name,access_token,picture", limit: "100", ...(cursor ? { after: cursor } : {}) });
     const data = await graph(`me/accounts?${params}`, { headers: { Authorization: `Bearer ${token}` } });
-    if (!Array.isArray(data.data)) throw new ErrorRetail("Meta no devolvió la lista de páginas.", 502);
+    if (!Array.isArray(data.data)) throw new ErrorRetail("Meta no devolvió la lista de páginas.", 424);
     for (const pagina of data.data) {
       if (typeof pagina.id !== "string" || !/^\d{1,40}$/.test(pagina.id) || typeof pagina.name !== "string" || typeof pagina.access_token !== "string" || !pagina.access_token || pagina.access_token.length > 8192) continue;
       paginas.push({ id: pagina.id, nombre: pagina.name.slice(0, 150), foto: fotoPublica(pagina.picture?.data?.url), token: pagina.access_token });
@@ -54,7 +54,7 @@ export async function paginasDeFacebook(code: string): Promise<PaginaFacebook[]>
     cursor = data.paging?.cursors?.after;
     if (typeof cursor !== "string" || cursor.length > 2048) break;
   }
-  throw new ErrorRetail("Meta devolvió demasiadas páginas. Limita las páginas autorizadas y vuelve a conectar.", 502);
+  throw new ErrorRetail("Meta devolvió demasiadas páginas. Limita las páginas autorizadas y vuelve a conectar.", 424);
 }
 
 export async function validarPaginaFacebook(pagina: PaginaFacebook) {

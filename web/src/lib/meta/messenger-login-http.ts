@@ -33,6 +33,6 @@ export async function conMessengerLogin(req: NextRequest, ruta: string, operacio
     return res;
   } catch (error) {
     return NextResponse.json({ error: error instanceof ErrorRetail ? error.message : "No se pudo conectar con Facebook. Reintenta o usa la conexión manual." },
-      { status: error instanceof ErrorRetail ? error.status : 502, headers });
+      { status: error instanceof ErrorRetail ? error.status : 500, headers });
   }
 }

@@ -10,7 +10,9 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   return conMessengerLogin(req, "paginas", async (identidad, body) => {
     if (body.accion === "iniciar") {
-      const { appId } = requireMetaAppCredentials();
+      let appId: string;
+      try { ({ appId } = requireMetaAppCredentials()); }
+      catch { throw new ErrorRetail("Este servidor no tiene configurada la app de Meta (META_APP_ID / META_APP_SECRET). Usa la conexión manual.", 409); }
       if (body.canal_id != null && (typeof body.canal_id !== "string" || !/^\d{1,18}$/.test(body.canal_id))) throw new ErrorRetail("Canal inválido.");
       const intento = await iniciarMessengerLogin(identidad, body.canal_id ? BigInt(String(body.canal_id)) : undefined);
       const res = NextResponse.json({ state: intento.state, appId, scope: PERMISOS_MESSENGER });
