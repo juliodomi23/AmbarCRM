@@ -9,6 +9,7 @@ import { POST as respuestaBot } from "../../src/app/api/v1/accounts/[accountId]/
 import { urlMediaPublica, firmaMediaValida } from "../../src/lib/channel/media-publica";
 import { listarCanales } from "../../src/lib/services/config";
 import { decryptMetaToken } from "../../src/lib/meta/credentials";
+import { ErrorRetail } from "../../src/lib/retail-db";
 
 assert.equal(new URL(process.env.DATABASE_URL!).port, "55450");
 process.env.META_APP_SECRET = "secreto-meta-de-pruebas";
@@ -20,12 +21,14 @@ const envios: any[] = [];
 const suscripciones: any[] = [];
 let siguiente = 0;
 let llamadasGraph = 0;
+let esperarSuscripcion: (() => Promise<void>) | undefined;
 globalThis.fetch = async (url, init) => {
   llamadasGraph++;
   const direccion = String(url);
   assert.ok(direccion.startsWith("https://graph.facebook.com/"), `no debe llamar a servicios reales: ${direccion}`);
   if (direccion.endsWith("/subscribed_apps")) {
     suscripciones.push(JSON.parse(String(init?.body)));
+    await esperarSuscripcion?.();
     return Response.json({ success: true });
   }
   if (direccion.endsWith("/me/messages")) {
@@ -186,6 +189,25 @@ try {
     const proveedorPropio = makeMessengerProvider(config);
     assert.equal(proveedorPropio.normalizarEntrante({ entry: [{ messaging: ecos }] }).length, 2, "el proveedor también usa appId del canal");
     assert.equal(makeMessengerProvider({}).normalizarEntrante({ entry: [{ messaging: [eco("eco-global-provider", "123")] }] }).length, 0, "el proveedor conserva el respaldo global");
+    const duplicada = (e: unknown) => e instanceof ErrorRetail && e.status === 409 && e.message === "esa página ya está conectada";
+    const graphAntesDuplicado = llamadasGraph;
+    for (const org of orgs) {
+      await assert.rejects(() => runWithOrg(org.id, () => guardarCanalMessenger({ nombre: "Duplicada", page_id: paginaPropia, page_access_token: "token-duplicado" })), duplicada);
+    }
+    await assert.rejects(() => guardarCanalMessenger({ page_id: paginas[0] }, id), duplicada, "editar tampoco permite tomar otra página activa");
+    assert.equal(llamadasGraph, graphAntesDuplicado, "un duplicado conocido no se suscribe en Meta");
+    assert.deepEqual((await db.canalWhatsapp.findUniqueOrThrow({ where: { id } })).config, config);
+    const paginaConcurrente = `${paginas[1]}5`;
+    let liberar!: () => void;
+    const ambasSuscritas = new Promise<void>((resolve) => { liberar = resolve; });
+    let suscripcionesConcurrentes = 0;
+    esperarSuscripcion = async () => { if (++suscripcionesConcurrentes === 2) liberar(); await ambasSuscritas; };
+    try {
+      const resultados = await Promise.allSettled(orgs.map((org) => runWithOrg(org.id, () => guardarCanalMessenger({ nombre: "Concurrente", page_id: paginaConcurrente, page_access_token: "token-concurrente" }))));
+      assert.equal(resultados.filter((r) => r.status === "fulfilled").length, 1);
+      const rechazo = resultados.find((r) => r.status === "rejected");
+      assert.ok(rechazo?.status === "rejected" && duplicada(rechazo.reason), "la UNIQUE resuelve la carrera con el mismo 409 legible");
+    } finally { esperarSuscripcion = undefined; }
   });
   console.log("OK · Messenger simulado: configuración cifrada y privada, firma por página y global, rechazo sin escrituras/Graph, cuerpos mixtos, PSID, aislamiento, ecos, acuses, ventanas, bot, token y media firmada");
 } finally { globalThis.fetch = fetchOriginal; await dbRaw.$disconnect(); }

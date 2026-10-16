@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { db } from "@/lib/db";
+import { db, dbRaw } from "@/lib/db";
 import { hashClaveCanal } from "@/lib/canal-api-auth";
 import { encryptMetaToken } from "@/lib/meta/credentials";
 import { validarUrlCanalApi } from "@/lib/api-webhook";
@@ -51,6 +51,10 @@ export async function guardarCanalMessenger(body: Record<string, unknown>, id?: 
   const nombre = String(body.nombre ?? canal?.nombre ?? "").trim();
   const pageId = String(body.page_id ?? config.pageId ?? "").trim();
   if (!nombre || nombre.length > 150 || !/^\d{1,40}$/.test(pageId)) throw new ErrorRetail("nombre o page_id inválidos");
+  const filas = await dbRaw.$queryRaw<{ org: bigint | null }[]>`SELECT resolve_org_by_page(${pageId}) AS org`;
+  if (filas[0]?.org != null && !(canal?.activo && canal.orgId === filas[0].org && (canal.config as Record<string, unknown>)?.pageId === pageId)) {
+    throw new ErrorRetail("esa página ya está conectada", 409);
+  }
   if (body.page_access_token != null && body.page_access_token !== "") {
     if (typeof body.page_access_token !== "string" || body.page_access_token.length > 8192) throw new ErrorRetail("token de página inválido");
     config.tokenEncrypted = encryptMetaToken(body.page_access_token.trim());
@@ -69,8 +73,14 @@ export async function guardarCanalMessenger(body: Record<string, unknown>, id?: 
   try { await suscribirPagina(config); }
   catch (e) { throw new ErrorRetail(e instanceof Error ? e.message : "Meta no permitió suscribir la página", 502); }
   const data = { nombre, config: config as Record<string, string>, estado: "conectado" as const };
-  const guardado = canal
-    ? await db.canalWhatsapp.update({ where: { id: canal.id }, data })
-    : await db.canalWhatsapp.create({ data: { ...data, proveedor: "messenger", instancia: pageId } });
-  return { id: String(guardado.id), nombre: guardado.nombre, ok: true };
+  try {
+    const guardado = canal
+      ? await db.canalWhatsapp.update({ where: { id: canal.id }, data })
+      : await db.canalWhatsapp.create({ data: { ...data, proveedor: "messenger", instancia: pageId } });
+    return { id: String(guardado.id), nombre: guardado.nombre, ok: true };
+  } catch (e) {
+    const error = e as { code?: string; meta?: { code?: string } };
+    if (error.code === "P2002" || error.code === "23505" || error.meta?.code === "23505") throw new ErrorRetail("esa página ya está conectada", 409);
+    throw e;
+  }
 }
