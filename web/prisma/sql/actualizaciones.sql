@@ -63,6 +63,22 @@ DROP TRIGGER IF EXISTS trg_mensaje_fijar_canal ON mensajes;
 CREATE TRIGGER trg_mensaje_fijar_canal BEFORE INSERT OR UPDATE OF conversacion_id, canal_id
   ON mensajes FOR EACH ROW EXECUTE FUNCTION mensaje_fijar_canal();
 
+ALTER TABLE conversaciones ADD COLUMN IF NOT EXISTS ultimo_entrante_at TIMESTAMPTZ;
+UPDATE conversaciones c SET ultimo_entrante_at = m.ultimo
+  FROM (SELECT conversacion_id, max(timestamp) AS ultimo FROM mensajes WHERE direccion = 'entrante' AND NOT interna GROUP BY conversacion_id) m
+  WHERE c.id = m.conversacion_id AND (c.ultimo_entrante_at IS NULL OR c.ultimo_entrante_at < m.ultimo);
+
+CREATE UNIQUE INDEX IF NOT EXISTS canales_messenger_page_activa_uq
+  ON canales_whatsapp ((config->>'pageId')) WHERE activo AND proveedor = 'messenger' AND config->>'pageId' IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION resolve_org_by_page(p_page text)
+  RETURNS bigint LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
+    SELECT org_id FROM canales_whatsapp WHERE activo AND proveedor::text = 'messenger' AND config->>'pageId' = p_page
+    ORDER BY id DESC LIMIT 1
+$$;
+REVOKE ALL ON FUNCTION resolve_org_by_page(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION resolve_org_by_page(text) TO crm_app;
+
 -- Un phone_number_id de Meta solo puede estar activo en una organización.
 CREATE UNIQUE INDEX IF NOT EXISTS canales_whatsapp_phone_number_id_activo_uq
   ON canales_whatsapp ((config->>'phoneNumberId'))

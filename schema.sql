@@ -139,6 +139,7 @@ CREATE TABLE IF NOT EXISTS grupos (
   nombre           TEXT        NOT NULL,
   no_leidos        INT         NOT NULL DEFAULT 0,
   ultimo_mensaje_at TIMESTAMPTZ,
+  ultimo_entrante_at TIMESTAMPTZ,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

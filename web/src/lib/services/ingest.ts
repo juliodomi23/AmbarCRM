@@ -32,7 +32,7 @@ async function elegirResponsable(): Promise<bigint | null> {
 
 /**
  * Ingesta de un mensaje entrante ya normalizado:
- * 1. Busca/crea el contacto por teléfono (auto-asigna responsable si está activado).
+ * 1. Busca/crea el contacto por la identidad del canal (auto-asigna si está activado).
  * 2. Busca/crea la conversación (auto-asigna + manda bienvenida si es nueva).
  * 3. Inserta el mensaje (idempotente por wa_message_id).
  * 4. Actualiza no_leidos + ultimo_mensaje_at.
@@ -78,6 +78,7 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
       : false;
     if (!contacto) contacto = await tx.contacto.create({ data: {
       nombre: m.nombre ?? m.telefono ?? m.identificadorExterno!,
+      avatarUrl: m.avatarUrl,
       telefono: esWhatsapp || telefonoDisponible ? m.telefono : null,
       ...(!esWhatsapp ? { canalId: canal.id, identificadorExterno: m.identificadorExterno } : {}),
       fuente: esWhatsapp ? "whatsapp" : "otro", responsableId,
@@ -95,10 +96,12 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
       tipo: m.tipo, contenido: m.contenido, mediaUrl, mediaMime,
       status: esSaliente ? "enviado" : "entregado", waMessageId: m.waMessageId, timestamp: m.timestamp,
     } });
-    await tx.conversacion.update({ where: { id: conversacion.id }, data: m.historico
+    const ultimoEntranteAt = !esSaliente && (!conversacion.ultimoEntranteAt || conversacion.ultimoEntranteAt < m.timestamp)
+      ? m.timestamp : conversacion.ultimoEntranteAt;
+    await tx.conversacion.update({ where: { id: conversacion.id }, data: { ultimoEntranteAt, ...(m.historico
       ? { ultimoMensajeAt: m.timestamp }
       : esSaliente ? { ultimoMensajeAt: m.timestamp, noLeidos: 0 }
-      : { noLeidos: { increment: 1 }, ultimoMensajeAt: m.timestamp, estado: "abierta" } });
+      : { noLeidos: { increment: 1 }, ultimoMensajeAt: m.timestamp, estado: "abierta" as const }) } });
     return { duplicado: false as const, contacto, conversacion, mensaje, esNuevaConversacion };
   });
   if (guardado.duplicado) return guardado;

@@ -9,6 +9,7 @@ import { estadoVentana } from "@/lib/meta/ventana";
 import { motivoDeError } from "@/lib/meta/errores";
 import { referenciaAjena } from "@/lib/referencias";
 import { conErrores } from "@/lib/errores-api";
+import { urlMediaPublica } from "@/lib/channel/media-publica";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +81,7 @@ async function manejarPOST(req: NextRequest) {
   const destinatario = destinatarioDelCanal(conv.canal.proveedor, conv.contacto);
   if (!destinatario) return NextResponse.json({ error: "el contacto no tiene destinatario para este canal" }, { status: 400 });
   const provider = getProvider(conv.canal.proveedor, conv.canal.config, conv.canal.instancia);
-  const contexto = { conversacionId: conv.id, humano: true };
+  const contexto = { conversacionId: conv.id, ultimoEntranteAt: conv.ultimoEntranteAt, humano: true };
 
   if (!plantilla && conv.canal.proveedor === "cloud_api") {
     const ultimoEntrante = await db.mensaje.findFirst({
@@ -112,16 +113,20 @@ async function manejarPOST(req: NextRequest) {
       return NextResponse.json({ error: `WhatsApp no acepta audio en formato ${mimeAudio}` }, { status: 400 });
     }
     const limpio = audioBase64.includes(",") ? audioBase64.split(",")[1] : audioBase64;
+    const publica = conv.canal.proveedor === "messenger" ? await guardarMediaBase64(audioBase64, mimeAudio) : null;
+    const mediaEnvio = publica ? urlMediaPublica(publica) : audioBase64;
     envio = mimeAudio === "audio/ogg" && provider.enviarAudio
       ? await provider.enviarAudio(destinatario, limpio)
-      : await provider.enviarMedia(destinatario, audioBase64, "audio", undefined, mimeAudio, contexto);
-    const urlLocal = await guardarMediaBase64(audioBase64, mimeAudio);
+      : await provider.enviarMedia(destinatario, mediaEnvio, "audio", undefined, mimeAudio, contexto);
+    const urlLocal = publica ?? await guardarMediaBase64(audioBase64, mimeAudio);
     datosMensaje = { tipo: "audio", contenido: null, mediaUrl: urlLocal, mediaMime: mimeAudio };
   } else if (esMedia) {
     const tipo = tipoDesdeMime(mediaMime ?? "");
+    const publica = conv.canal.proveedor === "messenger" ? await guardarMediaBase64(mediaBase64, mediaMime ?? "application/octet-stream") : null;
+    const mediaEnvio = publica ? urlMediaPublica(publica) : mediaBase64;
     // A WhatsApp va el base64; en local guardamos el archivo para verlo en el hilo del CRM.
-    envio = await provider.enviarMedia(destinatario, mediaBase64, tipo, caption?.trim() || undefined, mediaMime, contexto);
-    const urlLocal = await guardarMediaBase64(mediaBase64, mediaMime ?? "application/octet-stream");
+    envio = await provider.enviarMedia(destinatario, mediaEnvio, tipo, caption?.trim() || undefined, mediaMime, contexto);
+    const urlLocal = publica ?? await guardarMediaBase64(mediaBase64, mediaMime ?? "application/octet-stream");
     datosMensaje = { tipo, contenido: caption?.trim() || null, mediaUrl: urlLocal, mediaMime: mediaMime ?? null };
   } else {
     envio = await provider.enviarTexto(destinatario, texto, contexto);

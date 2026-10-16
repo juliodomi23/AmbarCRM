@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSesion } from "@/lib/session";
-import { crearCanalApi } from "@/lib/services/canales";
+import { crearCanalApi, guardarCanalMessenger } from "@/lib/services/canales";
 import { ErrorRetail } from "@/lib/retail-db";
 import { conErrores } from "@/lib/errores-api";
 
@@ -10,9 +10,10 @@ export const POST = conErrores(async (req: NextRequest) => {
   const sesion = await requireSesion(true);
   if ("error" in sesion) return sesion.error;
   const body = await req.json();
-  if (body.proveedor !== "api") return NextResponse.json({ error: "proveedor inválido" }, { status: 400 });
+  if (!["api", "messenger"].includes(body.proveedor)) return NextResponse.json({ error: "proveedor inválido" }, { status: 400 });
   try {
-    return NextResponse.json(await crearCanalApi(String(body.nombre ?? ""), body.webhook_url), {
+    const canal = body.proveedor === "api" ? await crearCanalApi(String(body.nombre ?? ""), body.webhook_url) : await guardarCanalMessenger(body);
+    return NextResponse.json(canal, {
       status: 201, headers: { "Cache-Control": "no-store" },
     });
   } catch (e) {

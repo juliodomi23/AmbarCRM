@@ -73,8 +73,9 @@ export function ConfiguracionCliente({
       )}
       {tab === "Canal WhatsApp" && <div className="space-y-5">
         <MetaCanales canales={canales.filter((c) => c.proveedor === "cloud_api")} />
-        {canales.filter((c) => c.proveedor === "api").map((canal) => <CanalExterno key={canal.id} canal={canal} />)}
+        {canales.filter((c) => c.proveedor !== "cloud_api").map((canal) => <CanalExterno key={canal.id} canal={canal} />)}
         <CanalExterno />
+        <CanalExterno tipo="messenger" />
       </div>}
       {tab === "Plantillas" && <TabPlantillas plantillas={plantillas} />}
       {tab === "Plantillas de Meta" && <MetaCanales canales={canales.filter((c) => c.proveedor === "cloud_api")} vista="plantillas" />}

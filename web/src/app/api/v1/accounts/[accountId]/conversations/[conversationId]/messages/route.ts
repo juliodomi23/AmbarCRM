@@ -52,7 +52,7 @@ export async function POST(
       return NextResponse.json({ error: "el contacto no tiene destinatario para este canal" }, { status: 422 });
     }
     const provider = getProvider(conv.canal.proveedor, conv.canal.config, conv.canal.instancia);
-    const envio = await responderTexto(provider, conv.contacto, content, { conversacionId: conv.id, humano: false });
+    const envio = await responderTexto(provider, conv.contacto, content, { conversacionId: conv.id, ultimoEntranteAt: conv.ultimoEntranteAt, humano: false });
 
     const mensaje = await db.mensaje.create({
       data: {

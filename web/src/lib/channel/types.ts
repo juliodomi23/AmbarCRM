@@ -9,6 +9,7 @@ export interface MensajeEntranteNormalizado {
   telefono?: string;
   identificadorExterno?: string;
   nombre?: string;              // pushName / perfil
+  avatarUrl?: string;
   tipo: TipoMensaje;
   contenido?: string;           // texto o caption
   mediaUrl?: string;            // URL cruda del proveedor (cifrada en WhatsApp, no servible)

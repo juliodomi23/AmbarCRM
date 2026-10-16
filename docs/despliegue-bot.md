@@ -1,5 +1,43 @@
 # Despliegue de la API del bot en una base existente
 
+## Canales Messenger y API (rama `canales-messenger-api`, pendiente de revisión)
+
+No se aplicó nada a producción. En una futura migración autorizada, ejecutar como dueño
+`web/prisma/sql/actualizaciones.sql`, sin `prisma db push`. Añade `messenger` y `api` al enum sin
+reclasificarlos al repetir el archivo; agrega `contactos.canal_id`, `identificador_externo` y su
+UNIQUE parcial; agrega `mensajes.canal_id`, reemplaza la UNIQUE global de `wa_message_id` por la
+compuesta `(canal_id, wa_message_id)` y deriva el canal mediante trigger. Agrega y rellena
+`conversaciones.ultimo_entrante_at`, el índice de página activa única y `resolve_org_by_page`
+(SECURITY DEFINER, solo EXECUTE para `crm_app`). No hay tablas nuevas; se conserva RLS y los GRANT
+de las tablas existentes. El SQL es idempotente; confirmar dos ejecuciones antes de arrancar código nuevo.
+
+Variables de Messenger:
+
+```env
+MESSENGER_VERIFY_TOKEN=un-valor-aleatorio-para-verificar-el-webhook
+# Se reutilizan las variables existentes de Meta:
+META_APP_SECRET=secreto-de-la-misma-app-que-firma-los-eventos
+META_GRAPH_VERSION=v26.0
+```
+
+`META_GRAPH_VERSION` ya existe y su valor por defecto sigue siendo `v26.0`. Solo es nueva
+`MESSENGER_VERIFY_TOKEN`. Son obligatorias las existentes `META_TOKEN_ENCRYPTION_KEY` (32 bytes en
+Base64), `NEXTAUTH_URL` pública con HTTPS para adjuntos y `DATABASE_URL` con `crm_app`.
+
+En Meta configura GET/POST `https://TU_CRM/api/messenger/webhook`; el verify token debe coincidir
+con el del entorno. En Configuración → Canales pega `page_id` y `page_access_token`. Al guardar,
+se suscriben `messages`, `message_deliveries`, `message_echoes`, `message_reads`, `standby`,
+`messaging_handovers`, `messaging_postbacks`. No hay login de Facebook. Si el permiso de perfil
+falla, el contacto usa su PSID; si el token de envío vence, la bandeja aparece desconectada con
+un aviso para reconectar. El bot puede responder en 24 h; el asesor usa HUMAN_AGENT hasta 7 días
+si Meta lo permite. No se puede garantizar ese permiso sin probar la app real.
+
+Para API libre no hay variables globales nuevas: clave y secreto independientes por canal.
+Ver [contrato y ejemplos](canal-api.md). La API v1 y el formato del evento entrante para n8n
+permanecen estables; sin teléfono, `sender.identifier` lleva el ID externo/PSID y `phone_number`
+es null. Los flujos que exijan un número deben tratarlo como opcional. Se usa el `META_APP_ID`
+existente para reconocer los ecos de la propia app.
+
 Esta guía lleva a una base **ya en producción** (multi-tenant, app conectada como `crm_app`) el conjunto
 completo del bot: seguridad, auditoría, citas y cotizaciones. Todo el SQL es aditivo e idempotente.
 

@@ -3,6 +3,7 @@ import { db, runWithOrg } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { requireBot } from "@/lib/bot-auth";
 import { leerMedia, mimeDeArchivo, orgDeArchivo } from "@/lib/storage";
+import { firmaMediaValida } from "@/lib/channel/media-publica";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,14 @@ const NO_ENCONTRADO = () => NextResponse.json({ error: "no encontrado" }, { stat
  *  y solo si el archivo es de la empresa de quien lo pide. */
 export async function GET(req: NextRequest, props: { params: Promise<{ archivo: string }> }) {
   const { archivo } = await props.params;
+  if (req.nextUrl.searchParams.has("firma")) {
+    if (!firmaMediaValida(archivo, req.nextUrl.searchParams.get("vence"), req.nextUrl.searchParams.get("firma"))) return NO_ENCONTRADO();
+    const buf = await leerMedia(archivo);
+    if (!buf) return NO_ENCONTRADO();
+    return new NextResponse(new Uint8Array(buf), { headers: {
+      "Content-Type": mimeDeArchivo(archivo), "Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer",
+    } });
+  }
   const bot = await requireBot(req);
   let orgId = bot?.orgId ?? null;
   if (!bot) {

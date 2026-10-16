@@ -7,7 +7,7 @@ export * from "./types";
 export * from "./destinatario";
 
 /**
- * Construye el canal oficial de Meta con las credenciales cifradas del tenant.
+ * Construye el proveedor con las credenciales del canal del tenant.
  */
 export function getProvider(
   proveedor: string,
@@ -17,7 +17,7 @@ export function getProvider(
   if (proveedor === "api") return makeApiProvider(config);
   if (proveedor === "messenger") return makeMessengerProvider(config);
   if (proveedor !== "cloud_api") {
-    throw new Error(`proveedor de WhatsApp no soportado: ${proveedor}`);
+    throw new Error(`proveedor no soportado: ${proveedor}`);
   }
   return makeCloudApiProvider(config as CloudConfig | undefined);
 }
