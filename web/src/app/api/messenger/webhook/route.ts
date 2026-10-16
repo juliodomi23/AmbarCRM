@@ -51,13 +51,15 @@ export async function POST(req: NextRequest) {
     await runWithOrg(org, async () => {
       const canal = await db.canalWhatsapp.findFirst({ where: { proveedor: "messenger", activo: true, config: { path: ["pageId"], equals: pageId } } });
       if (!canal) return;
-      if (!firmaDelCanal(canal.config as Record<string, unknown>, raw, firma)) {
+      const config = canal.config as Record<string, unknown>;
+      if (!firmaDelCanal(config, raw, firma)) {
         rechazada = true;
         return;
       }
       autorizada = true;
       if (payload.object !== "page" || !Array.isArray(entry.messaging)) return;
-      for (const mensaje of normalizarMessenger({ entry: [entry] })) {
+      const appId = typeof config.appId === "string" ? config.appId : process.env.META_APP_ID?.trim();
+      for (const mensaje of normalizarMessenger({ entry: [entry] }, appId)) {
         const existente = await db.contacto.findFirst({ where: { canalId: canal.id, identificadorExterno: mensaje.identificadorExterno } });
         const perfil = existente ? {} : await perfilMessenger(canal.config as Record<string, unknown>, mensaje.identificadorExterno!);
         await ingestarEntrante({ ...mensaje, ...perfil }, canal.id);

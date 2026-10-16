@@ -170,6 +170,22 @@ try {
     assert.equal((await enviarPropio("cifrado-roto-propio")).status, 401);
     assert.deepEqual(await estadoEmpresa(orgs[1].id), antesCifradoRoto, "un secreto ilegible no habilita el global");
     await db.canalWhatsapp.update({ where: { id }, data: { config } });
+    const antesEcos = await db.conversacion.findFirstOrThrow({ where: { canalId: id } });
+    const eco = (mid: string, appId: string | number) => ({ sender: { id: paginaPropia }, recipient: { id: "psid-cliente" }, timestamp: Date.now(),
+      message: { mid, text: "Eco", is_echo: true, app_id: appId } });
+    const ecos = [eco("eco-app-propia", 456), eco("eco-app-global", "123"), eco("eco-app-ajena", "789")];
+    const ecoPropio = JSON.stringify({ object: "page", entry: [{ id: paginaPropia, messaging: [ecos[0]] }] });
+    assert.equal((await postRaw(ecoPropio, firma(ecoPropio, secretoPropio))).status, 200);
+    assert.deepEqual(await db.conversacion.findUniqueOrThrow({ where: { id: antesEcos.id } }), antesEcos, "el eco propio no modifica la conversación");
+    const cuerpoEcos = JSON.stringify({ object: "page", entry: [{ id: paginaPropia, messaging: ecos }] });
+    assert.equal((await postRaw(cuerpoEcos, firma(cuerpoEcos, secretoPropio))).status, 200);
+    assert.equal(await db.mensaje.count({ where: { canalId: id, waMessageId: "eco-app-propia" } }), 0);
+    assert.equal(await db.mensaje.count({ where: { canalId: id, waMessageId: { in: ["eco-app-global", "eco-app-ajena"] }, direccion: "saliente" } }), 2);
+    const despuesEcos = await db.conversacion.findUniqueOrThrow({ where: { id: antesEcos.id } });
+    assert.deepEqual(despuesEcos.ultimoEntranteAt, antesEcos.ultimoEntranteAt);
+    const proveedorPropio = makeMessengerProvider(config);
+    assert.equal(proveedorPropio.normalizarEntrante({ entry: [{ messaging: ecos }] }).length, 2, "el proveedor también usa appId del canal");
+    assert.equal(makeMessengerProvider({}).normalizarEntrante({ entry: [{ messaging: [eco("eco-global-provider", "123")] }] }).length, 0, "el proveedor conserva el respaldo global");
   });
   console.log("OK · Messenger simulado: configuración cifrada y privada, firma por página y global, rechazo sin escrituras/Graph, cuerpos mixtos, PSID, aislamiento, ecos, acuses, ventanas, bot, token y media firmada");
 } finally { globalThis.fetch = fetchOriginal; await dbRaw.$disconnect(); }

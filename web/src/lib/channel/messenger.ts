@@ -43,12 +43,12 @@ export function tipoEnvioMessenger(contexto?: ContextoEnvio, ahora = Date.now())
   return null;
 }
 
-export function normalizarMessenger(payload: unknown): MensajeEntranteNormalizado[] {
+export function normalizarMessenger(payload: unknown, appId?: string): MensajeEntranteNormalizado[] {
   const salida: MensajeEntranteNormalizado[] = [];
   const tipos: Record<string, TipoMensaje> = { image: "imagen", audio: "audio", video: "video", file: "documento" };
   for (const entry of (payload as any)?.entry ?? []) for (const evento of entry.messaging ?? []) {
     const m = evento.message;
-    if (!m?.mid || (m.is_echo && m.app_id && String(m.app_id) === process.env.META_APP_ID)) continue;
+    if (!m?.mid || (m.is_echo && m.app_id && String(m.app_id) === appId)) continue;
     const psid = m.is_echo ? evento.recipient?.id : evento.sender?.id;
     if (!psid) continue;
     const adjuntos = (m.attachments ?? []).filter((a: any) => tipos[a.type] && typeof a.payload?.url === "string");
@@ -93,6 +93,6 @@ export function makeMessengerProvider(config?: unknown): ChannelProvider {
       const tipos: Record<string, string> = { imagen: "image", audio: "audio", video: "video", documento: "file" };
       return enviar(destinatario, { attachment: { type: tipos[tipo] ?? "file", payload: { url } } }, contexto);
     },
-    normalizarEntrante: normalizarMessenger,
+    normalizarEntrante: (payload) => normalizarMessenger(payload, typeof datos.appId === "string" ? datos.appId : process.env.META_APP_ID?.trim()),
   };
 }
