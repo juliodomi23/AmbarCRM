@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton, Campo } from "@/components/ui";
 import { toast } from "@/components/Toaster";
+import { MessengerFacebook } from "./MessengerFacebook";
 
 export type CanalExternoDatos = { id: string; nombre: string; proveedor: string; webhookUrl?: string | null; pageId?: string | null; appId?: string | null; tieneAppSecret?: boolean; estado: string; errorAutorizacion?: string | null };
 
@@ -41,6 +42,7 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
   return <section className="surface max-w-2xl space-y-3 p-4">
     <h3 className="font-semibold">{canal ? `${esMessenger ? "Messenger" : "API"} · ${canal.nombre}` : `Nuevo canal ${esMessenger ? "Messenger" : "API"}`}</h3>
     {canal?.errorAutorizacion && <p className="text-sm text-destructive" role="alert">{canal.errorAutorizacion}</p>}
+    {esMessenger && <MessengerFacebook canalId={canal?.id} pageId={canal?.pageId} nombre={nombre} appPropia={Boolean(appId || appSecret || canal?.tieneAppSecret)} />}
     <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void guardar(); }}>
       <Campo label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required maxLength={150} />
       {esMessenger ? <>

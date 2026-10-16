@@ -11,7 +11,12 @@ process.env.META_APP_ID = "123";
 process.env.META_APP_SECRET = "secreto-meta-simulado";
 const original = globalThis.fetch;
 let llamadas = 0;
-globalThis.fetch = (input, init) => { llamadas++; return graphSimulado(input, init); };
+let alSuscribir: (() => Promise<void>) | undefined;
+globalThis.fetch = async (input, init) => {
+  llamadas++;
+  if (String(input).endsWith("/subscribed_apps")) await alSuscribir?.();
+  return graphSimulado(input, init);
+};
 const orgs = await Promise.all(["a", "b"].map((letra) => dbRaw.org.create({ data: { nombre: `Login ${letra}`, slug: `login-fb-${letra}-${Date.now()}` } })));
 const a: IdentidadLogin = { orgId: orgs[0].id, userId: 1001n, sessionToken: "sesion-a" };
 const b: IdentidadLogin = { orgId: orgs[1].id, userId: 1002n, sessionToken: "sesion-b" };
@@ -62,6 +67,15 @@ try {
     assert.equal(c.estado, "conectado");
     assert.ok(!(c.config as Record<string, unknown>).errorAutorizacion);
   });
+  const cambioConcurrente = await iniciar();
+  await listarPaginasMessenger(a, cambioConcurrente.id, cambioConcurrente.state, codigo);
+  alSuscribir = () => runWithOrg(a.orgId, async () => {
+    const c = await db.canalWhatsapp.findUniqueOrThrow({ where: { id: BigInt(canal.id) } });
+    await db.canalWhatsapp.update({ where: { id: c.id }, data: { config: { ...(c.config as Record<string, string>), appId: "456" } } });
+  });
+  await assert.rejects(conectarPaginaMessenger(a, cambioConcurrente.id, cambioConcurrente.state, lista[0].id), rechaza(409, /cambió/));
+  alSuscribir = undefined;
+  await runWithOrg(a.orgId, () => guardarCanalMessenger({ quitar_app: true }, BigInt(canal.id)));
   const duplicado = await iniciarMessengerLogin(b);
   await listarPaginasMessenger(b, duplicado.id, duplicado.state, codigo);
   await assert.rejects(conectarPaginaMessenger(b, duplicado.id, duplicado.state, lista[0].id), rechaza(409, /ya está conectada/));

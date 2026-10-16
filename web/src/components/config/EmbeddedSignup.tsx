@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { cargarFacebookSdk } from "@/lib/meta/facebook-sdk";
 
 // Botón "Conectar WhatsApp Oficial (Meta)" — Embedded Signup de Tech Provider.
 // Lanza el popup de Meta, captura el `code` + el evento WA_EMBEDDED_SIGNUP
@@ -9,16 +10,8 @@ import { useRouter } from "next/navigation";
 // Requiere: NEXT_PUBLIC_META_APP_ID y NEXT_PUBLIC_META_CONFIG_ID.
 // Referencia: https://developers.facebook.com/documentation/business-messaging/whatsapp/embedded-signup/implementation
 
-declare global {
-  interface Window {
-    fbAsyncInit?: () => void;
-    FB?: any;
-  }
-}
-
 const APP_ID = process.env.NEXT_PUBLIC_META_APP_ID;
 const CONFIG_ID = process.env.NEXT_PUBLIC_META_CONFIG_ID;
-const GRAPH_VERSION = process.env.NEXT_PUBLIC_META_GRAPH_VERSION || "v26.0";
 const FB_ORIGINS = ["https://www.facebook.com", "https://web.facebook.com"];
 
 type ResultadoSignup = "numero" | "solo-waba" | "coexistencia" | "cancelado" | "error";
@@ -34,18 +27,7 @@ export function EmbeddedSignup() {
 
   useEffect(() => {
     if (!APP_ID) return;
-    // Cargar el SDK de Facebook una sola vez.
-    if (!document.getElementById("facebook-jssdk")) {
-      window.fbAsyncInit = () => {
-        window.FB?.init({ appId: APP_ID, autoLogAppEvents: true, xfbml: true, version: GRAPH_VERSION });
-      };
-      const s = document.createElement("script");
-      s.id = "facebook-jssdk";
-      s.src = "https://connect.facebook.net/en_US/sdk.js";
-      s.async = true;
-      s.defer = true;
-      document.body.appendChild(s);
-    }
+    cargarFacebookSdk(APP_ID).catch(() => setError("No se pudo cargar Facebook. Revisa tu bloqueador y recarga la página."));
 
     // Capturar waba_id / phone_number_id del popup.
     function onMessage(event: MessageEvent) {

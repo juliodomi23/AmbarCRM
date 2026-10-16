@@ -47,7 +47,7 @@ export async function paginasDeFacebook(code: string): Promise<PaginaFacebook[]>
     const data = await graph(`me/accounts?${params}`, { headers: { Authorization: `Bearer ${token}` } });
     if (!Array.isArray(data.data)) throw new ErrorRetail("Meta no devolvió la lista de páginas.", 502);
     for (const pagina of data.data) {
-      if (!/^\d{1,40}$/.test(pagina.id) || typeof pagina.name !== "string" || typeof pagina.access_token !== "string" || !pagina.access_token || pagina.access_token.length > 8192) continue;
+      if (typeof pagina.id !== "string" || !/^\d{1,40}$/.test(pagina.id) || typeof pagina.name !== "string" || typeof pagina.access_token !== "string" || !pagina.access_token || pagina.access_token.length > 8192) continue;
       paginas.push({ id: pagina.id, nombre: pagina.name.slice(0, 150), foto: fotoPublica(pagina.picture?.data?.url), token: pagina.access_token });
     }
     if (!data.paging?.next) return paginas;

@@ -79,7 +79,7 @@ export async function conectarPaginaMessenger(identidad: IdentidadLogin, id: str
     if (consumido.count !== 1) throw new ErrorRetail("La conexión ya fue utilizada o venció. Vuelve a conectar.", 403);
     await validarPaginaFacebook(pagina);
     try {
-      return await guardarCanalMessenger({ page_id: pagina.id, page_access_token: pagina.token, nombre: nombre ?? canal?.nombre ?? pagina.nombre }, canal?.id);
+      return await guardarCanalMessenger({ page_id: pagina.id, page_access_token: pagina.token, nombre: nombre ?? canal?.nombre ?? pagina.nombre }, canal?.id, true);
     } catch (error) {
       if (error instanceof ErrorRetail && error.status === 502) throw new ErrorRetail(ERROR_PERMISOS_META, 502);
       throw error;

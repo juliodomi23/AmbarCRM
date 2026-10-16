@@ -44,10 +44,11 @@ export async function editarCanalApi(id: bigint, body: Record<string, unknown>) 
   return { ok: true, ...(nuevas ? { apiKey: nuevas.apiKey, secret: nuevas.secret } : {}) };
 }
 
-export async function guardarCanalMessenger(body: Record<string, unknown>, id?: bigint) {
+export async function guardarCanalMessenger(body: Record<string, unknown>, id?: bigint, soloAppGlobal = false) {
   const canal = id == null ? null : await db.canalWhatsapp.findFirst({ where: { id, proveedor: "messenger" } });
   if (id != null && !canal) throw new ErrorRetail("canal inexistente", 404);
   const config = { ...(canal?.config as Record<string, unknown> ?? {}) };
+  if (soloAppGlobal && (config.appId || config.appSecretEncrypted)) throw new ErrorRetail("Este canal usa una app propia de Meta. Usa la conexión manual para conservar sus credenciales.", 409);
   const nombre = String(body.nombre ?? canal?.nombre ?? "").trim();
   const pageId = String(body.page_id ?? config.pageId ?? "").trim();
   if (!nombre || nombre.length > 150 || !/^\d{1,40}$/.test(pageId)) throw new ErrorRetail("nombre o page_id inválidos");
@@ -77,6 +78,11 @@ export async function guardarCanalMessenger(body: Record<string, unknown>, id?: 
   catch (e) { throw new ErrorRetail(e instanceof Error ? e.message : "Meta no permitió suscribir la página", 502); }
   const data = { nombre, config: config as Record<string, string>, estado: "conectado" as const };
   try {
+    if (canal && soloAppGlobal) {
+      const actualizado = await db.canalWhatsapp.updateMany({ where: { id: canal.id, activo: true, config: { equals: canal.config! } }, data });
+      if (actualizado.count !== 1) throw new ErrorRetail("El canal cambió durante la conexión. Revisa su configuración y vuelve a conectar.", 409);
+      return { id: String(canal.id), nombre, ok: true };
+    }
     const guardado = canal
       ? await db.canalWhatsapp.update({ where: { id: canal.id }, data })
       : await db.canalWhatsapp.create({ data: { ...data, proveedor: "messenger", instancia: pageId } });
