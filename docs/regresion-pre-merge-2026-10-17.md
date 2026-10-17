@@ -195,5 +195,108 @@ Messenger también prueba consumo concurrente del intento y UNIQUE de página ac
 - 🛑 El ensayo sintético posterior no sustituye el ensayo con respaldo real, diferido hasta Meta aprobado.
 - 🛑 El estado de App Review y permisos efectivos de Messenger solo puede confirmarse en el panel de Meta.
 
-La BD y app locales se conservan temporalmente para las verificaciones siguientes.
-La limpieza definitiva y el inventario de ramas/prompts se anotan en el cierre de este informe.
+## Resultado de los pasos posteriores
+
+- Ensayo desde `meta-tech-provider`: tres corridas en **1.303 / 0.466 / 0.508 s**,
+  seis canales, 60 conversaciones y 1200 mensajes conservados. Dos etiquetas
+  previas conservadas y 58 enlaces agregados por el backfill previsto.
+  Idempotencia de todos los datos en la segunda y tercera corrida. Aislamiento: 81 tablas.
+  [Informe y reproducción](ensayo-migracion-pre-merge-2026-10-17.md).
+- Orden real: SQL mediante `db-migrate` antes de app; no hay `db push` en build ni
+  arranque. Los backfills ya preparan sus columnas/tablas y son idempotentes.
+  [Auditoría del orden](orden-migracion-pre-merge.md).
+- Variables: `META_APP_ID` y `META_APP_SECRET` ya estaban mapeadas. Faltaba
+  `MESSENGER_VERIFY_TOKEN`; se agregó el mapeo. **Faltantes obligatorias finales: ninguna.**
+  Siguen sin mapeo opcional `ANTHROPIC_MODEL`, `BOT_AUTH_FAIL_MAX`,
+  `BOT_AUTH_FAIL_WINDOW_MS`, `BOT_RATE_LIMIT_MAX`, `BOT_RATE_LIMIT_WINDOW_MS`, `BUILD_ID`.
+  Los valores reales del panel quedan sin verificar. El control negativo detecta
+  correctamente ambos nombres META al retirarlos de una copia del Compose.
+  TypeScript del verificador y `docker compose config --quiet` con entorno ficticio: EXIT 0.
+- Scripts RLS: `f/f/f/0/0` y cero contactos visibles sin empresa, en la BD de
+  regresión y en la migrada. Script legacy: detecta los cuatro planos / cuatro
+  cifrados / dos solo planos del fixture, sin imprimir secretos. Todos se
+  ejecutaron con transacción READ ONLY y `default_transaction_read_only=on`.
+  [Herramientas y límites](../scripts/pre-merge/README.md).
+
+## Higiene: inventario anterior sin seguimiento
+
+Se movieron **15 archivos** (un PLAN y catorce PROMPT) desde la raíz a
+`docs/prompts/`, sin editar su contenido ni sobrescribir destinos. SHA256 antes
+y después idénticos: [inventario completo](prompts/inventario-2026-10-17.json).
+Los planes que ya estaban versionados, incluidos PLAN-CIERRE-FASE-2.md y
+PLAN-MODULOS-FASE-2.md, siguen en la raíz.
+
+| Archivo original | Destino |
+|---|---|
+| PLAN-CANALES-MESSENGER-Y-API.md | docs/prompts/PLAN-CANALES-MESSENGER-Y-API.md |
+| PROMPT-AR-VISTAS.md | docs/prompts/PROMPT-AR-VISTAS.md |
+| PROMPT-CANALES-MESSENGER-Y-API.md | docs/prompts/PROMPT-CANALES-MESSENGER-Y-API.md |
+| PROMPT-COBROS-CANCELAR-ELIMINAR.md | docs/prompts/PROMPT-COBROS-CANCELAR-ELIMINAR.md |
+| PROMPT-CONTRATO-NOMBRE.md | docs/prompts/PROMPT-CONTRATO-NOMBRE.md |
+| PROMPT-MERGE-MODULOS-AR.md | docs/prompts/PROMPT-MERGE-MODULOS-AR.md |
+| PROMPT-MERGE-Y-SEED-SERVIDORES.md | docs/prompts/PROMPT-MERGE-Y-SEED-SERVIDORES.md |
+| PROMPT-MESSENGER-APPSECRET-POR-CANAL.md | docs/prompts/PROMPT-MESSENGER-APPSECRET-POR-CANAL.md |
+| PROMPT-MESSENGER-LOGIN-FACEBOOK.md | docs/prompts/PROMPT-MESSENGER-LOGIN-FACEBOOK.md |
+| PROMPT-MODULO-SERVIDORES.md | docs/prompts/PROMPT-MODULO-SERVIDORES.md |
+| PROMPT-MODULOS-AR.md | docs/prompts/PROMPT-MODULOS-AR.md |
+| PROMPT-NUEVO-COBRO-MONTO.md | docs/prompts/PROMPT-NUEVO-COBRO-MONTO.md |
+| PROMPT-PREPARAR-MERGE-META.md | docs/prompts/PROMPT-PREPARAR-MERGE-META.md |
+| PROMPT-PULIDO-SERVIDORES.md | docs/prompts/PROMPT-PULIDO-SERVIDORES.md |
+| PROMPT-TOTAL-CLIENTE.md | docs/prompts/PROMPT-TOTAL-CLIENTE.md |
+
+Salida de `git branch --merged modulos-fase-2`, tras los commits de preparación:
+once referencias, incluyendo la propia base; diez ramas adicionales ya integradas.
+**No se borró ninguna rama.**
+
+```text
+canales-messenger-api
+cobros-cancelar-eliminar
+messenger-login-facebook
+meta-tech-provider
+modulos-ar
+modulos-ar-servidores
+modulos-ar-servidores-pulido
+modulos-ar-vistas
+modulos-fase-2
+nuevo-cobro-monto
+total-cobrado-cliente
+```
+
+## Archivos principales y commits
+
+Además de este informe, se crearon:
+
+- `docs/ensayo-migracion-pre-merge-2026-10-17.md` y su JSON de huellas/conteos.
+- `docs/orden-migracion-pre-merge.md`.
+- `scripts/pre-merge/ensayar-migracion.mjs`, `check-env-despliegue.ts`,
+  `verificar-rls.sql`, `canales-token-legacy.sql` y README de uso.
+- `docs/CHECKLIST-MERGE-META.md` y `docs/META-APP-REVIEW-MESSENGER.md`.
+- `docs/pruebas-pre-merge-2026-10-17/`: salidas, resultados, aislamiento, consultas
+  y controles del verificador de variables.
+- `docs/prompts/README.md`, inventario SHA256 y los quince documentos archivados.
+
+| Tarea | Commit |
+|---|---|
+| 1. Regresión y guardas de pruebas | `3acbe61` |
+| 2. Ensayo de migración | `d0fa5d5` |
+| 3. Orden SQL y backfills | `19b8032` |
+| 4. Verificadores y mapeo Messenger | `e248b15` |
+| 5. Checklist único | `069e09d` |
+| 6. App Review Messenger | `f77bf81` |
+| 7. Higiene e inventario final | Commit que contiene esta sección; consultar `git log -1`. |
+
+## Cierre y decisiones de Julio
+
+- Contenedor `ambarcrm-premerge-20261017` eliminado, incluidas sus cuatro BD
+  desechables (regresión y tres intentos del ensayo). App detenida por puerto
+  3118, comprobando que su PID pertenecía a esta sesión. Puertos 3118/55450 sin listener.
+- `meta-tech-provider` sigue en `e1c5e93`; `modulos-fase-2` sigue en `70e684b`.
+  Sin cambios en `web/src`, SQL de negocio, package.json o package-lock respecto
+  de esa base. Solo se corrigieron tres guardas de pruebas y un mapeo de Compose.
+- 🛑 Aprobación de Meta, valores del panel y ensayo con respaldo real siguen
+  pendientes de la ventana autorizada; no se accedió a producción.
+- 🛑 Aurum real de pruebas sigue pendiente según el plan de cierre.
+- 🛑 Messenger: confirmar acceso y capacidad Human Agent aparte. El paquete de
+  revisión declara que no hay botón de desconexión Messenger ni desuscripción
+  remota; Julio decide si usa el recorrido técnico documentado o encarga esa
+  mejora en otra tarea. No se añadió funcionalidad aquí.
