@@ -23,7 +23,7 @@ export async function guardarCanalInstagram(body: Record<string, unknown>, id?: 
   if (!nombre || nombre.length > 150) throw new ErrorRetail("nombre inválido");
   const instagramId = identificador(body.instagram_id ?? config.instagramId, "instagram_id");
   const pageId = identificador(body.page_id ?? config.pageId, "page_id");
-  const appId = identificador(body.app_id || config.appId, "app_id");
+  const appId = identificador(body.app_id == null || body.app_id === "" ? config.appId : body.app_id, "app_id");
   const filas = await dbRaw.$queryRaw<{ org: bigint | null }[]>`SELECT resolve_org_by_instagram(${instagramId}) AS org`;
   if (filas[0]?.org != null && !(canal?.activo && canal.orgId === filas[0].org && config.instagramId === instagramId)) {
     throw new ErrorRetail("esa cuenta de Instagram ya está conectada", 409);
@@ -36,7 +36,7 @@ export async function guardarCanalInstagram(body: Record<string, unknown>, id?: 
   try { await suscribirCuenta(config); }
   catch { throw new ErrorRetail("No se pudo suscribir la cuenta de Instagram en Facebook. Revisa los datos y permisos de la app.", 424); }
   try {
-    const data = { nombre, config: config as Record<string, string>, estado: "conectado" as const };
+    const data = { nombre, instancia: instagramId, config: config as Record<string, string>, estado: "conectado" as const };
     const guardado = canal ? await db.canalWhatsapp.update({ where: { id: canal.id }, data })
       : await db.canalWhatsapp.create({ data: { ...data, proveedor: "instagram", instancia: instagramId } });
     return { id: String(guardado.id), nombre: guardado.nombre, ok: true };
