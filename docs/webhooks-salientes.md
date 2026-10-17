@@ -31,6 +31,10 @@ emiten eventos: esta versión cubre los puntos anteriores, sin instrumentar toda
 }
 ```
 
+`datos.canal` añade el proveedor (`cloud_api`, `messenger`, `instagram` o `api`)
+en la ingesta, los cambios de estado y la acción de webhook de una regla. Los
+consumidores anteriores pueden ignorar este campo aditivo.
+
 Los identificadores son strings. No se incluyen el cuerpo del mensaje, tokens,
 configuraciones ni secretos. POST `/api/webhooks-salientes/:id/probar` entrega
 `evento: "prueba"` solo al destino indicado y activo.

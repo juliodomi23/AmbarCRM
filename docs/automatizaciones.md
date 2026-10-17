@@ -14,7 +14,7 @@ Todas las condiciones deben cumplirse (AND), máximo diez por regla:
 
 | Tipo JSON | Valor |
 |---|---|
-| `canal` | `cloud_api`, `messenger`, `api` |
+| `canal` | `cloud_api`, `messenger`, `instagram`, `api` |
 | `estado` | `abierta`, `pendiente`, `cerrada` |
 | `etiqueta` | ID string de una etiqueta de la empresa |
 | `texto_contiene` / `texto_no_contiene` | Texto de 1–300 caracteres, comparación sin distinguir mayúsculas |
@@ -37,7 +37,7 @@ Acciones en orden, de una a cinco:
 
 No existe entidad equipo en el CRM: se recorta la asignación a equipo. No se crean
 equipos ni esquemas de plantillas oficiales. `PlantillaMensaje` almacena respuestas
-rápidas, no la aprobación de Meta: WhatsApp/Messenger solo las envían antes de 24 h
+rápidas, no la aprobación de Meta: WhatsApp/Messenger/Instagram solo las envían antes de 24 h
 desde el último mensaje entrante. Fuera de ventana se registra `omitida_ventana` y se
 continúa; nunca se usa Human Agent para automatizaciones. API no tiene ventana.
 Se reutilizan `getProvider`, `estadoVentana`, `aplicarVariables`, la entrega de webhooks

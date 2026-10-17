@@ -1,5 +1,69 @@
 # Decisiones de canales
 
+## Instagram DM manual · 17-oct-2026
+
+- Solo cuenta profesional enlazada a una página de Facebook y app propia del
+  cliente. Alta/edición manual con nombre, `instagram_id`, `page_id`, token de
+  página, App ID y App Secret. Token y secreto cifrados; respuestas/listado solo
+  contienen datos públicos y presencia del secreto, nunca su valor ni cifrado.
+  No se añade Facebook Login, Instagram Login ni trabajo de App Review.
+- Proveedor `instagram` en SQL, Prisma y TypeScript; cuenta activa única entre
+  empresas por `config.instagramId`. `resolve_org_by_instagram` solo devuelve la
+  empresa y restringe EXECUTE a `crm_app`, con el patrón SECURITY DEFINER existente.
+  La migración conserva Instagram al retirar proveedores antiguos y es idempotente.
+- `meta-mensajeria.ts` concentra Graph, entrega, ventana, normalización básica y
+  desconexión. Messenger conserva sus exports, campos y comportamiento, comprobado
+  por sus pruebas. Instagram configura ese proveedor compartido y normaliza aparte
+  los adjuntos incompatibles para conservar texto legible, incluso sin texto original.
+- Webhook público exacto `/api/instagram/webhook`: GET usa el
+  `MESSENGER_VERIFY_TOKEN` ya mapeado, sin variables nuevas. POST resuelve por
+  `entry.id`, valida la firma del cuerpo completo con App Secret del canal;
+  solo si falta usa el global. Cifrado ilegible o firma errónea falla cerrado.
+  En cuerpos con varias cuentas solo procesa las autorizadas. Cuentas desconocidas,
+  canales retirados y acuses sin mensajes se confirman con 200; una cuenta conocida
+  sin firma válida devuelve 401. JSON malformado con firma global válida devuelve 400.
+- Identidad por `(canal_id, identificador_externo)` e idempotencia por
+  `(canal_id, mid)`; no se busca por nombre ni username. Perfil fallido conserva
+  el mensaje con el ID externo como nombre. El bloqueo de ingesta existente cubre
+  mensajes concurrentes. Un eco de la app propia no duplica envíos del CRM.
+- Texto/media usan `/me/messages` con el token en Authorization. El control local
+  exige entrada en menos de 24 h; solo un humano puede usar HUMAN_AGENT entre
+  24 h y antes de 7 días. Bots/reglas nunca usan esa etiqueta. Texto/caption con
+  máximo local conservador de 1000 caracteres, sin truncar. Los errores de envío
+  de Instagram se sustituyen por texto fijo; red/429/5xx no desconectan el canal.
+- DELETE intenta cancelar la suscripción en la página. Token vencido, 404 o 803
+  permiten retiro local con motivo fijo; los fallos ambiguos/temporales conservan
+  canal e historial y devuelven 502, incluso si se pidió `borrarDatos`.
+  Solo admin puede confirmar el retiro forzado tras ese 502. Se respeta la elección
+  de conservar o borrar conversaciones. El retiro forzado puede dejar una
+  suscripción remota activa: quitar la app en Facebook queda a cargo del operador.
+- Configuración y bandeja muestran Instagram y su ventana; el constructor de reglas
+  acepta ese canal. Los webhooks salientes añaden `datos.canal` y el GET de la
+  conversación del bot añade `canal`, conservando los campos compatibles existentes.
+  Ver [bots multicanal](bots-multicanal.md), [automatizaciones](automatizaciones.md)
+  y [webhooks salientes](webhooks-salientes.md).
+
+### Supuestos de Meta no verificados
+
+🛑 Solo se comprobó el contrato con Graph simulado, sin consultar documentación
+remota ni cuentas reales: token de página; IGSID como destinatario de `/me/messages`;
+`object:instagram` con `entry.messaging`; firma X-Hub-Signature-256; campo `messages`
+en `PAGE_ID/subscribed_apps`; perfil `name,username,profile_pic`; formatos de media;
+ventana de 24 h y posibilidad de HUMAN_AGENT hasta 7 días. Las pruebas no certifican
+que Meta acepte esas rutas, campos o permisos. Confirmar en el panel de la app del
+cliente `instagram_basic`, `instagram_manage_messages` y cualquier otro permiso
+efectivamente exigido, además del acceso a mensajes de la cuenta profesional.
+
+🛑 Verificar también los efectos de suscribir/desuscribir sobre una página que
+comparta app con Messenger. No usar una página de cliente para esta comprobación.
+Nombre/foto son opcionales: una denegación no pierde la entrada. Los límites reales
+de texto/media y la habilitación de HUMAN_AGENT quedan pendientes de cuenta real.
+No se implementan comentarios, menciones, stories como función propia, publicaciones,
+difusión masiva ni aprobación de Meta. Un story/reel compartido recibido como adjunto
+solo se conserva mediante marcador, sin prometer su reproducción.
+
+Pruebas: `test-canales-instagram.ts` y `check-instagram.ts`, más toda la regresión.
+
 - 17-oct-2026: reglas con listas blancas, origen anti-bucles y cupos serializados comparten los disparos salientes; sin equipos ni envío de respuestas rápidas fuera de 24 h. Ver [automatizaciones](automatizaciones.md).
 
 - 17-oct-2026: webhooks salientes por empresa reutilizan la entrega HMAC/anti-SSRF de API, secreto cifrado y límite concurrente; eventos y cobertura deliberadamente acotados en [webhooks salientes](webhooks-salientes.md).

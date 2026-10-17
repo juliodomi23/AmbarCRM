@@ -193,6 +193,24 @@ Abrir `/bin/bash` para los bloques de consola del servicio `backup` que usan `re
   🛑 Si Messenger aún no tiene el acceso que exige Meta, probar solo con roles
   habilitados en la app; no ofrecerlo a clientes ni usar HUMAN_AGENT sin aprobación.
 
+- [ ] **10b. Instagram de prueba (opcional hasta disponer de cuenta real).**
+  🛑 Julio confirma una cuenta profesional enlazada a una página y la app propia
+  de pruebas. Revisar en Meta permisos efectivos (`instagram_basic`,
+  `instagram_manage_messages` y los demás que Meta exija), acceso a mensajes,
+  token de página, callback `/api/instagram/webhook` y verify token existente de
+  Messenger. No usar un canal de cliente ni hacerlo como parte de la regresión local.
+  Conectar manualmente en Configuración → Instagram. Enviar un DM desde el perfil
+  de pruebas, comprobar una sola entrada en chat y responder dentro de 24 h.
+  Probar imagen y un adjunto compartido: si no es compatible debe aparecer un
+  marcador. Confirmar con el panel y la cuenta que `/me/messages`, IGSID, perfil
+  y suscripción `messages` corresponden al flujo elegido.
+  HUMAN_AGENT solo si la app tiene habilitación; nunca usarlo para bots.
+  Confirmar ausencia de duplicados y aislamiento; revisar que conectar o retirar
+  Instagram no altere Messenger si comparten página/app. Desconectar conservando
+  historial; ante 5xx debe conservar canal, y un retiro forzado requiere confirmar
+  que podría dejar la suscripción en Facebook. Los supuestos siguen **no
+  verificados** hasta completar este humo y anotar su resultado.
+
 - [ ] **11. Marcha atrás preparada: restaurar respaldo y volver al código anterior
   de `meta-tech-provider`.** 🛑 Julio decide ejecutarla y acepta la pérdida de los
   cambios posteriores al respaldo. Detener recepción/escrituras y `app` desde
