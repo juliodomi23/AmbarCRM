@@ -1,5 +1,7 @@
 # Decisiones de canales
 
+- 17-oct-2026: webhooks salientes por empresa reutilizan la entrega HMAC/anti-SSRF de API, secreto cifrado y límite concurrente; eventos y cobertura deliberadamente acotados en [webhooks salientes](webhooks-salientes.md).
+
 ## Retiro forzado de Messenger · 17-oct-2026
 
 - Un administrador puede enviar `forzar:true` al DELETE de un canal Messenger.
