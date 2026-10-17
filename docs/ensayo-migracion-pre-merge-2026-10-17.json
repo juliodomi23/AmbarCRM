@@ -1,0 +1,539 @@
+{
+  "base": "ensayo_meta_1792216349342",
+  "contenedor": "ambarcrm-premerge-20261017",
+  "referencia": "meta-tech-provider",
+  "commitOrigen": "e1c5e93ef2f85224d67ddc06b8def2375294f892",
+  "commitDestino": "70e684b1eadcd03bb3686ddf06f6ec37984b1507",
+  "corridas": [
+    {
+      "numero": 1,
+      "segundos": 1.303,
+      "columnasPreviasIntactas": true,
+      "datosIdempotentes": false
+    },
+    {
+      "numero": 2,
+      "segundos": 0.466,
+      "columnasPreviasIntactas": true,
+      "datosIdempotentes": true
+    },
+    {
+      "numero": 3,
+      "segundos": 0.508,
+      "columnasPreviasIntactas": true,
+      "datosIdempotentes": true
+    }
+  ],
+  "verificaciones": {
+    "soloPlano": 2,
+    "tokensPlanos": 4,
+    "tokensCifrados": 4,
+    "mensajesSinCanal": 0,
+    "tipoFechaMensaje": "timestamp with time zone",
+    "etiquetasMigradas": 60,
+    "botsConPermisosHeredados": 6,
+    "conversacionesSinUltimoEntrante": 0
+  },
+  "antes": {
+    "bots": {
+      "md5": "1a4d5dea569e9b4116dbde8336705c25",
+      "filas": 6
+    },
+    "orgs": {
+      "md5": "a11591dbbe6144a343e58577ab470de0",
+      "filas": 3
+    },
+    "notas": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "etapas": {
+      "md5": "d28ce3e6855cadf091b4b4960051e6b3",
+      "filas": 6
+    },
+    "grupos": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "tareas": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "ajustes": {
+      "md5": "cfb8e5c74fe871b866da312078dd79e2",
+      "filas": 1
+    },
+    "embudos": {
+      "md5": "723821b8a0f992ad12536b88edaf7860",
+      "filas": 1
+    },
+    "eventos": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "mensajes": {
+      "md5": "22962a891b6c914e3c27aa342d3e779d",
+      "filas": 1200
+    },
+    "usuarios": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "contactos": {
+      "md5": "97da5e89071ce88b90a126420036037b",
+      "filas": 60
+    },
+    "etiquetas": {
+      "md5": "2d79bd641d580c0cbafc54d7d2dec5a5",
+      "filas": 2
+    },
+    "oportunidades": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "conversaciones": {
+      "md5": "d10a7478dbd2051c1cca743d8b00aa00",
+      "filas": 60
+    },
+    "mensajes_grupo": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "canales_whatsapp": {
+      "md5": "09cfb8df91da08bcd15cb48c02cdaa83",
+      "filas": 6
+    },
+    "contacto_etiquetas": {
+      "md5": "a9a9fb758848664a1f29ae54c52fb171",
+      "filas": 2
+    },
+    "plantillas_mensaje": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "push_suscripciones": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "mensajes_programados": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    }
+  },
+  "despues": {
+    "bots": {
+      "md5": "1a4d5dea569e9b4116dbde8336705c25",
+      "filas": 6
+    },
+    "orgs": {
+      "md5": "a11591dbbe6144a343e58577ab470de0",
+      "filas": 3
+    },
+    "notas": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "etapas": {
+      "md5": "d28ce3e6855cadf091b4b4960051e6b3",
+      "filas": 6
+    },
+    "grupos": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "tareas": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "ajustes": {
+      "md5": "cfb8e5c74fe871b866da312078dd79e2",
+      "filas": 1
+    },
+    "embudos": {
+      "md5": "723821b8a0f992ad12536b88edaf7860",
+      "filas": 1
+    },
+    "eventos": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "mensajes": {
+      "md5": "22962a891b6c914e3c27aa342d3e779d",
+      "filas": 1200
+    },
+    "usuarios": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "contactos": {
+      "md5": "97da5e89071ce88b90a126420036037b",
+      "filas": 60
+    },
+    "etiquetas": {
+      "md5": "2d79bd641d580c0cbafc54d7d2dec5a5",
+      "filas": 2
+    },
+    "oportunidades": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "conversaciones": {
+      "md5": "d10a7478dbd2051c1cca743d8b00aa00",
+      "filas": 60
+    },
+    "mensajes_grupo": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "canales_whatsapp": {
+      "md5": "09cfb8df91da08bcd15cb48c02cdaa83",
+      "filas": 6
+    },
+    "contacto_etiquetas": {
+      "md5": "14050142db26d5fc511855eacd9529db",
+      "filas": 60
+    },
+    "plantillas_mensaje": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "push_suscripciones": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "mensajes_programados": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    }
+  },
+  "despuesCompleto": {
+    "bots": {
+      "md5": "b82e859b568b97bfec0d845591d06b2e",
+      "filas": 6
+    },
+    "orgs": {
+      "md5": "a11591dbbe6144a343e58577ab470de0",
+      "filas": 3
+    },
+    "cajas": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "citas": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "notas": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "tours": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "cobros": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "etapas": {
+      "md5": "d28ce3e6855cadf091b4b4960051e6b3",
+      "filas": 6
+    },
+    "grupos": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "tareas": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "ventas": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "ajustes": {
+      "md5": "cfb8e5c74fe871b866da312078dd79e2",
+      "filas": 1
+    },
+    "compras": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "embudos": {
+      "md5": "723821b8a0f992ad12536b88edaf7860",
+      "filas": 1
+    },
+    "eventos": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "resenas": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "doctores": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "mensajes": {
+      "md5": "620dc8633ff0a76224f811da682dbb2a",
+      "filas": 1200
+    },
+    "usuarios": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "apartados": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "contactos": {
+      "md5": "01d3999e126dd047e46212d453ec2ced",
+      "filas": 60
+    },
+    "contratos": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "etiquetas": {
+      "md5": "2d79bd641d580c0cbafc54d7d2dec5a5",
+      "filas": 2
+    },
+    "productos": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "vehiculos": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "pagos_tour": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "servidores": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "modulos_org": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "pagos_venta": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "promociones": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "propiedades": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "proveedores": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "turnos_caja": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "cotizaciones": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "auditoria_bot": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "oportunidades": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "reservas_tour": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "conversaciones": {
+      "md5": "02f53fa2674ca661993fb76260dbcbef",
+      "filas": 60
+    },
+    "listas_precios": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "mensajes_grupo": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "venta_partidas": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "abonos_apartado": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "compra_partidas": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "cuentas_cliente": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "cursos_academia": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "horarios_doctor": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "messenger_login": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "precios_volumen": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "reservas_pedido": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "alumnos_academia": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "canales_whatsapp": {
+      "md5": "09cfb8df91da08bcd15cb48c02cdaa83",
+      "filas": 6
+    },
+    "itinerarios_tour": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "movimientos_caja": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "asesorias_legales": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "servicios_reserva": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "cola_caja_rechazos": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "contacto_etiquetas": {
+      "md5": "14050142db26d5fc511855eacd9529db",
+      "filas": 60
+    },
+    "devoluciones_venta": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "plantillas_mensaje": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "push_suscripciones": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "solicitudes_resena": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "sucursales_legales": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "cotizacion_partidas": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "devolucion_partidas": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "excepciones_horario": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "expedientes_legales": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "heartbeats_servidor": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "movimientos_legales": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "asistencias_academia": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "evoluciones_clinicas": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "expedientes_paciente": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "mensajes_programados": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "campos_personalizados": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "colegiaturas_academia": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "notas_credito_cliente": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "inscripciones_academia": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "lista_precio_productos": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "movimientos_inventario": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "registros_operacion_legal": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "servicio_reserva_doctores": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "movimientos_cuenta_cliente": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    },
+    "registros_expediente_legal": {
+      "md5": "d751713988987e9331980363e24189ce",
+      "filas": 0
+    }
+  }
+}
