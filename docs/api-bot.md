@@ -1,5 +1,7 @@
 # API del bot (n8n ⇄ AmbarCRM)
 
+Guía práctica: [bots multicanal](bots-multicanal.md), con el campo aditivo `canal` del GET, identidad externa y ventanas de WhatsApp, Messenger e Instagram.
+
 Base: `https://<tu-crm>/api/v1/accounts/1/conversations/{conversationId}`.
 Todas las rutas usan el header `api_access_token: <token del bot>` (o `x-bot-token`).
 Las respuestas existentes **solo ganan campos**; ninguno se quitó ni cambió de nombre.
