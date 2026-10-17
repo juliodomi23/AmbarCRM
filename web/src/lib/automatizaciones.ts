@@ -20,10 +20,10 @@ async function reservarEjecucion(orgId: bigint, reglaId: bigint, conversacionId:
   });
 }
 
-async function ejecutarAccion(orgId: bigint, evento: EventoCrm, conversacionId: bigint, accion: AccionRegla) {
+async function ejecutarAccion(orgId: bigint, evento: EventoCrm, conversacionId: bigint, accion: AccionRegla, canal?: string) {
   if (accion.tipo === "enviar_plantilla") return enviarRespuestaRegla(orgId, conversacionId, BigInt(accion.id));
   if (accion.tipo === "enviar_webhook") {
-    const [entrega] = await entregarEvento(orgId, evento, { id: String(conversacionId), conversacion_id: String(conversacionId) }, {}, BigInt(accion.id));
+    const [entrega] = await entregarEvento(orgId, evento, { id: String(conversacionId), conversacion_id: String(conversacionId), canal }, {}, BigInt(accion.id));
     return !entrega ? "omitida_destino" : entrega.ok ? "ok" : "error_webhook";
   }
   return transaccionTenant(orgId, async (tx) => {
@@ -68,7 +68,7 @@ export async function ejecutarReglas(orgId: bigint, evento: EventoCrm, contexto:
         if (!ejecucion) break;
         const estados: string[] = [];
         for (const accion of acciones) {
-          try { estados.push(await ejecutarAccion(orgId, evento, conversacionId, accion)); }
+          try { estados.push(await ejecutarAccion(orgId, evento, conversacionId, accion, conv.canal?.proveedor)); }
           catch { estados.push("error_accion"); }
         }
         const resultado = estados.some((e) => e.startsWith("error")) ? "error" : estados.some((e) => e.startsWith("omitida")) ? "omitida" : "ok";

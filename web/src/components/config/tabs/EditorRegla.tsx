@@ -12,7 +12,7 @@ export const TIPOS_ACCION = [
   ["enviar_plantilla", "Enviar respuesta rápida"], ["enviar_webhook", "Enviar webhook"],
 ] as const;
 const estados = ["abierta", "pendiente", "cerrada"].map((v) => ({ id: v, nombre: v }));
-const canales = [{ id: "cloud_api", nombre: "WhatsApp" }, { id: "messenger", nombre: "Messenger" }, { id: "api", nombre: "API" }];
+const canales = [{ id: "cloud_api", nombre: "WhatsApp" }, { id: "messenger", nombre: "Messenger" }, { id: "instagram", nombre: "Instagram" }, { id: "api", nombre: "API" }];
 const booleanos = [{ id: "true", nombre: "Sí" }, { id: "false", nombre: "No" }];
 const clase = "rounded border border-input bg-background p-2 text-sm w-full";
 

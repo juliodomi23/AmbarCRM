@@ -132,9 +132,9 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
   const contextoEvento = { conversacionId: String(conversacion.id), contactoNuevo: guardado.esNuevoContacto,
     texto: m.contenido, origen: "contacto" as const };
   const datosEvento = { id: String(conversacion.id), conversacion_id: String(conversacion.id),
-    contacto_id: String(contacto.id), canal_id: String(canal.id), estado: "abierta" };
+    contacto_id: String(contacto.id), canal_id: String(canal.id), canal: canal.proveedor, estado: "abierta" };
   if (guardado.esNuevoContacto) dispararEvento(orgId, "contacto.creado", {
-    id: String(contacto.id), nombre: contacto.nombre,
+    id: String(contacto.id), nombre: contacto.nombre, canal_id: String(canal.id), canal: canal.proveedor,
   });
   if (esNuevaConversacion) dispararEvento(orgId, "conversacion.creada", datosEvento, contextoEvento);
   else if (conversacion.estado !== "abierta") dispararEvento(orgId, "conversacion.estado_cambiado", {

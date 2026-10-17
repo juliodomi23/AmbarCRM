@@ -63,7 +63,7 @@ export function ReglasAutomatizacion() {
   }
   return <section className="surface p-4 space-y-4" aria-label="Reglas de automatización">
     <h2 className="font-semibold">Reglas de automatización</h2>
-    <p className="text-sm text-muted-foreground">Hasta 25 reglas. Máximo 20 ejecuciones por conversación y hora. Las respuestas rápidas de WhatsApp y Messenger requieren ventana de 24 h abierta.</p>
+    <p className="text-sm text-muted-foreground">Hasta 25 reglas. Máximo 20 ejecuciones por conversación y hora. Las respuestas rápidas de WhatsApp, Messenger e Instagram requieren ventana de 24 h abierta.</p>
     {!cargado && <p role="status">Cargando reglas…</p>}
     {cargado && !lista.length && <p className="text-sm">Aún no hay reglas.</p>}
     {lista.map((r) => <article key={r.id} className="border border-border rounded-lg p-3 space-y-2">

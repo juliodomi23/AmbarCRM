@@ -4,15 +4,17 @@ import { dispararEvento } from "@/lib/disparar-evento";
 import { modificarConversacion } from "@/lib/services/acciones-conversacion";
 
 export async function actualizarConversacion(orgId: bigint, id: bigint, data: Prisma.ConversacionUncheckedUpdateInput) {
-  const { antes, despues } = await transaccionTenant(orgId, async (tx) => {
+  const { antes, despues, canal } = await transaccionTenant(orgId, async (tx) => {
     await tx.$queryRaw`SELECT id FROM conversaciones WHERE id = ${id} FOR UPDATE`;
     const antes = await tx.conversacion.findUniqueOrThrow({ where: { id } });
     const despues = await modificarConversacion(tx, id, data);
-    return { antes, despues };
+    const canal = despues.canalId ? await tx.canalWhatsapp.findUnique({ where: { id: despues.canalId }, select: { proveedor: true } }) : null;
+    return { antes, despues, canal };
   });
   if (antes.estado !== despues.estado) dispararEvento(orgId, "conversacion.estado_cambiado", {
     id: String(id), conversacion_id: String(id), contacto_id: String(despues.contactoId),
     estado: despues.estado, estado_anterior: antes.estado,
+    canal_id: despues.canalId ? String(despues.canalId) : undefined, canal: canal?.proveedor,
   }, { conversacionId: String(id), origen: "agente" });
   return despues;
 }

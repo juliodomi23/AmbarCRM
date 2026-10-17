@@ -5,7 +5,7 @@ export const DISPARADORES = ["conversacion.creada", "conversacion.estado_cambiad
 export const ESTADOS_REGLA = ["abierta", "pendiente", "cerrada"] as const;
 export type EstadoRegla = typeof ESTADOS_REGLA[number];
 export type CondicionRegla =
-  | { tipo: "canal"; valor: "cloud_api" | "messenger" | "api" }
+  | { tipo: "canal"; valor: "cloud_api" | "messenger" | "instagram" | "api" }
   | { tipo: "estado"; valor: EstadoRegla }
   | { tipo: "etiqueta" | "texto_contiene" | "texto_no_contiene"; valor: string }
   | { tipo: "fuera_horario" | "contacto_nuevo"; valor: boolean };
@@ -23,7 +23,7 @@ export function validarCondiciones(valor: unknown): CondicionRegla[] {
   return valor.map((fila) => {
     const b = objetoEstricto(fila, ["tipo", "valor"]);
     switch (b.tipo) {
-      case "canal": return { tipo: b.tipo, valor: deLista(b.valor, ["cloud_api", "messenger", "api"]) };
+      case "canal": return { tipo: b.tipo, valor: deLista(b.valor, ["cloud_api", "messenger", "instagram", "api"]) };
       case "estado": return { tipo: b.tipo, valor: deLista(b.valor, ESTADOS_REGLA) };
       case "etiqueta": idIntegracion(b.valor); return { tipo: b.tipo, valor: b.valor as string };
       case "texto_contiene": case "texto_no_contiene":

@@ -6,4 +6,5 @@ export type EventoCrm = typeof EVENTOS_CRM[number];
 export type DatosEvento = {
   id: string; conversacion_id?: string; contacto_id?: string; canal_id?: string;
   estado?: string; estado_anterior?: string; nombre?: string; tipo?: string;
+  canal?: string;
 };

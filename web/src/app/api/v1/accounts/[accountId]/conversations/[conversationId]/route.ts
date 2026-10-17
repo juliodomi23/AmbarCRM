@@ -46,6 +46,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ accountId
       id: Number(conv.id),
       status: conv.estado === "cerrada" ? "resolved" : conv.estado === "pendiente" ? "pending" : "open",
       bot_activo: conv.botActivo,
+      canal: conv.canal?.proveedor ?? null,
       labels: conv.botActivo ? [] : ["bot_off"],
       can_reply: true,
       meta: { sender },
