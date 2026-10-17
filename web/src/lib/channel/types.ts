@@ -158,7 +158,7 @@ export interface ChannelProvider {
 
 }
 
-export type ProveedorCanal = "cloud_api" | "messenger" | "api";
+export type ProveedorCanal = "cloud_api" | "messenger" | "instagram" | "api";
 
 export interface ContextoEnvio {
   conversacionId?: bigint;

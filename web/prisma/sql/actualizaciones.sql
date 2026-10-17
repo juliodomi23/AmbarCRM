@@ -17,18 +17,18 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM pg_enum e
     JOIN pg_type t ON t.oid = e.enumtypid
-    WHERE t.typname = 'proveedor_canal' AND e.enumlabel NOT IN ('cloud_api', 'messenger', 'api')
+    WHERE t.typname = 'proveedor_canal' AND e.enumlabel NOT IN ('cloud_api', 'messenger', 'api', 'instagram')
   ) THEN
     UPDATE canales_whatsapp
     SET activo = false, estado = 'desconectado'
-    WHERE proveedor::text NOT IN ('cloud_api', 'messenger', 'api');
+    WHERE proveedor::text NOT IN ('cloud_api', 'messenger', 'api', 'instagram');
 
     ALTER TYPE proveedor_canal RENAME TO proveedor_canal_old;
-    CREATE TYPE proveedor_canal AS ENUM ('cloud_api', 'messenger', 'api');
+    CREATE TYPE proveedor_canal AS ENUM ('cloud_api', 'messenger', 'api', 'instagram');
     ALTER TABLE canales_whatsapp ALTER COLUMN proveedor DROP DEFAULT;
     ALTER TABLE canales_whatsapp
       ALTER COLUMN proveedor TYPE proveedor_canal USING
-        (CASE WHEN proveedor::text IN ('cloud_api', 'messenger', 'api') THEN proveedor::text ELSE 'cloud_api' END)::proveedor_canal;
+        (CASE WHEN proveedor::text IN ('cloud_api', 'messenger', 'api', 'instagram') THEN proveedor::text ELSE 'cloud_api' END)::proveedor_canal;
     ALTER TABLE canales_whatsapp ALTER COLUMN proveedor SET DEFAULT 'cloud_api';
     DROP TYPE proveedor_canal_old;
   END IF;
@@ -36,6 +36,7 @@ END $$;
 
 ALTER TYPE proveedor_canal ADD VALUE IF NOT EXISTS 'messenger';
 ALTER TYPE proveedor_canal ADD VALUE IF NOT EXISTS 'api';
+ALTER TYPE proveedor_canal ADD VALUE IF NOT EXISTS 'instagram';
 
 ALTER TABLE contactos ADD COLUMN IF NOT EXISTS canal_id BIGINT REFERENCES canales_whatsapp(id) ON DELETE SET NULL;
 ALTER TABLE contactos ADD COLUMN IF NOT EXISTS identificador_externo TEXT;
@@ -1745,3 +1746,16 @@ DO $$ DECLARE t TEXT; BEGIN
 END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON regla_automatizacion, ejecucion_regla TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+CREATE UNIQUE INDEX IF NOT EXISTS canales_instagram_cuenta_activa_uq
+  ON canales_whatsapp ((config->>'instagramId'))
+  WHERE activo AND proveedor = 'instagram' AND config->>'instagramId' IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION resolve_org_by_instagram(p_cuenta text)
+  RETURNS bigint LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
+    SELECT org_id FROM canales_whatsapp
+    WHERE activo AND proveedor::text = 'instagram' AND config->>'instagramId' = p_cuenta
+    ORDER BY id DESC LIMIT 1
+$$;
+REVOKE ALL ON FUNCTION resolve_org_by_instagram(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION resolve_org_by_instagram(text) TO crm_app;
