@@ -7,6 +7,7 @@ import { referenciaPropia } from "@/lib/referencias";
 import { conErrores } from "@/lib/errores-api";
 import { etiquetasDeContacto } from "@/lib/services/chat";
 import { transaccionTenant } from "@/lib/retail-db";
+import { actualizarConversacion } from "@/lib/services/conversacion-estado";
 
 export const dynamic = "force-dynamic";
 
@@ -100,7 +101,8 @@ async function manejarPATCH(
   if (Object.keys(data).length === 0)
     return NextResponse.json({ error: "nada que actualizar" }, { status: 400 });
 
-  const conv = await db.conversacion.update({ where: { id: BigInt(params.id) }, data });
+  if (s.orgId === null) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
+  const conv = await actualizarConversacion(s.orgId, BigInt(params.id), data);
 
   // Las etiquetas son del contacto (las mismas de Contactos, Difusión y el bot): se reemplaza su set.
   if (nombresEtiquetas && s.orgId !== null) {

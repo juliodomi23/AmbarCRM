@@ -9,6 +9,7 @@ import { estaFueraDeHorario } from "@/lib/horario";
 import { aplicarVariables } from "@/lib/plantillas";
 import { guardarMediaBase64 } from "@/lib/storage";
 import { enviarPushAOrg } from "@/lib/push";
+import { dispararEvento } from "@/lib/disparar-evento";
 
 /** Elige el agente activo con menos conversaciones asignadas (round-robin por carga). */
 async function elegirResponsable(): Promise<bigint | null> {
@@ -73,6 +74,7 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
     const existente = await tx.mensaje.findFirst({ where: { canalId: canal.id, waMessageId: m.waMessageId } });
     if (existente) return { duplicado: true as const, mensajeId: existente.id, conversacionId: existente.conversacionId };
     let contacto = await tx.contacto.findFirst({ where: identidad });
+    const esNuevoContacto = !contacto;
     const telefonoDisponible = m.telefono && !esWhatsapp
       ? !(await tx.contacto.findFirst({ where: { telefono: m.telefono, ...(contacto ? { id: { not: contacto.id } } : {}) } }))
       : false;
@@ -102,7 +104,7 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
       ? { ultimoMensajeAt: m.timestamp }
       : esSaliente ? { ultimoMensajeAt: m.timestamp, noLeidos: 0 }
       : { noLeidos: { increment: 1 }, ultimoMensajeAt: m.timestamp, estado: "abierta" as const }) } });
-    return { duplicado: false as const, contacto, conversacion, mensaje, esNuevaConversacion };
+    return { duplicado: false as const, contacto, conversacion, mensaje, esNuevaConversacion, esNuevoContacto };
   });
   if (guardado.duplicado) return guardado;
   const { contacto, conversacion, mensaje, esNuevaConversacion } = guardado;
@@ -126,6 +128,19 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
   if (esPersonal) {
     return { duplicado: false as const, mensajeId: mensaje.id, conversacionId: conversacion.id };
   }
+
+  const contextoEvento = { conversacionId: String(conversacion.id), contactoNuevo: guardado.esNuevoContacto,
+    texto: m.contenido, origen: "contacto" as const };
+  const datosEvento = { id: String(conversacion.id), conversacion_id: String(conversacion.id),
+    contacto_id: String(contacto.id), canal_id: String(canal.id), estado: "abierta" };
+  if (guardado.esNuevoContacto) dispararEvento(orgId, "contacto.creado", {
+    id: String(contacto.id), nombre: contacto.nombre,
+  });
+  if (esNuevaConversacion) dispararEvento(orgId, "conversacion.creada", datosEvento, contextoEvento);
+  else if (conversacion.estado !== "abierta") dispararEvento(orgId, "conversacion.estado_cambiado", {
+    ...datosEvento, estado_anterior: conversacion.estado,
+  }, contextoEvento);
+  dispararEvento(orgId, "mensaje.recibido", { ...datosEvento, id: String(mensaje.id), tipo: mensaje.tipo }, contextoEvento);
 
   // Push a los dispositivos del equipo (fire-and-forget: no frena el webhook).
   const preview = m.contenido?.slice(0, 120) || (m.tipo !== "texto" ? `[${m.tipo}]` : "Mensaje nuevo");
