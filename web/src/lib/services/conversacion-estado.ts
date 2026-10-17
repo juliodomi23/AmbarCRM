@@ -1,12 +1,13 @@
 import type { Prisma } from "@prisma/client";
 import { transaccionTenant } from "@/lib/retail-db";
 import { dispararEvento } from "@/lib/disparar-evento";
+import { modificarConversacion } from "@/lib/services/acciones-conversacion";
 
 export async function actualizarConversacion(orgId: bigint, id: bigint, data: Prisma.ConversacionUncheckedUpdateInput) {
   const { antes, despues } = await transaccionTenant(orgId, async (tx) => {
     await tx.$queryRaw`SELECT id FROM conversaciones WHERE id = ${id} FOR UPDATE`;
     const antes = await tx.conversacion.findUniqueOrThrow({ where: { id } });
-    const despues = await tx.conversacion.update({ where: { id }, data });
+    const despues = await modificarConversacion(tx, id, data);
     return { antes, despues };
   });
   if (antes.estado !== despues.estado) dispararEvento(orgId, "conversacion.estado_cambiado", {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { conErrores } from "@/lib/errores-api";
+import { agregarEtiquetaContacto } from "@/lib/services/acciones-conversacion";
 
 export const dynamic = "force-dynamic";
 
@@ -14,11 +15,7 @@ async function manejarPOST(req: NextRequest, props: { params: Promise<{ id: stri
   const { etiquetaId } = await req.json().catch(() => ({}));
   if (!etiquetaId) return NextResponse.json({ error: "falta etiquetaId" }, { status: 400 });
 
-  await db.contactoEtiqueta.upsert({
-    where: { contactoId_etiquetaId: { contactoId: BigInt(params.id), etiquetaId: BigInt(etiquetaId) } },
-    update: {},
-    create: { contactoId: BigInt(params.id), etiquetaId: BigInt(etiquetaId) }
-  });
+  await agregarEtiquetaContacto(db, BigInt(params.id), BigInt(etiquetaId));
   return NextResponse.json({ ok: true });
 }
 
