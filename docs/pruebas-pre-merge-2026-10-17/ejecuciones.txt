@@ -1,0 +1,2581 @@
+
+=== inicial/schema | EXIT 0 | 0.62 s ===
+DO
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+NOTICE:  column "bot_activo" of relation "conversaciones" already exists, skipping
+NOTICE:  column "etiquetas" of relation "conversaciones" already exists, skipping
+ALTER TABLE
+NOTICE:  column "csat_score" of relation "conversaciones" already exists, skipping
+ALTER TABLE
+NOTICE:  column "csat_enviado_at" of relation "conversaciones" already exists, skipping
+ALTER TABLE
+NOTICE:  column "aviso_fuera_at" of relation "conversaciones" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+NOTICE:  column "interna" of relation "mensajes" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+NOTICE:  column "crear_lead_auto" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "csat_activo" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "csat_texto" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "horario_activo" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "horario_inicio" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "horario_fin" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "horario_dias" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "fuera_horario_texto" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "auto_resolver_activo" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "auto_resolver_horas" of relation "ajustes" already exists, skipping
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE FUNCTION
+DROP TRIGGER
+NOTICE:  trigger "trg_notify_mensaje" for relation "mensajes" does not exist, skipping
+CREATE TRIGGER
+INSERT 0 6
+INSERT 0 1
+
+=== inicial/multi-tenant | EXIT 0 | 0.53 s ===
+CREATE TABLE
+INSERT 0 1
+DO
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+NOTICE:  policy "org_isolation" for relation "usuarios" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "embudos" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "etapas" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "contactos" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "etiquetas" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "contacto_etiquetas" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "oportunidades" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "canales_whatsapp" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "grupos" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "mensajes_grupo" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "bots" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "conversaciones" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "mensajes" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "plantillas_mensaje" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "notas" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "tareas" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "ajustes" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "eventos" does not exist, skipping
+DO
+CREATE FUNCTION
+CREATE FUNCTION
+DO
+GRANT
+GRANT
+GRANT
+GRANT
+ALTER DEFAULT PRIVILEGES
+ALTER DEFAULT PRIVILEGES
+ALTER DEFAULT PRIVILEGES
+CREATE FUNCTION
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+NOTICE:  policy "org_isolation" for relation "mensajes_programados" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "push_suscripciones" does not exist, skipping
+DO
+GRANT
+GRANT
+
+=== inicial/actualizaciones-1 | EXIT 0 | 1.89 s ===
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+DO
+ALTER TYPE
+NOTICE:  enum label "messenger" already exists, skipping
+NOTICE:  enum label "api" already exists, skipping
+ALTER TYPE
+NOTICE:  column "canal_id" of relation "contactos" already exists, skipping
+ALTER TABLE
+NOTICE:  column "identificador_externo" of relation "contactos" already exists, skipping
+ALTER TABLE
+DO
+CREATE INDEX
+NOTICE:  relation "contactos_canal_identificador_uq" already exists, skipping
+NOTICE:  column "canal_id" of relation "mensajes" already exists, skipping
+ALTER TABLE
+UPDATE 0
+NOTICE:  constraint "mensajes_wa_message_id_key" of relation "mensajes" does not exist, skipping
+ALTER TABLE
+NOTICE:  relation "mensajes_canal_id_wa_message_id_key" already exists, skipping
+CREATE INDEX
+CREATE FUNCTION
+DROP TRIGGER
+NOTICE:  trigger "trg_mensaje_fijar_canal" for relation "mensajes" does not exist, skipping
+CREATE TRIGGER
+ALTER TABLE
+UPDATE 0
+CREATE INDEX
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE INDEX
+CREATE FUNCTION
+CREATE TABLE
+CREATE INDEX
+UPDATE 0
+DO
+DO
+DO
+ALTER TYPE
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+DO
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+NOTICE:  column "compra_id" of relation "movimientos_inventario" already exists, skipping
+ALTER TABLE
+DO
+NOTICE:  column "unidad" of relation "productos" already exists, skipping
+ALTER TABLE
+NOTICE:  column "vende_por_peso" of relation "productos" already exists, skipping
+ALTER TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+NOTICE:  policy "org_isolation" for relation "modulos_org" does not exist, skipping
+CREATE INDEX
+NOTICE:  policy "org_isolation" for relation "campos_personalizados" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "citas" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "doctores" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "expedientes_paciente" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "evoluciones_clinicas" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "vehiculos" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "propiedades" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "productos" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "ventas" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "venta_partidas" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "proveedores" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "compras" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "compra_partidas" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "movimientos_inventario" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "sucursales_legales" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "expedientes_legales" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "registros_expediente_legal" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "asesorias_legales" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "movimientos_legales" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "registros_operacion_legal" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "tours" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "itinerarios_tour" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "reservas_tour" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "pagos_tour" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "alumnos_academia" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "cursos_academia" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "inscripciones_academia" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "colegiaturas_academia" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "asistencias_academia" does not exist, skipping
+DO
+GRANT
+GRANT
+ setval 
+--------
+      1
+(1 row)
+
+CREATE FUNCTION
+CREATE INDEX
+CREATE EXTENSION
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+CREATE INDEX
+NOTICE:  policy "org_isolation" for relation "servicios_reserva" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "servicio_reserva_doctores" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "horarios_doctor" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "excepciones_horario" does not exist, skipping
+DO
+GRANT
+GRANT
+CREATE FUNCTION
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+NOTICE:  policy "org_isolation" for relation "cajas" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "turnos_caja" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "movimientos_caja" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "pagos_venta" does not exist, skipping
+DO
+GRANT
+GRANT
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+NOTICE:  policy "org_isolation" for relation "devoluciones_venta" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "devolucion_partidas" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "apartados" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "abonos_apartado" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "cuentas_cliente" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "movimientos_cuenta_cliente" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "notas_credito_cliente" does not exist, skipping
+DO
+GRANT
+GRANT
+ALTER TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+NOTICE:  policy "org_isolation" for relation "cotizaciones" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "cotizacion_partidas" does not exist, skipping
+DO
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+DROP POLICY
+NOTICE:  policy "org_isolation" for relation "reservas_pedido" does not exist, skipping
+CREATE POLICY
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+DO
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+NOTICE:  policy "org_isolation" for relation "listas_precios" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "precios_volumen" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "lista_precio_productos" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "promociones" does not exist, skipping
+DO
+GRANT
+GRANT
+ALTER TABLE
+ALTER TABLE
+DO
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+DROP POLICY
+NOTICE:  policy "org_isolation" for relation "auditoria_bot" does not exist, skipping
+CREATE POLICY
+GRANT
+REVOKE
+GRANT
+ALTER TABLE
+UPDATE 0
+ALTER TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+NOTICE:  policy "org_isolation" for relation "resenas" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "solicitudes_resena" does not exist, skipping
+DO
+GRANT
+GRANT
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+NOTICE:  policy "org_isolation" for relation "cola_caja_rechazos" does not exist, skipping
+DO
+GRANT
+GRANT
+ALTER TABLE
+ALTER TABLE
+INSERT 0 0
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+NOTICE:  policy "org_isolation" for relation "contratos" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "cobros" does not exist, skipping
+DO
+GRANT
+GRANT
+ALTER TABLE
+ALTER TABLE
+DO
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+DO
+NOTICE:  policy "org_isolation" for relation "servidores" does not exist, skipping
+NOTICE:  policy "org_isolation" for relation "heartbeats_servidor" does not exist, skipping
+DO
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+NOTICE:  policy "org_isolation" for relation "messenger_login" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+GRANT
+
+=== inicial/actualizaciones-2 | EXIT 0 | 0.62 s ===
+NOTICE:  column "marca_nombre" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "marca_logo" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "marca_color_primario" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "marca_color_acento" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "marca_preset" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "error_detalle" of relation "mensajes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "puesto" of relation "usuarios" already exists, skipping
+ALTER TABLE
+DO
+ALTER TYPE
+NOTICE:  enum label "messenger" already exists, skipping
+NOTICE:  enum label "api" already exists, skipping
+ALTER TYPE
+NOTICE:  column "canal_id" of relation "contactos" already exists, skipping
+ALTER TABLE
+NOTICE:  column "identificador_externo" of relation "contactos" already exists, skipping
+ALTER TABLE
+DO
+NOTICE:  relation "contactos_canal_identificador_uq" already exists, skipping
+NOTICE:  column "canal_id" of relation "mensajes" already exists, skipping
+CREATE INDEX
+ALTER TABLE
+UPDATE 0
+NOTICE:  constraint "mensajes_wa_message_id_key" of relation "mensajes" does not exist, skipping
+ALTER TABLE
+CREATE INDEX
+NOTICE:  relation "mensajes_canal_id_wa_message_id_key" already exists, skipping
+CREATE FUNCTION
+DROP TRIGGER
+CREATE TRIGGER
+NOTICE:  column "ultimo_entrante_at" of relation "conversaciones" already exists, skipping
+ALTER TABLE
+UPDATE 0
+NOTICE:  relation "canales_messenger_page_activa_uq" already exists, skipping
+CREATE INDEX
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE INDEX
+NOTICE:  relation "canales_whatsapp_phone_number_id_activo_uq" already exists, skipping
+CREATE FUNCTION
+CREATE TABLE
+NOTICE:  relation "modulos_org" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "modulos_org_org_idx" already exists, skipping
+UPDATE 0
+DO
+DO
+DO
+ALTER TYPE
+NOTICE:  enum label "en_sala" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "campos_personalizados" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "campos_personalizados_org_entidad_orden_idx" already exists, skipping
+NOTICE:  column "campos" of relation "contactos" already exists, skipping
+ALTER TABLE
+NOTICE:  column "campos" of relation "oportunidades" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+NOTICE:  relation "citas" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "citas_org_inicio_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "doctores" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "doctores_org_activo_idx" already exists, skipping
+NOTICE:  column "doctor_id" of relation "citas" already exists, skipping
+ALTER TABLE
+NOTICE:  relation "citas_doctor_id_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "expedientes_paciente" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "expedientes_paciente_org_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "evoluciones_clinicas" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "evoluciones_expediente_created_idx" already exists, skipping
+CREATE INDEX
+DO
+NOTICE:  relation "evoluciones_clinicas_org_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "vehiculos" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "vehiculos_org_estado_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "vehiculos_org_marca_modelo_idx" already exists, skipping
+NOTICE:  relation "propiedades" already exists, skipping
+NOTICE:  relation "propiedades_org_estado_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "propiedades_org_ciudad_tipo_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "productos" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "productos_org_activo_nombre_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "productos_org_categoria_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "ventas" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "ventas_org_estado_created_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "ventas_contacto_id_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "venta_partidas" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "venta_partidas_venta_id_idx" already exists, skipping
+NOTICE:  relation "venta_partidas_producto_id_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "venta_partidas_org_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "proveedores" already exists, skipping
+NOTICE:  relation "proveedores_org_activo_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "compras" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "compras_org_estado_created_idx" already exists, skipping
+NOTICE:  relation "compras_proveedor_id_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "compra_partidas" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "compra_partidas_compra_id_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "compra_partidas_producto_id_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "compra_partidas_org_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "movimientos_inventario" already exists, skipping
+NOTICE:  column "compra_id" of relation "movimientos_inventario" already exists, skipping
+ALTER TABLE
+DO
+NOTICE:  column "unidad" of relation "productos" already exists, skipping
+ALTER TABLE
+NOTICE:  column "vende_por_peso" of relation "productos" already exists, skipping
+ALTER TABLE
+NOTICE:  relation "movimientos_producto_created_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "movimientos_venta_id_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "movimientos_compra_id_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "movimientos_inventario_org_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "sucursales_legales" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "sucursales_legales_org_activa_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "expedientes_legales" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "expedientes_legales_org_estado_updated_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "expedientes_legales_contacto_id_idx" already exists, skipping
+NOTICE:  relation "expedientes_legales_responsable_id_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "expedientes_legales_sucursal_id_idx" already exists, skipping
+NOTICE:  relation "registros_expediente_legal" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "registros_expediente_fecha_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "registros_expediente_legal_org_tipo_idx" already exists, skipping
+NOTICE:  relation "asesorias_legales" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "asesorias_legales_org_estado_fecha_idx" already exists, skipping
+NOTICE:  relation "asesorias_legales_contacto_id_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "asesorias_legales_expediente_id_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "movimientos_legales" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "movimientos_legales_org_tipo_fecha_idx" already exists, skipping
+NOTICE:  relation "movimientos_legales_expediente_id_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "registros_operacion_legal" already exists, skipping
+NOTICE:  relation "registros_operacion_org_tipo_fecha_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "registros_operacion_usuario_id_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "tours" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "tours_org_estado_salida_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "itinerarios_tour" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "itinerarios_tour_dia_idx" already exists, skipping
+NOTICE:  relation "itinerarios_tour_org_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "reservas_tour" already exists, skipping
+NOTICE:  relation "reservas_tour_org_estado_salida_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "reservas_tour_tour_idx" already exists, skipping
+NOTICE:  relation "reservas_tour_contacto_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "pagos_tour" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "pagos_tour_org_fecha_idx" already exists, skipping
+NOTICE:  relation "pagos_tour_reserva_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "alumnos_academia" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "alumnos_academia_org_estado_idx" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "cursos_academia" already exists, skipping
+NOTICE:  relation "cursos_academia_org_estado_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "inscripciones_academia" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "inscripciones_academia_org_estado_idx" already exists, skipping
+NOTICE:  relation "inscripciones_academia_curso_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "colegiaturas_academia" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "colegiaturas_org_estado_vencimiento_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "colegiaturas_alumno_idx" already exists, skipping
+NOTICE:  relation "asistencias_academia" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "asistencias_org_fecha_estado_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "asistencias_curso_idx" already exists, skipping
+CREATE INDEX
+DO
+GRANT
+GRANT
+ setval 
+--------
+      1
+(1 row)
+
+CREATE FUNCTION
+NOTICE:  relation "mensajes_media_url_idx" already exists, skipping
+CREATE INDEX
+CREATE EXTENSION
+NOTICE:  extension "unaccent" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "servicios_reserva" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "servicio_reserva_doctores" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "horarios_doctor" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "horarios_doctor_idx" already exists, skipping
+NOTICE:  relation "excepciones_horario" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "excepciones_horario_idx" already exists, skipping
+NOTICE:  column "servicio_id" of relation "citas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "token_gestion" of relation "citas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "origen" of relation "citas" already exists, skipping
+ALTER TABLE
+NOTICE:  relation "citas_token_gestion_uq" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "citas_doctor_inicio_idx" already exists, skipping
+DO
+GRANT
+GRANT
+CREATE FUNCTION
+CREATE TABLE
+NOTICE:  relation "cajas" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "cajas_org_activa_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "turnos_caja" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "turnos_caja_org_estado_idx" already exists, skipping
+NOTICE:  relation "turnos_caja_caja_estado_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "turnos_caja_usuario_estado_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "turnos_caja_usuario_abierto_uq" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "turnos_caja_caja_abierta_uq" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "movimientos_caja" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "movimientos_caja_turno_created_idx" already exists, skipping
+NOTICE:  relation "movimientos_caja_org_idx" already exists, skipping
+NOTICE:  column "turno_id" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "caja_id" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "uuid_cliente" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "cambio" of relation "ventas" already exists, skipping
+ALTER TABLE
+CREATE INDEX
+NOTICE:  relation "ventas_org_uuid_cliente_uq" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "ventas_turno_id_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "ventas_caja_id_idx" already exists, skipping
+NOTICE:  column "descuento" of relation "venta_partidas" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+NOTICE:  relation "pagos_venta" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "pagos_venta_org_idx" already exists, skipping
+DO
+GRANT
+GRANT
+NOTICE:  column "es_credito" of relation "ventas" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+NOTICE:  relation "devoluciones_venta" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "devoluciones_venta_original_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "devoluciones_venta_org_idx" already exists, skipping
+NOTICE:  relation "devolucion_partidas" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "devolucion_partidas_venta_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "devolucion_partidas_org_idx" already exists, skipping
+NOTICE:  relation "apartados" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "apartados_org_estado_vence_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "apartados_contacto_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "abonos_apartado" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "abonos_apartado_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "abonos_apartado_org_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "cuentas_cliente" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "cuentas_cliente_org_idx" already exists, skipping
+NOTICE:  relation "movimientos_cuenta_cliente" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "movimientos_cuenta_cliente_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "movimientos_cuenta_org_idx" already exists, skipping
+NOTICE:  relation "notas_credito_cliente" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "notas_credito_contacto_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "notas_credito_org_idx" already exists, skipping
+DO
+GRANT
+GRANT
+ALTER TABLE
+ALTER TABLE
+CREATE TABLE
+NOTICE:  relation "cotizaciones" already exists, skipping
+NOTICE:  relation "cotizaciones_org_estado_created_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "cotizaciones_contacto_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "cotizaciones_oportunidad_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "cotizacion_partidas" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "cotizacion_partidas_cotizacion_idx" already exists, skipping
+NOTICE:  relation "cotizacion_partidas_producto_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "cotizacion_partidas_org_idx" already exists, skipping
+DO
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+NOTICE:  column "visible_en_linea" of relation "productos" already exists, skipping
+ALTER TABLE
+NOTICE:  column "agotado_manual" of relation "productos" already exists, skipping
+ALTER TABLE
+NOTICE:  column "etiquetas_en_linea" of relation "productos" already exists, skipping
+ALTER TABLE
+NOTICE:  column "token_seguimiento" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "tipo_entrega" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "direccion_entrega" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "horario_deseado" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "costo_envio" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "pedido_ip" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  relation "ventas_token_seguimiento_key" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "ventas_pedidos_telefono_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "ventas_pedidos_ip_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "reservas_pedido" already exists, skipping
+NOTICE:  relation "reservas_pedido_producto_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "reservas_pedido_venta_idx" already exists, skipping
+CREATE INDEX
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE TABLE
+NOTICE:  relation "listas_precios" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "listas_precios_org_tipo_idx" already exists, skipping
+NOTICE:  column "lista_precio_id" of relation "contactos" already exists, skipping
+ALTER TABLE
+DO
+CREATE INDEX
+NOTICE:  relation "contactos_lista_precio_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "precios_volumen" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "precios_volumen_org_producto_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "lista_precio_productos" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "lista_precio_productos_org_producto_idx" already exists, skipping
+NOTICE:  relation "promociones" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "promociones_org_vigencia_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "promociones_producto_idx" already exists, skipping
+NOTICE:  relation "promociones_org_categoria_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  column "descuento_promocion" of relation "venta_partidas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "promocion_descripcion" of relation "venta_partidas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "descuento_promocion" of relation "cotizacion_partidas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "promocion_descripcion" of relation "cotizacion_partidas" already exists, skipping
+ALTER TABLE
+DO
+GRANT
+GRANT
+NOTICE:  column "grupo_id" of relation "productos" already exists, skipping
+ALTER TABLE
+NOTICE:  column "atributos" of relation "productos" already exists, skipping
+ALTER TABLE
+DO
+CREATE INDEX
+NOTICE:  relation "productos_grupo_id_idx" already exists, skipping
+NOTICE:  column "costo_unitario" of relation "venta_partidas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "signing_secret" of relation "bots" already exists, skipping
+ALTER TABLE
+NOTICE:  column "asesor_id" of relation "bots" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+NOTICE:  relation "auditoria_bot" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "auditoria_bot_org_fecha_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "auditoria_bot_conversacion_idx" already exists, skipping
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+GRANT
+REVOKE
+GRANT
+NOTICE:  column "permisos" of relation "bots" already exists, skipping
+ALTER TABLE
+UPDATE 0
+ALTER TABLE
+ALTER TABLE
+CREATE TABLE
+NOTICE:  relation "resenas" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "resenas_org_created_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "solicitudes_resena" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "solicitudes_resena_contacto_idx" already exists, skipping
+DO
+GRANT
+GRANT
+NOTICE:  column "sin_red" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "vendida_at" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "subida_at" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "turno_original_id" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "revision_motivos" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "diferencia_precio" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "catalogo_version" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "revision_resuelta_at" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "revision_resuelta_por" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  relation "ventas_revision_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  column "sin_red" of relation "movimientos_inventario" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+NOTICE:  relation "cola_caja_rechazos" already exists, skipping
+NOTICE:  relation "cola_caja_rechazos_pendientes_idx" already exists, skipping
+CREATE INDEX
+DO
+GRANT
+GRANT
+NOTICE:  constraint "productos_stock_check" of relation "productos" does not exist, skipping
+ALTER TABLE
+NOTICE:  constraint "movimientos_inventario_existencia_antes_check" of relation "movimientos_inventario" does not exist, skipping
+NOTICE:  constraint "movimientos_inventario_existencia_despues_check" of relation "movimientos_inventario" does not exist, skipping
+ALTER TABLE
+INSERT 0 0
+NOTICE:  relation "contratos" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "contratos_org_estado_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "contratos_contacto_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "cobros" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "cobros_cierre_unico" already exists, skipping
+NOTICE:  relation "cobros_org_estado_vence_idx" already exists, skipping
+DO
+GRANT
+GRANT
+NOTICE:  column "monto_pagado" of relation "cobros" already exists, skipping
+ALTER TABLE
+NOTICE:  column "pagos" of relation "cobros" already exists, skipping
+ALTER TABLE
+DO
+CREATE TABLE
+NOTICE:  relation "servidores" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "heartbeats_servidor" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "heartbeats_servidor_org_fecha_idx" already exists, skipping
+NOTICE:  column "servidor_id" of relation "contratos" already exists, skipping
+ALTER TABLE
+DO
+DO
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE TABLE
+NOTICE:  relation "messenger_login" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "messenger_login_org_vence_idx" already exists, skipping
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+GRANT
+
+=== inicial/actualizaciones-3 | EXIT 0 | 0.64 s ===
+NOTICE:  column "marca_nombre" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "marca_logo" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "marca_color_primario" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "marca_color_acento" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "marca_preset" of relation "ajustes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "error_detalle" of relation "mensajes" already exists, skipping
+ALTER TABLE
+NOTICE:  column "puesto" of relation "usuarios" already exists, skipping
+ALTER TABLE
+DO
+NOTICE:  enum label "messenger" already exists, skipping
+ALTER TYPE
+ALTER TYPE
+NOTICE:  enum label "api" already exists, skipping
+NOTICE:  column "canal_id" of relation "contactos" already exists, skipping
+ALTER TABLE
+NOTICE:  column "identificador_externo" of relation "contactos" already exists, skipping
+ALTER TABLE
+DO
+CREATE INDEX
+NOTICE:  relation "contactos_canal_identificador_uq" already exists, skipping
+NOTICE:  column "canal_id" of relation "mensajes" already exists, skipping
+ALTER TABLE
+UPDATE 0
+NOTICE:  constraint "mensajes_wa_message_id_key" of relation "mensajes" does not exist, skipping
+ALTER TABLE
+CREATE INDEX
+NOTICE:  relation "mensajes_canal_id_wa_message_id_key" already exists, skipping
+CREATE FUNCTION
+DROP TRIGGER
+CREATE TRIGGER
+NOTICE:  column "ultimo_entrante_at" of relation "conversaciones" already exists, skipping
+ALTER TABLE
+UPDATE 0
+NOTICE:  relation "canales_messenger_page_activa_uq" already exists, skipping
+CREATE INDEX
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE INDEX
+NOTICE:  relation "canales_whatsapp_phone_number_id_activo_uq" already exists, skipping
+CREATE FUNCTION
+NOTICE:  relation "modulos_org" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "modulos_org_org_idx" already exists, skipping
+UPDATE 0
+DO
+DO
+DO
+ALTER TYPE
+NOTICE:  enum label "en_sala" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "campos_personalizados" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "campos_personalizados_org_entidad_orden_idx" already exists, skipping
+NOTICE:  column "campos" of relation "contactos" already exists, skipping
+ALTER TABLE
+NOTICE:  column "campos" of relation "oportunidades" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+NOTICE:  relation "citas" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "citas_org_inicio_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "doctores" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "doctores_org_activo_idx" already exists, skipping
+NOTICE:  column "doctor_id" of relation "citas" already exists, skipping
+ALTER TABLE
+CREATE INDEX
+NOTICE:  relation "citas_doctor_id_idx" already exists, skipping
+NOTICE:  relation "expedientes_paciente" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "expedientes_paciente_org_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "evoluciones_clinicas" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "evoluciones_expediente_created_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "evoluciones_clinicas_org_idx" already exists, skipping
+DO
+CREATE TABLE
+NOTICE:  relation "vehiculos" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "vehiculos_org_estado_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "vehiculos_org_marca_modelo_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "propiedades" already exists, skipping
+NOTICE:  relation "propiedades_org_estado_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "propiedades_org_ciudad_tipo_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "productos" already exists, skipping
+NOTICE:  relation "productos_org_activo_nombre_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "productos_org_categoria_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "ventas" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "ventas_org_estado_created_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "ventas_contacto_id_idx" already exists, skipping
+NOTICE:  relation "venta_partidas" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "venta_partidas_venta_id_idx" already exists, skipping
+NOTICE:  relation "venta_partidas_producto_id_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "venta_partidas_org_idx" already exists, skipping
+NOTICE:  relation "proveedores" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "proveedores_org_activo_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "compras" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "compras_org_estado_created_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "compras_proveedor_id_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "compra_partidas" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "compra_partidas_compra_id_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "compra_partidas_producto_id_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "compra_partidas_org_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "movimientos_inventario" already exists, skipping
+NOTICE:  column "compra_id" of relation "movimientos_inventario" already exists, skipping
+ALTER TABLE
+DO
+NOTICE:  column "unidad" of relation "productos" already exists, skipping
+ALTER TABLE
+NOTICE:  column "vende_por_peso" of relation "productos" already exists, skipping
+ALTER TABLE
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "movimientos_producto_created_idx" already exists, skipping
+NOTICE:  relation "movimientos_venta_id_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "movimientos_compra_id_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "movimientos_inventario_org_idx" already exists, skipping
+NOTICE:  relation "sucursales_legales" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "sucursales_legales_org_activa_idx" already exists, skipping
+NOTICE:  relation "expedientes_legales" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "expedientes_legales_org_estado_updated_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "expedientes_legales_contacto_id_idx" already exists, skipping
+NOTICE:  relation "expedientes_legales_responsable_id_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "expedientes_legales_sucursal_id_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "registros_expediente_legal" already exists, skipping
+NOTICE:  relation "registros_expediente_fecha_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "registros_expediente_legal_org_tipo_idx" already exists, skipping
+NOTICE:  relation "asesorias_legales" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "asesorias_legales_org_estado_fecha_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "asesorias_legales_contacto_id_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "asesorias_legales_expediente_id_idx" already exists, skipping
+NOTICE:  relation "movimientos_legales" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "movimientos_legales_org_tipo_fecha_idx" already exists, skipping
+NOTICE:  relation "movimientos_legales_expediente_id_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "registros_operacion_legal" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "registros_operacion_org_tipo_fecha_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "registros_operacion_usuario_id_idx" already exists, skipping
+NOTICE:  relation "tours" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "tours_org_estado_salida_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "itinerarios_tour" already exists, skipping
+NOTICE:  relation "itinerarios_tour_dia_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "itinerarios_tour_org_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "reservas_tour" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "reservas_tour_org_estado_salida_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "reservas_tour_tour_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "reservas_tour_contacto_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "pagos_tour" already exists, skipping
+NOTICE:  relation "pagos_tour_org_fecha_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "pagos_tour_reserva_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "alumnos_academia" already exists, skipping
+NOTICE:  relation "alumnos_academia_org_estado_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "cursos_academia" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "cursos_academia_org_estado_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "inscripciones_academia" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "inscripciones_academia_org_estado_idx" already exists, skipping
+NOTICE:  relation "inscripciones_academia_curso_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "colegiaturas_academia" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "colegiaturas_org_estado_vencimiento_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "colegiaturas_alumno_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "asistencias_academia" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "asistencias_org_fecha_estado_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "asistencias_curso_idx" already exists, skipping
+DO
+GRANT
+GRANT
+ setval 
+--------
+      1
+(1 row)
+
+CREATE FUNCTION
+CREATE INDEX
+NOTICE:  relation "mensajes_media_url_idx" already exists, skipping
+CREATE EXTENSION
+NOTICE:  extension "unaccent" already exists, skipping
+NOTICE:  relation "servicios_reserva" already exists, skipping
+CREATE TABLE
+CREATE TABLE
+NOTICE:  relation "servicio_reserva_doctores" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "horarios_doctor" already exists, skipping
+NOTICE:  relation "horarios_doctor_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "excepciones_horario" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "excepciones_horario_idx" already exists, skipping
+NOTICE:  column "servicio_id" of relation "citas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "token_gestion" of relation "citas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "origen" of relation "citas" already exists, skipping
+ALTER TABLE
+CREATE INDEX
+NOTICE:  relation "citas_token_gestion_uq" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "citas_doctor_inicio_idx" already exists, skipping
+DO
+GRANT
+GRANT
+CREATE FUNCTION
+CREATE TABLE
+NOTICE:  relation "cajas" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "cajas_org_activa_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "turnos_caja" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "turnos_caja_org_estado_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "turnos_caja_caja_estado_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "turnos_caja_usuario_estado_idx" already exists, skipping
+NOTICE:  relation "turnos_caja_usuario_abierto_uq" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "turnos_caja_caja_abierta_uq" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "movimientos_caja" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "movimientos_caja_turno_created_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "movimientos_caja_org_idx" already exists, skipping
+NOTICE:  column "turno_id" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "caja_id" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "uuid_cliente" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "cambio" of relation "ventas" already exists, skipping
+ALTER TABLE
+CREATE INDEX
+NOTICE:  relation "ventas_org_uuid_cliente_uq" already exists, skipping
+NOTICE:  relation "ventas_turno_id_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "ventas_caja_id_idx" already exists, skipping
+NOTICE:  column "descuento" of relation "venta_partidas" already exists, skipping
+ALTER TABLE
+NOTICE:  relation "pagos_venta" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "pagos_venta_org_idx" already exists, skipping
+CREATE INDEX
+DO
+GRANT
+GRANT
+NOTICE:  column "es_credito" of relation "ventas" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+NOTICE:  relation "devoluciones_venta" already exists, skipping
+NOTICE:  relation "devoluciones_venta_original_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "devoluciones_venta_org_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "devolucion_partidas" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "devolucion_partidas_venta_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "devolucion_partidas_org_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "apartados" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "apartados_org_estado_vence_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "apartados_contacto_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "abonos_apartado" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "abonos_apartado_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "abonos_apartado_org_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "cuentas_cliente" already exists, skipping
+NOTICE:  relation "cuentas_cliente_org_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "movimientos_cuenta_cliente" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "movimientos_cuenta_cliente_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "movimientos_cuenta_org_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "notas_credito_cliente" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "notas_credito_contacto_idx" already exists, skipping
+NOTICE:  relation "notas_credito_org_idx" already exists, skipping
+DO
+GRANT
+GRANT
+ALTER TABLE
+ALTER TABLE
+CREATE TABLE
+NOTICE:  relation "cotizaciones" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "cotizaciones_org_estado_created_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "cotizaciones_contacto_idx" already exists, skipping
+NOTICE:  relation "cotizaciones_oportunidad_idx" already exists, skipping
+CREATE INDEX
+CREATE TABLE
+NOTICE:  relation "cotizacion_partidas" already exists, skipping
+NOTICE:  relation "cotizacion_partidas_cotizacion_idx" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+NOTICE:  relation "cotizacion_partidas_producto_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "cotizacion_partidas_org_idx" already exists, skipping
+DO
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+NOTICE:  column "visible_en_linea" of relation "productos" already exists, skipping
+ALTER TABLE
+NOTICE:  column "agotado_manual" of relation "productos" already exists, skipping
+ALTER TABLE
+NOTICE:  column "etiquetas_en_linea" of relation "productos" already exists, skipping
+ALTER TABLE
+NOTICE:  column "token_seguimiento" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "tipo_entrega" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "direccion_entrega" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "horario_deseado" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "costo_envio" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "pedido_ip" of relation "ventas" already exists, skipping
+ALTER TABLE
+CREATE INDEX
+NOTICE:  relation "ventas_token_seguimiento_key" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "ventas_pedidos_telefono_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "ventas_pedidos_ip_idx" already exists, skipping
+NOTICE:  relation "reservas_pedido" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "reservas_pedido_producto_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "reservas_pedido_venta_idx" already exists, skipping
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE TABLE
+NOTICE:  relation "listas_precios" already exists, skipping
+NOTICE:  relation "listas_precios_org_tipo_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  column "lista_precio_id" of relation "contactos" already exists, skipping
+ALTER TABLE
+DO
+CREATE INDEX
+NOTICE:  relation "contactos_lista_precio_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "precios_volumen" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "precios_volumen_org_producto_idx" already exists, skipping
+NOTICE:  relation "lista_precio_productos" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "lista_precio_productos_org_producto_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "promociones" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "promociones_org_vigencia_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "promociones_producto_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "promociones_org_categoria_idx" already exists, skipping
+NOTICE:  column "descuento_promocion" of relation "venta_partidas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "promocion_descripcion" of relation "venta_partidas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "descuento_promocion" of relation "cotizacion_partidas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "promocion_descripcion" of relation "cotizacion_partidas" already exists, skipping
+ALTER TABLE
+DO
+GRANT
+GRANT
+NOTICE:  column "grupo_id" of relation "productos" already exists, skipping
+ALTER TABLE
+NOTICE:  column "atributos" of relation "productos" already exists, skipping
+ALTER TABLE
+DO
+CREATE INDEX
+NOTICE:  relation "productos_grupo_id_idx" already exists, skipping
+NOTICE:  column "costo_unitario" of relation "venta_partidas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "signing_secret" of relation "bots" already exists, skipping
+ALTER TABLE
+NOTICE:  column "asesor_id" of relation "bots" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+NOTICE:  relation "auditoria_bot" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "auditoria_bot_org_fecha_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "auditoria_bot_conversacion_idx" already exists, skipping
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+GRANT
+REVOKE
+GRANT
+NOTICE:  column "permisos" of relation "bots" already exists, skipping
+ALTER TABLE
+UPDATE 0
+ALTER TABLE
+ALTER TABLE
+NOTICE:  relation "resenas" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+NOTICE:  relation "resenas_org_created_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "solicitudes_resena" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "solicitudes_resena_contacto_idx" already exists, skipping
+DO
+GRANT
+GRANT
+NOTICE:  column "sin_red" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "vendida_at" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "subida_at" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "turno_original_id" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "revision_motivos" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "diferencia_precio" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "catalogo_version" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "revision_resuelta_at" of relation "ventas" already exists, skipping
+ALTER TABLE
+NOTICE:  column "revision_resuelta_por" of relation "ventas" already exists, skipping
+ALTER TABLE
+CREATE INDEX
+NOTICE:  relation "ventas_revision_idx" already exists, skipping
+NOTICE:  column "sin_red" of relation "movimientos_inventario" already exists, skipping
+ALTER TABLE
+CREATE TABLE
+NOTICE:  relation "cola_caja_rechazos" already exists, skipping
+NOTICE:  relation "cola_caja_rechazos_pendientes_idx" already exists, skipping
+CREATE INDEX
+DO
+GRANT
+GRANT
+NOTICE:  constraint "productos_stock_check" of relation "productos" does not exist, skipping
+ALTER TABLE
+NOTICE:  constraint "movimientos_inventario_existencia_antes_check" of relation "movimientos_inventario" does not exist, skipping
+NOTICE:  constraint "movimientos_inventario_existencia_despues_check" of relation "movimientos_inventario" does not exist, skipping
+ALTER TABLE
+INSERT 0 0
+CREATE TABLE
+NOTICE:  relation "contratos" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "contratos_org_estado_idx" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "contratos_contacto_idx" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "cobros" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "cobros_cierre_unico" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "cobros_org_estado_vence_idx" already exists, skipping
+DO
+GRANT
+GRANT
+NOTICE:  column "monto_pagado" of relation "cobros" already exists, skipping
+ALTER TABLE
+NOTICE:  column "pagos" of relation "cobros" already exists, skipping
+ALTER TABLE
+DO
+CREATE TABLE
+NOTICE:  relation "servidores" already exists, skipping
+CREATE TABLE
+NOTICE:  relation "heartbeats_servidor" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "heartbeats_servidor_org_fecha_idx" already exists, skipping
+NOTICE:  column "servidor_id" of relation "contratos" already exists, skipping
+ALTER TABLE
+DO
+DO
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE TABLE
+NOTICE:  relation "messenger_login" already exists, skipping
+CREATE INDEX
+NOTICE:  relation "messenger_login_org_vence_idx" already exists, skipping
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+GRANT
+
+=== inicial/rol-prueba | EXIT 0 | 0.33 s ===
+ALTER ROLE
+
+=== inicial/prisma-generate | EXIT 0 | 8.28 s ===
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+
+✔ Generated Prisma Client (v5.22.0) to .\node_modules\@prisma\client in 1.03s
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+
+
+=== inicial/tsc | EXIT 0 | 10.17 s ===
+
+=== inicial/lint | EXIT 0 | 77.64 s ===
+
+> ambarcrm@0.1.0 lint
+> eslint .
+
+
+=== inicial/prisma-validate | EXIT 0 | 2.66 s ===
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+The schema at prisma\schema.prisma is valid 🚀
+┌─────────────────────────────────────────────────────────┐
+│  Update available 5.22.0 -> 8.0.0-rc.23                 │
+│                                                         │
+│  This is a major update - please follow the guide at    │
+│  https://pris.ly/d/major-version-upgrade                │
+│                                                         │
+│  Run the following to update                            │
+│    npm i --save-dev prisma@latest                       │
+│    npm i @prisma/client@latest                          │
+└─────────────────────────────────────────────────────────┘
+
+=== inicial/build | EXIT 0 | 73.28 s ===
+
+> ambarcrm@0.1.0 build
+> prisma generate && next build
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+
+✔ Generated Prisma Client (v5.22.0) to .\node_modules\@prisma\client in 966ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+
+▲ Next.js 16.3.8 (Turbopack)
+- Environments: .env
+✓ Running next.config.mjs took 44ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 37.8s
+  Running TypeScript ...
+  Finished TypeScript in 11.7s ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/57) ...
+  Generating static pages using 11 workers (14/57) 
+
+  Generating static pages using 11 workers (28/57) 
+
+  Generating static pages using 11 workers (42/57) 
+
+✓ Generating static pages using 11 workers (57/57) in 591ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /alumnos
+├ ƒ /api/academia/alumnos
+├ ƒ /api/academia/alumnos/[id]
+├ ƒ /api/academia/asistencia
+├ ƒ /api/academia/asistencia/[id]
+├ ƒ /api/academia/colegiaturas
+├ ƒ /api/academia/colegiaturas/[id]
+├ ƒ /api/academia/cursos
+├ ƒ /api/academia/cursos/[id]
+├ ƒ /api/academia/inscripciones
+├ ƒ /api/academia/inscripciones/[id]
+├ ƒ /api/ajustes
+├ ƒ /api/auth/[...nextauth]
+├ ƒ /api/automotriz/vehiculos
+├ ƒ /api/automotriz/vehiculos/[id]
+├ ƒ /api/bots
+├ ƒ /api/bots/[id]
+├ ƒ /api/buscar
+├ ƒ /api/caja/apartados
+├ ƒ /api/caja/apartados/[id]
+├ ƒ /api/caja/apartados/vencer
+├ ƒ /api/caja/cajas
+├ ƒ /api/caja/catalogo
+├ ƒ /api/caja/credito/[contactoId]
+├ ƒ /api/caja/credito/[contactoId]/recordatorio
+├ ƒ /api/caja/credito/abonos
+├ ƒ /api/caja/credito/ventas
+├ ƒ /api/caja/devoluciones
+├ ƒ /api/caja/movimientos
+├ ƒ /api/caja/revision
+├ ƒ /api/caja/revision/[id]
+├ ƒ /api/caja/turnos
+├ ƒ /api/caja/turnos/[id]/corte
+├ ƒ /api/caja/ventas
+├ ƒ /api/caja/ventas/sin-red
+├ ƒ /api/campos-personalizados
+├ ƒ /api/campos-personalizados/[id]
+├ ƒ /api/canal-api/[canalId]/mensajes
+├ ƒ /api/canales
+├ ƒ /api/canales/[id]
+├ ƒ /api/canales/[id]/registrar
+├ ƒ /api/canales/messenger/facebook/conectar
+├ ƒ /api/canales/messenger/facebook/paginas
+├ ƒ /api/citas
+├ ƒ /api/citas/[id]
+├ ƒ /api/clientes
+├ ƒ /api/cobros
+├ ƒ /api/cobros/[id]
+├ ƒ /api/cobros/[id]/recordar
+├ ƒ /api/cobros/ajustes
+├ ƒ /api/compras
+├ ƒ /api/compras/[id]
+├ ƒ /api/compras/proveedores
+├ ƒ /api/contactos
+├ ƒ /api/contactos/[id]
+├ ƒ /api/contactos/[id]/etiquetas
+├ ƒ /api/contactos/[id]/expediente
+├ ƒ /api/contactos/exportar
+├ ƒ /api/contactos/importar
+├ ƒ /api/contratos
+├ ƒ /api/contratos/[id]
+├ ƒ /api/conversaciones
+├ ƒ /api/conversaciones/[id]
+├ ƒ /api/conversaciones/[id]/mensajes
+├ ƒ /api/cotizaciones
+├ ƒ /api/cotizaciones/[id]
+├ ƒ /api/cotizaciones/[id]/enviar
+├ ƒ /api/cotizaciones/config
+├ ƒ /api/cron/auto-resolver
+├ ƒ /api/cron/enviar-programados
+├ ƒ /api/cron/generar-cobros
+├ ƒ /api/cron/limpiar-heartbeats
+├ ƒ /api/cron/recordatorios-citas
+├ ƒ /api/cron/vencer-apartados
+├ ƒ /api/cron/vencer-cotizaciones
+├ ƒ /api/cron/vencer-pedidos
+├ ƒ /api/difusion
+├ ƒ /api/doctores
+├ ƒ /api/doctores/[id]
+├ ƒ /api/embudos
+├ ƒ /api/embudos/[id]
+├ ƒ /api/etapas
+├ ƒ /api/etapas/[id]
+├ ƒ /api/etiquetas
+├ ƒ /api/ia/sugerir
+├ ƒ /api/inmobiliaria/propiedades
+├ ƒ /api/inmobiliaria/propiedades/[id]
+├ ƒ /api/lealtad/conexion
+├ ƒ /api/lealtad/contacto/[id]
+├ ƒ /api/legal/asesorias
+├ ƒ /api/legal/asesorias/[id]
+├ ƒ /api/legal/expedientes
+├ ƒ /api/legal/expedientes/[id]
+├ ƒ /api/legal/expedientes/[id]/registros
+├ ƒ /api/legal/movimientos
+├ ƒ /api/legal/movimientos/[id]
+├ ƒ /api/legal/operacion
+├ ƒ /api/legal/operacion/[id]
+├ ƒ /api/legal/sucursales
+├ ƒ /api/legal/sucursales/[id]
+├ ƒ /api/media/[archivo]
+├ ƒ /api/mensajes/enviar
+├ ƒ /api/mensajes/programados
+├ ƒ /api/mensajes/programados/[id]
+├ ƒ /api/messenger/webhook
+├ ƒ /api/meta/templates
+├ ƒ /api/meta/webhook
+├ ƒ /api/modulos
+├ ƒ /api/oportunidades
+├ ƒ /api/oportunidades/[id]
+├ ƒ /api/oportunidades/[id]/notas
+├ ƒ /api/oportunidades/mover
+├ ƒ /api/orgs
+├ ƒ /api/pacientes
+├ ƒ /api/panel-ar
+├ ƒ /api/panel-ar/ajustes
+├ ƒ /api/panel-ar/alertas
+├ ƒ /api/panel-ar/exportar
+├ ƒ /api/pedidos-en-linea/ajustes
+├ ƒ /api/pedidos-en-linea/productos
+├ ƒ /api/personal
+├ ƒ /api/plantillas
+├ ƒ /api/plantillas/[id]
+├ ƒ /api/precios
+├ ƒ /api/productos
+├ ƒ /api/productos/[id]
+├ ƒ /api/productos/[id]/codigo
+├ ƒ /api/productos/[id]/movimientos
+├ ƒ /api/productos/exportar
+├ ƒ /api/productos/importar
+├ ƒ /api/productos/lote
+├ ƒ /api/public/aurum/webhook
+├ ƒ /api/public/brand
+├ ƒ /api/public/cotizaciones/[token]/responder
+├ ƒ /api/public/opinion/[slug]
+├ ƒ /api/public/reservas/[slug]
+├ ƒ /api/public/reservas/[slug]/horarios
+├ ƒ /api/public/reservas/cita/[token]
+├ ƒ /api/public/tienda/[slug]
+├ ƒ /api/public/tienda/pedido/[token]
+├ ƒ /api/push/suscribir
+├ ƒ /api/reportes/csat
+├ ƒ /api/reportes/oportunidades
+├ ƒ /api/reportes/retail
+├ ƒ /api/resenas/ajustes
+├ ƒ /api/reservas/ajustes
+├ ƒ /api/reservas/excepciones
+├ ƒ /api/reservas/excepciones/[id]
+├ ƒ /api/reservas/horarios
+├ ƒ /api/reservas/horarios/[id]
+├ ƒ /api/reservas/servicios
+├ ƒ /api/reservas/servicios/[id]
+├ ƒ /api/servidores
+├ ƒ /api/servidores/[id]
+├ ƒ /api/servidores/[id]/token
+├ ƒ /api/servidores/heartbeat
+├ ƒ /api/shell
+├ ƒ /api/stream
+├ ƒ /api/tareas
+├ ƒ /api/tareas/[id]
+├ ƒ /api/usuarios
+├ ƒ /api/usuarios/[id]
+├ ƒ /api/v1/accounts/[accountId]/conversations/[conversationId]
+├ ƒ /api/v1/accounts/[accountId]/conversations/[conversationId]/appointments
+├ ƒ /api/v1/accounts/[accountId]/conversations/[conversationId]/appointments/availability
+├ ƒ /api/v1/accounts/[accountId]/conversations/[conversationId]/contacts
+├ ƒ /api/v1/accounts/[accountId]/conversations/[conversationId]/funnel
+├ ƒ /api/v1/accounts/[accountId]/conversations/[conversationId]/labels
+├ ƒ /api/v1/accounts/[accountId]/conversations/[conversationId]/messages
+├ ƒ /api/v1/accounts/[accountId]/conversations/[conversationId]/opportunity
+├ ƒ /api/v1/accounts/[accountId]/conversations/[conversationId]/products
+├ ƒ /api/v1/accounts/[accountId]/conversations/[conversationId]/quotes
+├ ƒ /api/v1/accounts/[accountId]/conversations/[conversationId]/quotes/[quoteId]/send
+├ ƒ /api/v1/accounts/[accountId]/conversations/[conversationId]/tasks
+├ ƒ /api/ventas
+├ ƒ /api/ventas/[id]
+├ ƒ /api/viajes/pagos
+├ ƒ /api/viajes/pagos/[id]
+├ ƒ /api/viajes/reservas
+├ ƒ /api/viajes/reservas/[id]
+├ ƒ /api/viajes/tours
+├ ƒ /api/viajes/tours/[id]
+├ ƒ /api/wa/manual
+├ ƒ /api/wa/onboard
+├ ƒ /asesorias-legales
+├ ƒ /asistencia-academia
+├ ƒ /automotriz
+├ ƒ /caja
+├ ƒ /caja/revision
+├ ƒ /caja/ticket/[ventaId]
+├ ƒ /chat
+├ ƒ /citas
+├ ƒ /clientes
+├ ƒ /clientes/[id]
+├ ƒ /cobros
+├ ƒ /colegiaturas
+├ ƒ /compras
+├ ƒ /configuracion
+├ ƒ /configuracion/clientes/[id]
+├ ƒ /contactos
+├ ƒ /contactos/[id]/expediente
+├ ƒ /contratos
+├ ƒ /contratos/[id]
+├ ƒ /cotizacion/[token]
+├ ƒ /cotizaciones
+├ ƒ /cursos-academia
+├ ƒ /demo
+├ ƒ /difusion
+├ ƒ /eliminacion-datos
+├ ƒ /embudos
+├ ƒ /finanzas-legales
+├ ƒ /inmobiliaria
+├ ƒ /inscripciones-academia
+├ ƒ /lealtad
+├ ƒ /legal
+├ ƒ /legal/[id]
+├ ƒ /login
+├ ƒ /operacion-legal
+├ ƒ /opinion/[slug]
+├ ƒ /oportunidades/[id]
+├ ƒ /pacientes
+├ ƒ /pacientes/[id]
+├ ƒ /pagos-tours
+├ ƒ /panel-ar
+├ ƒ /pedidos-en-linea
+├ ƒ /personal
+├ ƒ /privacidad
+├ ƒ /productos
+├ ƒ /productos/etiquetas
+├ ƒ /productos/precios
+├ ƒ /reportes-retail
+├ ƒ /resenas
+├ ƒ /reservar/[slug]
+├ ƒ /reservar/cita/[token]
+├ ƒ /reservas-en-linea
+├ ƒ /reservas-tours
+├ ƒ /servidores
+├ ƒ /tareas
+├ ƒ /terminos
+├ ƒ /tienda/[slug]
+├ ƒ /tienda/pedido/[token]
+├ ƒ /tours
+└ ƒ /ventas
+
+
+ƒ Proxy (Middleware)
+
+ƒ  (Dynamic)  server-rendered on demand
+
+
+=== inicial/test-aislamiento | EXIT 0 | 8.2 s ===
+OK · aislamiento de lectura y escritura en 81 tablas
+
+=== inicial/test-a3-e2e | EXIT 0 | 6.97 s ===
+{"loginReal":true,"variantes":{"padre":"PADRE-1792215708292-3KDEG","variante":"VAR-1792215708292-3KDEG","atributos":{"color":"rojo","talla":"M"},"existenciasIndependientes":true,"concurrenciaPedidoVenta":{"pedido":409,"venta":201,"existencia":"0.000","reservada":"0.000","disponible":"0.000"}},"code128":{"apiSvg":200,"etiquetas":200},"csv":{"importar":200,"duplicado":400,"erroresPorRenglon":[{"linea":3,"campo":"sku","mensaje":"SKU duplicado dentro del archivo"}],"formulaProtegida":true,"existenciaConservada":"7.000"},"lote":{"propio":200,"ajeno":404,"precio":"30.00","existenciaConservada":true},"precios":200}
+
+=== inicial/test-a3-fixes-e2e | EXIT 0 | 6.36 s ===
+{"descuentoCajero":{"promocionSinManual":201,"promocionMasQuinceManual":403},"listaPublica":{"caja":"80","cajaClienteSinLista":"80","ventas":"80","tienda":"80.00"},"costoUnitario":{"caja":"30.00","ventas":"30.00","pedidoPendiente":null}}
+
+=== inicial/test-a4-e2e | EXIT 0 | 6.86 s ===
+{"permisos":{"admin":200,"encargado":200,"cajero":404},"paginas":{"admin":200,"encargado":200,"cajeroSinReporteAntesDeRedirigir":true},"cuadre":{"ingresos":"170","costos":"80","utilidad":"40","ingresosSinCosto":"50","partidasSinCosto":1},"zonaLocal":[{"dia":"2026-10-09","ingreso":"230"},{"dia":"2026-10-10","ingreso":"-60"}],"canceladasExcluidas":true,"variantes":{"variante":"=Variante peligrosa","agrupada":"=Familia peligrosa"},"inventario":{"sinMovimiento":true,"bajoMinimo":true},"cortes":{"diferencia":-10},"csv":{"status":200,"formulasProtegidas":true},"limites":{"sinRango":400,"mayorUnAnio":400}}
+
+=== inicial/test-bot-api | EXIT 0 | 15.2 s ===
+concurrencia (15 pares de handoffs simultáneos): sin bloqueo → 14 pares con el mismo asesor; con FOR NO KEY UPDATE → 0
+round-robin con 1 Cajero y 2 asesores → asesor1, asesor2, asesor1, asesor2
+citas (15 pares de reservas simultáneas al mismo horario): sin bloqueo → 15 pares con doble reserva; con FOR UPDATE → 0
+reprogramación (15 pares al mismo hueco): sin bloqueo → 15 dobles; con FOR UPDATE → 0
+prisma:error 
+Invalid `prisma.mensaje.create()` invocation:
+
+
+Error occurred during query execution:
+ConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: "42501", message: "new row violates row-level security policy for table \"mensajes\"", severity: "ERROR", detail: None, column: None, hint: None }), transient: false })
+simultáneas: 250 peticiones (2 empresas × 50 GET + 50 POST + 25 cruzadas) → 0 fugas
+prisma:error 
+Invalid `prisma.mensaje.create()` invocation:
+
+
+Error occurred during query execution:
+ConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: "42501", message: "new row violates row-level security policy for table \"mensajes\"", severity: "ERROR", detail: None, column: None, hint: None }), transient: false })
+prisma:error 
+Invalid `prisma.$executeRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42501`. Message: `ERROR: permission denied for table auditoria_bot`
+prisma:error 
+Invalid `prisma.$executeRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42501`. Message: `ERROR: permission denied for table auditoria_bot`
+prisma:error Unique constraint failed on the (not available)
+prisma:error 
+Invalid `prisma.contacto.create()` invocation:
+
+
+Unique constraint failed on the (not available)
+prisma:error Unique constraint failed on the (not available)
+prisma:error 
+Invalid `prisma.contacto.create()` invocation:
+
+
+Unique constraint failed on the (not available)
+prisma:error Unique constraint failed on the (not available)
+prisma:error 
+Invalid `prisma.contacto.create()` invocation:
+
+
+Unique constraint failed on the (not available)
+prisma:error Unique constraint failed on the (not available)
+prisma:error 
+Invalid `prisma.contacto.create()` invocation:
+
+
+Unique constraint failed on the (not available)
+OK · API del bot
+
+=== inicial/test-caja-a2-e2e | EXIT 0 | 7.06 s ===
+{"loginReal":{"cajero":true,"encargado":true},"devolucionTurnoCerrado":{"turnoOriginal":"cerrado","salidasOriginal":0,"salidasTurnoActual":1,"cambioLigado":true},"notaCredito":{"saldoInicial":"40","pagoAplicado":40,"saldoFinal":0},"apartados":{"cancelacionLiberaStock":1,"vencimientoLiberaStock":1,"cronSinLlave":401,"cronConLlave":200},"credito":{"cajeroConfiguraLimite":403,"cajeroSobreLimite":403,"encargadoSobreLimite":201,"abonoEntraAlTurno":1,"saldoFinal":130},"whatsappSinConversacionOficial":409}
+
+=== inicial/test-caja-dinero | EXIT 0 | 6.42 s ===
+{"apartadoReembolsado":{"fondo":500,"esperado":500},"apartadoVencido":{"fondo":500,"anticipo":100,"esperado":600,"usuarioMovimiento":null},"ventaCancelada":{"fondo":500,"efectivo":100,"esperado":500},"ventaMixtaCancelada":{"fondo":500,"efectivo":60,"tarjeta":40,"salida":60,"esperado":500},"turnoCerrado":{"esperadoGuardado":500},"devolucionConDescuento":{"primera":90,"segunda":90,"totalDevuelto":180,"totalVenta":180},"cancelarConDevolucion":{"status":409,"mensaje":"La venta ya tiene devoluciones; registra una devolución por lo que falta","esperadoAntes":550,"esperadoDespues":550,"stockAntes":1,"stockDespues":1}}
+
+=== inicial/test-caja-e2e | EXIT 0 | 6.31 s ===
+{"login":{"puesto":"Cajero"},"permisosTurnos":{"cajeroCorteAjeno":404,"encargadoCorteAjeno":200,"encargadoCierraAjeno":200,"cajeroVeSoloPropios":true,"encargadoVeTodos":true},"apertura":201,"venta":{"pieza":1,"pesoKg":0.5,"total":"200","pagos":["efectivo","tarjeta"],"cambio":"20"},"ticket":{"propio":200,"otraEmpresa":404},"cancelarComoCajero":403,"cancelarTrasCorte":{"estado":409,"mensaje":"Este turno ya tuvo corte; registra una devolución"},"corteX":{"esperado":"600"},"corteZ":{"contado":590,"diferencia":"-10"},"stockFinal":{"pieza":2,"pesoKg":1.5}}
+
+=== inicial/test-canales-api | EXIT 0 | 6.5 s ===
+OK · API: firma, SSRF, DNS privado, reintentos, idempotencia concurrente, bot sin teléfono, notas, fallo, secretos, regeneración y aislamiento
+
+=== inicial/test-canales-base | EXIT 0 | 5.89 s ===
+OK · respuesta del bot sin teléfono mediante proveedor falso; destinatarios y despacho
+OK · identidad por canal, idempotencia y enlace posterior con teléfono
+
+=== inicial/test-canales-e2e | EXIT 0 | 6.22 s ===
+OK · HTTP real: login, duplicados Messenger 409 en alta/edición, configuración sin secretos, webhooks públicos, asesor sin teléfono, fallo visible, nota privada e iconos/datos en la bandeja
+
+=== inicial/test-canales-messenger | EXIT 1 | 6.36 s ===
+[REPO]\web\src\lib\channel\media-publica.ts:15
+
+  if (url.protocol !== "https:") throw new Error("configura NEXTAUTH_URL con https para los adjuntos de Messenger");
+
+                                       ^
+
+
+
+
+
+Error: configura NEXTAUTH_URL con https para los adjuntos de Messenger
+
+    at urlMediaPublica ([REPO]\web\src\lib\channel\media-publica.ts:15:40)
+
+    at <anonymous> ([REPO]\web\prisma\scripts\test-canales-messenger.ts:116:23)
+
+
+
+Node.js v22.19.0
+
+
+=== inicial/test-cobros-cancelar-eliminar-e2e | EXIT 1 | 5.66 s ===
+node:internal/modules/run_main:123
+
+    triggerUncaughtException(
+
+    ^
+
+
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+
+
+'55450' !== '55453'
+
+
+
+    at <anonymous> ([REPO]\web\prisma\scripts\test-cobros-cancelar-eliminar-e2e.ts:15:8)
+
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+
+  generatedMessage: true,
+
+  code: 'ERR_ASSERTION',
+
+  actual: '55450',
+
+  expected: '55453',
+
+  operator: 'strictEqual',
+
+  diff: 'simple'
+
+}
+
+
+
+Node.js v22.19.0
+
+
+=== inicial/test-cobros-db | EXIT 0 | 6.59 s ===
+AR vistas DB: abono concurrente idempotente, saldo, sobrepago rechazado, mensualidad manual única, baja confirmada de Administrador y cancelación solo futura OK
+cobros DB: referencias de cliente/oportunidad, edición con historial, vencidos, sin día/inicio futuro, cierre de estados, MRR/proyección, IA una vez por cliente incluso con pagos en meses distintos y baja OK
+
+=== inicial/test-cobros-e2e | EXIT 1 | 5.58 s ===
+[REPO]\web\prisma\scripts\test-cobros-e2e.ts:12
+
+if (!["localhost", "127.0.0.1"].includes(new URL(baseUrl).hostname) || !["localhost", "127.0.0.1"].includes(new URL(adminUrl).hostname) || new URL(adminUrl).port !== "55453") throw new Error("Esta prueba del seed solo admite la BD desechable local en 55453");
+
+                                                                                                                                                                                     ^
+
+
+
+
+
+Error: Esta prueba del seed solo admite la BD desechable local en 55453
+
+    at <anonymous> ([REPO]\web\prisma\scripts\test-cobros-e2e.ts:12:182)
+
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+
+
+Node.js v22.19.0
+
+
+=== inicial/test-concurrencia-caja-a2 | EXIT 0 | 6.42 s ===
+{"modo":"CON_PROTECCION","devolucionConcurrente":{"intentos":2,"exitosas":1,"cantidadVendida":1,"cantidadDevuelta":1},"devolucionTurnoCerrado":{"devolucionId":"9","salidasTurnoCerrado":0,"salidasTurnoActual":1},"creditoConcurrente":{"intentos":2,"exitosas":1,"limite":100,"ventas":1,"totalVendido":80,"saldoGuardado":80},"apartados":{"stockReservado":0,"stockLiberado":1,"vencidos":1,"stockTrasVencer":1}}
+
+=== inicial/test-concurrencia-caja | EXIT 0 | 6.22 s ===
+{"modo":"CON_PROTECCION","ultimoProducto":{"intentos":2,"ventas":1,"stockFinal":0},"uuidCliente":{"peticiones":5,"respuestasExitosas":5,"ventasGuardadas":1,"idsDistintos":1},"aperturaUsuario":{"intentos":2,"turnosAbiertos":1},"aperturaCaja":{"intentos":2,"turnosAbiertos":1},"cancelacionContraCorte":{"cancelacion":"rechazada409","cierre":"cumplido","esperadoGuardado":100,"esperadoSegunVentasFinales":100,"coincide":true}}
+
+=== inicial/test-concurrencia-cobros | EXIT 0 | 5.7 s ===
+{"modo":"CON_PROTECCION","pagosAplicados":1,"mensualidades":1,"creadosPorCron":[0,1]}
+
+=== inicial/test-concurrencia-cotizaciones | EXIT 0 | 6.11 s ===
+{"modo":"CON_PROTECCION","peticiones":2,"respuestasExitosas":2,"aceptacionesNuevas":1,"respuestasIdempotentes":1,"ventasCreadas":1,"stockFinal":1}
+
+=== inicial/test-concurrencia-nota-credito | EXIT 0 | 6.02 s ===
+{"modo":"CON_PROTECCION","intentos":2,"exitosas":1,"ventas":1,"saldoInicial":100,"importePorVenta":80,"saldoFinal":20,"saldoNegativo":false}
+
+=== inicial/test-concurrencia-pedidos | EXIT 0 | 6.06 s ===
+{"modo":"CON_PROTECCION","peticiones":2,"exitosas":1,"rechazadas":1,"pedidosCreados":1,"cantidadReservada":1,"stockFisico":1,"sobreventa":false,"pedidoContraCaja":{"exitosas":1,"rechazadas":1,"pedidos":0,"ventasCaja":1,"stockFisico":0,"reservado":0,"disponible":0},"idempotencia":{"peticiones":5,"exitosas":5,"ventas":1}}
+
+=== inicial/test-concurrencia-resenas | EXIT 0 | 6.92 s ===
+{"modo":"CON_PROTECCION","dobleEvento":{"eventos":2,"solicitudes":1,"enviosWhatsApp":1},"rafaga":{"eventos":6,"solicitudes":1,"enviosWhatsApp":1},"reservadaAbandonada":{"hace2h":"enviada","hace10min":"bloquea"},"omitidasYFallidas":{"primera":"omitida","segunda":"fallida","tercera":"omitida"}}
+
+=== inicial/test-concurrencia-retail | EXIT 0 | 11.42 s ===
+OK · concurrencia retail {"ventas":{"aceptadas":3,"stockFinal":0},"ventaPorPeso":{"intentos":3,"aceptadas":2,"stockFinal":0.5},"ordenBloqueos":{"resueltas":2,"stocks":[0,0]},"movimientos":{"stockFinal":10},"compra":{"stockFinal":5,"movimientos":1},"cancelarEditar":{"estado":"entregada","stockFinal":9,"movimientos":2},"pagosTour":{"aceptados":3,"saldo":100},"colegiatura":{"solicitudes":5,"cargos":1}}
+
+=== inicial/test-concurrencia-sinred | EXIT 0 | 6.48 s ===
+{"modo":"CON_PROTECCION","colaReenviada":{"peticiones":5,"exitosas":5,"ventasGuardadas":1,"existenciaFinal":4},"dosCajasSinRed":{"intentos":2,"exitosas":2,"ventas":2,"existenciaFinal":-1,"ventasMarcadasNegativo":1,"movimientosSinRed":2},"contraPedidoEnLinea":{"existenciaTrasVentaSinRed":0,"pedidoDespuesDeSinRed":"rechazado 409","pedidoPrimeroLuegoSinRed":{"existencia":0,"marcas":[]}},"precioDistinto":{"cobrado":"90.00","servidor":"100.00","diferenciaPrecio":"10.00","marcas":["precio_distinto"],"rutaNormal":"rechazada: El pago no cubre el total"},"corteConVentasTardias":{"esperadoGuardadoZ":"370.00","esperadoEnVivoTrasTardia":"370.00","tardiaEnTurnoCerrado":{"marcas":["tardia"],"turnoId":true},"tardias":{"ventas":1,"efectivo":"30.00"},"sumaIngenuaDelTurnoCerrado":400,"sinTurnoAbierto":"TURNO_REQUERIDO","enTurnoNuevo":{"marcas":["tardia"],"turnoOriginal":true},"esperadoTurnoNuevo":"20.00"},"ventanas":{"haceMasDe72h":"VENTA_MUY_ANTIGUA","futura":"FECHA_FUTURA","ventanaDesactivada":"aceptada","esperandoTurnoCaducada":"VENTA_MUY_ANTIGUA"}}
+
+=== inicial/test-concurrencia-varias-cajas | EXIT 0 | 6.05 s ===
+{"sinProteccion":{"intentos":2,"ventas":2,"existenciaFinal":"0.000"},"conProteccion":{"intentos":2,"ventas":1,"rechazadas":1,"existenciaFinal":"0.000"}}
+
+=== inicial/test-cotizaciones-e2e | EXIT 0 | 6.45 s ===
+{"loginReal":true,"totalServidor":{"enviadoPorNavegador":0.01,"subtotal":15.15,"impuestos":2.32,"total":16.82},"aislamiento":{"propia":200,"otraEmpresa":404},"paginaPublica":{"propia":200,"tokenInventado":404},"respuesta":{"primeraAceptacion":200,"repetidaIdempotente":200,"unaVenta":1,"stockFinal":1.5,"oportunidad":"ganado","eventosGanada":1},"vencimiento":{"aceptarVencida":409,"cronSinLlave":401,"cronConLlave":200,"estado":"vencida"}}
+
+=== inicial/test-cotizaciones-zona | EXIT 0 | 5.86 s ===
+{"zona":"America/Mexico_City","ultimoDia20h":"aceptada","diaSiguiente0001":{"status":409,"mensaje":"La cotización está vencida"},"estadoTrasRollback":"borrador","cron":{"marcadas":1,"estado":"vencida"}}
+
+=== inicial/test-cupos-concurrentes | EXIT 0 | 5.86 s ===
+OK · cupos concurrentes de tours y academia respetan la capacidad
+
+=== inicial/test-messenger-facebook-http | EXIT 1 | 6.3 s ===
+node:internal/modules/run_main:123
+
+    triggerUncaughtException(
+
+    ^
+
+
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+
+
+500 !== 200
+
+
+
+    at <anonymous> ([REPO]\web\prisma\scripts\test-messenger-facebook-http.ts:55:10)
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+
+  generatedMessage: true,
+
+  code: 'ERR_ASSERTION',
+
+  actual: 500,
+
+  expected: 200,
+
+  operator: 'strictEqual',
+
+  diff: 'simple'
+
+}
+
+
+
+Node.js v22.19.0
+
+
+=== inicial/test-messenger-facebook-rutas | EXIT 0 | 6.45 s ===
+OK · Rutas Facebook en proceso: 401/403, admin, Origin, cookies, CSRF, respuesta sin tokens, selección, consumo, permisos recortados y rate limit
+
+=== inicial/test-messenger-facebook | EXIT 0 | 6.27 s ===
+OK · Facebook simulado: intercambio POST sin credenciales en URL, lista pública, cifrado, CSRF, sesión/usuario/empresa, vencimiento, selección, 409, reconexión, app propia, permisos, paginación y consumo concurrente
+
+=== inicial/test-paridad-precios | EXIT 0 | 8.45 s ===
+{"casos":288,"iguales":288,"conPromocion":252,"conVolumen":89,"conLista":49,"version":"66f50b80bcdb"}
+
+=== inicial/test-pedidos-e2e | EXIT 0 | 6.77 s ===
+{"loginReal":true,"panel":200,"paginaPublica":200,"catalogo":{"visibles":["Manzana pública"],"ocultoExcluido":true,"inactivoExcluido":true,"otraEmpresaExcluida":true},"precioServidor":{"enviado":"0.01","subtotal":"20.00","envio":"5.00","total":"25.00"},"idempotencia":{"primera":201,"repetida":200,"ventas":1},"limitesReales":{"telefono":{"segundo":201,"tercero":429,"pedidosContados":2},"ip":{"respuestas":[201,201,429],"pedidosContados":2}},"seguimiento":{"propio":200,"inventado":404,"sinDireccion":true},"aislamientoProductoAjeno":404,"confirmacion":{"status":200,"stockFinal":8,"reservaActiva":0},"reservaContraOtrosCanales":400,"cancelacionLiberaReserva":{"status":200,"reservaActiva":0}}
+
+=== inicial/test-precios-promociones | EXIT 0 | 6.61 s ===
+{"prioridad":{"listaCliente":"95.00","volumen":"90.00"},"vigenciaMexico":{"ultimoDia20h":"200.00","diaSiguiente0001":"300.00"},"tresPorDos":{"cobrado":"200.00","devoluciones":["66.67","66.66","66.67"],"totalDevuelto":"200.00"},"promocionMasDescuentoGeneral":{"cobrado":"180.00","totalDevuelto":"180.00","noSuperaCobrado":true},"caminos":{"caja":"200.00","apartado":"200.00","credito":"200.00","cotizacion":"200.00","cotizacionConservada":"200.00","tienda":"200.00"},"costosHistoricos":{"caja":"40.00","apartado":"40.00","credito":"40.00","cotizacionAceptada":"40.00","pedidoAntes":null,"pedidoConfirmado":"40.00"}}
+
+=== inicial/test-referencias | EXIT 0 | 5.69 s ===
+OK · referencias de otra empresa rechazadas y recordatorios sin atascos
+
+=== inicial/test-reportes-cuadre | EXIT 0 | 6.12 s ===
+{"pedidoConEnvio":{"ingresoProducto":100,"utilidad":40,"envios":50,"reembolso":100},"calculoManual":{"cobrado":180,"devolucion":60,"ingresoNeto":120,"costoNeto":80,"utilidad":40},"reporte":{"ingresoNeto":120,"costoNeto":80,"utilidad":40},"canceladaExcluible":true,"ventaViejaSinCosto":{"utilidad":null,"clasificacion":"sin costo"}}
+
+=== inicial/test-resenas-e2e | EXIT 0 | 7.17 s ===
+{"destinoPorEstrella":["https://g.page/r/CresenaE2E/review"],"guardadas":5,"openRedirect":"ignorado","solicitudAutomatica":{"cita":"omitida","venta":"omitida"},"moduloApagado":404,"sinEnlaceValido":404,"agente":403,"enlaceMalo":400,"limitePorIp":{"ok":30,"bloqueadas":2}}
+
+=== inicial/test-reservas-concurrentes | EXIT 0 | 5.91 s ===
+OK · reservas en línea simultáneas: un lugar por especialista, sin duplicados
+
+=== inicial/test-servidores-e2e | EXIT 0 | 6.59 s ===
+servidores E2E: alta/token único, sin datos, rangos, heartbeat concurrente 201/204/204, estado rojo, edición/cargas, rotación 401/201, demo catálogo oculto/API 404/página sin datos, puesto 403, saldo parcial del seed y atraso, incobrable excluido, n8n key 401/200, retención 30 días OK; cero envíos
+
+=== inicial/test-sinred-e2e | EXIT 0 | 7.45 s ===
+{"apagado":{"subida":403,"catalogo":403},"soloAdminEnciende":true,"subida":201,"reenvio":200,"ventasGuardadas":1,"identidadAjena":403,"turnoAjeno":"TURNO_AJENO","rechazosRegistrados":5,"precioDistinto":["precio_distinto"],"corteX":"195","existenciaNegativa":-3,"revision":2,"corteZTardia":{"esperado":"745","tardias":"50"}}
+
+=== inicial/test-sql-inventario-negativo | EXIT 0 | 5.88 s ===
+OK · el esquema permite existencia negativa (stock_minimo sigue >= 0)
+
+=== inicial/test-total-cobrado-cliente | EXIT 0 | 5.62 s ===
+Total cliente DB OK: dos contratos, estados excluidos con abonos, pendiente sin pago, histórico sin abonos, parcial exacto, paridad KPI /cobros, saldo, primer abono/fecha histórica, mensualidades, más de LIMITE_PANEL, sin pagos/sin fechas y aislamiento RLS crm_app sin BYPASSRLS.
+
+=== inicial/test-tours-dinero | EXIT 0 | 5.55 s ===
+OK · dinero de tours: 100.10 − 33.37 = 66.73; el resto liquida en 0.00; 0.10 + 0.20 sobre 0.30 liquida
+
+=== inicial/test-vencimiento-pedidos | EXIT 0 | 5.77 s ===
+{"modo":"CON_PROTECCION","vencimientoSimple":{"estado":"cancelada","reservaActiva":false},"cruce":{"operacionesCumplidas":1,"accionesGanadoras":1,"estado":"cancelada","stockAplicado":false,"stock":1,"reservaActiva":false,"consistente":true},"pendienteABorrador":"409"}
+
+=== inicial/test-webhook-manual | EXIT 0 | 5.89 s ===
+[meta/webhook] evento phone_number_id=9179221599455368 campos=messages
+[meta/webhook] firma inválida: revisa META_APP_SECRET o el App Secret del canal manual
+[meta/webhook] evento phone_number_id=9179221599455368 campos=messages
+[meta/webhook] firma inválida: revisa META_APP_SECRET o el App Secret del canal manual
+OK · webhook: firma del canal manual aceptada, firma equivocada rechazada, firma global intacta
+
+=== inicial/check-a3 | EXIT 0 | 5.86 s ===
+{"code128":{"123456":16,"ABC123":67,"svg":true},"csv":{"formulasNeutralizadas":true,"importacionSinExistencia":true},"variantes":{"grupoId":true,"atributosJsonb":true}}
+
+=== inicial/check-arquitectura-modulos | EXIT 0 | 5.64 s ===
+arquitectura: conModulo, pestañas, paginación y checklist OK
+
+=== inicial/check-audio-ogg | EXIT 0 | 5.39 s ===
+audio: WebM/Opus → Ogg/Opus con CRC, duración y marcas correctas
+
+=== inicial/check-aurum-webhook | EXIT 0 | 5.58 s ===
+aurum webhook: header x-aurum-clave y ?clave= válidos, secretos incorrectos o vacíos rechazados OK
+
+=== inicial/check-busqueda | EXIT 0 | 5.45 s ===
+búsqueda: patrón LIKE escapado OK
+
+=== inicial/check-caja-a2 | EXIT 0 | 5.48 s ===
+caja A2: devoluciones, apartados, crédito, bloqueos y WhatsApp OK
+
+=== inicial/check-caja-offline | EXIT 0 | 5.44 s ===
+caja offline: catálogo por identidad, sin red, 403 apagado, identidad ajena y cálculo local OK
+
+=== inicial/check-caja-sinred | EXIT 0 | 5.77 s ===
+caja sin red: cola FIFO, retroceso, 4xx visible, 401 conserva, otra identidad intacta, turno requerido, validación y apagado OK
+
+=== inicial/check-caja | EXIT 0 | 6.17 s ===
+caja: turnos, cobro mixto, descuentos, cortes, ticket, lealtad y permisos OK
+
+=== inicial/check-campos-personalizados | EXIT 0 | 6.19 s ===
+campos-personalizados OK
+
+=== inicial/check-canales-ui | EXIT 0 | 6.11 s ===
+OK · canales UI: selector, datos SSR/SSE, ventanas separadas y rutas públicas exactas
+
+=== inicial/check-cantidades-retail | EXIT 0 | 6.34 s ===
+cantidades retail: pieza 1.5 rechazada; 1.234 kg aceptado; 1.2345 rechazado
+
+=== inicial/check-citas | EXIT 0 | 6.56 s ===
+citas OK
+
+=== inicial/check-clientes-automotriz | EXIT 0 | 5.91 s ===
+verticales clientes, pacientes, automotriz e inmobiliaria OK
+
+=== inicial/check-contratos-cobros | EXIT 0 | 6.19 s ===
+contratos/cobros: MRR, inicio/baja, febrero 29–31 → 28, cargos exactos, IA una vez por cliente, permisos y cero envíos automáticos OK
+
+=== inicial/check-cotizaciones | EXIT 0 | 6.48 s ===
+{"totalesMasIva":{"subtotal":15.15,"descuento":0.65,"impuestos":2.32,"total":16.82},"preciosConIva":{"total":180,"impuestosIncluidos":24.83},"totalNavegadorIgnorado":true,"vigenciaMexico":{"ultimoDia20h":"vigente","diaSiguiente0001":"vencida"},"whatsapp":{"ventanaAbierta":"texto","ventanaCerradaSinPlantilla":"sin_plantilla","ventanaCerradaConPlantilla":"plantilla"}}
+
+=== inicial/check-demo | EXIT 0 | 6.36 s ===
+check-demo OK · 96 llamadas fetch revisadas en 63 archivos
+check-demo OK · personalización estable al cambiar de giro
+
+=== inicial/check-lealtad | EXIT 0 | 6.31 s ===
+lealtad: teléfonos, secretos, avisos y webhook OK
+
+=== inicial/check-legal | EXIT 0 | 6.06 s ===
+legal: módulos, validadores y SQL OK
+
+=== inicial/check-pedidos-en-linea | EXIT 0 | 6.64 s ===
+{"config":{"minimo":"250.50","envio":"49.90","maxTelefono":4,"maxIp":12,"horasVencimiento":36},"cantidades":{"duplicadasAcumuladas":"1","piezaFraccionaria":"rechazada","pesoTresDecimales":"aceptado"},"totalNavegadorIgnorado":true}
+
+=== inicial/check-permisos-modulos | EXIT 0 | 7.09 s ===
+permisos por puesto: sesión, configuración y servidor OK
+
+=== inicial/check-plantilla-meta | EXIT 0 | 6.14 s ===
+plantillaMeta OK
+botones, ventana y errores OK
+
+=== inicial/check-precios | EXIT 0 | 6.75 s ===
+{"motorUnico":true,"caminos":["src/lib/caja-db.ts","src/lib/caja-a2-db.ts","src/lib/cotizaciones-db.ts","src/lib/pedidos-db.ts","src/app/api/ventas/route.ts","src/app/api/public/tienda/[slug]/route.ts"],"vigenciaLocal":true}
+
+=== inicial/check-proxy | EXIT 0 | 6.23 s ===
+proxy: rutas públicas con barra (y /demo exacta), /cotizaciones y demás internas protegidas OK
+
+=== inicial/check-reportes-a4 | EXIT 0 | 6.23 s ===
+{"costosEnTodosLosCaminos":["src/lib/caja-db.ts","src/lib/caja-a2-db.ts","src/lib/cotizaciones-db.ts","src/app/api/ventas/route.ts","src/lib/pedidos-db.ts","src/lib/venta-estado-db.ts"],"ingresoProrrateado":true,"devolucionesPorPeriodo":true,"zonaLocal":true,"csvProtegido":true,"permisos":true}
+
+=== inicial/check-resenas | EXIT 0 | 6.11 s ===
+resenas: enlace de Google, origen, estrellas, config, semana local, QR y ruta pública OK
+
+=== inicial/check-reservas | EXIT 0 | 6.09 s ===
+reservas: motor de horarios, zonas y excepciones OK
+
+=== inicial/check-retail | EXIT 0 | 6.05 s ===
+retail: productos, inventario, compras, proveedores, ventas y pedidos OK
+
+=== inicial/check-seeds-seguridad | EXIT 0 | 6.38 s ===
+seeds demo: bloqueo de producción, autorización y contraseña aleatoria OK
+
+=== inicial/check-seguridad | EXIT 0 | 6.44 s ===
+seguridad: SSRF, archivos por empresa, límites e intentos OK
+bot: 12 rutas /api/v1 pasan por conBot
+
+=== inicial/check-servidores | EXIT 0 | 6.31 s ===
+servidores: límites exactos 80/90, 3 h, silencio tras limpieza, sin datos gris, fechas, vencimientos 7/30, WhatsApp vacío y orden, rangos y plataforma OK
+
+=== inicial/check-sw-push | EXIT 0 | 6.84 s ===
+sw: push y notificationclick intactos, cachés versionados con limpieza en activate, un solo registro
+
+=== inicial/check-viajes-academia | EXIT 0 | 6.27 s ===
+viajes y academia: catálogo, reservas, cobros, alumnos, cursos y asistencia OK
+
+=== suplementarias/test-canales-messenger-repeticion | EXIT 0 | 7.81 s ===
+prisma:error Unique constraint failed on the (not available)
+prisma:error 
+Invalid `prisma.canalWhatsapp.create()` invocation:
+
+
+Unique constraint failed on the (not available)
+OK · Messenger simulado: configuración cifrada y privada, firma por página y global, rechazo sin escrituras/Graph, cuerpos mixtos, PSID, aislamiento, ecos, acuses, ventanas, bot, token y media firmada
+
+=== suplementarias/test-cobros-cancelar-eliminar-e2e-repeticion | EXIT 0 | 8.89 s ===
+OK: crm_app sin BYPASSRLS; sin nota 400; agente con acceso 403; estados cerrados 409; cancelación concurrente idempotente conserva pagos; saldo/cartera/ingreso/calendario/CSV/alertas excluyen cancelados; aislamiento 404 y módulo apagado 404
+OK: comisiones excluyen abonos cancelados del mes anterior; pago mensual cancelado fuera de ingresos/reparto; mensualidades con periodo 409; extras/anticipos/balances 204; delete concurrente 204/404; cron repetido genera 0 y conserva exactamente las filas
+
+=== suplementarias/test-cobros-e2e-repeticion | EXIT 0 | 8.67 s ===
+AR vistas E2E: ruta de Registrar pago, abonos concurrentes sin duplicar, saldo 50 → 0, cobro manual mensual, duplicado 409, baja confirmada cancela futuro y conserva ingresos, oculta por defecto y muestra ?bajas=1, oportunidad Perdido OK
+cobros E2E: login orgSlug, seed MRR 4400, contrato → anticipo/balance → cron concurrente → mensualidad → pago, MRR 4500 y cobrado 150.01, IA 100, errores 400/404/409, permisos 403, módulo apagado 404, aislamiento bidireccional y CSV OK; cero envíos
+
+=== suplementarias/test-messenger-facebook-http-repeticion | EXIT 0 | 6.94 s ===
+OK · HTTP Facebook: login real local, solo admin, origen, cookies, CSRF, respuesta sin tokens, selección, consumo, manual, permisos recortados y rate limit en ambas rutas
+
+=== suplementarias/test-concurrencia-caja-a2-sin-proteccion | EXIT 0 | 7.17 s ===
+{"modo":"SIN_PROTECCION","devolucionConcurrente":{"intentos":2,"exitosas":2,"cantidadVendida":1,"cantidadDevuelta":2},"devolucionTurnoCerrado":"NO_EJECUTADA","creditoConcurrente":{"intentos":2,"exitosas":2,"limite":100,"ventas":2,"totalVendido":160,"saldoGuardado":80},"apartados":null}
+
+=== suplementarias/test-concurrencia-caja-a2-proteccion-restaurada | EXIT 0 | 7.09 s ===
+{"modo":"CON_PROTECCION","devolucionConcurrente":{"intentos":2,"exitosas":1,"cantidadVendida":1,"cantidadDevuelta":1},"devolucionTurnoCerrado":{"devolucionId":"21","salidasTurnoCerrado":0,"salidasTurnoActual":1},"creditoConcurrente":{"intentos":2,"exitosas":1,"limite":100,"ventas":1,"totalVendido":80,"saldoGuardado":80},"apartados":{"stockReservado":0,"stockLiberado":1,"vencidos":1,"stockTrasVencer":1}}
+
+=== suplementarias/test-concurrencia-caja-sin-proteccion | EXIT 0 | 7.69 s ===
+{"modo":"SIN_PROTECCION","ultimoProducto":{"intentos":2,"ventas":2,"stockFinal":0},"uuidCliente":{"peticiones":5,"respuestasExitosas":5,"ventasGuardadas":5,"idsDistintos":5},"aperturaUsuario":{"intentos":2,"turnosAbiertos":2},"aperturaCaja":{"intentos":2,"turnosAbiertos":2},"cancelacionContraCorte":{"cancelacion":"cumplida","cierre":"cumplido","esperadoGuardado":200,"esperadoSegunVentasFinales":100,"coincide":false}}
+
+=== suplementarias/test-concurrencia-caja-proteccion-restaurada | EXIT 0 | 7.22 s ===
+{"modo":"CON_PROTECCION","ultimoProducto":{"intentos":2,"ventas":1,"stockFinal":0},"uuidCliente":{"peticiones":5,"respuestasExitosas":5,"ventasGuardadas":1,"idsDistintos":1},"aperturaUsuario":{"intentos":2,"turnosAbiertos":1},"aperturaCaja":{"intentos":2,"turnosAbiertos":1},"cancelacionContraCorte":{"cancelacion":"rechazada409","cierre":"cumplido","esperadoGuardado":100,"esperadoSegunVentasFinales":100,"coincide":true}}
+
+=== suplementarias/test-concurrencia-cobros-sin-proteccion | EXIT 1 | 6.64 s ===
+{"modo":"SIN_PROTECCION","pagosAplicados":2,"mensualidades":2,"creadosPorCron":[1,1]}
+node:internal/modules/run_main:123
+
+    triggerUncaughtException(
+
+    ^
+
+
+
+AssertionError [ERR_ASSERTION]: un solo pago debe aplicarse
+
+
+
+2 !== 1
+
+
+
+    at <anonymous> ([REPO]\web\prisma\scripts\test-concurrencia-cobros.ts:57:10) {
+
+  generatedMessage: false,
+
+  code: 'ERR_ASSERTION',
+
+  actual: 2,
+
+  expected: 1,
+
+  operator: 'strictEqual',
+
+  diff: 'simple'
+
+}
+
+
+
+Node.js v22.19.0
+
+
+=== suplementarias/test-concurrencia-cobros-proteccion-restaurada | EXIT 0 | 6.8 s ===
+{"modo":"CON_PROTECCION","pagosAplicados":1,"mensualidades":1,"creadosPorCron":[0,1]}
+
+=== suplementarias/test-concurrencia-cotizaciones-sin-proteccion | EXIT 0 | 7.02 s ===
+{"modo":"SIN_PROTECCION","peticiones":2,"respuestasExitosas":2,"aceptacionesNuevas":2,"respuestasIdempotentes":0,"ventasCreadas":2,"stockFinal":0}
+
+=== suplementarias/test-concurrencia-cotizaciones-proteccion-restaurada | EXIT 0 | 6.98 s ===
+{"modo":"CON_PROTECCION","peticiones":2,"respuestasExitosas":2,"aceptacionesNuevas":1,"respuestasIdempotentes":1,"ventasCreadas":1,"stockFinal":1}
+
+=== suplementarias/test-concurrencia-nota-credito-sin-proteccion | EXIT 0 | 6.95 s ===
+{"modo":"SIN_PROTECCION","intentos":2,"exitosas":2,"ventas":2,"saldoInicial":100,"importePorVenta":80,"saldoFinal":20,"saldoNegativo":false}
+
+=== suplementarias/test-concurrencia-nota-credito-proteccion-restaurada | EXIT 0 | 6.97 s ===
+{"modo":"CON_PROTECCION","intentos":2,"exitosas":1,"ventas":1,"saldoInicial":100,"importePorVenta":80,"saldoFinal":20,"saldoNegativo":false}
+
+=== suplementarias/test-concurrencia-pedidos-sin-proteccion | EXIT 0 | 7.28 s ===
+{"modo":"SIN_PROTECCION","peticiones":2,"exitosas":2,"rechazadas":0,"pedidosCreados":2,"cantidadReservada":2,"stockFisico":1,"sobreventa":true,"pedidoContraCaja":{"exitosas":2,"rechazadas":0,"pedidos":1,"ventasCaja":1,"stockFisico":0,"reservado":1,"disponible":-1},"idempotencia":null}
+
+=== suplementarias/test-concurrencia-pedidos-proteccion-restaurada | EXIT 0 | 6.77 s ===
+{"modo":"CON_PROTECCION","peticiones":2,"exitosas":1,"rechazadas":1,"pedidosCreados":1,"cantidadReservada":1,"stockFisico":1,"sobreventa":false,"pedidoContraCaja":{"exitosas":1,"rechazadas":1,"pedidos":0,"ventasCaja":1,"stockFisico":0,"reservado":0,"disponible":0},"idempotencia":{"peticiones":5,"exitosas":5,"ventas":1}}
+
+=== suplementarias/test-concurrencia-resenas-sin-proteccion | EXIT 0 | 7.12 s ===
+{"modo":"SIN_PROTECCION","dobleEvento":{"eventos":2,"solicitudes":2,"enviosWhatsApp":2},"rafaga":{"eventos":6,"solicitudes":6,"enviosWhatsApp":6}}
+
+=== suplementarias/test-concurrencia-resenas-proteccion-restaurada | EXIT 0 | 7.81 s ===
+{"modo":"CON_PROTECCION","dobleEvento":{"eventos":2,"solicitudes":1,"enviosWhatsApp":1},"rafaga":{"eventos":6,"solicitudes":1,"enviosWhatsApp":1},"reservadaAbandonada":{"hace2h":"enviada","hace10min":"bloquea"},"omitidasYFallidas":{"primera":"omitida","segunda":"fallida","tercera":"omitida"}}
+
+=== suplementarias/test-concurrencia-sinred-sin-proteccion | EXIT 0 | 7.08 s ===
+{"modo":"SIN_PROTECCION","colaReenviada":{"peticiones":5,"exitosas":5,"ventasGuardadas":5,"existenciaFinal":4},"dosCajasSinRed":{"intentos":2,"exitosas":2,"ventas":2,"existenciaFinal":0,"ventasMarcadasNegativo":0,"movimientosSinRed":0}}
+
+=== suplementarias/test-concurrencia-sinred-proteccion-restaurada | EXIT 0 | 7.94 s ===
+{"modo":"CON_PROTECCION","colaReenviada":{"peticiones":5,"exitosas":5,"ventasGuardadas":1,"existenciaFinal":4},"dosCajasSinRed":{"intentos":2,"exitosas":2,"ventas":2,"existenciaFinal":-1,"ventasMarcadasNegativo":1,"movimientosSinRed":2},"contraPedidoEnLinea":{"existenciaTrasVentaSinRed":0,"pedidoDespuesDeSinRed":"rechazado 409","pedidoPrimeroLuegoSinRed":{"existencia":0,"marcas":[]}},"precioDistinto":{"cobrado":"90.00","servidor":"100.00","diferenciaPrecio":"10.00","marcas":["precio_distinto"],"rutaNormal":"rechazada: El pago no cubre el total"},"corteConVentasTardias":{"esperadoGuardadoZ":"370.00","esperadoEnVivoTrasTardia":"370.00","tardiaEnTurnoCerrado":{"marcas":["tardia"],"turnoId":true},"tardias":{"ventas":1,"efectivo":"30.00"},"sumaIngenuaDelTurnoCerrado":400,"sinTurnoAbierto":"TURNO_REQUERIDO","enTurnoNuevo":{"marcas":["tardia"],"turnoOriginal":true},"esperadoTurnoNuevo":"20.00"},"ventanas":{"haceMasDe72h":"VENTA_MUY_ANTIGUA","futura":"FECHA_FUTURA","ventanaDesactivada":"aceptada","esperandoTurnoCaducada":"VENTA_MUY_ANTIGUA"}}
+
+=== suplementarias/test-vencimiento-pedidos-sin-proteccion | EXIT 0 | 6.83 s ===
+{"modo":"SIN_PROTECCION","vencimientoSimple":{"estado":"cancelada","reservaActiva":false},"cruce":{"operacionesCumplidas":2,"accionesGanadoras":2,"estado":"cancelada","stockAplicado":true,"stock":0,"reservaActiva":false,"consistente":false},"pendienteABorrador":"409"}
+
+=== suplementarias/test-vencimiento-pedidos-proteccion-restaurada | EXIT 0 | 6.62 s ===
+{"modo":"CON_PROTECCION","vencimientoSimple":{"estado":"cancelada","reservaActiva":false},"cruce":{"operacionesCumplidas":1,"accionesGanadoras":1,"estado":"cancelada","stockAplicado":false,"stock":1,"reservaActiva":false,"consistente":true},"pendienteABorrador":"409"}
+
+=== suplementarias/tsc-final | EXIT 0 | 7.27 s ===
+
+=== suplementarias/lint-pruebas-corregidas | EXIT 0 | 7.56 s ===

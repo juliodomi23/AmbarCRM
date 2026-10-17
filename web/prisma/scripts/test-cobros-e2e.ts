@@ -9,7 +9,7 @@ import { hoyAR, mesSiguiente } from "../../src/lib/contratos-cobros";
 const baseUrl = process.env.E2E_BASE_URL;
 const adminUrl = process.env.ADMIN_DATABASE_URL;
 if (!baseUrl || !adminUrl) throw new Error("Define E2E_BASE_URL y ADMIN_DATABASE_URL para una app local de pruebas");
-if (!["localhost", "127.0.0.1"].includes(new URL(baseUrl).hostname) || !["localhost", "127.0.0.1"].includes(new URL(adminUrl).hostname) || new URL(adminUrl).port !== "55453") throw new Error("Esta prueba del seed solo admite la BD desechable local en 55453");
+if (!["localhost", "127.0.0.1"].includes(new URL(baseUrl).hostname) || !["localhost", "127.0.0.1"].includes(new URL(adminUrl).hostname) || !["55450", "55453"].includes(new URL(adminUrl).port)) throw new Error("Esta prueba del seed solo admite la BD desechable local en 55450 o 55453");
 const admin = new pg.Pool({ connectionString: adminUrl });
 const org = await dbRaw.org.findUniqueOrThrow({ where: { slug: "ambar-rojo" } });
 const configOriginal = await transaccionTenant(org.id, (tx) => tx.moduloOrg.findUniqueOrThrow({ where: { orgId_clave: { orgId: org.id, clave: "cobros" } } }));

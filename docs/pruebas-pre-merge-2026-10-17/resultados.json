@@ -1,0 +1,680 @@
+[
+  {
+    "prueba": "schema",
+    "codigo": 0,
+    "segundos": 0.62,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "multi-tenant",
+    "codigo": 0,
+    "segundos": 0.53,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "actualizaciones-1",
+    "codigo": 0,
+    "segundos": 1.89,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "actualizaciones-2",
+    "codigo": 0,
+    "segundos": 0.62,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "actualizaciones-3",
+    "codigo": 0,
+    "segundos": 0.64,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "rol-prueba",
+    "codigo": 0,
+    "segundos": 0.33,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "prisma-generate",
+    "codigo": 0,
+    "segundos": 8.28,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "tsc",
+    "codigo": 0,
+    "segundos": 10.17,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "lint",
+    "codigo": 0,
+    "segundos": 77.64,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "prisma-validate",
+    "codigo": 0,
+    "segundos": 2.66,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "build",
+    "codigo": 0,
+    "segundos": 73.28,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-aislamiento",
+    "codigo": 0,
+    "segundos": 8.2,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-a3-e2e",
+    "codigo": 0,
+    "segundos": 6.97,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-a3-fixes-e2e",
+    "codigo": 0,
+    "segundos": 6.36,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-a4-e2e",
+    "codigo": 0,
+    "segundos": 6.86,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-bot-api",
+    "codigo": 0,
+    "segundos": 15.2,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-caja-a2-e2e",
+    "codigo": 0,
+    "segundos": 7.06,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-caja-dinero",
+    "codigo": 0,
+    "segundos": 6.42,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-caja-e2e",
+    "codigo": 0,
+    "segundos": 6.31,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-canales-api",
+    "codigo": 0,
+    "segundos": 6.5,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-canales-base",
+    "codigo": 0,
+    "segundos": 5.89,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-canales-e2e",
+    "codigo": 0,
+    "segundos": 6.22,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-canales-messenger",
+    "codigo": 1,
+    "segundos": 6.36,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-cobros-cancelar-eliminar-e2e",
+    "codigo": 1,
+    "segundos": 5.66,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-cobros-db",
+    "codigo": 0,
+    "segundos": 6.59,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-cobros-e2e",
+    "codigo": 1,
+    "segundos": 5.58,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-concurrencia-caja-a2",
+    "codigo": 0,
+    "segundos": 6.42,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-concurrencia-caja",
+    "codigo": 0,
+    "segundos": 6.22,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-concurrencia-cobros",
+    "codigo": 0,
+    "segundos": 5.7,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-concurrencia-cotizaciones",
+    "codigo": 0,
+    "segundos": 6.11,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-concurrencia-nota-credito",
+    "codigo": 0,
+    "segundos": 6.02,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-concurrencia-pedidos",
+    "codigo": 0,
+    "segundos": 6.06,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-concurrencia-resenas",
+    "codigo": 0,
+    "segundos": 6.92,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-concurrencia-retail",
+    "codigo": 0,
+    "segundos": 11.42,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-concurrencia-sinred",
+    "codigo": 0,
+    "segundos": 6.48,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-concurrencia-varias-cajas",
+    "codigo": 0,
+    "segundos": 6.05,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-cotizaciones-e2e",
+    "codigo": 0,
+    "segundos": 6.45,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-cotizaciones-zona",
+    "codigo": 0,
+    "segundos": 5.86,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-cupos-concurrentes",
+    "codigo": 0,
+    "segundos": 5.86,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-messenger-facebook-http",
+    "codigo": 1,
+    "segundos": 6.3,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-messenger-facebook-rutas",
+    "codigo": 0,
+    "segundos": 6.45,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-messenger-facebook",
+    "codigo": 0,
+    "segundos": 6.27,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-paridad-precios",
+    "codigo": 0,
+    "segundos": 8.45,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-pedidos-e2e",
+    "codigo": 0,
+    "segundos": 6.77,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-precios-promociones",
+    "codigo": 0,
+    "segundos": 6.61,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-referencias",
+    "codigo": 0,
+    "segundos": 5.69,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-reportes-cuadre",
+    "codigo": 0,
+    "segundos": 6.12,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-resenas-e2e",
+    "codigo": 0,
+    "segundos": 7.17,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-reservas-concurrentes",
+    "codigo": 0,
+    "segundos": 5.91,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-servidores-e2e",
+    "codigo": 0,
+    "segundos": 6.59,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-sinred-e2e",
+    "codigo": 0,
+    "segundos": 7.45,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-sql-inventario-negativo",
+    "codigo": 0,
+    "segundos": 5.88,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-total-cobrado-cliente",
+    "codigo": 0,
+    "segundos": 5.62,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-tours-dinero",
+    "codigo": 0,
+    "segundos": 5.55,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-vencimiento-pedidos",
+    "codigo": 0,
+    "segundos": 5.77,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-webhook-manual",
+    "codigo": 0,
+    "segundos": 5.89,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-a3",
+    "codigo": 0,
+    "segundos": 5.86,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-arquitectura-modulos",
+    "codigo": 0,
+    "segundos": 5.64,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-audio-ogg",
+    "codigo": 0,
+    "segundos": 5.39,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-aurum-webhook",
+    "codigo": 0,
+    "segundos": 5.58,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-busqueda",
+    "codigo": 0,
+    "segundos": 5.45,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-caja-a2",
+    "codigo": 0,
+    "segundos": 5.48,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-caja-offline",
+    "codigo": 0,
+    "segundos": 5.44,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-caja-sinred",
+    "codigo": 0,
+    "segundos": 5.77,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-caja",
+    "codigo": 0,
+    "segundos": 6.17,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-campos-personalizados",
+    "codigo": 0,
+    "segundos": 6.19,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-canales-ui",
+    "codigo": 0,
+    "segundos": 6.11,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-cantidades-retail",
+    "codigo": 0,
+    "segundos": 6.34,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-citas",
+    "codigo": 0,
+    "segundos": 6.56,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-clientes-automotriz",
+    "codigo": 0,
+    "segundos": 5.91,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-contratos-cobros",
+    "codigo": 0,
+    "segundos": 6.19,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-cotizaciones",
+    "codigo": 0,
+    "segundos": 6.48,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-demo",
+    "codigo": 0,
+    "segundos": 6.36,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-lealtad",
+    "codigo": 0,
+    "segundos": 6.31,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-legal",
+    "codigo": 0,
+    "segundos": 6.06,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-pedidos-en-linea",
+    "codigo": 0,
+    "segundos": 6.64,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-permisos-modulos",
+    "codigo": 0,
+    "segundos": 7.09,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-plantilla-meta",
+    "codigo": 0,
+    "segundos": 6.14,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-precios",
+    "codigo": 0,
+    "segundos": 6.75,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-proxy",
+    "codigo": 0,
+    "segundos": 6.23,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-reportes-a4",
+    "codigo": 0,
+    "segundos": 6.23,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-resenas",
+    "codigo": 0,
+    "segundos": 6.11,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-reservas",
+    "codigo": 0,
+    "segundos": 6.09,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-retail",
+    "codigo": 0,
+    "segundos": 6.05,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-seeds-seguridad",
+    "codigo": 0,
+    "segundos": 6.38,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-seguridad",
+    "codigo": 0,
+    "segundos": 6.44,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-servidores",
+    "codigo": 0,
+    "segundos": 6.31,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-sw-push",
+    "codigo": 0,
+    "segundos": 6.84,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "check-viajes-academia",
+    "codigo": 0,
+    "segundos": 6.27,
+    "fase": "inicial"
+  },
+  {
+    "prueba": "test-canales-messenger-repeticion",
+    "codigo": 0,
+    "segundos": 7.81,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-cobros-cancelar-eliminar-e2e-repeticion",
+    "codigo": 0,
+    "segundos": 8.89,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-cobros-e2e-repeticion",
+    "codigo": 0,
+    "segundos": 8.67,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-messenger-facebook-http-repeticion",
+    "codigo": 0,
+    "segundos": 6.94,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-concurrencia-caja-a2-sin-proteccion",
+    "codigo": 0,
+    "segundos": 7.17,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-concurrencia-caja-a2-proteccion-restaurada",
+    "codigo": 0,
+    "segundos": 7.09,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-concurrencia-caja-sin-proteccion",
+    "codigo": 0,
+    "segundos": 7.69,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-concurrencia-caja-proteccion-restaurada",
+    "codigo": 0,
+    "segundos": 7.22,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-concurrencia-cobros-sin-proteccion",
+    "codigo": 1,
+    "segundos": 6.64,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-concurrencia-cobros-proteccion-restaurada",
+    "codigo": 0,
+    "segundos": 6.8,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-concurrencia-cotizaciones-sin-proteccion",
+    "codigo": 0,
+    "segundos": 7.02,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-concurrencia-cotizaciones-proteccion-restaurada",
+    "codigo": 0,
+    "segundos": 6.98,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-concurrencia-nota-credito-sin-proteccion",
+    "codigo": 0,
+    "segundos": 6.95,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-concurrencia-nota-credito-proteccion-restaurada",
+    "codigo": 0,
+    "segundos": 6.97,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-concurrencia-pedidos-sin-proteccion",
+    "codigo": 0,
+    "segundos": 7.28,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-concurrencia-pedidos-proteccion-restaurada",
+    "codigo": 0,
+    "segundos": 6.77,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-concurrencia-resenas-sin-proteccion",
+    "codigo": 0,
+    "segundos": 7.12,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-concurrencia-resenas-proteccion-restaurada",
+    "codigo": 0,
+    "segundos": 7.81,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-concurrencia-sinred-sin-proteccion",
+    "codigo": 0,
+    "segundos": 7.08,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-concurrencia-sinred-proteccion-restaurada",
+    "codigo": 0,
+    "segundos": 7.94,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-vencimiento-pedidos-sin-proteccion",
+    "codigo": 0,
+    "segundos": 6.83,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "test-vencimiento-pedidos-proteccion-restaurada",
+    "codigo": 0,
+    "segundos": 6.62,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "tsc-final",
+    "codigo": 0,
+    "segundos": 7.27,
+    "fase": "suplementarias"
+  },
+  {
+    "prueba": "lint-pruebas-corregidas",
+    "codigo": 0,
+    "segundos": 7.56,
+    "fase": "suplementarias"
+  }
+]

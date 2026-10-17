@@ -48,7 +48,7 @@ try {
   // Quitar solo la restricción en esta BD desechable para probar también su contribución.
   if (sin) {
     const url = new URL(adminUrl);
-    if (!["localhost", "127.0.0.1"].includes(url.hostname) || url.port !== "55453") throw new Error("La variante sin protección solo admite localhost:55453");
+    if (!["localhost", "127.0.0.1"].includes(url.hostname) || !["55450", "55453"].includes(url.port)) throw new Error("La variante sin protección solo admite localhost:55450 o localhost:55453");
     await admin.query("ALTER TABLE cobros DROP CONSTRAINT cobros_contrato_id_concepto_periodo_key");
   }
   const crons = await Promise.all([cron(), cron()]);
