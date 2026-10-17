@@ -1,5 +1,7 @@
 # Regresión previa al merge de Meta
 
+> Actualización del 17-oct-2026: **46/46 tests y 33/33 checks pasan** tras completar la desconexión. Ver la sección final fechada; las secciones iniciales conservan la preparación anterior.
+
 Preparación del 16-oct-2026 (America/Mexico_City); nombre de informe solicitado para el 17.
 Rama `preparar-merge-meta`, creada desde `modulos-fase-2` (`70e684b`).
 Resultado final: **45/45 tests autorizados, 33/33 checks, TypeScript, lint, Prisma y build pasan**.
@@ -300,3 +302,221 @@ Además de este informe, se crearon:
   revisión declara que no hay botón de desconexión Messenger ni desuscripción
   remota; Julio decide si usa el recorrido técnico documentado o encarga esa
   mejora en otra tarea. No se añadió funcionalidad aquí.
+
+
+## Regresión de desconexión Messenger (17-oct-2026)
+
+Esta sección sustituye el pendiente de código de desconexión descrito en el cierre
+anterior. Resultado final: **46/46 tests autorizados y 33/33 checks pasan**,
+además de TypeScript, lint, Prisma validate, build y el verificador local de variables.
+Se conservan los fallos iniciales y de preparación; no se presentan como pasadas
+las ejecuciones fallidas. `test-lealtad-aurum.ts` sigue excluido expresamente.
+
+### Entorno y alcance de esta continuación
+
+- Rama de trabajo `preparar-merge-meta`, sin crear otra, desde `0c46824`.
+- PostgreSQL 16 desechable `ambarcrm-desconexion-20261017`, BD `crm`, publicado
+  únicamente en `127.0.0.1:55450`. Creado con schema.sql → multi-tenant.sql →
+  actualizaciones.sql ×3; el SQL se repitió otras tres veces al iniciar la regresión.
+  Nunca se usó prisma db push. Dueño `dueno`, app `crm_app`, clave de prueba.
+- Mismo fixture AR documentado antes: solo en esta BD, org 1 con slug `ambar-rojo`,
+  seed existente autorizado con credenciales sintéticas y módulo servidores activo.
+  No representa el slug productivo `inicial` ni utiliza canales de clientes.
+- Next compilado en `127.0.0.1:3118`, preload meta-facebook-simulado.mjs y secretos
+  exclusivamente ficticios. META_APP_SECRET coincide con `secreto-meta-simulado`;
+  la prueba de adjuntos usa NEXTAUTH_URL HTTPS sintética solo en su proceso.
+  URLs/keys de Aurum y Anthropic neutralizadas; ninguna llamada a Meta real.
+- Tests y checks ejecutados con tsx 4.23.15 ya disponible en caché, invocando su
+  CLI con Node. Reproducción equivalente desde web/: `npx --yes tsx RUTA.ts`.
+  No se cambiaron package.json ni package-lock ni se añadieron librerías.
+- No se cambió SQL, webhook o firma de Messenger ni los cuatro flujos de Meta
+  excluidos. WhatsApp y API conservan DELETE y respuesta anteriores, cubiertos
+  por la prueba nueva. Sin push, deploy o comandos contra producción.
+
+Evidencia: [salidas de todas las ejecuciones](pruebas-desconexion-messenger-2026-10-17/ejecuciones.txt)
+y [resultados con fases y códigos](pruebas-desconexion-messenger-2026-10-17/resultados.json).
+Solo se omiten la salida de credenciales del seed y valores CSRF efímeros locales.
+
+### Compilación y SQL
+
+| Comprobación | Resultado real | Segundos |
+|---|---|---:|
+| `actualizaciones-1` | PASA (0) | 0.45 |
+| `actualizaciones-2` | PASA (0) | 0.47 |
+| `actualizaciones-3` | PASA (0) | 0.45 |
+| `prisma-generate` | PASA (0) | 3.92 |
+| `tsc` | PASA (0) | 7.3 |
+| `lint` | PASA (0) | 25.67 |
+| `prisma-validate` | PASA (0) | 2.73 |
+| `build` | PASA (0) | 24.36 |
+
+### Tests, todos salvo Aurum real
+
+| Archivo | Primera regresión | Final | Segundos final |
+|---|---|---|---:|
+| `test-aislamiento.ts` | PASA (0) | PASA (0) | 1.86 |
+| `test-a3-e2e.ts` | PASA (0) | PASA (0) | 1.7 |
+| `test-a3-fixes-e2e.ts` | PASA (0) | PASA (0) | 1.26 |
+| `test-a4-e2e.ts` | PASA (0) | PASA (0) | 1.55 |
+| `test-bot-api.ts` | PASA (0) | PASA (0) | 9.0 |
+| `test-caja-a2-e2e.ts` | PASA (0) | PASA (0) | 1.84 |
+| `test-caja-dinero.ts` | PASA (0) | PASA (0) | 1.42 |
+| `test-caja-e2e.ts` | PASA (0) | PASA (0) | 1.41 |
+| `test-canales-api.ts` | PASA (0) | PASA (0) | 1.14 |
+| `test-canales-base.ts` | PASA (0) | PASA (0) | 1.05 |
+| `test-canales-e2e.ts` | FALLA (1) | PASA (0) | 1.44 |
+| `test-canales-messenger.ts` | PASA (0) | PASA (0) | 1.8 |
+| `test-cobros-cancelar-eliminar-e2e.ts` | PASA (0) | PASA (0) | 2.27 |
+| `test-cobros-db.ts` | PASA (0) | PASA (0) | 1.11 |
+| `test-cobros-e2e.ts` | PASA (0) | PASA (0) | 2.3 |
+| `test-concurrencia-caja-a2.ts` | PASA (0) | PASA (0) | 1.34 |
+| `test-concurrencia-caja.ts` | PASA (0) | PASA (0) | 1.19 |
+| `test-concurrencia-cobros.ts` | PASA (0) | PASA (0) | 0.75 |
+| `test-concurrencia-cotizaciones.ts` | PASA (0) | PASA (0) | 0.86 |
+| `test-concurrencia-nota-credito.ts` | PASA (0) | PASA (0) | 0.89 |
+| `test-concurrencia-pedidos.ts` | PASA (0) | PASA (0) | 1.06 |
+| `test-concurrencia-resenas.ts` | PASA (0) | PASA (0) | 1.78 |
+| `test-concurrencia-retail.ts` | PASA (0) | PASA (0) | 6.12 |
+| `test-concurrencia-sinred.ts` | PASA (0) | PASA (0) | 1.47 |
+| `test-concurrencia-varias-cajas.ts` | PASA (0) | PASA (0) | 1.05 |
+| `test-cotizaciones-e2e.ts` | PASA (0) | PASA (0) | 1.41 |
+| `test-cotizaciones-zona.ts` | PASA (0) | PASA (0) | 0.83 |
+| `test-cupos-concurrentes.ts` | PASA (0) | PASA (0) | 0.73 |
+| `test-messenger-desconexion.ts` | PASA (0) | PASA (0) | 2.02 |
+| `test-messenger-facebook-http.ts` | PASA (0) | PASA (0) | 0.92 |
+| `test-messenger-facebook-rutas.ts` | PASA (0) | PASA (0) | 1.23 |
+| `test-messenger-facebook.ts` | PASA (0) | PASA (0) | 1.25 |
+| `test-paridad-precios.ts` | PASA (0) | PASA (0) | 4.14 |
+| `test-pedidos-e2e.ts` | PASA (0) | PASA (0) | 1.86 |
+| `test-precios-promociones.ts` | PASA (0) | PASA (0) | 1.39 |
+| `test-referencias.ts` | PASA (0) | PASA (0) | 0.59 |
+| `test-reportes-cuadre.ts` | PASA (0) | PASA (0) | 1.03 |
+| `test-resenas-e2e.ts` | PASA (0) | PASA (0) | 2.08 |
+| `test-reservas-concurrentes.ts` | PASA (0) | PASA (0) | 0.81 |
+| `test-servidores-e2e.ts` | PASA (0) | PASA (0) | 1.67 |
+| `test-sinred-e2e.ts` | PASA (0) | PASA (0) | 2.25 |
+| `test-sql-inventario-negativo.ts` | PASA (0) | PASA (0) | 0.53 |
+| `test-total-cobrado-cliente.ts` | PASA (0) | PASA (0) | 0.74 |
+| `test-tours-dinero.ts` | PASA (0) | PASA (0) | 0.66 |
+| `test-vencimiento-pedidos.ts` | PASA (0) | PASA (0) | 0.92 |
+| `test-webhook-manual.ts` | PASA (0) | PASA (0) | 0.94 |
+
+### Checks de web/scripts, todos
+
+| Archivo | Primera regresión | Final | Segundos final |
+|---|---|---|---:|
+| `check-a3.ts` | PASA (0) | PASA (0) | 0.42 |
+| `check-arquitectura-modulos.ts` | PASA (0) | PASA (0) | 0.62 |
+| `check-audio-ogg.ts` | PASA (0) | PASA (0) | 0.45 |
+| `check-aurum-webhook.ts` | PASA (0) | PASA (0) | 0.72 |
+| `check-busqueda.ts` | PASA (0) | PASA (0) | 0.39 |
+| `check-caja-a2.ts` | PASA (0) | PASA (0) | 0.59 |
+| `check-caja-offline.ts` | PASA (0) | PASA (0) | 0.53 |
+| `check-caja-sinred.ts` | PASA (0) | PASA (0) | 0.56 |
+| `check-caja.ts` | PASA (0) | PASA (0) | 0.48 |
+| `check-campos-personalizados.ts` | PASA (0) | PASA (0) | 0.39 |
+| `check-canales-ui.ts` | PASA (0) | PASA (0) | 0.66 |
+| `check-cantidades-retail.ts` | PASA (0) | PASA (0) | 0.56 |
+| `check-citas.ts` | PASA (0) | PASA (0) | 0.44 |
+| `check-clientes-automotriz.ts` | PASA (0) | PASA (0) | 0.45 |
+| `check-contratos-cobros.ts` | PASA (0) | PASA (0) | 0.53 |
+| `check-cotizaciones.ts` | PASA (0) | PASA (0) | 0.61 |
+| `check-demo.ts` | PASA (0) | PASA (0) | 0.66 |
+| `check-lealtad.ts` | PASA (0) | PASA (0) | 0.41 |
+| `check-legal.ts` | PASA (0) | PASA (0) | 0.41 |
+| `check-pedidos-en-linea.ts` | PASA (0) | PASA (0) | 0.47 |
+| `check-permisos-modulos.ts` | PASA (0) | PASA (0) | 0.42 |
+| `check-plantilla-meta.ts` | PASA (0) | PASA (0) | 0.41 |
+| `check-precios.ts` | PASA (0) | PASA (0) | 0.41 |
+| `check-proxy.ts` | PASA (0) | PASA (0) | 0.39 |
+| `check-reportes-a4.ts` | PASA (0) | PASA (0) | 0.41 |
+| `check-resenas.ts` | PASA (0) | PASA (0) | 0.47 |
+| `check-reservas.ts` | PASA (0) | PASA (0) | 0.42 |
+| `check-retail.ts` | PASA (0) | PASA (0) | 0.47 |
+| `check-seeds-seguridad.ts` | PASA (0) | PASA (0) | 0.41 |
+| `check-seguridad.ts` | PASA (0) | PASA (0) | 0.45 |
+| `check-servidores.ts` | PASA (0) | PASA (0) | 0.41 |
+| `check-sw-push.ts` | PASA (0) | PASA (0) | 1.03 |
+| `check-viajes-academia.ts` | PASA (0) | PASA (0) | 0.5 |
+
+### Cobertura de la desconexión
+
+`test-messenger-desconexion.ts` prueba el handler real y RLS con sesión controlada,
+compartiendo la misma instancia de módulo db que la ruta. Graph está sustituido
+por un emisor que exige URL, método DELETE y Authorization correctos; no hay red externa.
+
+- Éxito: `desuscrito:true`, canal retirado; omitir borrarDatos conserva conversación
+  y mensaje, con canal_id NULL. Con borrarDatos=true elimina explícitamente ambos.
+- Cuatro errores definitivos: 190, sesión invalidada, 803 y HTTP 404.
+  Retira el canal con desuscrito=false y motivo fijo; conserva el historial.
+- Diez errores que conservan datos: 503, 500 con cuerpo 190, 429 con cuerpo 190,
+  red, timeout, permisos 403, código 100 genérico, error ambiguo 100/33, success:false y JSON no válido.
+  Incluso con borrarDatos=true devuelve 502 sin borrar nada; el reintento exitoso funciona.
+- Sin sesión 401, agente 403, empresa A sobre canal B 404; ninguno llama a Graph.
+- El token y su cifrado no aparecen en respuestas, auditoria_bot, eventos ni consola,
+  incluso cuando el cuerpo/error ficticio de Meta contiene deliberadamente el token.
+- API no hace llamada remota; WhatsApp conserva su DELETE remoto y el cuerpo previo.
+
+La E2E HTTP usa login NextAuth real, rechaza sin sesión y elimina un canal Messenger
+con Graph simulado conservando su conversación. El check de UI también renderiza
+CanalExterno con React: botón solo para Messenger existente, nunca para canal nuevo
+o API; revisa el guard de administrador y las opciones del Confirmador.
+No se simuló un clic completo de navegador ni el panel/SDK de Meta real.
+
+### Fallos reales encontrados y repetidos
+
+1. Prueba focal nueva: en dos intentos devolvió 404 al consultar un canal propio.
+   El arnés mezclaba las instancias ESM/CommonJS de db al cargar el handler con
+   require, separando el contexto AsyncLocalStorage. Se unificó la instancia del
+   test y se fija explícitamente la empresa de la sesión controlada. Pasa después;
+   no fue necesario cambiar el aislamiento de la app.
+2. Check focal: una expresión regular se detenía en el `>` de la flecha del
+   handler. Se corrigió y se añadió comprobación mediante renderizado del componente.
+3. Primera regresión completa, test-canales-e2e: buscaba el botón en el HTML inicial
+   de Configuración, que abre Embudos. La pestaña Canales cambia del lado cliente.
+   Se trasladó esa aserción al renderizado del check de UI; la E2E conserva la
+   desconexión HTTP real. Repetición: PASA.
+4. Una repetición adicional de la E2E llegó al límite de login por IP de 30 intentos
+   cada 15 minutos y no obtuvo cookie de sesión. Se reinició solo la app local por
+   su puerto para aislar otra ejecución; después pasa. No se debilitó ni cambió
+   el limitador de producción.
+
+En la revisión final se decidió conservar el canal ante 100/33: no confirma que
+la página haya desaparecido y puede representar falta de acceso. Se añadió ese caso
+a los errores 502 y se repitió **toda** la regresión sobre otra BD desechable nueva:
+46/46 tests, 33/33 checks, TypeScript, lint, Prisma y build pasan sin fallos en esa
+batería final. Las columnas «Primera regresión» preservan los intentos de la
+batería previa y la columna «Final» corresponde a esta última corrida completa.
+El primer intento de preparar el contenedor nuevo devolvió EXIT 2 porque Postgres
+aún estaba arrancando; tras pg_isready en 0, schema/SQL y fixture se crearon bien.
+No fue un error del SQL; su salida también está preservada.
+
+- `tsc-final`: PASA (0), 7.25 s.
+- `lint-pruebas-final`: PASA (0), 7.3 s.
+- `check-env-despliegue`: PASA (0), 1.8 s.
+
+
+### Commits nuevos y cierre local
+
+| Tarea | Commit |
+|---|---|
+| Desuscripción remota | `2651d7e` |
+| Botón, confirmación e historial | `2365e00` |
+| Pruebas de errores, permisos y privacidad | `59cffcc` |
+| App Review, checklist, decisiones y prompt autorizado | `cbe93de` |
+| Regresión final y evidencia | Commit que contiene esta sección. |
+
+El contenedor desechable se retiró después de todas las pruebas. La app se detuvo
+por puerto 3118, comprobando su PID; no quedan listeners en 3118 ni 55450.
+El prompt previo sin seguimiento fue incorporado sin modificarlo con autorización
+explícita de Julio en el commit de documentación.
+
+Después de guardar este informe se comprobará árbol limpio y ascendencia, y solo
+entonces se ejecutará `git switch modulos-fase-2` + `git merge --ff-only preparar-merge-meta`.
+La entrega final registra el resultado y SHA exacto de esa operación; no se crea
+un commit de merge ni se actualiza meta-tech-provider, que sigue en e1c5e93.
+
+🛑 Pendiente de Julio: aprobación y valores efectivos del panel de Meta, capacidad
+Human Agent por separado, ensayo con respaldo real y Aurum real de pruebas según
+el plan de cierre. La desconexión ya no requiere una decisión de implementación;
+queda su humo real con la página de prueba en la ventana autorizada.

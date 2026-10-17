@@ -127,10 +127,12 @@ segundos. No revoca por sí mismo otros permisos o credenciales de la cuenta Fac
 | Respuesta de Meta | Resultado en el CRM |
 |---|---|
 | `success: true` | HTTP 200, `desuscrito: true`; canal retirado, toast de desconexión. |
-| Token inválido (190 / sesión invalidada) o página inexistente/no disponible (404, 803, 100/33) | HTTP 200, `desuscrito: false`, motivo fijo legible; canal retirado. No se afirma que Meta haya confirmado una desuscripción. |
+| Token inválido (190 / sesión invalidada) o página inexistente/no disponible (404, 803) | HTTP 200, `desuscrito: false`, motivo fijo legible; canal retirado. No se afirma que Meta haya confirmado una desuscripción. |
 | Red, timeout, 429, 5xx, permisos insuficientes u otra respuesta no confirmada | HTTP 502 con mensaje fijo. Canal e histórico intactos, incluso si se había elegido borrarlos; se puede reintentar. |
 
 Los estados 429/5xx se consideran temporales aunque su cuerpo incluya código 190.
+El error 100/33 puede significar objeto inexistente o falta de acceso: por sí solo
+no confirma que la página haya desaparecido y conserva el canal con HTTP 502.
 Los tokens y cuerpos de error externos no se devuelven ni registran.
 `borrarDatos: false` es el comportamiento predeterminado; solo la elección explícita
 de borrado elimina conversaciones/mensajes, después del resultado remoto permitido.

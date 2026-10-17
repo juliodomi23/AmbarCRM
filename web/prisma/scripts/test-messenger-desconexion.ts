@@ -99,13 +99,12 @@ try {
     { code: 190, status: 400, motivo: /token.*venció o fue revocado/ },
     { code: 0, status: 400, message: "The session has been invalidated", motivo: /token.*venció o fue revocado/ },
     { code: 803, status: 400, motivo: /página ya no está disponible/ },
-    { code: 100, error_subcode: 33, status: 400, motivo: /página ya no está disponible/ },
     { code: 0, status: 404, motivo: /página ya no está disponible/ },
   ];
   for (const caso of definitivos) {
     const fixture = await crear();
     destino = fixture.pageId;
-    responderGraph = () => Response.json({ error: { code: caso.code, error_subcode: caso.error_subcode, message: `${caso.message ?? "Error de Meta"} ${token}` } }, { status: caso.status });
+    responderGraph = () => Response.json({ error: { code: caso.code, message: `${caso.message ?? "Error de Meta"} ${token}` } }, { status: caso.status });
     const resultado = await borrar(fixture.canal.id);
     assert.equal(resultado.status, 200);
     assert.equal(resultado.datos.desuscrito, false);
@@ -122,6 +121,7 @@ try {
     () => { throw new DOMException(`Timeout ${token}`, "TimeoutError"); },
     () => Response.json({ error: { code: 200, message: token } }, { status: 403 }),
     () => Response.json({ error: { code: 100, message: token } }, { status: 400 }),
+    () => Response.json({ error: { code: 100, error_subcode: 33, message: `Object does not exist, cannot be loaded due to missing permissions ${token}` } }, { status: 400 }),
     () => Response.json({ success: false }),
     () => new Response("respuesta inválida", { status: 200 }),
   ];

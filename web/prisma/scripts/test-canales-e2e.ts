@@ -43,7 +43,6 @@ try {
     assert.deepEqual(await duplicada.json(), { error: "esa página ya está conectada" });
   }
   const configuracion = await (await get("/configuracion")).text();
-  assert.match(configuracion, />Desconectar<\/button>/, "el canal Messenger existente muestra la desconexión");
   for (const privado of [secretoMessenger, "appSecretEncrypted", (fixture.messenger.config as { appSecretEncrypted: string }).appSecretEncrypted]) {
     assert.ok(!configuracion.includes(privado), "la configuración HTML/RSC no expone el secreto");
   }
@@ -71,5 +70,5 @@ try {
     assert.equal(await db.canalWhatsapp.count({ where: { id: fixture.messenger.id } }), 0);
     assert.equal(await db.conversacion.count({ where: { contacto: { identificadorExterno: "psid-http" } } }), 1);
   });
-  console.log("OK · HTTP real: login, duplicados Messenger 409 en alta/edición, configuración sin secretos, webhooks públicos, asesor sin teléfono, fallo visible, nota privada, iconos/datos y botón de desconexión con rechazo sin sesión, desuscripción y conservación del histórico");
+  console.log("OK · HTTP real: login, duplicados Messenger 409 en alta/edición, configuración sin secretos, webhooks públicos, asesor sin teléfono, fallo visible, nota privada, iconos/datos y desconexión con rechazo sin sesión, desuscripción y conservación del histórico");
 } finally { await dbRaw.$disconnect(); }

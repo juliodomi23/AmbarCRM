@@ -14,7 +14,7 @@ export async function messengerGraph(config: Record<string, unknown>, path: stri
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.error) throw Object.assign(new Error(data.error?.message ?? `Meta HTTP ${res.status}`), {
-    code: data.error?.code, subcode: data.error?.error_subcode, httpStatus: res.status,
+    code: data.error?.code, httpStatus: res.status,
   });
   return data;
 }
@@ -37,12 +37,12 @@ export async function desuscribirPagina(config: Record<string, unknown>): Promis
     if (respuesta.success !== true) throw new Error(ERROR_DESCONEXION_MESSENGER);
     return { desuscrito: true };
   } catch (error) {
-    const datos = error as { code?: number; subcode?: number; httpStatus?: number };
+    const datos = error as { code?: number; httpStatus?: number };
     if (datos.httpStatus == null || datos.httpStatus === 429 || datos.httpStatus >= 500) throw new Error(ERROR_DESCONEXION_MESSENGER);
     if (datos.code === 190 || (error instanceof Error && /session has been invalidated|error validating access token/i.test(error.message))) {
       return { desuscrito: false, motivo: "El token de la página venció o fue revocado; se retiró el canal local." };
     }
-    if (datos.httpStatus === 404 || datos.code === 803 || (datos.code === 100 && datos.subcode === 33)) {
+    if (datos.httpStatus === 404 || datos.code === 803) {
       return { desuscrito: false, motivo: "La página ya no está disponible en Facebook; se retiró el canal local." };
     }
     throw new Error(ERROR_DESCONEXION_MESSENGER);
