@@ -7,6 +7,32 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model ReglaAutomatizacion {
+  id BigInt @id @default(autoincrement())
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre String
+  evento String
+  condiciones Json @default("[]")
+  acciones Json @default("[]")
+  activo Boolean @default(true)
+  creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  @@index([orgId, evento])
+  @@map("regla_automatizacion")
+}
+
+model EjecucionRegla {
+  id BigInt @id @default(autoincrement())
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  reglaId BigInt @map("regla_id")
+  conversacionId BigInt @map("conversacion_id")
+  resultado String
+  detalle String
+  creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  @@index([orgId, conversacionId, creadoEn])
+  @@index([orgId, reglaId, creadoEn])
+  @@map("ejecucion_regla")
+}
+
 model WebhookSaliente {
   id BigInt @id @default(autoincrement())
   orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")

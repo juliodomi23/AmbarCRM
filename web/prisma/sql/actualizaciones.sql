@@ -1719,3 +1719,29 @@ CREATE POLICY org_isolation ON webhook_saliente
   WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
 GRANT SELECT, INSERT, UPDATE, DELETE ON webhook_saliente TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+CREATE TABLE IF NOT EXISTS regla_automatizacion (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  nombre TEXT NOT NULL, evento TEXT NOT NULL,
+  condiciones JSONB NOT NULL DEFAULT '[]'::jsonb, acciones JSONB NOT NULL DEFAULT '[]'::jsonb,
+  activo BOOLEAN NOT NULL DEFAULT true, creado_en TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS regla_automatizacion_org_evento_idx ON regla_automatizacion(org_id, evento);
+CREATE TABLE IF NOT EXISTS ejecucion_regla (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  regla_id BIGINT NOT NULL, conversacion_id BIGINT NOT NULL,
+  resultado TEXT NOT NULL, detalle TEXT NOT NULL, creado_en TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ejecucion_regla_org_conv_fecha_idx ON ejecucion_regla(org_id, conversacion_id, creado_en);
+CREATE INDEX IF NOT EXISTS ejecucion_regla_org_regla_fecha_idx ON ejecucion_regla(org_id, regla_id, creado_en);
+DO $$ DECLARE t TEXT; BEGIN
+  FOREACH t IN ARRAY ARRAY['regla_automatizacion', 'ejecucion_regla'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format('CREATE POLICY org_isolation ON %I USING (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint) WITH CHECK (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint)', t);
+  END LOOP;
+END $$;
+GRANT SELECT, INSERT, UPDATE, DELETE ON regla_automatizacion, ejecucion_regla TO crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
