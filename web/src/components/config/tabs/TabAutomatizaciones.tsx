@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Boton } from "@/components/ui";
 import { api } from "@/components/config/tabs/shared";
 import { WebhooksSalientes } from "./WebhooksSalientes";
+import { ReglasAutomatizacion } from "./ReglasAutomatizacion";
 
 export function TabAutomatizaciones({ ajustes }: { ajustes: any }) {
   const router = useRouter();
@@ -269,6 +270,7 @@ export function TabAutomatizaciones({ ajustes }: { ajustes: any }) {
         {guardando ? "Guardando…" : "Guardar"}
       </Boton>
       <WebhooksSalientes />
+      <ReglasAutomatizacion />
     </div>
   );
 }
