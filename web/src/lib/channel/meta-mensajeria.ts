@@ -87,11 +87,16 @@ export function normalizarMensajeriaMeta(payload: unknown, appId?: string): Mens
 export function makeMensajeriaMetaProvider(config?: unknown, opciones: {
   proveedor?: "messenger" | "instagram";
   normalizar?: (payload: unknown, appId?: string) => MensajeEntranteNormalizado[];
+  maxTexto?: number;
 } = {}): ChannelProvider {
   const datos = (config ?? {}) as Record<string, unknown>;
   const proveedor = opciones.proveedor ?? "messenger";
   const nombre = proveedor === "instagram" ? "Instagram" : "Messenger";
   async function enviar(destinatario: string, message: unknown, contexto?: ContextoEnvio) {
+    const texto = (message as { text?: unknown }).text;
+    if (opciones.maxTexto && typeof texto === "string" && texto.length > opciones.maxTexto) {
+      return { ok: false, error: `${nombre} admite hasta ${opciones.maxTexto} caracteres por mensaje` };
+    }
     const tipo = tipoEnvioMeta(contexto);
     if (!tipo) return { ok: false, error: contexto?.humano
       ? `Ventana de ${nombre} cerrada: el asesor solo puede responder hasta 7 días desde el último mensaje entrante.`

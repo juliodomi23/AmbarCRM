@@ -2,6 +2,7 @@ import type { ChannelProvider } from "./types";
 import { makeCloudApiProvider, type CloudConfig } from "./cloudapi";
 import { makeApiProvider } from "./api";
 import { makeMessengerProvider } from "./messenger";
+import { makeInstagramProvider } from "./instagram";
 
 export * from "./types";
 export * from "./destinatario";
@@ -16,6 +17,7 @@ export function getProvider(
 ): ChannelProvider {
   if (proveedor === "api") return makeApiProvider(config);
   if (proveedor === "messenger") return makeMessengerProvider(config);
+  if (proveedor === "instagram") return makeInstagramProvider(config);
   if (proveedor !== "cloud_api") {
     throw new Error(`proveedor no soportado: ${proveedor}`);
   }
