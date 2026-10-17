@@ -13,7 +13,9 @@ export async function messengerGraph(config: Record<string, unknown>, path: stri
     ...init, headers: { Authorization: `Bearer ${token}`, ...init?.headers }, signal: AbortSignal.timeout(5000),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.error) throw Object.assign(new Error(data.error?.message ?? `Meta HTTP ${res.status}`), { code: data.error?.code });
+  if (!res.ok || data.error) throw Object.assign(new Error(data.error?.message ?? `Meta HTTP ${res.status}`), {
+    code: data.error?.code, subcode: data.error?.error_subcode, httpStatus: res.status,
+  });
   return data;
 }
 
@@ -24,6 +26,27 @@ export async function suscribirPagina(config: Record<string, unknown>) {
   });
   if (respuesta.success !== true) throw new Error("Meta no confirmó la suscripción de la página");
   return respuesta;
+}
+
+export const ERROR_DESCONEXION_MESSENGER = "No se pudo cancelar la suscripción en Facebook. El canal se conservó; vuelve a intentarlo.";
+
+export async function desuscribirPagina(config: Record<string, unknown>): Promise<{ desuscrito: boolean; motivo?: string }> {
+  if (typeof config.pageId !== "string" || !/^\d{1,40}$/.test(config.pageId)) throw new Error(ERROR_DESCONEXION_MESSENGER);
+  try {
+    const respuesta = await messengerGraph(config, `${config.pageId}/subscribed_apps`, { method: "DELETE" });
+    if (respuesta.success !== true) throw new Error(ERROR_DESCONEXION_MESSENGER);
+    return { desuscrito: true };
+  } catch (error) {
+    const datos = error as { code?: number; subcode?: number; httpStatus?: number };
+    if (datos.httpStatus == null || datos.httpStatus === 429 || datos.httpStatus >= 500) throw new Error(ERROR_DESCONEXION_MESSENGER);
+    if (datos.code === 190 || (error instanceof Error && /session has been invalidated|error validating access token/i.test(error.message))) {
+      return { desuscrito: false, motivo: "El token de la página venció o fue revocado; se retiró el canal local." };
+    }
+    if (datos.httpStatus === 404 || datos.code === 803 || (datos.code === 100 && datos.subcode === 33)) {
+      return { desuscrito: false, motivo: "La página ya no está disponible en Facebook; se retiró el canal local." };
+    }
+    throw new Error(ERROR_DESCONEXION_MESSENGER);
+  }
 }
 
 export async function perfilMessenger(config: Record<string, unknown>, psid: string) {

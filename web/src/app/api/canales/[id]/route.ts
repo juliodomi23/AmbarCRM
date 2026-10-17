@@ -6,6 +6,7 @@ import { tokenFromChannelConfig } from "@/lib/meta/credentials";
 import { conErrores } from "@/lib/errores-api";
 import { editarCanalApi, guardarCanalMessenger } from "@/lib/services/canales";
 import { ErrorRetail } from "@/lib/retail-db";
+import { desuscribirPagina, ERROR_DESCONEXION_MESSENGER } from "@/lib/channel/messenger";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,15 @@ async function manejarDELETE(req: NextRequest, props: { params: Promise<{ id: st
   const canal = await db.canalWhatsapp.findUnique({ where: { id: canalId } });
   if (!canal) return NextResponse.json({ error: "canal inexistente" }, { status: 404 });
 
+  let desconexionMessenger: { desuscrito: boolean; motivo?: string } | undefined;
+  if (canal.proveedor === "messenger") {
+    try {
+      desconexionMessenger = await desuscribirPagina((canal.config || {}) as Record<string, unknown>);
+    } catch {
+      return NextResponse.json({ error: ERROR_DESCONEXION_MESSENGER }, { status: 502 });
+    }
+  }
+
   if (canal.proveedor === "cloud_api") {
     const config = (canal.config || {}) as Record<string, unknown>;
     const wabaId = typeof config.wabaId === "string" ? config.wabaId : "";
@@ -74,7 +84,7 @@ async function manejarDELETE(req: NextRequest, props: { params: Promise<{ id: st
 
   // Las relaciones del canal usan SET NULL: sin borrarDatos, el histórico queda conservado.
   await db.canalWhatsapp.delete({ where: { id: canalId } });
-  return NextResponse.json({ ok: true, borrados });
+  return NextResponse.json({ ok: true, borrados, ...desconexionMessenger });
 }
 
 export const PATCH = conErrores(manejarPATCH);
