@@ -33,7 +33,7 @@ export function WebhooksSalientes() {
     setOcupado(true);
     const datos = await peticionIntegracion<{ ok?: boolean }>(`${ruta}/${webhook.id}${accion === "probar" ? "/probar" : ""}`,
       accion === "probar" ? "POST" : accion === "eliminar" ? "DELETE" : "PATCH", accion === "activar" ? { activo: !webhook.activo } : undefined);
-    if (datos && accion === "probar") toast(datos.ok ? "Prueba entregada" : "El receptor no aceptó la prueba", datos.ok ? "success" : "error");
+    if (datos && accion === "probar") toast(datos.ok ? "Prueba entregada" : "El receptor no aceptó la prueba", datos.ok ? "ok" : "error");
     await cargar(); setOcupado(false);
   }
   return <section className="surface p-4 space-y-4" aria-label="Webhooks salientes">
@@ -68,3 +68,4 @@ export function WebhooksSalientes() {
     </div>}
   </section>;
 }
+

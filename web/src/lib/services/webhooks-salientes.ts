@@ -4,7 +4,7 @@ import { encryptMetaToken } from "@/lib/meta/credentials";
 import { ErrorRetail, transaccionTenant } from "@/lib/retail-db";
 import { validarUrlCanalApi } from "@/lib/api-webhook";
 import { EVENTOS_CRM } from "@/lib/eventos-crm";
-import { objetoEstricto } from "@/lib/integraciones-api";
+import { objetoEstricto } from "@/lib/integraciones-validacion";
 import { WEBHOOK_PUBLICO } from "@/lib/webhooks-salientes";
 
 export function validarWebhookSaliente(body: unknown, parcial = false) {
@@ -35,7 +35,7 @@ export async function crearWebhookSaliente(orgId: bigint, body: unknown) {
   const data = validarWebhookSaliente(body);
   const secreto = randomBytes(32).toString("hex");
   const webhook = await transaccionTenant(orgId, async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${'webhooks:' + orgId}, 0))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${'webhooks:' + orgId}, 0))`;
     if (await tx.webhookSaliente.count() >= 10) throw new ErrorRetail("máximo 10 webhooks por empresa", 409);
     return tx.webhookSaliente.create({ data: { url: data.url!, eventos: data.eventos!, activo: data.activo,
       secreto: encryptMetaToken(secreto) }, select: WEBHOOK_PUBLICO });
@@ -49,3 +49,5 @@ export async function editarWebhookSaliente(id: bigint, body: unknown) {
     ...(data.activo === true ? { fallosSeguidos: 0 } : {}),
   }, select: WEBHOOK_PUBLICO });
 }
+
+
