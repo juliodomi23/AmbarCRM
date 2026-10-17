@@ -27,6 +27,8 @@ assert.match(externo, /canal && esMessenger && <Boton/);
 assert.match(externo, /onClick=\{\(\) => void desconectar\(\)\}>Desconectar<\/Boton>/);
 for (const texto of ["Se cancelará la suscripción en Facebook", "Borrar conversaciones", "Conservar historial"]) assert.ok(externo.includes(texto));
 assert.match(externo, /if \(!continuar\) return;/, "cancelar la primera confirmación no desconecta");
+assert.match(externo, /if \(res.status === 502\) \{[\s\S]*?await confirmar\([\s\S]*?if \(!forzar\) return;[\s\S]*?res = await retirar\(true\);/, "el retiro forzado exige 502 y una segunda confirmación");
+assert.ok(externo.includes("La suscripción puede seguir activa en Facebook"));
 const sinNavegar = () => undefined;
 const router = { back: sinNavegar, forward: sinNavegar, refresh: sinNavegar, push: sinNavegar, replace: sinNavegar, prefetch: sinNavegar, bfcacheId: "check" };
 for (const caso of [
@@ -36,5 +38,6 @@ for (const caso of [
 ]) {
   const html = renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: router }, createElement(CanalExterno, caso.props)));
   assert.equal(/>Desconectar<\/button>/.test(html), caso.desconectar, "botón solo para un canal Messenger existente");
+  assert.ok(!html.includes("Retirar solo del CRM"), "el retiro forzado no se ofrece de entrada");
 }
 console.log("OK · canales UI: selector, datos SSR/SSE, ventanas separadas, rutas públicas exactas y desconexión Messenger solo en configuración admin con confirmación e historial opcional");

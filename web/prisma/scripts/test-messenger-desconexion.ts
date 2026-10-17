@@ -17,6 +17,8 @@ const consolaOriginal = { log: console.log, warn: console.warn, error: console.e
 const registros: unknown[][] = [];
 const marca = String(Date.now());
 const token = `TOKEN-PRIVADO-DESCONEXION-${marca}`;
+const cuerpoMeta = `CUERPO-PRIVADO-META-${marca}`;
+const motivoForzado = "Se retiró del CRM, pero la suscripción puede seguir activa en Facebook: quita la app desde la configuración de la página";
 const cifrado = encryptMetaToken(token);
 const empresas = await Promise.all(["A", "B"].map((nombre) => dbRaw.org.create({ data: { nombre, slug: `desconexion-${nombre}-${marca}` } })));
 let sesion: { user: { id: string; orgId: string; rol: string } } | null = { user: { id: "1001", orgId: String(empresas[0].id), rol: "admin" } };
@@ -48,15 +50,15 @@ async function crear(org = empresas[0], proveedor: "messenger" | "api" | "cloud_
   });
 }
 
-async function borrar(id: bigint, borrarDatos?: boolean) {
+async function borrar(id: bigint, borrarDatos?: boolean, forzar?: unknown) {
   const peticion = new NextRequest(`http://127.0.0.1/api/canales/${id}`, {
-    method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ borrarDatos }),
+    method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ borrarDatos, forzar }),
   });
   const ejecutar = () => DELETE(peticion, { params: Promise.resolve({ id: String(id) }) });
   const respuesta = sesion ? await runWithOrg(BigInt(sesion.user.orgId), ejecutar) : await ejecutar();
   assert.ok(respuesta);
   const texto = await respuesta.text();
-  for (const privado of [token, cifrado, "tokenEncrypted", "access_token"]) assert.ok(!texto.includes(privado), "no expone credenciales en la respuesta");
+  for (const privado of [token, cifrado, cuerpoMeta, "tokenEncrypted", "access_token"]) assert.ok(!texto.includes(privado), "no expone credenciales ni errores de Meta en la respuesta");
   return { status: respuesta.status, datos: JSON.parse(texto) };
 }
 
@@ -69,11 +71,11 @@ try {
   const ajeno = await crear(empresas[1]);
   const previas = llamadas;
   sesion = null;
-  assert.equal((await borrar(propio.canal.id)).status, 401);
+  assert.equal((await borrar(propio.canal.id, true, true)).status, 401);
   sesion = { user: { id: "1001", orgId: String(empresas[0].id), rol: "agente" } };
-  assert.equal((await borrar(propio.canal.id)).status, 403);
+  assert.equal((await borrar(propio.canal.id, true, true)).status, 403);
   sesion.user.rol = "admin";
-  assert.equal((await borrar(ajeno.canal.id, true)).status, 404);
+  assert.equal((await borrar(ajeno.canal.id, true, true)).status, 404);
   assert.equal(llamadas, previas, "sin permiso o con canal ajeno no consulta Graph");
   assert.equal(await existe(propio), 1);
   assert.equal(await existe(ajeno), 1);
@@ -119,7 +121,7 @@ try {
     () => Response.json({ error: { code: 190, message: token } }, { status: 429 }),
     () => { throw new TypeError(`Red caída ${token}`); },
     () => { throw new DOMException(`Timeout ${token}`, "TimeoutError"); },
-    () => Response.json({ error: { code: 200, message: token } }, { status: 403 }),
+    () => Response.json({ error: { code: 200, message: `${cuerpoMeta} ${token}` } }, { status: 403 }),
     () => Response.json({ error: { code: 100, message: token } }, { status: 400 }),
     () => Response.json({ error: { code: 100, error_subcode: 33, message: `Object does not exist, cannot be loaded due to missing permissions ${token}` } }, { status: 400 }),
     () => Response.json({ success: false }),
@@ -141,20 +143,57 @@ try {
     assert.equal(await existe(fixture), 0);
   }
 
+  for (const respuesta of transitorios) {
+    for (const borrarDatos of [false, true]) {
+      const fixture = await crear();
+      destino = fixture.pageId;
+      responderGraph = respuesta;
+      const previas = llamadas;
+      assert.deepEqual(await borrar(fixture.canal.id, borrarDatos, true), {
+        status: 200,
+        datos: { ok: true, desuscrito: false, forzado: true, motivo: motivoForzado,
+          ...(borrarDatos ? { borrados: { conversaciones: 1, grupos: 0 } } : {}) },
+      });
+      assert.equal(llamadas, previas + 1, "el retiro forzado intenta cancelar la suscripción remota");
+      assert.equal(await existe(fixture), 0);
+      await runWithOrg(fixture.org.id, async () => {
+        const conversacion = await db.conversacion.findUnique({ where: { id: fixture.conversacion.id } });
+        assert.equal(conversacion?.canalId, borrarDatos ? undefined : null);
+        assert.equal(await db.mensaje.count({ where: { id: fixture.mensaje.id } }), borrarDatos ? 0 : 1);
+      });
+    }
+  }
+
+  const estricto = await crear();
+  destino = estricto.pageId;
+  responderGraph = () => Response.json({ error: { code: 200, message: `${cuerpoMeta} ${token}` } }, { status: 403 });
+  for (const valor of [false, "true", 1, null]) {
+    assert.equal((await borrar(estricto.canal.id, false, valor)).status, 502);
+    assert.equal(await existe(estricto), 1, "solo el booleano true permite el retiro forzado");
+  }
+  responderGraph = () => Response.json({ success: true });
+  assert.deepEqual(await borrar(estricto.canal.id, false, true), { status: 200, datos: { ok: true, desuscrito: true } });
+
   const api = await crear(empresas[0], "api");
   const antesApi = llamadas;
-  assert.deepEqual(await borrar(api.canal.id), { status: 200, datos: { ok: true } });
+  assert.deepEqual(await borrar(api.canal.id, false, true), { status: 200, datos: { ok: true } });
   assert.equal(llamadas, antesApi, "API no ejecuta desuscripción remota");
   const whatsapp = await crear(empresas[0], "cloud_api");
   destino = whatsapp.pageId;
-  assert.deepEqual(await borrar(whatsapp.canal.id), { status: 200, datos: { ok: true } });
+  assert.deepEqual(await borrar(whatsapp.canal.id, false, true), { status: 200, datos: { ok: true } });
   assert.equal(llamadas, antesApi + 1, "WhatsApp conserva su DELETE remoto y respuesta");
+  const whatsappFallido = await crear(empresas[0], "cloud_api");
+  destino = whatsappFallido.pageId;
+  responderGraph = () => Response.json({ error: { message: "No permitido" } }, { status: 403 });
+  assert.deepEqual(await borrar(whatsappFallido.canal.id, true, true), { status: 502, datos: { error: "No permitido" } });
+  assert.equal(await existe(whatsappFallido), 1, "forzar no evita errores de WhatsApp");
+  assert.equal(await runWithOrg(whatsappFallido.org.id, () => db.mensaje.count({ where: { id: whatsappFallido.mensaje.id } })), 1);
 
   const bitacoras = await Promise.all(empresas.map(org => runWithOrg(org.id, async () => ({ auditoria: await db.auditoriaBot.findMany(), eventos: await db.evento.findMany() }))));
   const textoBitacoras = JSON.stringify({ bitacoras, registros }, (_clave, valor) => typeof valor === "bigint" ? String(valor) : valor);
-  for (const privado of [token, cifrado, "tokenEncrypted", "access_token"]) assert.ok(!textoBitacoras.includes(privado), "no expone credenciales en bitácoras ni consola");
+  for (const privado of [token, cifrado, cuerpoMeta, "tokenEncrypted", "access_token"]) assert.ok(!textoBitacoras.includes(privado), "no expone credenciales ni errores de Meta en bitácoras ni consola");
   Object.assign(console, consolaOriginal);
-  console.log(JSON.stringify({ prueba: "desconexion-messenger", exito: true, historialConservado: true, borradoExplicito: true, erroresDefinitivos: definitivos.length, fallosReintentables: transitorios.length, sinSesion: 401, agente: 403, empresaAjena: 404, credencialesExpuestas: false, whatsappYApiSinCambios: true }));
+  console.log(JSON.stringify({ prueba: "desconexion-messenger", exito: true, historialConservado: true, borradoExplicito: true, erroresDefinitivos: definitivos.length, fallosReintentables: transitorios.length, retirosForzados: transitorios.length * 2, forzarBooleanoEstricto: true, sinSesion: 401, agente: 403, empresaAjena: 404, credencialesExpuestas: false, erroresMetaExpuestos: false, whatsappYApiSinCambios: true }));
 } finally {
   Object.assign(console, consolaOriginal);
   auth.getServerSession = sesionOriginal;
