@@ -1,5 +1,7 @@
 # Decisiones de canales
 
+- 17-oct-2026: reglas con listas blancas, origen anti-bucles y cupos serializados comparten los disparos salientes; sin equipos ni envío de respuestas rápidas fuera de 24 h. Ver [automatizaciones](automatizaciones.md).
+
 - 17-oct-2026: webhooks salientes por empresa reutilizan la entrega HMAC/anti-SSRF de API, secreto cifrado y límite concurrente; eventos y cobertura deliberadamente acotados en [webhooks salientes](webhooks-salientes.md).
 
 ## Retiro forzado de Messenger · 17-oct-2026
