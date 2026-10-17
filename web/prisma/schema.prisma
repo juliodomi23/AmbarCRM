@@ -7,6 +7,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model WebhookSaliente {
+  id BigInt @id @default(autoincrement())
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  url String
+  secreto String
+  eventos String[]
+  activo Boolean @default(true)
+  creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  ultimoEstado String? @map("ultimo_estado")
+  ultimoError String? @map("ultimo_error")
+  fallosSeguidos Int @default(0) @map("fallos_seguidos")
+  @@index([orgId])
+  @@map("webhook_saliente")
+}
+
 model MessengerLogin {
   id String @id
   orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")

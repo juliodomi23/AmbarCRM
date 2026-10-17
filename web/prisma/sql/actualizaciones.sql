@@ -1703,3 +1703,19 @@ CREATE POLICY org_isolation ON messenger_login
   USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
   WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
 GRANT SELECT, INSERT, UPDATE, DELETE ON messenger_login TO crm_app;
+
+CREATE TABLE IF NOT EXISTS webhook_saliente (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  url TEXT NOT NULL, secreto TEXT NOT NULL, eventos TEXT[] NOT NULL,
+  activo BOOLEAN NOT NULL DEFAULT true, creado_en TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ultimo_estado TEXT, ultimo_error TEXT, fallos_seguidos INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS webhook_saliente_org_idx ON webhook_saliente(org_id);
+ALTER TABLE webhook_saliente ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_isolation ON webhook_saliente;
+CREATE POLICY org_isolation ON webhook_saliente
+  USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+  WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
+GRANT SELECT, INSERT, UPDATE, DELETE ON webhook_saliente TO crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
