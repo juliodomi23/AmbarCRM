@@ -8,3 +8,8 @@ SHA256 antes/después y sin borrar ramas ni documentos.
 Los planes ya versionados permanecen en la raíz como referencias activas.
 Estos prompts describen trabajos históricos y no sustituyen las instrucciones
 del encargo actual ni autorizan push, despliegues o acceso a producción.
+
+El 17-oct-2026 Julio autorizó incorporar `PROMPT-CERRAR-MERGE-META.md`, que ya
+estaba en esta carpeta sin seguimiento al empezar la continuación. Se añadió sin
+editar su contenido; el inventario de quince archivos anterior permanece como
+registro histórico de aquel traslado.

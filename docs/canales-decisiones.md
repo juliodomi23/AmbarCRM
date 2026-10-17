@@ -1,5 +1,30 @@
 # Decisiones de canales
 
+## Desconexión de Messenger · 17-oct-2026
+
+- El DELETE del canal Messenger cancela primero `/{pageId}/subscribed_apps` mediante
+  `messengerGraph`, con token en Authorization y timeout existente de cinco segundos.
+  Solo después del resultado remoto permitido se ejecuta el borrado local.
+- `success:true` devuelve `desuscrito:true`. Un token 190/sesión invalidada o una
+  página no disponible (HTTP 404, código 803 o 100/subcódigo 33) permiten retirar
+  el canal local con `desuscrito:false` y motivo fijo. Esto no confirma revocación
+  de credenciales ni una desuscripción efectiva en Meta; 100/33 puede representar
+  un objeto inaccesible, no prueba por sí solo que se haya eliminado la página.
+- Red, timeout, 429/5xx y errores no clasificados devuelven 502 fijo y conservan
+  canal e histórico. 429/5xx prevalecen sobre el código de error del cuerpo.
+  No se registran ni retornan tokens o mensajes de error externos.
+- Se conserva el contrato de `borrarDatos`: histórico por defecto; eliminación
+  solo si el administrador la elige y se permite retirar el canal. Los errores
+  temporales nunca eliminan conversaciones aunque se hubiera elegido borrarlas.
+- La UI usa el Confirmador existente en dos pasos: cancelar la primera pregunta
+  aborta, la segunda ofrece borrar o conservar. Solo aparece en canales Messenger
+  existentes dentro de la configuración de administrador; el servidor exige
+  `requireSesion(true)` y el acceso a datos sigue sujeto a RLS.
+- WhatsApp y API no cambian. No se modifica el webhook, la firma ni los envíos.
+  Se prueba con Graph simulado: éxito, historial, errores definitivos y temporales,
+  reintentos, 401/403, aislamiento 404 y ausencia de secretos en respuestas/bitácoras.
+  La prueba HTTP verifica login real, botón y borrado con conservación del histórico.
+
 ## Login de Facebook para Messenger · 16-oct-2026
 
 - Se comparte `cargarFacebookSdk` con Embedded Signup de WhatsApp. El ID de app para Messenger viene del servidor (`META_APP_ID`); no se recibe del formulario. Si el SDK ya usa otro ID, la conexión falla con aviso. No se modifica el webhook de Messenger ni su firma.

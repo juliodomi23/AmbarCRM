@@ -182,6 +182,13 @@ Abrir `/bin/bash` para los bloques de consola del servicio `backup` que usan `re
   el perfil de prueba, recibir en `/chat`, responder manualmente dentro de 24 h
   y confirmar entrega sin duplicados. Comprobar firma/rechazos con las pruebas
   locales, sin enviar peticiones de prueba malformadas a producción.
+  Después, en la tarjeta de ese canal Messenger de prueba, pulsar «Desconectar»,
+  confirmar y elegir «Conservar historial». Esperado con token válido: toast de
+  desconexión de Facebook, canal ausente en la lista y conversaciones/mensajes
+  anteriores conservados. Si aparece aviso de token invalidado/página no disponible,
+  el retiro es local (`desuscrito:false`), sin afirmar cancelación remota confirmada.
+  Ante fallo temporal, debe informar el error y mantener canal e histórico para
+  reintentar. No desconectar ningún canal de cliente para este humo.
   🛑 Si Messenger aún no tiene el acceso que exige Meta, probar solo con roles
   habilitados en la app; no ofrecerlo a clientes ni usar HUMAN_AGENT sin aprobación.
 

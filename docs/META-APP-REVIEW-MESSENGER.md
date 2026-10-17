@@ -4,6 +4,8 @@ Preparado para `preparar-merge-meta`, desde `modulos-fase-2` en `70e684b`.
 La aprobación de WhatsApp no acredita Messenger. No se accedió al panel de Meta,
 no se conectó una página real y no se enviaron mensajes externos en esta preparación.
 Las pruebas locales usan Graph simulado; no prueban el popup real del SDK.
+Actualización del 17-oct-2026: la desconexión de Messenger ya incluye botón,
+confirmación del historial y desuscripción remota antes de retirar el canal local.
 
 ## Permisos y justificación para la solicitud
 
@@ -108,35 +110,30 @@ requiere (**por confirmar en el panel de Meta**). No grabar secretos ni datos de
 | 04:00–05:00 | Como asesor, responder «Hola, reviso tu pedido de prueba». Mostrar Messenger; opcionalmente adjuntar una imagen sintética. | Entrega al perfil correcto dentro de 24 h; acuse si Meta lo suministra. |
 | 05:00–06:00 | Mostrar otra conversación de prueba cuyo último entrante tenga más de 24 h, preparada legítimamente antes de grabar. Explicar que el bot no puede responder fuera de la ventana. | Fecha/hora real y rechazo del bot con ventana cerrada. No cambiar timestamps ni mostrar un mock como si fuera Meta real. Si falta esa conversación, este segmento queda pendiente de grabación. |
 | 06:00–07:00 | Si se solicita Human Agent, usar esa conversación con menos de siete días y responder manualmente como asesor. | Atención humana específica del caso; requiere la capacidad aprobada o el modo de prueba autorizado por Meta. Si no se solicita, narrar la limitación y no intentar ese envío. |
-| 07:00–08:00 | Desconectar la página de prueba según el procedimiento siguiente y recargar Canales. | Canal retirado localmente, histórico conservado, integración de prueba retirada en Facebook si corresponde. No afirmar que la app hace una desuscripción remota que no implementa. |
+| 07:00–08:00 | En Configuración → Canales, pulsar «Desconectar» en la página Messenger de prueba. Confirmar y elegir «Conservar historial». Mostrar el toast y la lista actualizada; abrir el histórico previo. | Con token válido: suscripción cancelada en Facebook y canal retirado localmente, con conversaciones conservadas. Si Meta indica token invalidado/página no disponible, explicar el retiro local y su aviso sin afirmar que hubo cancelación remota. |
 
-### Desconexión: límite real que hay que resolver para la grabación
+### Desconexión como flujo de usuario
 
-No existe un botón de desconexión en `CanalExterno.tsx` para Messenger.
-`DELETE /api/canales/{id}` sí existe, exige administrador, borra la configuración
-local y conserva el histórico si se envía `borrarDatos: false`. La llamada remota
-`DELETE /subscribed_apps` de esa ruta solo se ejecuta para WhatsApp.
-Eliminar un canal Messenger **no revoca el token ni cancela la suscripción en Meta**.
+Disponible solo para administradores en Configuración → Canales, para un canal
+Messenger existente. El botón «Desconectar» abre el Confirmador: «Se cancelará la
+suscripción en Facebook; el historial se conserva». Cancelar ahí no hace peticiones.
+La segunda confirmación permite «Borrar conversaciones» o «Conservar historial»;
+la segunda opción es el camino del video. La lista se refresca después del resultado.
 
-Para una demostración técnica controlada, conservar el `id` devuelto por la respuesta
-de conexión (Network → `conectar`). En la consola del navegador ya autenticado,
-usando exclusivamente ese ID confirmado del canal de prueba:
+`DELETE /api/canales/{id}` usa el token de página en Authorization para ejecutar
+`DELETE /{pageId}/subscribed_apps` mediante `messengerGraph`, con timeout de cinco
+segundos. No revoca por sí mismo otros permisos o credenciales de la cuenta Facebook.
 
-```js
-const id = prompt("ID del canal Messenger de PRUEBA que se retirará");
-if (!id || !/^\d+$/.test(id)) throw new Error("ID inválido");
-if (!confirm(`Confirmo que ${id} es exclusivamente el canal Messenger de PRUEBA recién conectado`)) throw new Error("Cancelado");
-const res = await fetch(`/api/canales/${id}`, {
-  method: "DELETE", headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ borrarDatos: false }),
-});
-console.log(res.status, await res.json());
-```
+| Respuesta de Meta | Resultado en el CRM |
+|---|---|
+| `success: true` | HTTP 200, `desuscrito: true`; canal retirado, toast de desconexión. |
+| Token inválido (190 / sesión invalidada) o página inexistente/no disponible (404, 803, 100/33) | HTTP 200, `desuscrito: false`, motivo fijo legible; canal retirado. No se afirma que Meta haya confirmado una desuscripción. |
+| Red, timeout, 429, 5xx, permisos insuficientes u otra respuesta no confirmada | HTTP 502 con mensaje fijo. Canal e histórico intactos, incluso si se había elegido borrarlos; se puede reintentar. |
 
-Esperado: HTTP 200, `ok: true`, canal ausente al recargar; conversaciones conservadas.
-Después retirar la integración de la página de prueba desde Facebook/Meta, cuyo
-recorrido exacto está **por confirmar en el panel de Meta**.
-
-🛑 Julio debe decidir si este recorrido técnico es aceptable para la revisión o si
-quiere una tarea posterior de UI/desuscripción. No presentar la desconexión como
-flujo de usuario completo. Esa funcionalidad queda fuera de esta preparación.
+Los estados 429/5xx se consideran temporales aunque su cuerpo incluya código 190.
+Los tokens y cuerpos de error externos no se devuelven ni registran.
+`borrarDatos: false` es el comportamiento predeterminado; solo la elección explícita
+de borrado elimina conversaciones/mensajes, después del resultado remoto permitido.
+WhatsApp y API conservan su comportamiento anterior. La evidencia local cubre rutas
+reales con Graph falso y una prueba HTTP con login NextAuth real; no sustituye el
+humo sobre la página real de pruebas después de la aprobación.
