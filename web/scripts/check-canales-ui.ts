@@ -16,14 +16,14 @@ const [chat, pagina, lista, config] = await Promise.all([
 ]);
 for (const origen of [pagina, lista]) for (const dato of ["canalProveedor", "ultimoEntranteAt"]) assert.ok(origen.includes(dato), `SSR y refresco deben conservar ${dato}`);
 assert.match(chat, /seleccionada && esWhatsapp && \(/, "plantillas oficiales solo en WhatsApp");
-assert.match(chat, /esMessenger && mensajes.length > 0 && !cargandoMsgs && !ventana.abierta/);
-for (const tipo of ["cloud_api", "messenger", "api"]) assert.ok(config.includes(`value="${tipo}"`));
+assert.match(chat, /esMensajeriaMeta && mensajes.length > 0 && !cargandoMsgs && !ventana.abierta/);
+for (const tipo of ["cloud_api", "messenger", "instagram", "api"]) assert.ok(config.includes(`value="${tipo}"`));
 const [externo, configuracion] = await Promise.all([
   readFile("src/components/config/CanalExterno.tsx", "utf8"),
   readFile("src/app/(app)/configuracion/page.tsx", "utf8"),
 ]);
 assert.match(configuracion, /session\?\.user\?\.rol !== "admin"\) redirect/);
-assert.match(externo, /canal && esMessenger && <Boton/);
+assert.match(externo, /canal && esMeta && <Boton/);
 assert.match(externo, /onClick=\{\(\) => void desconectar\(\)\}>Desconectar<\/Boton>/);
 for (const texto of ["Se cancelará la suscripción en Facebook", "Borrar conversaciones", "Conservar historial"]) assert.ok(externo.includes(texto));
 assert.match(externo, /if \(!continuar\) return;/, "cancelar la primera confirmación no desconecta");
@@ -33,6 +33,7 @@ const sinNavegar = () => undefined;
 const router = { back: sinNavegar, forward: sinNavegar, refresh: sinNavegar, push: sinNavegar, replace: sinNavegar, prefetch: sinNavegar, bfcacheId: "check" };
 for (const caso of [
   { props: { canal: { id: "1", nombre: "Messenger de prueba", proveedor: "messenger" } }, desconectar: true },
+  { props: { canal: { id: "3", nombre: "Instagram de prueba", proveedor: "instagram" } }, desconectar: true },
   { props: { canal: { id: "2", nombre: "API de prueba", proveedor: "api" } }, desconectar: false },
   { props: { tipo: "messenger" as const }, desconectar: false },
 ]) {

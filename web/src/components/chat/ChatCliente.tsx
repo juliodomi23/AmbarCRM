@@ -183,13 +183,13 @@ export function ChatCliente({
     return () => clearInterval(t);
   }, []);
   const proveedor = seleccionada?.canalProveedor ?? canales.find((c) => c.id === seleccionada?.canalId)?.proveedor ?? "cloud_api";
-  const esMessenger = proveedor === "messenger";
+  const esMensajeriaMeta = proveedor === "messenger" || proveedor === "instagram";
   const esWhatsapp = proveedor === "cloud_api";
   const ultimoCargado = [...mensajes].reverse().find((m) => m.direccion === "entrante" && !m.interna)?.timestamp;
   const ultimoEntrante = [ultimoCargado, seleccionada?.ultimoEntranteAt].filter((f): f is string => !!f).sort().at(-1);
   const ventana = estadoVentana(ultimoEntrante, ahora);
   const puedeHumanAgent = !!ultimoEntrante && ahora.getTime() - new Date(ultimoEntrante).getTime() < 7 * 24 * 3600_000;
-  const ventanaCerrada = !cargandoMsgs && mensajes.length > 0 && !ventana.abierta && (esWhatsapp || (esMessenger && !puedeHumanAgent));
+  const ventanaCerrada = !cargandoMsgs && mensajes.length > 0 && !ventana.abierta && (esWhatsapp || (esMensajeriaMeta && !puedeHumanAgent));
   const sinAsignarCount = convs.filter((c) => !c.esPersonal && !c.responsableId && c.estado !== "cerrada").length;
   const misCount = usuarioId ? convs.filter((c) => !c.esPersonal && c.responsableId === usuarioId).length : 0;
   const personalCount = convs.filter((c) => c.esPersonal).length;
@@ -786,7 +786,7 @@ export function ChatCliente({
               </div>
             )}
 
-            {esMessenger && mensajes.length > 0 && !cargandoMsgs && !ventana.abierta && <div role="status" className="border-t border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground">
+            {esMensajeriaMeta && mensajes.length > 0 && !cargandoMsgs && !ventana.abierta && <div role="status" className="border-t border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground">
               Ventana de 24 h cerrada. {puedeHumanAgent ? "Puedes responder como asesor humano hasta 7 días desde el último mensaje del cliente. El bot no puede responder." : "Pasaron 7 días: espera un nuevo mensaje del cliente para responder. Las notas internas siguen disponibles."}
             </div>}
             {esWhatsapp && mensajes.length > 0 && !cargandoMsgs && (
@@ -872,7 +872,7 @@ export function ChatCliente({
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
                 disabled={ventanaCerrada && !notaInterna}
-                placeholder={notaInterna ? "Nota interna (solo para el equipo)…" : ventanaCerrada ? esMessenger ? "Ventana cerrada: espera un mensaje del cliente" : "Ventana cerrada: envía una plantilla o una nota interna" : "Escribe un mensaje…"}
+                placeholder={notaInterna ? "Nota interna (solo para el equipo)…" : ventanaCerrada ? esMensajeriaMeta ? "Ventana cerrada: espera un mensaje del cliente" : "Ventana cerrada: envía una plantilla o una nota interna" : "Escribe un mensaje…"}
                 className={`order-first min-w-0 flex-1 basis-[calc(100%-3rem)] rounded-full border px-4 py-2 text-sm outline-none focus:ring-2 sm:order-none sm:basis-auto ${notaInterna ? "border-warning/30 bg-warning/10 focus:ring-warning/40" : "border-input focus:ring-primary/30"}`}
               />
               <button
