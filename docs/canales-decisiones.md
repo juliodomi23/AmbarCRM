@@ -1,6 +1,30 @@
 # Decisiones de canales
 
-## Desconexión de Messenger · 17-oct-2026
+## Retiro forzado de Messenger · 17-oct-2026
+
+- Un administrador puede enviar `forzar:true` al DELETE de un canal Messenger.
+  Siempre se intenta primero `desuscribirPagina`; si falla, se permite el borrado
+  local con `desuscrito:false`, `forzado:true` y un motivo fijo que indica quitar
+  la app desde la configuración de la página. No se devuelven ni registran
+  tokens ni el cuerpo del error de Meta. Si la desuscripción funciona, se devuelve
+  el resultado normal, sin marcarlo como forzado.
+- La UI ofrece «Retirar solo del CRM» únicamente después de recibir 502 en el
+  intento normal y exige otra confirmación. Cancelarla conserva el canal.
+  La petición forzada respeta la elección previa de `borrarDatos`: conservar
+  histórico por defecto, borrarlo únicamente con `borrarDatos:true`.
+- Riesgo aceptado por el administrador al confirmar: la suscripción puede
+  seguir viva en Meta. Los webhooks posteriores de esa página se ignoran con
+  HTTP 200 al no encontrar canal; no se cambia el webhook ni su firma.
+  El administrador debe quitar la app en Facebook para completar la cancelación.
+- Sin `forzar:true` se conserva el comportamiento descrito abajo: 502 sin borrar
+  ante fallos no definitivos. Otros valores de `forzar` no habilitan el retiro.
+  WhatsApp y API ignoran esta opción; los permisos de administrador y RLS siguen
+  siendo obligatorios. Es una salida para soporte, no parte del humo de despliegue.
+- Graph simulado verifica diez fallos con y sin retiro forzado, ambas opciones
+  de historial, rechazo sin sesión/admin y entre empresas, y ausencia de secretos
+  y errores externos en respuestas, auditoría, eventos y consola.
+
+## Desconexión normal de Messenger · 17-oct-2026
 
 - El DELETE del canal Messenger cancela primero `/{pageId}/subscribed_apps` mediante
   `messengerGraph`, con token en Authorization y timeout existente de cinco segundos.

@@ -189,6 +189,7 @@ Abrir `/bin/bash` para los bloques de consola del servicio `backup` que usan `re
   el retiro es local (`desuscrito:false`), sin afirmar cancelación remota confirmada.
   Ante fallo temporal, debe informar el error y mantener canal e histórico para
   reintentar. No desconectar ningún canal de cliente para este humo.
+  Solo para soporte, fuera del humo: [retiro forzado de Messenger](canales-decisiones.md#retiro-forzado-de-messenger--17-oct-2026) tras 502 y confirmación; puede dejar la suscripción activa en Facebook.
   🛑 Si Messenger aún no tiene el acceso que exige Meta, probar solo con roles
   habilitados en la app; no ofrecerlo a clientes ni usar HUMAN_AGENT sin aprobación.
 
