@@ -43,6 +43,7 @@ try {
     assert.deepEqual(await duplicada.json(), { error: "esa página ya está conectada" });
   }
   const configuracion = await (await get("/configuracion")).text();
+  assert.match(configuracion, />Desconectar<\/button>/, "el canal Messenger existente muestra la desconexión");
   for (const privado of [secretoMessenger, "appSecretEncrypted", (fixture.messenger.config as { appSecretEncrypted: string }).appSecretEncrypted]) {
     assert.ok(!configuracion.includes(privado), "la configuración HTML/RSC no expone el secreto");
   }
@@ -61,5 +62,14 @@ try {
   assert.match(html, /aria-label="API"/); assert.match(html, /aria-label="Messenger"/);
   const sinSesion = await fetch(`${base}/api/canal-api/${fixture.api.id}/mensajes`, { method: "POST", body: "{}", redirect: "manual" }); assert.equal(sinSesion.status, 401);
   const firmaMala = await fetch(`${base}/api/messenger/webhook`, { method: "POST", body: "{mal", redirect: "manual" }); assert.equal(firmaMala.status, 401);
-  console.log("OK · HTTP real: login, duplicados Messenger 409 en alta/edición, configuración sin secretos, webhooks públicos, asesor sin teléfono, fallo visible, nota privada e iconos/datos en la bandeja");
+  const desconexionSinSesion = await fetch(`${base}/api/canales/${fixture.messenger.id}`, { method: "DELETE", redirect: "manual" });
+  assert.ok([307, 401].includes(desconexionSinSesion.status));
+  const desconectado = await configurar(`/api/canales/${fixture.messenger.id}`, "DELETE", {});
+  assert.equal(desconectado.status, 200);
+  assert.deepEqual(await desconectado.json(), { ok: true, desuscrito: true });
+  await runWithOrg(org.id, async () => {
+    assert.equal(await db.canalWhatsapp.count({ where: { id: fixture.messenger.id } }), 0);
+    assert.equal(await db.conversacion.count({ where: { contacto: { identificadorExterno: "psid-http" } } }), 1);
+  });
+  console.log("OK · HTTP real: login, duplicados Messenger 409 en alta/edición, configuración sin secretos, webhooks públicos, asesor sin teléfono, fallo visible, nota privada, iconos/datos y botón de desconexión con rechazo sin sesión, desuscripción y conservación del histórico");
 } finally { await dbRaw.$disconnect(); }
