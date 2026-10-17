@@ -1,0 +1,596 @@
+[
+  {
+    "prueba": "schema",
+    "codigo": 0,
+    "segundos": 0.53,
+    "fase": "preparacion-focal"
+  },
+  {
+    "prueba": "multi-tenant",
+    "codigo": 0,
+    "segundos": 0.39,
+    "fase": "preparacion-focal"
+  },
+  {
+    "prueba": "actualizaciones-1",
+    "codigo": 0,
+    "segundos": 1.39,
+    "fase": "preparacion-focal"
+  },
+  {
+    "prueba": "actualizaciones-2",
+    "codigo": 0,
+    "segundos": 0.48,
+    "fase": "preparacion-focal"
+  },
+  {
+    "prueba": "actualizaciones-3",
+    "codigo": 0,
+    "segundos": 0.47,
+    "fase": "preparacion-focal"
+  },
+  {
+    "prueba": "rol-prueba",
+    "codigo": 0,
+    "segundos": 0.28,
+    "fase": "preparacion-focal"
+  },
+  {
+    "prueba": "fixture-plataforma",
+    "codigo": 0,
+    "segundos": 0.27,
+    "fase": "preparacion-focal"
+  },
+  {
+    "prueba": "fixture-ar",
+    "codigo": 0,
+    "segundos": 0.72,
+    "fase": "preparacion-focal"
+  },
+  {
+    "prueba": "test-messenger-desconexion-focal",
+    "codigo": 0,
+    "segundos": 8.58,
+    "fase": "preparacion-focal"
+  },
+  {
+    "prueba": "check-canales-ui-focal",
+    "codigo": 0,
+    "segundos": 5.74,
+    "fase": "preparacion-focal"
+  },
+  {
+    "prueba": "tsc-focal",
+    "codigo": 0,
+    "segundos": 8.81,
+    "fase": "preparacion-focal"
+  },
+  {
+    "prueba": "lint-focal",
+    "codigo": 0,
+    "segundos": 9.05,
+    "fase": "preparacion-focal"
+  },
+  {
+    "prueba": "actualizaciones-1",
+    "codigo": 0,
+    "segundos": 0.59,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "actualizaciones-2",
+    "codigo": 0,
+    "segundos": 0.55,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "actualizaciones-3",
+    "codigo": 0,
+    "segundos": 0.55,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "prisma-generate",
+    "codigo": 0,
+    "segundos": 4.16,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "tsc",
+    "codigo": 0,
+    "segundos": 7.09,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "lint",
+    "codigo": 0,
+    "segundos": 25.77,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "prisma-validate",
+    "codigo": 0,
+    "segundos": 2.61,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "build",
+    "codigo": 0,
+    "segundos": 27.64,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-aislamiento",
+    "codigo": 0,
+    "segundos": 2.02,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-a3-e2e",
+    "codigo": 0,
+    "segundos": 1.7,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-a3-fixes-e2e",
+    "codigo": 0,
+    "segundos": 1.26,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-a4-e2e",
+    "codigo": 0,
+    "segundos": 1.69,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-bot-api",
+    "codigo": 0,
+    "segundos": 9.09,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-caja-a2-e2e",
+    "codigo": 0,
+    "segundos": 1.97,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-caja-dinero",
+    "codigo": 0,
+    "segundos": 1.48,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-caja-e2e",
+    "codigo": 0,
+    "segundos": 1.53,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-canales-api",
+    "codigo": 0,
+    "segundos": 1.27,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-canales-base",
+    "codigo": 0,
+    "segundos": 1.11,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-canales-e2e",
+    "codigo": 0,
+    "segundos": 1.3,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-canales-messenger",
+    "codigo": 0,
+    "segundos": 2.03,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-cobros-cancelar-eliminar-e2e",
+    "codigo": 0,
+    "segundos": 2.47,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-cobros-db",
+    "codigo": 0,
+    "segundos": 1.44,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-cobros-e2e",
+    "codigo": 0,
+    "segundos": 2.45,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-concurrencia-caja-a2",
+    "codigo": 0,
+    "segundos": 1.28,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-concurrencia-caja",
+    "codigo": 0,
+    "segundos": 1.19,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-concurrencia-cobros",
+    "codigo": 0,
+    "segundos": 0.75,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-concurrencia-cotizaciones",
+    "codigo": 0,
+    "segundos": 1.0,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-concurrencia-nota-credito",
+    "codigo": 0,
+    "segundos": 0.92,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-concurrencia-pedidos",
+    "codigo": 0,
+    "segundos": 1.05,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-concurrencia-resenas",
+    "codigo": 0,
+    "segundos": 1.84,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-concurrencia-retail",
+    "codigo": 0,
+    "segundos": 6.17,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-concurrencia-sinred",
+    "codigo": 0,
+    "segundos": 1.53,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-concurrencia-varias-cajas",
+    "codigo": 0,
+    "segundos": 1.06,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-cotizaciones-e2e",
+    "codigo": 0,
+    "segundos": 1.47,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-cotizaciones-zona",
+    "codigo": 0,
+    "segundos": 0.84,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-cupos-concurrentes",
+    "codigo": 0,
+    "segundos": 0.73,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-messenger-desconexion",
+    "codigo": 0,
+    "segundos": 2.56,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-messenger-facebook-http",
+    "codigo": 0,
+    "segundos": 1.03,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-messenger-facebook-rutas",
+    "codigo": 0,
+    "segundos": 1.27,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-messenger-facebook",
+    "codigo": 0,
+    "segundos": 1.23,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-paridad-precios",
+    "codigo": 0,
+    "segundos": 4.0,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-pedidos-e2e",
+    "codigo": 0,
+    "segundos": 1.66,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-precios-promociones",
+    "codigo": 0,
+    "segundos": 1.45,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-referencias",
+    "codigo": 0,
+    "segundos": 0.75,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-reportes-cuadre",
+    "codigo": 0,
+    "segundos": 1.08,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-resenas-e2e",
+    "codigo": 0,
+    "segundos": 2.16,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-reservas-concurrentes",
+    "codigo": 0,
+    "segundos": 0.86,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-servidores-e2e",
+    "codigo": 0,
+    "segundos": 1.86,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-sinred-e2e",
+    "codigo": 0,
+    "segundos": 2.2,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-sql-inventario-negativo",
+    "codigo": 0,
+    "segundos": 0.52,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-total-cobrado-cliente",
+    "codigo": 0,
+    "segundos": 0.78,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-tours-dinero",
+    "codigo": 0,
+    "segundos": 0.78,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-vencimiento-pedidos",
+    "codigo": 0,
+    "segundos": 0.94,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "test-webhook-manual",
+    "codigo": 0,
+    "segundos": 0.97,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-a3",
+    "codigo": 0,
+    "segundos": 0.42,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-arquitectura-modulos",
+    "codigo": 0,
+    "segundos": 0.66,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-audio-ogg",
+    "codigo": 0,
+    "segundos": 0.41,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-aurum-webhook",
+    "codigo": 0,
+    "segundos": 0.77,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-busqueda",
+    "codigo": 0,
+    "segundos": 0.45,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-caja-a2",
+    "codigo": 0,
+    "segundos": 0.67,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-caja-offline",
+    "codigo": 0,
+    "segundos": 0.55,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-caja-sinred",
+    "codigo": 0,
+    "segundos": 0.53,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-caja",
+    "codigo": 0,
+    "segundos": 0.49,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-campos-personalizados",
+    "codigo": 0,
+    "segundos": 0.44,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-canales-ui",
+    "codigo": 0,
+    "segundos": 0.66,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-cantidades-retail",
+    "codigo": 0,
+    "segundos": 0.47,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-citas",
+    "codigo": 0,
+    "segundos": 0.45,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-clientes-automotriz",
+    "codigo": 0,
+    "segundos": 0.5,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-contratos-cobros",
+    "codigo": 0,
+    "segundos": 0.61,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-cotizaciones",
+    "codigo": 0,
+    "segundos": 0.64,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-demo",
+    "codigo": 0,
+    "segundos": 0.66,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-lealtad",
+    "codigo": 0,
+    "segundos": 0.42,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-legal",
+    "codigo": 0,
+    "segundos": 0.45,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-pedidos-en-linea",
+    "codigo": 0,
+    "segundos": 0.52,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-permisos-modulos",
+    "codigo": 0,
+    "segundos": 0.42,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-plantilla-meta",
+    "codigo": 0,
+    "segundos": 0.44,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-precios",
+    "codigo": 0,
+    "segundos": 0.42,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-proxy",
+    "codigo": 0,
+    "segundos": 0.42,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-reportes-a4",
+    "codigo": 0,
+    "segundos": 0.42,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-resenas",
+    "codigo": 0,
+    "segundos": 0.47,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-reservas",
+    "codigo": 0,
+    "segundos": 0.45,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-retail",
+    "codigo": 0,
+    "segundos": 0.47,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-seeds-seguridad",
+    "codigo": 0,
+    "segundos": 0.41,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-seguridad",
+    "codigo": 0,
+    "segundos": 0.47,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-servidores",
+    "codigo": 0,
+    "segundos": 0.41,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-sw-push",
+    "codigo": 0,
+    "segundos": 0.97,
+    "fase": "regresion-completa"
+  },
+  {
+    "prueba": "check-viajes-academia",
+    "codigo": 0,
+    "segundos": 0.44,
+    "fase": "regresion-completa"
+  }
+]

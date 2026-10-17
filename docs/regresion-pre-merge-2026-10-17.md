@@ -1,6 +1,6 @@
 # Regresión previa al merge de Meta
 
-> Actualización del 17-oct-2026: **46/46 tests y 33/33 checks pasan** tras completar la desconexión. Ver la sección final fechada; las secciones iniciales conservan la preparación anterior.
+> Actualización del 17-oct-2026: **46/46 tests y 33/33 checks pasan** tras completar el retiro forzado de Messenger. Ver la sección final fechada; las secciones iniciales conservan la preparación anterior.
 
 Preparación del 16-oct-2026 (America/Mexico_City); nombre de informe solicitado para el 17.
 Rama `preparar-merge-meta`, creada desde `modulos-fase-2` (`70e684b`).
@@ -520,3 +520,209 @@ un commit de merge ni se actualiza meta-tech-provider, que sigue en e1c5e93.
 Human Agent por separado, ensayo con respaldo real y Aurum real de pruebas según
 el plan de cierre. La desconexión ya no requiere una decisión de implementación;
 queda su humo real con la página de prueba en la ventana autorizada.
+
+## Regresión de retiro forzado Messenger · 17-oct-2026
+
+Rama `messenger-retiro-forzado`, creada desde `modulos-fase-2` en `586fb36`.
+Resultado: **46/46 tests, 33/33 checks, TypeScript, lint, Prisma validate y build pasan**.
+No hubo fallos en las ejecuciones focales ni en esta regresión completa.
+Los fallos de las secciones anteriores corresponden a trabajos previos y se conservan.
+
+### Entorno y evidencia del retiro forzado
+
+- Contenedor PostgreSQL 16 propio `ambarcrm-retiro-20261017`, publicado solo en
+  `127.0.0.1:55450`; se esperó `pg_isready` antes de crear las tablas.
+- Preparación con `schema.sql` → `multi-tenant.sql` → `actualizaciones.sql` ×3,
+  mediante `docker exec -i ambarcrm-retiro-20261017 psql -X -U dueno -d crm -v ON_ERROR_STOP=1`.
+  Se repitió `actualizaciones.sql` otras tres veces como parte de la batería completa.
+  Todas terminaron en 0. No se utilizó `prisma db push`.
+- Pruebas con rol `crm_app`, RLS activo y claves sintéticas; aislamiento de lectura
+  y escritura correcto en **81 tablas**. El fixture AR también es sintético.
+- App compilada en `127.0.0.1:3118` con el preload existente
+  `prisma/scripts/meta-facebook-simulado.mjs`. Graph de las pruebas de desconexión
+  está sustituido por un mock: ninguna llamada a Meta real ni a producción.
+- Se reemplazaron las variables locales por valores de pruebas y se dejaron
+  vacías las conexiones a Aurum/IA. `test-canales-messenger.ts` recibe
+  `NEXTAUTH_URL=https://crm.prueba.test`; la app HTTP usa localhost:3118.
+- Ejecución de tests/checks con el tsx 4.23.15 ya disponible en caché, sin instalar
+  librerías ni cambiar dependencias.
+- [Resultados estructurados](pruebas-retiro-forzado-messenger-2026-10-17/resultados.json)
+  y [salidas completas por ejecución](pruebas-retiro-forzado-messenger-2026-10-17/ejecuciones.txt).
+  Solo se omite la salida de credenciales sintéticas del seed; su código se conserva.
+
+### Preparación y pruebas focales
+
+| Prueba | Resultado (salida) | Segundos |
+|---|---|---:|
+| `schema` | PASA (0) | 0.53 |
+| `multi-tenant` | PASA (0) | 0.39 |
+| `actualizaciones-1` | PASA (0) | 1.39 |
+| `actualizaciones-2` | PASA (0) | 0.48 |
+| `actualizaciones-3` | PASA (0) | 0.47 |
+| `rol-prueba` | PASA (0) | 0.28 |
+| `fixture-plataforma` | PASA (0) | 0.27 |
+| `fixture-ar` | PASA (0) | 0.72 |
+| `test-messenger-desconexion-focal` | PASA (0) | 8.58 |
+| `check-canales-ui-focal` | PASA (0) | 5.74 |
+| `tsc-focal` | PASA (0) | 8.81 |
+| `lint-focal` | PASA (0) | 9.05 |
+
+### Compilación, SQL y validaciones de la batería completa
+
+| Prueba | Resultado (salida) | Segundos |
+|---|---|---:|
+| `actualizaciones-1` | PASA (0) | 0.59 |
+| `actualizaciones-2` | PASA (0) | 0.55 |
+| `actualizaciones-3` | PASA (0) | 0.55 |
+| `prisma-generate` | PASA (0) | 4.16 |
+| `tsc` | PASA (0) | 7.09 |
+| `lint` | PASA (0) | 25.77 |
+| `prisma-validate` | PASA (0) | 2.61 |
+| `build` | PASA (0) | 27.64 |
+
+### Todos los tests autorizados
+
+| Prueba | Resultado (salida) | Segundos |
+|---|---|---:|
+| `test-aislamiento.ts` | PASA (0) | 2.02 |
+| `test-a3-e2e.ts` | PASA (0) | 1.7 |
+| `test-a3-fixes-e2e.ts` | PASA (0) | 1.26 |
+| `test-a4-e2e.ts` | PASA (0) | 1.69 |
+| `test-bot-api.ts` | PASA (0) | 9.09 |
+| `test-caja-a2-e2e.ts` | PASA (0) | 1.97 |
+| `test-caja-dinero.ts` | PASA (0) | 1.48 |
+| `test-caja-e2e.ts` | PASA (0) | 1.53 |
+| `test-canales-api.ts` | PASA (0) | 1.27 |
+| `test-canales-base.ts` | PASA (0) | 1.11 |
+| `test-canales-e2e.ts` | PASA (0) | 1.3 |
+| `test-canales-messenger.ts` | PASA (0) | 2.03 |
+| `test-cobros-cancelar-eliminar-e2e.ts` | PASA (0) | 2.47 |
+| `test-cobros-db.ts` | PASA (0) | 1.44 |
+| `test-cobros-e2e.ts` | PASA (0) | 2.45 |
+| `test-concurrencia-caja-a2.ts` | PASA (0) | 1.28 |
+| `test-concurrencia-caja.ts` | PASA (0) | 1.19 |
+| `test-concurrencia-cobros.ts` | PASA (0) | 0.75 |
+| `test-concurrencia-cotizaciones.ts` | PASA (0) | 1.0 |
+| `test-concurrencia-nota-credito.ts` | PASA (0) | 0.92 |
+| `test-concurrencia-pedidos.ts` | PASA (0) | 1.05 |
+| `test-concurrencia-resenas.ts` | PASA (0) | 1.84 |
+| `test-concurrencia-retail.ts` | PASA (0) | 6.17 |
+| `test-concurrencia-sinred.ts` | PASA (0) | 1.53 |
+| `test-concurrencia-varias-cajas.ts` | PASA (0) | 1.06 |
+| `test-cotizaciones-e2e.ts` | PASA (0) | 1.47 |
+| `test-cotizaciones-zona.ts` | PASA (0) | 0.84 |
+| `test-cupos-concurrentes.ts` | PASA (0) | 0.73 |
+| `test-messenger-desconexion.ts` | PASA (0) | 2.56 |
+| `test-messenger-facebook-http.ts` | PASA (0) | 1.03 |
+| `test-messenger-facebook-rutas.ts` | PASA (0) | 1.27 |
+| `test-messenger-facebook.ts` | PASA (0) | 1.23 |
+| `test-paridad-precios.ts` | PASA (0) | 4.0 |
+| `test-pedidos-e2e.ts` | PASA (0) | 1.66 |
+| `test-precios-promociones.ts` | PASA (0) | 1.45 |
+| `test-referencias.ts` | PASA (0) | 0.75 |
+| `test-reportes-cuadre.ts` | PASA (0) | 1.08 |
+| `test-resenas-e2e.ts` | PASA (0) | 2.16 |
+| `test-reservas-concurrentes.ts` | PASA (0) | 0.86 |
+| `test-servidores-e2e.ts` | PASA (0) | 1.86 |
+| `test-sinred-e2e.ts` | PASA (0) | 2.2 |
+| `test-sql-inventario-negativo.ts` | PASA (0) | 0.52 |
+| `test-total-cobrado-cliente.ts` | PASA (0) | 0.78 |
+| `test-tours-dinero.ts` | PASA (0) | 0.78 |
+| `test-vencimiento-pedidos.ts` | PASA (0) | 0.94 |
+| `test-webhook-manual.ts` | PASA (0) | 0.97 |
+
+`test-lealtad-aurum.ts`: EXCLUIDO por instrucción expresa; requiere Aurum real de pruebas.
+
+### Todos los checks de web/scripts
+
+| Prueba | Resultado (salida) | Segundos |
+|---|---|---:|
+| `check-a3.ts` | PASA (0) | 0.42 |
+| `check-arquitectura-modulos.ts` | PASA (0) | 0.66 |
+| `check-audio-ogg.ts` | PASA (0) | 0.41 |
+| `check-aurum-webhook.ts` | PASA (0) | 0.77 |
+| `check-busqueda.ts` | PASA (0) | 0.45 |
+| `check-caja-a2.ts` | PASA (0) | 0.67 |
+| `check-caja-offline.ts` | PASA (0) | 0.55 |
+| `check-caja-sinred.ts` | PASA (0) | 0.53 |
+| `check-caja.ts` | PASA (0) | 0.49 |
+| `check-campos-personalizados.ts` | PASA (0) | 0.44 |
+| `check-canales-ui.ts` | PASA (0) | 0.66 |
+| `check-cantidades-retail.ts` | PASA (0) | 0.47 |
+| `check-citas.ts` | PASA (0) | 0.45 |
+| `check-clientes-automotriz.ts` | PASA (0) | 0.5 |
+| `check-contratos-cobros.ts` | PASA (0) | 0.61 |
+| `check-cotizaciones.ts` | PASA (0) | 0.64 |
+| `check-demo.ts` | PASA (0) | 0.66 |
+| `check-lealtad.ts` | PASA (0) | 0.42 |
+| `check-legal.ts` | PASA (0) | 0.45 |
+| `check-pedidos-en-linea.ts` | PASA (0) | 0.52 |
+| `check-permisos-modulos.ts` | PASA (0) | 0.42 |
+| `check-plantilla-meta.ts` | PASA (0) | 0.44 |
+| `check-precios.ts` | PASA (0) | 0.42 |
+| `check-proxy.ts` | PASA (0) | 0.42 |
+| `check-reportes-a4.ts` | PASA (0) | 0.42 |
+| `check-resenas.ts` | PASA (0) | 0.47 |
+| `check-reservas.ts` | PASA (0) | 0.45 |
+| `check-retail.ts` | PASA (0) | 0.47 |
+| `check-seeds-seguridad.ts` | PASA (0) | 0.41 |
+| `check-seguridad.ts` | PASA (0) | 0.47 |
+| `check-servidores.ts` | PASA (0) | 0.41 |
+| `check-sw-push.ts` | PASA (0) | 0.97 |
+| `check-viajes-academia.ts` | PASA (0) | 0.44 |
+
+### Casos de retiro forzado comprobados
+
+`test-messenger-desconexion.ts` ejecuta el handler real con sesión controlada,
+BD desechable y RLS. El mock exige el DELETE remoto, la página y Authorization
+correctos; comprueba que el token no viaje en la URL.
+
+- Diez fallos sin forzar devuelven 502 y conservan canal, conversación y mensaje,
+  incluso con `borrarDatos:true`: 503, 500 con código 190, 429 con código 190,
+  red, timeout, permisos 403/código 200, 400/código 100, 100/33 ambiguo,
+  `success:false` y respuesta no JSON. El reintento normal exitoso sigue funcionando.
+- Los mismos diez fallos, con `forzar:true`, se prueban con historial conservado
+  y con borrado explícito: **20 retiros forzados**. Siempre intentan Graph una vez,
+  devuelven 200 con `desuscrito:false`, `forzado:true` y el motivo fijo solicitado,
+  y eliminan el canal. Conservar deja la conversación sin canal y mantiene su
+  mensaje; borrar elimina ambos.
+- `forzar:false`, `"true"`, `1` y `null` no habilitan el retiro. Un éxito remoto
+  con `forzar:true` devuelve `desuscrito:true`, sin afirmar un retiro forzado.
+- Sin sesión devuelve 401; agente 403; empresa A sobre canal B 404, aun enviando
+  `forzar:true` y `borrarDatos:true`. No consultan Graph ni eliminan canales.
+- API ignora `forzar` sin consultar Graph. WhatsApp mantiene su DELETE y respuesta:
+  un fallo remoto sigue siendo 502 y conserva canal/mensaje aunque reciba `forzar:true`.
+- No aparecen token, cifrado ni el marcador del cuerpo de Meta en ninguna respuesta,
+  auditoría, evento o salida de consola capturada. Los errores ficticios incluyen
+  deliberadamente esos secretos/marcadores para detectar filtraciones.
+- Siguen pasando éxito normal, borrado explícito y los cuatro errores definitivos
+  ya permitidos: 190, sesión invalidada, 803 y HTTP 404.
+- `check-canales-ui.ts` renderiza el componente: no hay botón forzado inicial.
+  También verifica la condición 502 y la confirmación previa al reenvío forzado.
+  La E2E HTTP mantiene login real y desconexión normal con Graph simulado.
+  No se ejecutó un clic completo de navegador ni una sesión real de Facebook.
+
+### Commits y cierre local
+
+| Tarea | Commit |
+|---|---|
+| API: retiro forzado solo Messenger/admin | `4f6e382` |
+| UI: segunda confirmación tras 502 | `bed364a` |
+| Pruebas, aislamiento y privacidad | `0c3fc56` |
+| Decisión, referencia de soporte y prompt autorizado | `58c17c5` |
+| Regresión y evidencia | Commit que contiene esta sección. |
+
+El prompt que ya estaba sin seguimiento se incorporó sin editar su contenido,
+con autorización explícita de Julio. El contenedor desechable se retiró y la app
+se detuvo por el puerto 3118 después de verificar su PID; no quedan listeners de
+esta prueba en 3118 ni 55450. No se operó `ambarcrm-db` ni producción.
+
+Tras guardar el informe se comprobará árbol limpio y ascendencia antes de
+`git switch modulos-fase-2` y `git merge --ff-only messenger-retiro-forzado`.
+La entrega final registra el resultado y SHA del fast-forward. Sin reset,
+rebase, commit de merge, push ni deploy; `meta-tech-provider` sigue en `e1c5e93`.
+
+🛑 Pendiente de Julio: panel de Meta y aprobación/valores efectivos; solicitud o
+habilitación de Human Agent; ensayo con un respaldo real en una copia aislada;
+y Aurum real de pruebas antes del despliegue. El retiro forzado es solo una salida
+para soporte: la suscripción puede seguir activa y requiere quitar la app en Facebook.
