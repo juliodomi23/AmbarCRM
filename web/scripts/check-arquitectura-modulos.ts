@@ -11,6 +11,8 @@ for (const ruta of rutas) {
 }
 assert.equal(rutasConModulo.length, 96, "deben existir 96 rutas de módulos con conModulo (93 previas + 3 de servidores)");
 assert.equal(rutas.filter((r) => r.replaceAll("\\", "/").startsWith("webhooks-salientes/")).length, 3, "3 rutas de administración de webhooks con permiso admin");
+assert.equal(rutas.filter((r) => r.replaceAll("\\", "/").startsWith("automatizaciones/")).length, 4, "4 rutas de administración de automatizaciones con permiso admin");
+assert.equal(rutasConModulo.length + 3 + 4, 103, "96 rutas de módulos y 7 de integraciones administrativas");
 
 // Cada módulo de listado debe permitir capturar desde la pantalla, no solo por API.
 for (const pagina of [
