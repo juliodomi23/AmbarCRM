@@ -1,0 +1,127 @@
+[
+  {
+    "prueba": "actualizaciones-1",
+    "codigo": 0,
+    "segundos": 0.63
+  },
+  {
+    "prueba": "actualizaciones-2",
+    "codigo": 0,
+    "segundos": 0.59
+  },
+  {
+    "prueba": "actualizaciones-3",
+    "codigo": 0,
+    "segundos": 0.64
+  },
+  {
+    "prueba": "prisma-generate",
+    "codigo": 0,
+    "segundos": 5.63
+  },
+  {
+    "prueba": "tsc",
+    "codigo": 0,
+    "segundos": 8.74
+  },
+  {
+    "prueba": "lint",
+    "codigo": 0,
+    "segundos": 35.36
+  },
+  {
+    "prueba": "prisma-validate",
+    "codigo": 0,
+    "segundos": 5.09
+  },
+  {
+    "prueba": "build",
+    "codigo": 0,
+    "segundos": 82.54
+  },
+  {
+    "prueba": "test-a3-e2e.ts",
+    "codigo": 0,
+    "segundos": 8.39
+  },
+  {
+    "prueba": "test-a3-fixes-e2e.ts",
+    "codigo": 0,
+    "segundos": 9.3
+  },
+  {
+    "prueba": "test-a4-e2e.ts",
+    "codigo": 0,
+    "segundos": 9.34
+  },
+  {
+    "prueba": "test-aislamiento.ts",
+    "codigo": 0,
+    "segundos": 10.21
+  },
+  {
+    "prueba": "test-automatizaciones.ts",
+    "codigo": 0,
+    "segundos": 10.38
+  },
+  {
+    "prueba": "test-bot-api.ts",
+    "codigo": 0,
+    "segundos": 19.23
+  },
+  {
+    "prueba": "test-caja-a2-e2e.ts",
+    "codigo": 0,
+    "segundos": 9.42
+  },
+  {
+    "prueba": "test-caja-dinero.ts",
+    "codigo": 0,
+    "segundos": 8.87
+  },
+  {
+    "prueba": "test-caja-e2e.ts",
+    "codigo": 0,
+    "segundos": 8.73
+  },
+  {
+    "prueba": "test-canales-api.ts",
+    "codigo": 0,
+    "segundos": 9.49
+  },
+  {
+    "prueba": "test-canales-base.ts",
+    "codigo": 0,
+    "segundos": 8.16
+  },
+  {
+    "prueba": "test-canales-e2e.ts",
+    "codigo": 0,
+    "segundos": 8.27
+  },
+  {
+    "prueba": "test-canales-messenger.ts",
+    "codigo": 1,
+    "segundos": 8.87
+  },
+  {
+    "prueba": "test-cobros-cancelar-eliminar-e2e.ts",
+    "codigo": 0,
+    "segundos": 10.02
+  },
+  {
+    "prueba": "test-cobros-db.ts",
+    "codigo": 0,
+    "segundos": 8.84
+  },
+  {
+    "prueba": "test-cobros-e2e.ts",
+    "codigo": 0,
+    "segundos": 10.34
+  },
+  {
+    "prueba": "test-concurrencia-caja-a2.ts",
+    "codigo": 0,
+    "segundos": 9.83
+  }
+]
