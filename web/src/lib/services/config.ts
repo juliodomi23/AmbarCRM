@@ -32,6 +32,7 @@ export async function listarCanales() {
       phoneNumberId: typeof config.phoneNumberId === "string" ? config.phoneNumberId : null,
       webhookUrl: typeof config.webhookUrl === "string" ? config.webhookUrl : null,
       pageId: typeof config.pageId === "string" ? config.pageId : null,
+        instagramId: typeof config.instagramId === "string" ? config.instagramId : null,
       appId: typeof config.appId === "string" ? config.appId : null,
       tieneAppSecret: typeof config.appSecretEncrypted === "string",
       errorAutorizacion: typeof config.errorAutorizacion === "string" ? config.errorAutorizacion : null

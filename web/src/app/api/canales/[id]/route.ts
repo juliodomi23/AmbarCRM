@@ -4,9 +4,10 @@ import { requireSesion } from "@/lib/session";
 import { META_GRAPH_URL } from "@/lib/meta/config";
 import { tokenFromChannelConfig } from "@/lib/meta/credentials";
 import { conErrores } from "@/lib/errores-api";
-import { editarCanalApi, guardarCanalMessenger } from "@/lib/services/canales";
+import { editarCanalApi, guardarCanalMessenger, guardarCanalInstagram } from "@/lib/services/canales";
 import { ErrorRetail } from "@/lib/retail-db";
 import { desuscribirPagina, ERROR_DESCONEXION_MESSENGER } from "@/lib/channel/messenger";
+import { desuscribirCuenta, ERROR_DESCONEXION_INSTAGRAM } from "@/lib/channel/instagram";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +20,10 @@ async function manejarPATCH(req: NextRequest, props: { params: Promise<{ id: str
   const body = await req.json().catch(() => ({}));
   const canal = await db.canalWhatsapp.findUnique({ where: { id: BigInt(params.id) } });
   if (!canal) return NextResponse.json({ error: "canal inexistente" }, { status: 404 });
-  if (canal.proveedor === "api" || canal.proveedor === "messenger") {
+  if (canal.proveedor === "api" || canal.proveedor === "messenger" || canal.proveedor === "instagram") {
     try {
-      const resultado = canal.proveedor === "api" ? await editarCanalApi(canal.id, body) : await guardarCanalMessenger(body, canal.id);
+      const resultado = canal.proveedor === "api" ? await editarCanalApi(canal.id, body)
+        : canal.proveedor === "instagram" ? await guardarCanalInstagram(body, canal.id) : await guardarCanalMessenger(body, canal.id);
       return NextResponse.json(resultado, { headers: { "Cache-Control": "no-store" } });
     } catch (e) {
       if (e instanceof ErrorRetail) return NextResponse.json({ error: e.message }, { status: e.status });
@@ -48,11 +50,12 @@ async function manejarDELETE(req: NextRequest, props: { params: Promise<{ id: st
 
   const body = await req.json().catch(() => ({}));
   let desconexionMessenger: { desuscrito: boolean; forzado?: boolean; motivo?: string } | undefined;
-  if (canal.proveedor === "messenger") {
+  if (canal.proveedor === "messenger" || canal.proveedor === "instagram") {
     try {
-      desconexionMessenger = await desuscribirPagina((canal.config || {}) as Record<string, unknown>);
+      const desuscribir = canal.proveedor === "instagram" ? desuscribirCuenta : desuscribirPagina;
+      desconexionMessenger = await desuscribir((canal.config || {}) as Record<string, unknown>);
     } catch {
-      if (body?.forzar !== true) return NextResponse.json({ error: ERROR_DESCONEXION_MESSENGER }, { status: 502 });
+      if (body?.forzar !== true) return NextResponse.json({ error: canal.proveedor === "instagram" ? ERROR_DESCONEXION_INSTAGRAM : ERROR_DESCONEXION_MESSENGER }, { status: 502 });
       desconexionMessenger = {
         desuscrito: false,
         forzado: true,

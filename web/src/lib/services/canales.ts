@@ -6,6 +6,7 @@ import { validarUrlCanalApi } from "@/lib/api-webhook";
 import { destinoPublico } from "@/lib/webhook-url";
 import { ErrorRetail } from "@/lib/retail-db";
 import { suscribirPagina } from "@/lib/channel/messenger";
+export { guardarCanalInstagram } from "./canal-instagram";
 
 export function credencialesApi() {
   const apiKey = randomBytes(32).toString("hex");
