@@ -1,0 +1,13 @@
+Esperado: crm_app | f | f | f | 0 | 0; filas_visibles_sin_empresa = 0
+BEGIN
+   rol   | rolsuper | rolbypassrls | hereda_bypass | tablas_propias_sin_force | tablas_org_sin_rls 
+---------+----------+--------------+---------------+--------------------------+--------------------
+ crm_app | f        | f            | f             |                        0 |                  0
+(1 row)
+
+ filas_visibles_sin_empresa 
+----------------------------
+                          0
+(1 row)
+
+COMMIT

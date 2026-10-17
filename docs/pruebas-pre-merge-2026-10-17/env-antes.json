@@ -1,0 +1,74 @@
+{
+  "alcance": "web/src y next.config.mjs; solo nombres, sin leer .env ni consultar servicios",
+  "variablesUsadas": 31,
+  "metaEsperadas": {
+    "META_APP_ID": "runtime",
+    "META_APP_SECRET": "runtime"
+  },
+  "faltantesObligatorias": [
+    "MESSENGER_VERIFY_TOKEN"
+  ],
+  "sinMapear": [
+    {
+      "nombre": "ANTHROPIC_MODEL",
+      "obligatoria": false,
+      "motivo": "el código define un modelo predeterminado",
+      "archivos": [
+        "web/src/app/api/ia/sugerir/route.ts"
+      ]
+    },
+    {
+      "nombre": "BOT_AUTH_FAIL_MAX",
+      "obligatoria": false,
+      "motivo": "predeterminado: 20",
+      "archivos": [
+        "web/src/lib/bot-auth.ts"
+      ]
+    },
+    {
+      "nombre": "BOT_AUTH_FAIL_WINDOW_MS",
+      "obligatoria": false,
+      "motivo": "predeterminado: 300000",
+      "archivos": [
+        "web/src/lib/bot-auth.ts"
+      ]
+    },
+    {
+      "nombre": "BOT_RATE_LIMIT_MAX",
+      "obligatoria": false,
+      "motivo": "predeterminado: 300",
+      "archivos": [
+        "web/src/lib/bot-auth.ts"
+      ]
+    },
+    {
+      "nombre": "BOT_RATE_LIMIT_WINDOW_MS",
+      "obligatoria": false,
+      "motivo": "predeterminado: 60000",
+      "archivos": [
+        "web/src/lib/bot-auth.ts"
+      ]
+    },
+    {
+      "nombre": "BUILD_ID",
+      "obligatoria": false,
+      "motivo": "next.config.mjs usa Date.now() si falta",
+      "archivos": [
+        "web/next.config.mjs"
+      ]
+    },
+    {
+      "nombre": "MESSENGER_VERIFY_TOKEN",
+      "obligatoria": true,
+      "motivo": "Requiere mapeo para llegar al contenedor",
+      "archivos": [
+        "web/src/app/api/messenger/webhook/route.ts"
+      ]
+    }
+  ],
+  "automaticas": {
+    "NODE_ENV": "Next establece production en build/start",
+    "NEXT_PUBLIC_BUILD_ID": "next.config.mjs lo genera e incorpora al build"
+  },
+  "limite": "Un mapeo no demuestra que el panel tenga un valor. Seeds y pruebas no forman parte del proceso desplegado."
+}

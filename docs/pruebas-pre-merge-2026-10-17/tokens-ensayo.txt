@@ -1,0 +1,16 @@
+Esperado: con_token_plano = 0 y solo_plano = 0; con_token_cifrado puede ser mayor que 0
+BEGIN
+ canales | con_token_plano | con_token_cifrado | solo_plano 
+---------+-----------------+-------------------+------------
+       6 |               4 |                 4 |          2
+(1 row)
+
+ id | org_id |   nombre    | activo | ya_cifrado | largo_token_plano 
+----+--------+-------------+--------+------------+-------------------
+  1 |    100 | Canal 100-0 | t      | f          |                17
+  3 |    100 | Canal 100-2 | t      | t          |                17
+  4 |    101 | Canal 101-0 | t      | f          |                17
+  6 |    101 | Canal 101-2 | t      | t          |                17
+(4 rows)
+
+COMMIT
