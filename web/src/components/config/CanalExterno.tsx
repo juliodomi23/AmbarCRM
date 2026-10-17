@@ -36,14 +36,27 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
         confirmar: "Borrar conversaciones",
         cancelar: "Conservar historial",
       });
-      const res = await fetch(`/api/canales/${canal.id}`, {
+      const retirar = (forzar = false) => fetch(`/api/canales/${canal.id}`, {
         method: "DELETE", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ borrarDatos }),
+        body: JSON.stringify({ borrarDatos, ...(forzar ? { forzar: true } : {}) }),
       });
-      const data = await res.json().catch(() => ({}));
+      let res = await retirar();
+      let data = await res.json().catch(() => ({}));
+      if (res.status === 502) {
+        const forzar = await confirmar({
+          titulo: "Facebook no permitió cancelar la suscripción. ¿Retirar solo del CRM?",
+          mensaje: "La suscripción puede seguir activa en Facebook. Tendrás que quitar la app desde la configuración de la página. Se respetará tu elección sobre conservar o borrar las conversaciones.",
+          confirmar: "Retirar solo del CRM",
+          cancelar: "Conservar canal",
+        });
+        if (!forzar) return;
+        res = await retirar(true);
+        data = await res.json().catch(() => ({}));
+      }
       if (!res.ok) return toast(data.error || "No se pudo desconectar. El canal se conservó; vuelve a intentarlo.", "error");
       const historial = borrarDatos ? "Conversaciones borradas." : "El historial se conservó.";
-      toast(data.desuscrito === false ? `${data.motivo} ${historial}` : `Página desconectada de Facebook. ${historial}`, "ok");
+      const resultado = data.forzado ? `Retiro forzado. ${data.motivo}` : data.desuscrito === false ? data.motivo : "Página desconectada de Facebook.";
+      toast(`${resultado} ${historial}`, "ok");
       router.refresh();
     } catch {
       toast("No se pudo desconectar de Facebook. Vuelve a intentarlo.", "error");
