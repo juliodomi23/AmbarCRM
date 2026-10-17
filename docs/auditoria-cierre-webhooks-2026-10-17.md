@@ -30,3 +30,9 @@ No se añaden eventos fuera del alcance ni se amplían los puntos a importacione
 altas manuales, bots o crons. Los dos recortes anteriores ya estaban documentados
 y son compatibles con las excepciones del prompt. No faltaba completar ningún
 paso 1–14 antes de repetir la regresión.
+
+El cierre posterior aprobó 48/48 tests, 33/33 checks, TypeScript, lint, Prisma
+validate, build y SQL ×3. Se retiró el entorno y se realizó el fast-forward local
+a `modulos-fase-2` en `1290252294a87c594865429410cc117c6fa613bb`, con árbol limpio.
+Los fallos iniciales y repeticiones están en el informe de regresión. Solo después
+de ese merge se inició `canal-instagram`.

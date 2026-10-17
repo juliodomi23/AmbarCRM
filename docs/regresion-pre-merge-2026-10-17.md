@@ -930,3 +930,314 @@ Auditoría en `e72039d`. Esta sección y su evidencia se guardan en su propio co
 Después se exige árbol limpio y se ejecuta exclusivamente el fast-forward a
 `modulos-fase-2`; su resultado y SHA se consignan en la entrega. No hubo push,
 deploy, reset, rebase ni merge a `meta-tech-provider` o `main`.
+
+
+## Canal Instagram manual · 17-oct-2026
+
+Parte B iniciada únicamente después del fast-forward de la Parte A a
+`1290252294a87c594865429410cc117c6fa613bb`, con árbol limpio y la ascendencia de
+`webhooks-y-automatizaciones` comprobada. Rama nueva `canal-instagram` desde ese
+estado. Resultado final: **49/49 tests y 34/34 checks aprobados**, TypeScript,
+lint, Prisma validate, build y SQL idempotente. Aislamiento en **84 tablas**.
+
+### Alcance implementado y límites
+
+- Proveedor/enum, cuenta activa única entre empresas y resolución SECURITY DEFINER.
+  App Secret y token de página cifrados por canal; alta/edición manual y duplicados 409.
+- Entrega, ventanas y desconexión extraídas a `meta-mensajeria.ts`, con los exports
+  anteriores de Messenger conservados y sus pruebas aprobadas.
+- Webhook GET/POST de Instagram, firma por canal o global solo cuando falta secreto
+  propio, idempotencia concurrente por canal/mid e identidad por canal/ID externo.
+  El perfil fallido conserva la entrada. Adjuntos incompatibles conservados con texto.
+- Texto/media, ventana local de 24 h y etiqueta HUMAN_AGENT solo para un humano hasta
+  antes de 7 días; nunca para bot/reglas. Límite local conservador de 1000 caracteres.
+- API/UI manual, ícono, aviso de ventana, desconexión remota, historial opcional y
+  retiro forzado solo admin tras 502 y confirmación adicional.
+- Condición de reglas Instagram, proveedor en `datos.canal` de webhooks y campo
+  aditivo `canal` en GET de la API v1 del bot. Formato anterior conservado.
+- [Guía multicanal](bots-multicanal.md), decisiones y humo opcional documentados.
+  No se implementan logins de Instagram/Facebook para este proveedor, comentarios,
+  menciones, publicaciones, campañas ni App Review. Stories/reels no se reproducen
+  como una función del canal: se conserva el adjunto incompatible mediante marcador.
+
+### Entorno y ejecución propia
+
+- PostgreSQL 16 nuevo `ambarcrm-instagram-20261017`, creado con `--pull=never` desde
+  imagen local y publicado únicamente en `127.0.0.1:55450`.
+- `schema.sql` → `multi-tenant.sql` → `actualizaciones.sql` ×3 en el paso 1;
+  otras tres aplicaciones en la regresión final, todas en 0 con ON_ERROR_STOP.
+  No se usó `prisma db push`. Pruebas con `crm_app`; dueño solo prepara/limpia
+  fixtures (incluida auditoría de solo inserción) en esta BD desechable.
+- Variables `.env*` neutralizadas y valores sintéticos por proceso. Aurum/IA vacíos.
+  Mismo preload temporal de bloqueo de sockets/fetch/DNS externos de la Parte A;
+  Graph y receptor HTTPS sustituidos por mocks. tsx en caché y binarios locales,
+  sin descargas ni cambios en dependencias. No se agregaron variables de entorno:
+  GET de Instagram reutiliza `MESSENGER_VERIFY_TOKEN`; Compose sin cambios.
+- Fixture AR del seed existente, solo local. App compilada nueva en
+  `127.0.0.1:3118`, Graph simulado y comprobación de disponibilidad antes de las E2E.
+  La app nueva comenzó con contadores de login vacíos; no se desactivó el rate limit.
+- Los flujos excluidos `api/wa/onboard`, `api/meta/webhook`, `api/meta/templates`,
+  `api/mensajes/enviar` y el webhook de Messenger permanecen sin cambios.
+
+Evidencia: [resultados y tiempos](pruebas-instagram-2026-10-17/resultados.json) y
+[salidas de todas las ejecuciones](pruebas-instagram-2026-10-17/ejecuciones.txt).
+También se conserva el [log de la app compilada](pruebas-instagram-2026-10-17/app-regresion.txt).
+
+### Fallos de desarrollo y resolución
+
+Se conservan los fallos anteriores a la regresión final; no hubo fallos en la
+batería completa final de Instagram.
+
+1. Extracción compartida: export `desuscribirPaginaMeta` mal renombrado; corregido
+   antes de su commit y repetidas cuatro pruebas de Messenger y TypeScript en 0.
+2. TypeScript del normalizador: parámetro de adjunto sin tipo; se tipó y volvió a pasar.
+3. Test nuevo: mezcla de módulos ESM/require creaba contextos de empresa distintos;
+   se alinearon los imports del arnés y se fijó el tenant de sus sesiones simuladas.
+   El RLS no se relajó. Su limpieza de auditoría usa el dueño exclusivamente local.
+   Al ajustar imports también se corrigió una ruta `channel.ts` a `channel/index.ts`.
+4. Prueba de edición: `app_id:false` devolvía 200; ahora se rechaza con 400.
+   Se mantiene además `instancia` al cambiar la cuenta y se comprueba la recepción
+   por el ID editado. Ambos casos quedaron en la prueba y en el commit del paso 7.
+5. Se repitieron la prueba integral de Instagram, Messenger, los checks nuevos,
+   TypeScript y lint antes de arrancar la regresión completa.
+
+### Historial de preparación y pruebas focales
+
+En esta tabla se conservan los códigos de cada intento, incluso los del arnés.
+`instagram-edicion-focal` (1) quedó resuelto en `instagram-focal-final` (0) y en
+`test-canales-instagram.ts` (0) de la batería final. Un 1 histórico no es una
+aprobación: su corrección está descrita arriba y la repetición completa abajo.
+
+| Comprobación | Códigos reales en orden | Segundos del último intento |
+|---|---|---:|
+| `schema` | 0 | 0.7 |
+| `multi-tenant` | 0 | 0.57 |
+| `actualizaciones-1` | 0 | 2.79 |
+| `actualizaciones-2` | 0 | 0.73 |
+| `actualizaciones-3` | 0 | 0.7 |
+| `rol-prueba` | 0 | 0.3 |
+| `fixture-plataforma` | 0 | 0.29 |
+| `fixture-ar` | 0 | 0.66 |
+| `paso1-prisma-generate` | 0 | 5.46 |
+| `extraccion-test-canales-messenger.ts` | 1 → 0 | 2.63 |
+| `extraccion-test-messenger-desconexion.ts` | 0 | 4.22 |
+| `extraccion-test-messenger-facebook.ts` | 0 | 1.86 |
+| `extraccion-test-messenger-facebook-rutas.ts` | 0 | 2.26 |
+| `extraccion-tsc` | 0 | 20.08 |
+| `paso2-tsc` | 2 → 0 | 4.97 |
+| `paso3-tsc` | 0 | 6.05 |
+| `paso4-tsc` | 0 | 11.15 |
+| `paso4-messenger-desconexion` | 0 | 4.24 |
+| `paso5-tsc` | 0 | 10.63 |
+| `paso5-check-canales-ui` | 0 | 1.13 |
+| `paso6-tsc` | 0 | 10.33 |
+| `paso6-automatizaciones` | 0 | 3.82 |
+| `instagram-focal` | 1 → 1 → 1 → 0 → 0 | 16.57 |
+| `paso7-tsc` | 0 → 0 | 7.08 |
+| `instagram-edicion-focal` | 1 | 5.4 |
+| `paso7-messenger` | 0 | 2.29 |
+| `paso7-check-instagram` | 0 | 1.06 |
+| `paso7-check-arquitectura` | 0 | 0.77 |
+| `paso7-lint` | 0 | 21.74 |
+| `instagram-focal-final` | 0 | 16.86 |
+| `paso7-tsc-final` | 0 | 6.65 |
+| `paso7-lint-final` | 0 | 6.47 |
+| `regresion-actualizaciones-1` | 0 | 0.54 |
+| `regresion-actualizaciones-2` | 0 | 0.51 |
+| `regresion-actualizaciones-3` | 0 | 0.49 |
+| `prisma-generate` | 0 | 3.06 |
+| `tsc` | 0 | 5.44 |
+| `lint` | 0 | 27.87 |
+| `prisma-validate` | 0 | 1.11 |
+| `build` | 0 | 55.1 |
+
+### Tests de la regresión completa
+
+| Prueba | Resultado real | Segundos |
+|---|---|---:|
+| `test-a3-e2e.ts` | PASA (0) | 1.91 |
+| `test-a3-fixes-e2e.ts` | PASA (0) | 1.49 |
+| `test-a4-e2e.ts` | PASA (0) | 1.93 |
+| `test-aislamiento.ts` | PASA (0) | 2.12 |
+| `test-automatizaciones.ts` | PASA (0) | 3.5 |
+| `test-bot-api.ts` | PASA (0) | 10.51 |
+| `test-caja-a2-e2e.ts` | PASA (0) | 2.13 |
+| `test-caja-dinero.ts` | PASA (0) | 1.73 |
+| `test-caja-e2e.ts` | PASA (0) | 1.78 |
+| `test-canales-api.ts` | PASA (0) | 1.54 |
+| `test-canales-base.ts` | PASA (0) | 1.28 |
+| `test-canales-e2e.ts` | PASA (0) | 1.58 |
+| `test-canales-instagram.ts` | PASA (0) | 16.59 |
+| `test-canales-messenger.ts` | PASA (0) | 2.45 |
+| `test-cobros-cancelar-eliminar-e2e.ts` | PASA (0) | 2.53 |
+| `test-cobros-db.ts` | PASA (0) | 1.32 |
+| `test-cobros-e2e.ts` | PASA (0) | 2.73 |
+| `test-concurrencia-caja-a2.ts` | PASA (0) | 1.44 |
+| `test-concurrencia-caja.ts` | PASA (0) | 1.35 |
+| `test-concurrencia-cobros.ts` | PASA (0) | 0.9 |
+| `test-concurrencia-cotizaciones.ts` | PASA (0) | 1.07 |
+| `test-concurrencia-nota-credito.ts` | PASA (0) | 1.1 |
+| `test-concurrencia-pedidos.ts` | PASA (0) | 1.22 |
+| `test-concurrencia-resenas.ts` | PASA (0) | 1.98 |
+| `test-concurrencia-retail.ts` | PASA (0) | 6.28 |
+| `test-concurrencia-sinred.ts` | PASA (0) | 1.79 |
+| `test-concurrencia-varias-cajas.ts` | PASA (0) | 1.25 |
+| `test-cotizaciones-e2e.ts` | PASA (0) | 1.84 |
+| `test-cotizaciones-zona.ts` | PASA (0) | 1.03 |
+| `test-cupos-concurrentes.ts` | PASA (0) | 0.88 |
+| `test-messenger-desconexion.ts` | PASA (0) | 3.62 |
+| `test-messenger-facebook-http.ts` | PASA (0) | 1.14 |
+| `test-messenger-facebook-rutas.ts` | PASA (0) | 2.11 |
+| `test-messenger-facebook.ts` | PASA (0) | 1.45 |
+| `test-paridad-precios.ts` | PASA (0) | 3.78 |
+| `test-pedidos-e2e.ts` | PASA (0) | 1.83 |
+| `test-precios-promociones.ts` | PASA (0) | 1.59 |
+| `test-referencias.ts` | PASA (0) | 0.8 |
+| `test-reportes-cuadre.ts` | PASA (0) | 1.32 |
+| `test-resenas-e2e.ts` | PASA (0) | 2.31 |
+| `test-reservas-concurrentes.ts` | PASA (0) | 0.97 |
+| `test-servidores-e2e.ts` | PASA (0) | 2.04 |
+| `test-sinred-e2e.ts` | PASA (0) | 2.44 |
+| `test-sql-inventario-negativo.ts` | PASA (0) | 0.72 |
+| `test-total-cobrado-cliente.ts` | PASA (0) | 1.22 |
+| `test-tours-dinero.ts` | PASA (0) | 0.85 |
+| `test-vencimiento-pedidos.ts` | PASA (0) | 1.2 |
+| `test-webhook-manual.ts` | PASA (0) | 1.57 |
+| `test-webhooks-salientes.ts` | PASA (0) | 2.59 |
+
+### Checks de la regresión completa
+
+| Prueba | Resultado real | Segundos |
+|---|---|---:|
+| `check-a3.ts` | PASA (0) | 0.53 |
+| `check-arquitectura-modulos.ts` | PASA (0) | 0.72 |
+| `check-audio-ogg.ts` | PASA (0) | 0.57 |
+| `check-aurum-webhook.ts` | PASA (0) | 0.95 |
+| `check-busqueda.ts` | PASA (0) | 0.66 |
+| `check-caja-a2.ts` | PASA (0) | 0.77 |
+| `check-caja-offline.ts` | PASA (0) | 0.66 |
+| `check-caja-sinred.ts` | PASA (0) | 0.66 |
+| `check-caja.ts` | PASA (0) | 0.61 |
+| `check-campos-personalizados.ts` | PASA (0) | 0.55 |
+| `check-canales-ui.ts` | PASA (0) | 0.93 |
+| `check-cantidades-retail.ts` | PASA (0) | 0.64 |
+| `check-citas.ts` | PASA (0) | 0.58 |
+| `check-clientes-automotriz.ts` | PASA (0) | 0.56 |
+| `check-contratos-cobros.ts` | PASA (0) | 0.65 |
+| `check-cotizaciones.ts` | PASA (0) | 0.74 |
+| `check-demo.ts` | PASA (0) | 0.75 |
+| `check-instagram.ts` | PASA (0) | 0.97 |
+| `check-lealtad.ts` | PASA (0) | 0.63 |
+| `check-legal.ts` | PASA (0) | 0.6 |
+| `check-pedidos-en-linea.ts` | PASA (0) | 0.61 |
+| `check-permisos-modulos.ts` | PASA (0) | 0.54 |
+| `check-plantilla-meta.ts` | PASA (0) | 0.56 |
+| `check-precios.ts` | PASA (0) | 0.55 |
+| `check-proxy.ts` | PASA (0) | 0.53 |
+| `check-reportes-a4.ts` | PASA (0) | 0.54 |
+| `check-resenas.ts` | PASA (0) | 0.59 |
+| `check-reservas.ts` | PASA (0) | 0.61 |
+| `check-retail.ts` | PASA (0) | 0.62 |
+| `check-seeds-seguridad.ts` | PASA (0) | 0.54 |
+| `check-seguridad.ts` | PASA (0) | 0.56 |
+| `check-servidores.ts` | PASA (0) | 0.54 |
+| `check-sw-push.ts` | PASA (0) | 0.93 |
+| `check-viajes-academia.ts` | PASA (0) | 0.58 |
+
+`test-lealtad-aurum.ts` excluido expresamente: necesita Aurum real de pruebas.
+Los errores UNIQUE/registro ajeno previstos no son fallos cuando la prueba termina en 0.
+
+### Cobertura focal de Instagram
+
+`test-canales-instagram.ts` ejecuta los handlers reales con sesión simulada,
+contexto de empresa y RLS; Graph y HTTPS están sustituidos. Comprueba:
+
+- Firma válida/inválida propia y global, falta de firma, secreto ilegible que
+  falla cerrado, cuerpos mixtos que no autorizan otra cuenta y desconocidos/acuse 200.
+- Contactos nuevos/repetidos, mismo IGSID separado por canal, idempotencia simultánea,
+  perfil denegado, adjuntos reel/story mixtos y mensajes sin contenido compatible.
+- Texto, media, rechazo de URL insegura y texto excesivo sin envío, bordes exactos
+  de 24 h/7 días, HUMAN_AGENT humano, rechazo de bot y omisión de respuesta de regla.
+- Alta cifrada, edición/rotación sin revelar credenciales, duplicado conocido sin
+  consultar Graph y carrera entre empresas con una sola alta y el otro 409.
+- Regla por canal, webhook de ingesta/cambio de estado y acción de regla con
+  `datos.canal=instagram`; GET del bot con proveedor e identificador externo.
+- Red/429/5xx no desconectan el canal al enviar; error 190 definitivo lo marca.
+  No se devuelven cuerpos de Meta en errores de alta/envío/baja.
+- Desconexión normal e historial conservado, token vencido/404/803, nueve fallos
+  temporales/ambiguos con historial conservado o borrado: 18 retiros forzados.
+  Sin forzar, 502 conserva canal y mensaje incluso con `borrarDatos:true`.
+  Solo `forzar:true` habilita el retiro; agente/sin sesión/otra empresa no lo hacen.
+- Ningún token, secreto, cifrado ni cuerpo privado de Graph en respuestas, listado,
+  errores de mensajes, eventos, auditoría, ejecuciones ni consola capturada con formato.
+
+`check-instagram.ts` renderiza formulario e ícono y comprueba proveedor/condición,
+campos secretos, ruta pública exacta y controles de migración; el check existente
+renderiza la desconexión también para Instagram. No hubo clics de navegador ni
+sesión de Instagram/Facebook real.
+
+### Concurrencia sin protección y restaurada
+
+Se repitieron las nueve variantes disponibles sobre esta BD, con sus flags
+`*_SIN_PROTECCION=1` y luego restauradas. El 1 de cobros sin protección reproduce
+la anomalía deliberadamente; todas las variantes protegidas y tests finales dan 0.
+Webhooks/reglas demuestran además 12/10 altas, 22/20 ejecuciones y 27/25 reglas
+sin/con bloqueo en sus propios tests.
+
+| Demostración | Sin protección (código real) | Restaurada |
+|---|---:|---:|
+| `caja-a2` | 0 | 0 |
+| `caja` | 0 | 0 |
+| `cobros` | 1 | 0 |
+| `cotizaciones` | 0 | 0 |
+| `nota-credito` | 0 | 0 |
+| `pedidos` | 0 | 0 |
+| `resenas` | 0 | 0 |
+| `sinred` | 0 | 0 |
+| `vencimiento-pedidos` | 0 | 0 |
+
+### Commits por tarea
+
+| Paso | Commit | Cambio |
+|---|---|---|
+| 1 | `a137b1b` | Proveedor, cuenta única y resolución por empresa |
+| Extracción para 2 | `a785cbc` | Mensajería Meta compartida, comportamiento Messenger conservado |
+| 2 | `e6ac646` | Proveedor de Instagram y adjuntos conservados |
+| 3 | `c2a663d` | Webhook firmado e identidad por canal |
+| 4 | `357ddc6` | Servicio/API manual, cifrado y desconexión |
+| 5 | `f602ba2` | Formulario, ícono y ventana en chat |
+| 6 | `a05edc9` | Canal en reglas, payload y GET del bot |
+| 7 | `c295caf` | Pruebas, checks y correcciones de edición |
+| 8 | `268c02b` | Guía de bots multicanal |
+| 9 | `4b34878` | Decisiones, supuestos y humo opcional |
+| 10 | Commit que contiene esta sección | Regresión completa y evidencia |
+| 11 | Fast-forward local posterior a este commit | Resultado/SHA en la entrega |
+
+### Supuestos de Meta y pendientes
+
+🛑 **No verificados contra Meta real**: token de página, `/me/messages` con IGSID,
+sobre `object:instagram`/`entry.messaging`, firma, suscripción `messages` en la
+página, campos de perfil, formatos de media, límites reales de texto y aceptación
+real de HUMAN_AGENT hasta 7 días. Los mocks prueban el contrato local, no la
+compatibilidad efectiva. Confirmar permisos `instagram_basic`,
+`instagram_manage_messages` y los demás que exija la app de cada cliente.
+También verificar efectos de suscribir/desuscribir si comparte página/app con
+Messenger. Ver la lista completa en [decisiones de canales](canales-decisiones.md).
+
+🛑 Julio: probar Messenger e Instagram con cuentas reales; panel de Meta y acceso
+por app; Human Agent; ensayo con respaldo real en copia aislada; Aurum de pruebas.
+
+### Retiro del entorno y merge local
+
+App detenida por el listener 3118 tras verificar PID/comando y contenedor propio
+retirado. Sin listeners de esta prueba en 3118 ni 55450. Nunca se operó
+`ambarcrm-db`, producción, `meta-tech-provider` ni `main`. Sin push/deploy ni redes
+reales. Dependencias y Compose sin cambios; archivos históricos autorizados de
+la Parte A conservados sin editar y verificados de nuevo por SHA256.
+Se recuperaron sus finales de línea originales tras la conversión automática
+de Git al cambiar de rama; los cinco archivos coinciden byte por byte con el inicio.
+
+Tras guardar este informe/evidencia se comprueba árbol limpio y se ejecuta solo
+`git switch modulos-fase-2` y `git merge --ff-only canal-instagram`.
+Ante un merge no fast-forward se detiene, sin reset/rebase/commit de merge.
+La entrega consigna el resultado real y SHA final.
