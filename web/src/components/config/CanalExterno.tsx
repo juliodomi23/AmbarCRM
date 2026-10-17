@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton, Campo } from "@/components/ui";
 import { toast } from "@/components/Toaster";
+import { confirmar } from "@/components/Confirmador";
 import { MessengerFacebook } from "./MessengerFacebook";
 
 export type CanalExternoDatos = { id: string; nombre: string; proveedor: string; webhookUrl?: string | null; pageId?: string | null; appId?: string | null; tieneAppSecret?: boolean; estado: string; errorAutorizacion?: string | null };
@@ -19,6 +20,35 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
   const [appSecret, setAppSecret] = useState("");
   const [secretos, setSecretos] = useState<{ apiKey: string; secret: string } | null>(null);
   const [guardando, setGuardando] = useState(false);
+  async function desconectar() {
+    if (!canal || !esMessenger || guardando) return;
+    setGuardando(true);
+    try {
+      const continuar = await confirmar({
+        titulo: `Desconectar ${canal.nombre}`,
+        mensaje: "Se cancelará la suscripción en Facebook; el historial se conserva.",
+        confirmar: "Desconectar",
+      });
+      if (!continuar) return;
+      const borrarDatos = await confirmar({
+        titulo: "¿Borrar también las conversaciones?",
+        mensaje: "Se borran los chats de esta página y sus mensajes. No se puede deshacer. Si conservas el historial, la desconexión continúa sin borrarlo.",
+        confirmar: "Borrar conversaciones",
+        cancelar: "Conservar historial",
+      });
+      const res = await fetch(`/api/canales/${canal.id}`, {
+        method: "DELETE", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ borrarDatos }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return toast(data.error || "No se pudo desconectar. El canal se conservó; vuelve a intentarlo.", "error");
+      const historial = borrarDatos ? "Conversaciones borradas." : "El historial se conservó.";
+      toast(data.desuscrito === false ? `${data.motivo} ${historial}` : `Página desconectada de Facebook. ${historial}`, "ok");
+      router.refresh();
+    } catch {
+      toast("No se pudo desconectar de Facebook. Vuelve a intentarlo.", "error");
+    } finally { setGuardando(false); }
+  }
   async function guardar(regenerar = false, quitarApp = false) {
     setGuardando(true);
     try {
@@ -55,6 +85,7 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
       <div className="flex gap-2"><Boton type="submit" disabled={guardando}>Guardar</Boton>
         {canal && esMessenger && (canal.appId || canal.tieneAppSecret) && <Boton type="button" disabled={guardando} onClick={() => void guardar(false, true)}>Quitar app propia</Boton>}
         {canal && !esMessenger && <Boton type="button" disabled={guardando} onClick={() => void guardar(true)}>Regenerar credenciales</Boton>}</div>
+      {canal && esMessenger && <Boton type="button" variante="danger" disabled={guardando} onClick={() => void desconectar()}>Desconectar</Boton>}
     </form>
     {secretos && <div className="space-y-2 rounded border border-border p-3 text-sm" role="status">
       <p>Guarda estas credenciales. Se muestran una sola vez.</p>
