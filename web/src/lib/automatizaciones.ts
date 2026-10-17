@@ -37,7 +37,7 @@ async function ejecutarAccion(orgId: bigint, evento: EventoCrm, conversacionId: 
       const agente = await tx.usuario.findFirst({ where: { id: BigInt(accion.id), activo: true } });
       if (!agente || !puestoPuedeAtenderConversaciones(agente.puesto, agente.rol)) return "omitida_destino";
       await modificarConversacion(tx, conversacionId, { responsableId: agente.id, botActivo: false });
-    } else await modificarConversacion(tx, conversacionId, { estado: accion.valor });
+    } else if (accion.tipo === "cambiar_estado") await modificarConversacion(tx, conversacionId, { estado: accion.valor });
     return "ok";
   });
 }

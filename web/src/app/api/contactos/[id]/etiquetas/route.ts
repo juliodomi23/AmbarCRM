@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { conErrores } from "@/lib/errores-api";
 import { agregarEtiquetaContacto } from "@/lib/services/acciones-conversacion";
+import { transaccionTenant } from "@/lib/retail-db";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,8 @@ async function manejarPOST(req: NextRequest, props: { params: Promise<{ id: stri
   const { etiquetaId } = await req.json().catch(() => ({}));
   if (!etiquetaId) return NextResponse.json({ error: "falta etiquetaId" }, { status: 400 });
 
-  await agregarEtiquetaContacto(db, BigInt(params.id), BigInt(etiquetaId));
+  if (!s.orgId) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
+  await transaccionTenant(s.orgId, (tx) => agregarEtiquetaContacto(tx, BigInt(params.id), BigInt(etiquetaId)));
   return NextResponse.json({ ok: true });
 }
 
