@@ -46,12 +46,18 @@ async function manejarDELETE(req: NextRequest, props: { params: Promise<{ id: st
   const canal = await db.canalWhatsapp.findUnique({ where: { id: canalId } });
   if (!canal) return NextResponse.json({ error: "canal inexistente" }, { status: 404 });
 
-  let desconexionMessenger: { desuscrito: boolean; motivo?: string } | undefined;
+  const body = await req.json().catch(() => ({}));
+  let desconexionMessenger: { desuscrito: boolean; forzado?: boolean; motivo?: string } | undefined;
   if (canal.proveedor === "messenger") {
     try {
       desconexionMessenger = await desuscribirPagina((canal.config || {}) as Record<string, unknown>);
     } catch {
-      return NextResponse.json({ error: ERROR_DESCONEXION_MESSENGER }, { status: 502 });
+      if (body?.forzar !== true) return NextResponse.json({ error: ERROR_DESCONEXION_MESSENGER }, { status: 502 });
+      desconexionMessenger = {
+        desuscrito: false,
+        forzado: true,
+        motivo: "Se retiró del CRM, pero la suscripción puede seguir activa en Facebook: quita la app desde la configuración de la página",
+      };
     }
   }
 
@@ -74,7 +80,6 @@ async function manejarDELETE(req: NextRequest, props: { params: Promise<{ id: st
     }
   }
 
-  const body = await req.json().catch(() => ({}));
   let borrados: { conversaciones: number; grupos: number } | undefined;
   if (body?.borrarDatos === true) {
     const conversaciones = await db.conversacion.deleteMany({ where: { canalId } });
