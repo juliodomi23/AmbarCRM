@@ -726,3 +726,207 @@ rebase, commit de merge, push ni deploy; `meta-tech-provider` sigue en `e1c5e93`
 habilitación de Human Agent; ensayo con un respaldo real en una copia aislada;
 y Aurum real de pruebas antes del despliegue. El retiro forzado es solo una salida
 para soporte: la suscripción puede seguir activa y requiere quitar la app en Facebook.
+
+
+## Cierre de webhooks y automatizaciones · 17-oct-2026
+
+Rama `webhooks-y-automatizaciones`, partiendo de `7269857`. Auditoría real de los
+16 pasos en [auditoría de cierre](auditoria-cierre-webhooks-2026-10-17.md).
+Faltaban la regresión final (15) y el merge local (16), no tareas de implementación
+1–14. Se mantienen los recortes documentados: cuatro eventos conectados;
+`mensaje.enviado` reservado sin un punto común permitido; sin entidad equipo,
+solo asignación a agente; respuestas rápidas fuera de 24 h se omiten.
+
+Resultado final: **48/48 tests y 33/33 checks pasan**, más TypeScript, lint,
+Prisma validate, build y SQL idempotente. Se conservan todos los fallos iniciales
+y las tres vueltas de tests/checks en las tablas y las salidas.
+
+### Entorno y ejecución
+
+- Docker estaba detenido; se inició Docker Desktop. Imagen `postgres:16` ya
+  disponible: contenedor propio `ambarcrm-cierre-webhooks-20261017`, creado con
+  `--pull=never`, puerto únicamente `127.0.0.1:55450`.
+- BD nueva: `schema.sql` → `multi-tenant.sql` → `actualizaciones.sql` ×3 por
+  `psql -X -v ON_ERROR_STOP=1`, sin `prisma db push`. Rol `crm_app` para las
+  pruebas, dueño solo para preparación/limpieza. Aislamiento de lectura y
+  escritura aprobado en **84 tablas**.
+- Variables de archivos `.env*` neutralizadas por proceso y reemplazadas por
+  credenciales sintéticas. Aurum e IA vacíos. App en `127.0.0.1:3118` con el
+  preload existente `meta-facebook-simulado.mjs`. Un preload adicional temporal
+  bloqueó sockets/fetch externos y resolución de nombres externos; los mocks
+  explícitos de los tests sustituyen Graph y HTTPS sin salir a la red.
+- Cliente Prisma regenerado con binario local; tests/checks ejecutados con el
+  tsx ya presente en caché, sin npx con descarga ni nuevas librerías.
+  `test-canales-messenger.ts` usa `NEXTAUTH_URL=https://crm.prueba.test` solo
+  en su proceso; la app E2E mantiene HTTP local.
+- Fixture AR sintético del seed existente, solo en esta BD, con módulo servidores.
+  La salida del seed se omite porque imprime las credenciales ficticias.
+- La consulta inicial de disponibilidad llegó antes del arranque (conexión
+  rechazada); después el listener y el log confirmaron Ready, antes de las E2E.
+
+Evidencia: [códigos y tiempos](pruebas-cierre-webhooks-2026-10-17/resultados.json),
+[salidas por ejecución](pruebas-cierre-webhooks-2026-10-17/ejecuciones.txt) y
+[log de la app en las primeras vueltas](pruebas-cierre-webhooks-2026-10-17/app-primeras-corridas.txt).
+
+### Fallos y corrección del entorno
+
+1. Primera vuelta: `test-a3-fixes-e2e.ts` recibió 500 en vez de 201.
+   El log de la app muestra Prisma P2028: transacción caducada tras 5017 ms,
+   límite 5000 ms. No se amplió ese límite ni se cambiaron aserciones.
+2. Segunda vuelta: reutilizar la app acumuló el límite real de login por IP
+   (30 intentos en 15 min), por lo que varias E2E no recibieron sesión.
+   Sus salidas fallidas se conservan; no se desactivó la protección.
+3. Se detuvo la app por el listener 3118, verificando su PID y comando, y se
+   inició de nuevo para vaciar contadores de memoria. Tercera vuelta completa:
+   48 tests y 33 checks aprobados; A3 terminó en 0 sin cambiar código de negocio.
+   El timeout inicial no se reprodujo con el entorno ya listo.
+
+### Preparación y compilación
+
+| Comprobación | Salida real | Segundos |
+|---|---|---:|
+| `schema` | PASA (0) | 0.82 |
+| `multi-tenant` | PASA (0) | 0.64 |
+| `actualizaciones-1` | PASA (0) | 3.17 |
+| `actualizaciones-2` | PASA (0) | 0.82 |
+| `actualizaciones-3` | PASA (0) | 0.97 |
+| `rol-prueba` | PASA (0) | 0.37 |
+| `prisma-generate` | PASA (0) | 9.25 |
+| `tsc` | PASA (0) | 41.27 |
+| `lint` | PASA (0) | 113.3 |
+| `prisma-validate` | PASA (0) | 1.56 |
+| `build` | PASA (0) | 69.72 |
+| `fixture-plataforma` | PASA (0) | 0.61 |
+| `fixture-ar` | PASA (0) | 2.41 |
+
+### Tests autorizados
+
+| Prueba | Salidas de todas las vueltas, en orden | Final | Segundos final |
+|---|---|---|---:|
+| `test-a3-e2e.ts` | 0 → 0 → 0 | PASA (0) | 2.28 |
+| `test-a3-fixes-e2e.ts` | 1 → 1 → 0 | PASA (0) | 1.53 |
+| `test-a4-e2e.ts` | 0 → 1 → 0 | PASA (0) | 1.79 |
+| `test-aislamiento.ts` | 0 → 0 → 0 | PASA (0) | 2.39 |
+| `test-automatizaciones.ts` | 0 → 0 → 0 | PASA (0) | 3.56 |
+| `test-bot-api.ts` | 0 → 0 → 0 | PASA (0) | 12.1 |
+| `test-caja-a2-e2e.ts` | 0 → 1 → 0 | PASA (0) | 2.29 |
+| `test-caja-dinero.ts` | 0 → 0 → 0 | PASA (0) | 1.72 |
+| `test-caja-e2e.ts` | 0 → 1 → 0 | PASA (0) | 1.9 |
+| `test-canales-api.ts` | 0 → 0 → 0 | PASA (0) | 1.68 |
+| `test-canales-base.ts` | 0 → 0 → 0 | PASA (0) | 1.68 |
+| `test-canales-e2e.ts` | 0 → 1 → 0 | PASA (0) | 1.72 |
+| `test-canales-messenger.ts` | 0 → 0 → 0 | PASA (0) | 2.5 |
+| `test-cobros-cancelar-eliminar-e2e.ts` | 0 → 1 → 0 | PASA (0) | 2.92 |
+| `test-cobros-db.ts` | 0 → 0 → 0 | PASA (0) | 1.4 |
+| `test-cobros-e2e.ts` | 0 → 1 → 0 | PASA (0) | 2.94 |
+| `test-concurrencia-caja-a2.ts` | 0 → 0 → 0 | PASA (0) | 1.53 |
+| `test-concurrencia-caja.ts` | 0 → 0 → 0 | PASA (0) | 1.38 |
+| `test-concurrencia-cobros.ts` | 0 → 0 → 0 | PASA (0) | 0.93 |
+| `test-concurrencia-cotizaciones.ts` | 0 → 0 → 0 | PASA (0) | 1.1 |
+| `test-concurrencia-nota-credito.ts` | 0 → 0 → 0 | PASA (0) | 1.13 |
+| `test-concurrencia-pedidos.ts` | 0 → 0 → 0 | PASA (0) | 1.24 |
+| `test-concurrencia-resenas.ts` | 0 → 0 → 0 | PASA (0) | 2.18 |
+| `test-concurrencia-retail.ts` | 0 → 0 → 0 | PASA (0) | 6.33 |
+| `test-concurrencia-sinred.ts` | 0 → 0 → 0 | PASA (0) | 1.8 |
+| `test-concurrencia-varias-cajas.ts` | 0 → 0 → 0 | PASA (0) | 1.42 |
+| `test-cotizaciones-e2e.ts` | 0 → 1 → 0 | PASA (0) | 1.95 |
+| `test-cotizaciones-zona.ts` | 0 → 0 → 0 | PASA (0) | 1.02 |
+| `test-cupos-concurrentes.ts` | 0 → 0 → 0 | PASA (0) | 0.91 |
+| `test-messenger-desconexion.ts` | 0 → 0 → 0 | PASA (0) | 3.96 |
+| `test-messenger-facebook-http.ts` | 0 → 1 → 0 | PASA (0) | 1.51 |
+| `test-messenger-facebook-rutas.ts` | 0 → 0 → 0 | PASA (0) | 2.08 |
+| `test-messenger-facebook.ts` | 0 → 0 → 0 | PASA (0) | 1.5 |
+| `test-paridad-precios.ts` | 0 → 0 → 0 | PASA (0) | 3.69 |
+| `test-pedidos-e2e.ts` | 0 → 1 → 0 | PASA (0) | 1.93 |
+| `test-precios-promociones.ts` | 0 → 0 → 0 | PASA (0) | 1.73 |
+| `test-referencias.ts` | 0 → 0 → 0 | PASA (0) | 0.81 |
+| `test-reportes-cuadre.ts` | 0 → 0 → 0 | PASA (0) | 1.33 |
+| `test-resenas-e2e.ts` | 0 → 1 → 0 | PASA (0) | 2.42 |
+| `test-reservas-concurrentes.ts` | 0 → 0 → 0 | PASA (0) | 1.15 |
+| `test-servidores-e2e.ts` | 0 → 1 → 0 | PASA (0) | 2.08 |
+| `test-sinred-e2e.ts` | 0 → 1 → 0 | PASA (0) | 2.65 |
+| `test-sql-inventario-negativo.ts` | 0 → 0 → 0 | PASA (0) | 0.71 |
+| `test-total-cobrado-cliente.ts` | 0 → 0 → 0 | PASA (0) | 0.91 |
+| `test-tours-dinero.ts` | 0 → 0 → 0 | PASA (0) | 0.81 |
+| `test-vencimiento-pedidos.ts` | 0 → 0 → 0 | PASA (0) | 1.12 |
+| `test-webhook-manual.ts` | 0 → 0 → 0 | PASA (0) | 1.31 |
+| `test-webhooks-salientes.ts` | 0 → 0 → 0 | PASA (0) | 2.39 |
+
+### Checks
+
+| Prueba | Salidas de todas las vueltas, en orden | Final | Segundos final |
+|---|---|---|---:|
+| `check-a3.ts` | 0 → 0 → 0 | PASA (0) | 0.61 |
+| `check-arquitectura-modulos.ts` | 0 → 0 → 0 | PASA (0) | 0.78 |
+| `check-audio-ogg.ts` | 0 → 0 → 0 | PASA (0) | 0.55 |
+| `check-aurum-webhook.ts` | 0 → 0 → 0 | PASA (0) | 1.1 |
+| `check-busqueda.ts` | 0 → 0 → 0 | PASA (0) | 0.68 |
+| `check-caja-a2.ts` | 0 → 0 → 0 | PASA (0) | 0.77 |
+| `check-caja-offline.ts` | 0 → 0 → 0 | PASA (0) | 0.74 |
+| `check-caja-sinred.ts` | 0 → 0 → 0 | PASA (0) | 0.69 |
+| `check-caja.ts` | 0 → 0 → 0 | PASA (0) | 0.66 |
+| `check-campos-personalizados.ts` | 0 → 0 → 0 | PASA (0) | 0.58 |
+| `check-canales-ui.ts` | 0 → 0 → 0 | PASA (0) | 1.0 |
+| `check-cantidades-retail.ts` | 0 → 0 → 0 | PASA (0) | 0.63 |
+| `check-citas.ts` | 0 → 0 → 0 | PASA (0) | 0.57 |
+| `check-clientes-automotriz.ts` | 0 → 0 → 0 | PASA (0) | 0.59 |
+| `check-contratos-cobros.ts` | 0 → 0 → 0 | PASA (0) | 0.77 |
+| `check-cotizaciones.ts` | 0 → 0 → 0 | PASA (0) | 0.84 |
+| `check-demo.ts` | 0 → 0 → 0 | PASA (0) | 0.78 |
+| `check-lealtad.ts` | 0 → 0 → 0 | PASA (0) | 0.58 |
+| `check-legal.ts` | 0 → 0 → 0 | PASA (0) | 0.59 |
+| `check-pedidos-en-linea.ts` | 0 → 0 → 0 | PASA (0) | 0.62 |
+| `check-permisos-modulos.ts` | 0 → 0 → 0 | PASA (0) | 0.56 |
+| `check-plantilla-meta.ts` | 0 → 0 → 0 | PASA (0) | 0.56 |
+| `check-precios.ts` | 0 → 0 → 0 | PASA (0) | 0.54 |
+| `check-proxy.ts` | 0 → 0 → 0 | PASA (0) | 0.54 |
+| `check-reportes-a4.ts` | 0 → 0 → 0 | PASA (0) | 0.56 |
+| `check-resenas.ts` | 0 → 0 → 0 | PASA (0) | 0.6 |
+| `check-reservas.ts` | 0 → 0 → 0 | PASA (0) | 0.62 |
+| `check-retail.ts` | 0 → 0 → 0 | PASA (0) | 0.62 |
+| `check-seeds-seguridad.ts` | 0 → 0 → 0 | PASA (0) | 0.55 |
+| `check-seguridad.ts` | 0 → 0 → 0 | PASA (0) | 0.58 |
+| `check-servidores.ts` | 0 → 0 → 0 | PASA (0) | 0.56 |
+| `check-sw-push.ts` | 0 → 0 → 0 | PASA (0) | 1.07 |
+| `check-viajes-academia.ts` | 0 → 0 → 0 | PASA (0) | 0.65 |
+
+`test-lealtad-aurum.ts`: EXCLUIDO por instrucción, requiere Aurum real de pruebas.
+Códigos 1 anteriores permanecen visibles; no se sustituyeron por el resultado final.
+Los errores Prisma de duplicados/registro ajeno son esperados en tests que terminan en 0.
+
+### Concurrencia sin protección y restaurada
+
+Se ejecutaron las nueve variantes disponibles con sus flags `*_SIN_PROTECCION=1`
+y después sin el flag, restaurando protección. Solo se modificaron fixtures e
+índices de la BD desechable por los propios scripts; no se retiró protección del
+código del producto. El 1 de cobros **sin** protección es la aserción deliberada que
+reproduce la carrera; la variante protegida y la batería final pasan en 0.
+
+| Demostración | Sin protección (código real) | Con protección restaurada |
+|---|---:|---:|
+| `caja-a2` | 0 | 0 |
+| `caja` | 0 | 0 |
+| `cobros` | 1 | 0 |
+| `cotizaciones` | 0 | 0 |
+| `nota-credito` | 0 | 0 |
+| `pedidos` | 0 | 0 |
+| `resenas` | 0 | 0 |
+| `sinred` | 0 | 0 |
+| `vencimiento-pedidos` | 0 | 0 |
+
+Las anomalías y conteos completos están en las salidas enlazadas. Además,
+`test-webhooks-salientes.ts` comprueba altas sin/con bloqueo 12/10;
+`test-automatizaciones.ts`, cupo horario 22/20 y altas 27/25.
+
+### Cierre del entorno y control Git
+
+El contenedor propio fue retirado y la app detenida por el puerto 3118 tras
+verificar PID/comando. Se comprobó que no quedan listeners de esta prueba en
+3118 ni 55450. No se operó `ambarcrm-db`, producción ni redes de clientes.
+
+Los dos prompts y la carpeta histórica autorizada se incorporaron en `4fb1dfa`
+sin editar; SHA256 de sus cinco archivos comprobados contra el estado inicial.
+Auditoría en `e72039d`. Esta sección y su evidencia se guardan en su propio commit.
+Después se exige árbol limpio y se ejecuta exclusivamente el fast-forward a
+`modulos-fase-2`; su resultado y SHA se consignan en la entrega. No hubo push,
+deploy, reset, rebase ni merge a `meta-tech-provider` o `main`.

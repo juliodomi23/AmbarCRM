@@ -1,0 +1,31 @@
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 1864ms
+✓ Running next.config.mjs took 146ms
+prisma:error 
+Invalid `prisma.venta.findUniqueOrThrow()` invocation:
+
+
+Transaction API error: Transaction already closed: A query cannot be executed on an expired transaction. The timeout for this transaction was 5000 ms, however 5017 ms passed since the start of the transaction. Consider increasing the interactive transaction timeout or doing less work in the transaction.
+⨯ Error [PrismaClientKnownRequestError]: 
+Invalid `prisma.venta.findUniqueOrThrow()` invocation:
+
+
+Transaction API error: Transaction already closed: A query cannot be executed on an expired transaction. The timeout for this transaction was 5000 ms, however 5017 ms passed since the start of the transaction. Consider increasing the interactive transaction timeout or doing less work in the transaction.
+    at async (D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\.next\server\chunks\src_lib_0y_i9ay._.js:17:4976)
+    at async f (D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\.next\server\chunks\src_lib_0y_i9ay._.js:17:1303)
+    at async (D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\.next\server\chunks\_0mb07zh._.js:1:400)
+    at async (D:\AmbarRojo\Documentos de ambar rojo\docs\08-productos-internos\AmbarCRM\web\.next\server\chunks\_0cov8g2._.js:1:10333) {
+  code: 'P2028',
+  clientVersion: '5.22.0',
+  meta: {
+    modelName: 'Venta',
+    error: 'Transaction already closed: A query cannot be executed on an expired transaction. The timeout for this transaction was 5000 ms, however 5017 ms passed since the start of the transaction. Consider increasing the interactive transaction timeout or doing less work in the transaction.'
+  }
+}
+prisma:error 
+Invalid `prisma.servidor.create()` invocation:
+
+
+Unique constraint failed on the (not available)
