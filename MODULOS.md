@@ -251,6 +251,7 @@ La organización configura en **Configuración → Módulos**:
 - plantilla de Meta con estado `APPROVED`;
 - horas de anticipación;
 - valor de cada variable, respetando `{{1}}`, `{{2}}`, etc.
+- duración por defecto de Citas, de 5 a 480 minutos, guardada independientemente de las plantillas.
 
 Las fuentes disponibles son nombre del contacto, fecha y hora de la cita en
 la zona configurada en Reservas en línea (por defecto `America/Mexico_City`), título
@@ -280,9 +281,12 @@ admite un rango máximo de 62 días y devuelve `siguienteCursor`. El panel del c
 conserva sus 180 días consultando tres rangos de 60.
 
 Crear o editar con especialista comparte `FOR UPDATE` y revisión de empalmes con el
-bot y reservas públicas (choque: 409). Sin especialista se permite coincidir. La jornada
-y las excepciones producen un aviso en agenda interna, no bloqueo; se avisa también si
-la reasignación es incompatible con el servicio. Desactivar conserva las citas futuras,
+bot y reservas públicas (choque: 409). Sin especialista se permite coincidir. Con al menos
+una regla semanal, la cita completa y su margen deben caber en una sola ventana efectiva;
+fuera de jornada, descansos o cierres responde 409. Sin ningún horario definido se permite
+guardar con aviso y enlace para definirlo. El calendario atenúa fuera de jornada al filtrar
+un especialista y no abre formulario en huecos inválidos; con todos no atenúa.
+Desactivar conserva las citas futuras,
 las marca como inactivas y permite reasignarlas desde **Editar cita**.
 
 Solo `programada`/`confirmada` pueden moverse. `completada`, `cancelada` y `no_asistio`
@@ -291,6 +295,22 @@ Completar simultáneamente produce una sola solicitud de reseña, fuera de la tr
 Título obligatorio (200 caracteres), notas hasta 5000, duración hasta 24 horas y fechas
 entre 2000 y 2100 con zona explícita. Los puestos controlan acceso al módulo; aún no
 existe vínculo usuario–doctor para restringir cada usuario a una agenda propia.
+
+Solo se crean o mueven citas desde el día local actual: una hora anterior del mismo día
+está permitida; días anteriores responden 400. Notas y estado históricos siguen editables
+respetando las transiciones. Servicio opcional usa ServicioReserva activo, rellena título,
+filtra especialistas activos y calcula fin por duración del servicio. Sin servicio usa
+duración de empresa o 30 minutos; fin manual permitido. Mover conserva duración.
+El servidor calcula fin si falta y rechaza duración inconsistente con servicio. El margen
+ocupa agenda sin sumarse al fin visible; reservas públicas/bot conservan sus contratos.
+
+**Eliminar** aparece solo en canceladas, tanto en lista como en detalle, con Confirmador.
+`DELETE /api/citas/[id]` devuelve 409 si no está cancelada o tiene evolución clínica;
+404 para id ajeno/inexistente. Conserva las solicitudes de reseña con cita_id NULL por
+la FK SET NULL. No hay relación de cobros con Cita ni bitácora general de personal en
+este esquema; no se borra historial clínico ni dinero. El bot no puede borrar citas.
+No hay borrado en lote. Pruebas nuevas en `test-citas-horarios.ts`; regresión reproducible
+en `docs/pruebas-citas-horarios-2026-10-18/ejecutar.py`.
 
 Cada cliente puede tener una ficha con fecha de nacimiento, sensibilidades,
 preferencias, productos a evitar, observaciones e historial de servicios. Los
