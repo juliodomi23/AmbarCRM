@@ -17,6 +17,8 @@ import {
 export const ESTADOS_OCUPAN: EstadoCita[] = ["programada", "confirmada", "en_sala", "completada"];
 export const SIN_PREFERENCIA = "cualquiera";
 
+export class ErrorLimiteTelefono extends Error {}
+
 export async function bloquearAgenda(tx: Prisma.TransactionClient, ids: bigint[], bloquear = true) {
   const ordenados = [...new Set(ids)].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
   if (!ordenados.length) return [];
@@ -111,6 +113,7 @@ export async function horariosDeDoctor(
   /** Al reprogramar: la cita que se mueve no debe bloquearse a sí misma. */
   excluirCitaId?: bigint,
 ) {
+  if (!(await db.doctor.findFirst({ where: { id: doctorId, activo: true }, select: { id: true } }))) return [];
   const [reglas, excepciones] = await Promise.all([
     db.horarioDoctor.findMany({ where: { doctorId, diaSemana: diaSemana(fecha) } }),
     db.excepcionHorario.findMany({ where: { doctorId, fecha: new Date(`${fecha}T00:00:00Z`) } }),
@@ -212,13 +215,23 @@ export async function reservarCita(
     conversacionId?: bigint | null;
     /** Solo la prueba de concurrencia lo apaga, para mostrar qué pasa sin el bloqueo. */
     bloquear?: boolean;
+    limiteTelefono?: { telefono: string; maximo: number };
   },
 ) {
   const fin = new Date(datos.inicio.getTime() + (datos.servicio.duracionMin + datos.servicio.bufferMin) * 60_000);
   for (const doctorId of datos.candidatos) {
     const cita = await transaccionTenant(orgId, async (tx) => {
+      if (datos.limiteTelefono) {
+        const { telefono, maximo } = datos.limiteTelefono;
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`${orgId}:${telefono}`}, 0))`;
+        const recientes = await tx.cita.count({ where: {
+          origen: "en_linea", createdAt: { gte: new Date(Date.now() - 86_400_000) }, contacto: { telefono: { endsWith: telefono } },
+        } });
+        if (recientes >= maximo) throw new ErrorLimiteTelefono("Ya agendaste varias citas hoy. Si necesitas más, escríbele al negocio.");
+      }
       const bloqueado = await bloquearAgenda(tx, [doctorId], datos.bloquear !== false);
       if (!bloqueado[0]?.activo) return null;
+      if (!(await tx.servicioReserva.findFirst({ where: { id: datos.servicio.id, activo: true }, select: { id: true } }))) return null;
       if (await hayEmpalme(tx, doctorId, datos.inicio, fin)) return null;
       return tx.cita.create({
         data: {
@@ -262,7 +275,7 @@ export async function reprogramarCita(
     // recordatorioEnviadoAt = null: el aviso de la hora nueva debe volver a salir.
     return tx.cita.update({
       where: { id: cita.id },
-      data: { inicio: nuevoInicio, fin, recordatorioEnviadoAt: null },
+      data: { inicio: nuevoInicio, fin, recordatorioEnviadoAt: null, recordatorioIntentos: 0, recordatorioIntentadoAt: null },
       include: { doctor: { select: { nombre: true } } },
     });
   });

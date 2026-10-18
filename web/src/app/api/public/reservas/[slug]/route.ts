@@ -4,6 +4,7 @@ import { aBigInt } from "@/lib/ids";
 import { fechaLocal, fechaValida, sumarDias } from "@/lib/reservas/horarios";
 import { errorPublico, limitarIp, telefonoMx } from "@/lib/reservas/publico";
 import {
+  ErrorLimiteTelefono,
   candidatos,
   contactoPorTelefono,
   doctoresDelServicio,
@@ -98,11 +99,15 @@ export async function POST(req: NextRequest, { params }: Props) {
     const cita = await reservarCita(negocio.orgId, {
       servicio, candidatos: lista.map(BigInt), inicio, contactoId: contacto.id,
       notas: String(b.notas ?? "").trim().slice(0, 500) || null,
+      limiteTelefono: { telefono, maximo: negocio.config.maxPorTelefono },
     });
     if (!cita) return errorPublico("Ese horario acaba de ocuparse, elige otro", 409);
     return NextResponse.json(
       { token: cita.tokenGestion, inicio: cita.inicio, especialista: cita.doctor?.nombre ?? null, servicio: servicio.nombre },
       { status: 201 },
     );
+  }).catch((error: unknown) => {
+    if (error instanceof ErrorLimiteTelefono) return errorPublico(error.message, 429);
+    throw error;
   });
 }
