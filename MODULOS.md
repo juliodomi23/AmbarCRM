@@ -253,9 +253,16 @@ La organización configura en **Configuración → Módulos**:
 - valor de cada variable, respetando `{{1}}`, `{{2}}`, etc.
 
 Las fuentes disponibles son nombre del contacto, fecha y hora de la cita en
-`America/Mexico_City`, título de la cita y nombre del negocio. El cron
-`/api/cron/recordatorios-citas`, protegido con `x-api-key`, construye las
-variables en ese orden, registra el resultado y marca la cita para no repetirlo.
+la zona configurada en Reservas en línea (por defecto `America/Mexico_City`), título
+de la cita y nombre del negocio. El cron `/api/cron/recordatorios-citas`, protegido
+con `x-api-key`, recuerda solo citas `programada`/`confirmada` dentro de la anticipación.
+Usa la plantilla configurada; no cambia plantillas ni envía texto libre fuera de ventana.
+Resuelve teléfono y canal oficial activo antes de reclamar. Recorre lotes de 100,
+hasta 2000 candidatas por empresa y ejecución, y cuenta enviados, fallidos, omitidos y revisados.
+Un fallo conocido libera la reclamación: hasta tres intentos con separación mínima de
+15 minutos. Reprogramar reinicia el recordatorio y sus intentos. Una empresa con error
+no detiene a las demás. Una caída del proceso durante el envío externo puede dejar una
+reclamación sin resolver; no se reintenta una entrega incierta automáticamente para evitar duplicados.
 
 ### Operación clínica
 
@@ -265,7 +272,24 @@ estado `en_sala` representa que el cliente ya llegó y está esperando atención
 
 La agenda incluye un catálogo de doctores con especialidad, cédula, color y
 estado activo. Cada cita puede asignarse a un doctor y utiliza su color como
-referencia visual en el calendario.
+referencia visual en el calendario. Hay filtros por especialista, especialidad y estado;
+las citas simultáneas tienen columnas y las que cruzan medianoche aparecen en ambos días.
+La semana se carga por páginas de hasta 200, sin truncar agendas grandes. `GET /api/citas`
+admite un rango máximo de 62 días y devuelve `siguienteCursor`. El panel del contacto
+conserva sus 180 días consultando tres rangos de 60.
+
+Crear o editar con especialista comparte `FOR UPDATE` y revisión de empalmes con el
+bot y reservas públicas (choque: 409). Sin especialista se permite coincidir. La jornada
+y las excepciones producen un aviso en agenda interna, no bloqueo; se avisa también si
+la reasignación es incompatible con el servicio. Desactivar conserva las citas futuras,
+las marca como inactivas y permite reasignarlas desde **Editar cita**.
+
+Solo `programada`/`confirmada` pueden moverse. `completada`, `cancelada` y `no_asistio`
+son finales; cancelada/no_asistio liberan horario. `en_sala` admite completar o cancelar.
+Completar simultáneamente produce una sola solicitud de reseña, fuera de la transacción.
+Título obligatorio (200 caracteres), notas hasta 5000, duración hasta 24 horas y fechas
+entre 2000 y 2100 con zona explícita. Los puestos controlan acceso al módulo; aún no
+existe vínculo usuario–doctor para restringir cada usuario a una agenda propia.
 
 Cada cliente puede tener una ficha con fecha de nacimiento, sensibilidades,
 preferencias, productos a evitar, observaciones e historial de servicios. Los
@@ -298,12 +322,18 @@ origen "en línea". Requiere el módulo Citas (los especialistas son sus doctore
   ocupado y, si se ocupa, pasa al siguiente. No se usa `EXCLUDE` para no romper la
   migración con citas que ya estuvieran encimadas.
 - **Seguridad del enlace público**: la disponibilidad se recalcula en el servidor, límite
-  por IP, tope de citas creadas por teléfono en 24 h, fechas solo dentro de la ventana.
+  por IP, tope de citas creadas por teléfono en 24 h serializado por empresa y teléfono,
+  fechas solo dentro de la ventana. Dos altas simultáneas del mismo contacto reutilizan
+  el registro ganador. Los servicios sin especialistas activos no se ofrecen al público.
   El cliente consulta o cancela con `/reservar/cita/<token>` (32 hex), sin cuenta y sin
   ver datos personales.
 - Los recordatorios por WhatsApp son los del módulo Citas (plantilla y anticipación).
 
-Prueba de concurrencia: `npx tsx prisma/scripts/test-reservas-concurrentes.ts`.
+Pruebas: `prisma/scripts/test-reservas-concurrentes.ts` (conservada sin cambios),
+`test-citas.ts` y `test-citas-e2e.ts`. La regresión las descubre por `test-*.ts` en
+`docs/pruebas-citas-2026-10-17/ejecutar-regresion.py`.
+El enlace público permite consultar/cancelar; confirmar y reprogramar por token siguen
+fuera del producto actual. El bot sí confirma, cancela y reprograma dentro de sus reglas.
 
 ## Módulo Lealtad (Aurum)
 

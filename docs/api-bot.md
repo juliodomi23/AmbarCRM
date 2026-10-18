@@ -150,11 +150,20 @@ simultáneas solo una gana) · `400` datos inválidos · `404` servicio inexiste
 ### `PATCH …/{id}/appointments`
 | Body | Efecto |
 |---|---|
-| `{ "citaId": 5, "estado": "confirmada" \| "cancelada" }` | Igual que antes. |
+| `{ "citaId": 5, "estado": "confirmada" \| "cancelada" }` | Aplica las transiciones de la agenda; no reabre estados finales. |
 | `{ "citaId": 5, "fecha": "2026-10-15", "hora": "10:30" }` | Reprograma con las mismas validaciones; conserva la duración y el profesional, y limpia el recordatorio enviado. |
 
 `409` si el horario está ocupado, si la cita no está `programada`/`confirmada` o si no tiene profesional asignado
 (no se puede validar disponibilidad). `400` si mandas fecha/hora y estado juntos. `404` si la cita es de otro contacto.
+
+Desde la revisión del 17-oct-2026 también responde `409` al intentar confirmar/cancelar
+una cita final (`completada`, `cancelada`, `no_asistio`) hacia un estado diferente, o
+confirmar una cita `en_sala`. Repetir el mismo estado permitido sigue siendo idempotente.
+Los cambios se validan bajo bloqueo de cita y especialista. Una reprogramación reinicia
+el recordatorio y sus intentos; conserva especialista y duración. Sin preferencia se
+ordena por menor cantidad de citas ocupantes del día local y se desempata por nombre e id.
+El enlace `enlaceGestion` sigue permitiendo consulta/cancelación, sin confirmación ni
+reprogramación pública por token. Los formatos de las respuestas válidas se conservan.
 
 ## Cotizaciones
 
