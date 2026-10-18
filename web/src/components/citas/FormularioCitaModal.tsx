@@ -3,7 +3,7 @@ import { useFocoModal } from "./useFocoModal";
 import { useState } from "react";
 import Link from "next/link";
 import { convertirFormularioAISO, valorFechaLocal, ZONA_CITAS } from "./fecha";
-import { finDeCita } from "@/lib/citas-duracion";
+import { finDeCita, finVisible } from "@/lib/citas-duracion";
 import { errorFechaPasada, errorHorarioCita } from "@/lib/citas-horarios";
 import { errorIntervaloCita } from "@/lib/citas-reglas";
 
@@ -59,7 +59,7 @@ export function FormularioCitaModal({
   try {
     const inicio = new Date(convertirFormularioAISO(formulario.inicio, zona));
     const fin = new Date(convertirFormularioAISO(formulario.fin, zona));
-    const movida = !citaOriginal || +inicio !== +new Date(citaOriginal.inicio) || +fin !== +new Date(citaOriginal.fin) || formulario.doctorId !== (citaOriginal.doctor?.id ?? "") || (formulario.servicioId ?? "") !== (citaOriginal.servicioId ?? "");
+    const movida = !citaOriginal || +inicio !== +new Date(citaOriginal.inicio) || +fin !== +finVisible(citaOriginal) || formulario.doctorId !== (citaOriginal.doctor?.id ?? "") || (formulario.servicioId ?? "") !== (citaOriginal.servicioId ?? "");
     motivo = errorIntervaloCita(inicio, fin);
     if (!motivo && movida) motivo = errorFechaPasada(inicio, zona) ?? (especialista ? errorHorarioCita({ horarios: especialista.horarios ?? [], excepciones: especialista.excepciones ?? [] }, inicio, finDeCita(fin, servicio?.bufferMin ?? 0), zona) : null);
     if (!motivo && movida && servicio && +fin !== +finDeCita(inicio, servicio.duracionMin)) motivo = `El fin debe coincidir con los ${servicio.duracionMin} minutos del servicio`;
@@ -67,7 +67,7 @@ export function FormularioCitaModal({
 
   function cambiarInicio(inicio: string) {
     let fin = formulario.fin;
-    try { fin = valorFechaLocal(finDeCita(new Date(convertirFormularioAISO(inicio, zona)), duracionElegida), zona); } catch { fin = formulario.fin; }
+    try { fin = valorFechaLocal(finDeCita(new Date(convertirFormularioAISO(inicio, zona)), servicio?.duracionMin ?? duracionElegida), zona); } catch { fin = formulario.fin; }
     onChange({ ...formulario, inicio, fin });
   }
 

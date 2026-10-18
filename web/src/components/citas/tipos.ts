@@ -24,6 +24,8 @@ export type EstadoCita =
   | "no_asistio";
 
 export type Cita = {
+  origen?: string;
+  servicio?: { bufferMin: number; duracionMin: number } | null;
   servicioId?: string | null;
   id: string;
   titulo: string;

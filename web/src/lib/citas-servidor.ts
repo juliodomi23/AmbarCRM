@@ -4,7 +4,7 @@ import { bloquearAgenda, ESTADOS_OCUPAN, hayEmpalme } from "@/lib/reservas/servi
 import { errorIntervaloCita, puedeCambiarEstado } from "@/lib/citas-reglas";
 import { configReservas } from "@/lib/reservas/servidor";
 import { errorFechaPasada, errorHorarioCita } from "@/lib/citas-horarios";
-import { duracionCitas, finDeCita } from "@/lib/citas-duracion";
+import { duracionCitas, finDeCita, finVisible } from "@/lib/citas-duracion";
 
 async function resolverDuracion(tx: Prisma.TransactionClient, datos: { inicio: Date; fin?: Date; doctorId: bigint | null; servicioId?: bigint | null }) {
   const servicio = datos.servicioId ? await tx.servicioReserva.findFirst({ where: { id: datos.servicioId, activo: true } }) : null;
@@ -50,6 +50,7 @@ export const incluirCita = {
   contacto: { select: { id: true, nombre: true, expediente: { select: { id: true } } } },
   responsable: { select: { id: true, nombre: true } },
   doctor: true,
+  servicio: { select: { bufferMin: true, duracionMin: true } },
 } satisfies Prisma.CitaInclude;
 
 type DatosAgenda = {
@@ -90,19 +91,17 @@ export async function eliminarCitaCancelada(orgId: bigint, id: bigint) {
 export async function editarCita(orgId: bigint, id: bigint, datos: CambiosCita) {
   return transaccionTenant(orgId, async (tx) => {
     await tx.$queryRaw`SELECT id FROM citas WHERE id = ${id} FOR UPDATE`;
-    const actual = await tx.cita.findFirst({ where: { id } });
+    const actual = await tx.cita.findFirst({ where: { id }, include: { servicio: { select: { bufferMin: true } } } });
     if (!actual) throw new ErrorCita("Cita inexistente", 404);
     let bufferMin = 0;
     if (datos.inicio || datos.fin || "servicioId" in datos || "doctorId" in datos) {
       const inicio = datos.inicio ?? actual.inicio;
       const servicioId = "servicioId" in datos ? datos.servicioId : actual.servicioId;
       const cambiaServicio = servicioId !== actual.servicioId;
-      const fin = datos.fin ?? (cambiaServicio ? undefined : finDeCita(inicio, (+actual.fin - +actual.inicio) / 60_000));
-      if (actual.origen === "interna" || cambiaServicio) {
-        const resuelto = await resolverDuracion(tx, { inicio, fin, servicioId, doctorId: "doctorId" in datos ? datos.doctorId! : actual.doctorId });
-        datos = { ...datos, fin: resuelto.fin };
-        bufferMin = resuelto.bufferMin;
-      } else if (!datos.fin && datos.inicio) datos = { ...datos, fin };
+      const fin = datos.fin ?? (cambiaServicio ? undefined : finDeCita(inicio, (+finVisible(actual) - +actual.inicio) / 60_000));
+      const resuelto = await resolverDuracion(tx, { inicio, fin, servicioId, doctorId: "doctorId" in datos ? datos.doctorId! : actual.doctorId });
+      datos = { ...datos, fin: actual.origen === "interna" ? resuelto.fin : finDeCita(resuelto.fin, resuelto.bufferMin) };
+      bufferMin = actual.origen === "interna" ? resuelto.bufferMin : 0;
     }
     const siguiente = { ...actual, ...datos };
     const movida = +siguiente.inicio !== +actual.inicio || +siguiente.fin !== +actual.fin || siguiente.doctorId !== actual.doctorId;

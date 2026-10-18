@@ -10,3 +10,7 @@ export function finDeCita(inicio: Date, duracionMin: number) {
 export function finOcupado(cita: { fin: Date; origen: string; servicio?: { bufferMin: number } | null }) {
   return finDeCita(cita.fin, cita.origen === "interna" ? cita.servicio?.bufferMin ?? 0 : 0);
 }
+
+export function finVisible(cita: { fin: Date | string; origen?: string; servicio?: { bufferMin: number } | null }) {
+  return finDeCita(new Date(cita.fin), cita.origen && cita.origen !== "interna" ? -(cita.servicio?.bufferMin ?? 0) : 0);
+}

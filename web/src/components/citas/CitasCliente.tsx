@@ -30,6 +30,7 @@ import { Boton, EncabezadoPagina } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import { confirmar } from "@/components/Confirmador";
 import { errorFechaPasada, errorHorarioCita } from "@/lib/citas-horarios";
+import { finVisible } from "@/lib/citas-duracion";
 
 function mensajeError(payload: unknown, respaldo: string) {
   if (
@@ -128,7 +129,7 @@ export function CitasCliente({
           ...((formulario.servicioId ?? "") !== (editando.servicioId ?? "") ? { servicioId: formulario.servicioId || null } : {}),
         } : formulario),
         ...(!editando || formulario.inicio !== valorFechaLocal(new Date(editando.inicio), zona) ? { inicio: convertirFormularioAISO(formulario.inicio, zona) } : {}),
-        ...(!editando || formulario.fin !== valorFechaLocal(new Date(editando.fin), zona) ? { fin: convertirFormularioAISO(formulario.fin, zona) } : {}),
+        ...(!editando || formulario.fin !== valorFechaLocal(finVisible(editando), zona) ? { fin: convertirFormularioAISO(formulario.fin, zona) } : {}),
       }),
     });
     const payload = await respuesta.json().catch(() => null);
@@ -261,6 +262,7 @@ export function CitasCliente({
       doctorId: filtroDoctor === "sin_asignar" ? "" : filtroDoctor,
       servicioId: "",
       titulo: "Cita",
+      notas: "",
     }));
     setEditando(null);
     setModalAbierto(true);
@@ -276,7 +278,10 @@ export function CitasCliente({
             <Boton variante="ghost" onClick={() => setModalDoctores(true)}>
               Doctores
             </Boton>
-            <Boton onClick={() => { setEditando(null); setModalAbierto(true); }}>+ Nueva cita</Boton>
+            <Boton onClick={() => {
+              setFormulario({ contactoId: contactoInicial, conversacionId: params.get("conversacionId") ?? "", titulo: "Cita", notas: "", inicio: valorInicial(0, zona), fin: valorInicial(duracionMin, zona), responsableId: "", doctorId: filtroDoctor === "sin_asignar" ? "" : filtroDoctor, servicioId: "" });
+              setEditando(null); setModalAbierto(true);
+            }}>+ Nueva cita</Boton>
           </>
         }
       />
@@ -341,7 +346,7 @@ export function CitasCliente({
         onEditar={() => {
           if (!citaSeleccionada) return;
           const c = citaSeleccionada;
-          setFormulario({ contactoId: c.contacto.id, conversacionId: "", responsableId: c.responsable?.id ?? "", titulo: c.titulo, notas: c.notas ?? "", inicio: valorFechaLocal(new Date(c.inicio), zona), fin: valorFechaLocal(new Date(c.fin), zona), doctorId: c.doctor?.id ?? "", servicioId: c.servicioId ?? "" });
+          setFormulario({ contactoId: c.contacto.id, conversacionId: "", responsableId: c.responsable?.id ?? "", titulo: c.titulo, notas: c.notas ?? "", inicio: valorFechaLocal(new Date(c.inicio), zona), fin: valorFechaLocal(finVisible(c), zona), doctorId: c.doctor?.id ?? "", servicioId: c.servicioId ?? "" });
           setEditando(c); setCitaSeleccionada(null); setModalAbierto(true);
         }}
         guardando={guardando}
