@@ -4,11 +4,12 @@ import { aBigInt } from "@/lib/ids";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
 import { paginacionListado } from "@/lib/paginacion";
+import { crearCitaInterna, conErroresCita, incluirCita } from "@/lib/citas-servidor";
 import { referenciaPropia } from "@/lib/referencias";
 
 export const dynamic = "force-dynamic";
 
-export const GET = conModulo("citas", {}, async (s, req: NextRequest) => {
+export const GET = conModulo("citas", {}, conErroresCita(async (s, req: NextRequest) => {
   const parametros = req.nextUrl.searchParams;
   const desde = new Date(parametros.get("desde") ?? Date.now());
   const hasta = parametros.get("hasta")
@@ -27,18 +28,14 @@ export const GET = conModulo("citas", {}, async (s, req: NextRequest) => {
       inicio: { gte: desde, lt: hasta },
       contactoId: contactoId ?? undefined,
     },
-    include: {
-      contacto: { include: { expediente: { select: { id: true } } } },
-      responsable: true,
-      doctor: true,
-    },
+    include: incluirCita,
     orderBy: { inicio: "asc" },
     ...paginacionListado(req),
   });
   return NextResponse.json(serializar({ citas }));
-});
+}));
 
-export const POST = conModulo("citas", {}, async (s, req: NextRequest) => {
+export const POST = conModulo("citas", {}, conErroresCita(async (s, req: NextRequest) => {
   const b = await req.json().catch(() => ({}));
   const doctorId = b.doctorId ? aBigInt(String(b.doctorId)) : null;
   const inicio = new Date(b.inicio),
@@ -80,22 +77,9 @@ export const POST = conModulo("citas", {}, async (s, req: NextRequest) => {
       { status: 400 },
     );
   }
-  const cita = await db.cita.create({
-    data: {
-      contactoId,
-      conversacionId,
-      responsableId: responsableId ?? s.userId,
-      doctorId,
-      titulo: String(b.titulo).trim(),
-      notas: String(b.notas ?? "").trim() || null,
-      inicio,
-      fin,
-    },
-    include: {
-      contacto: { include: { expediente: { select: { id: true } } } },
-      responsable: true,
-      doctor: true,
-    },
+  const cita = await crearCitaInterna(s.orgId!, {
+    contactoId, conversacionId, responsableId: responsableId ?? s.userId,
+    doctorId, titulo: String(b.titulo).trim(), notas: String(b.notas ?? "").trim() || null, inicio, fin,
   });
   return NextResponse.json(serializar({ cita }), { status: 201 });
-});
+}));

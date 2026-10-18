@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { conModulo } from "@/lib/con-modulo";
+import { editarCita, conErroresCita } from "@/lib/citas-servidor";
 import { solicitarResena } from "@/lib/resenas-envio";
 
 const ESTADOS = [
@@ -13,7 +14,7 @@ const ESTADOS = [
   "no_asistio",
 ] as const;
 
-export const PATCH = conModulo("citas", {}, async (s, req: NextRequest, props: { params: Promise<{ id: string }> }) => {
+export const PATCH = conModulo("citas", {}, conErroresCita(async (s, req: NextRequest, props: { params: Promise<{ id: string }> }) => {
   const b = await req.json().catch(() => ({}));
   const { id } = await props.params;
   const data: {
@@ -54,20 +55,10 @@ export const PATCH = conModulo("citas", {}, async (s, req: NextRequest, props: {
     return NextResponse.json({ error: "fecha inválida" }, { status: 400 });
   }
   const citaId = aBigInt(id);
-  const actual = citaId
-    ? await db.cita.findFirst({ where: { id: citaId }, select: { inicio: true, fin: true, estado: true, contactoId: true } })
-    : null;
-  if (!citaId || !actual) {
-    return NextResponse.json({ error: "cita inexistente" }, { status: 404 });
-  }
-  if ((data.fin ?? actual.fin) <= (data.inicio ?? actual.inicio))
-    return NextResponse.json(
-      { error: "el fin debe ser posterior al inicio" },
-      { status: 400 },
-    );
-  await db.cita.update({ where: { id: citaId }, data });
-  if (data.estado === "completada" && actual.estado !== "completada" && s.orgId !== null) {
-    await solicitarResena(s.orgId, { evento: "cita", citaId, contactoId: actual.contactoId });
+  if (!citaId) return NextResponse.json({ error: "Cita inexistente" }, { status: 404 });
+  const { cita, completada } = await editarCita(s.orgId!, citaId, data);
+  if (completada) {
+    await solicitarResena(s.orgId!, { evento: "cita", citaId, contactoId: cita.contactoId });
   }
   return NextResponse.json({ ok: true });
-});
+}));

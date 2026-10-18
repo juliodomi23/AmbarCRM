@@ -17,6 +17,22 @@ import {
 export const ESTADOS_OCUPAN: EstadoCita[] = ["programada", "confirmada", "en_sala", "completada"];
 export const SIN_PREFERENCIA = "cualquiera";
 
+export async function bloquearAgenda(tx: Prisma.TransactionClient, ids: bigint[], bloquear = true) {
+  const ordenados = [...new Set(ids)].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+  if (!ordenados.length) return [];
+  return tx.$queryRaw<{ id: bigint; activo: boolean }[]>(Prisma.sql`
+    SELECT id, activo FROM doctores WHERE id IN (${Prisma.join(ordenados)}) ORDER BY id
+    ${bloquear ? Prisma.sql`FOR UPDATE` : Prisma.empty}
+  `);
+}
+
+export async function hayEmpalme(tx: Prisma.TransactionClient, doctorId: bigint, inicio: Date, fin: Date, excluirCitaId?: bigint) {
+  return (await tx.cita.count({ where: {
+    doctorId, estado: { in: ESTADOS_OCUPAN }, inicio: { lt: fin }, fin: { gt: inicio },
+    ...(excluirCitaId === undefined ? {} : { id: { not: excluirCitaId } }),
+  } })) > 0;
+}
+
 export type ConfigReservas = {
   zona: string;
   anticipacionMin: number;
@@ -80,7 +96,7 @@ export async function doctoresDelServicio(servicioId: bigint) {
   const filas = await db.servicioReservaDoctor.findMany({
     where: { servicioId, doctor: { activo: true } },
     include: { doctor: { select: { id: true, nombre: true } } },
-    orderBy: { doctor: { nombre: "asc" } },
+    orderBy: [{ doctor: { nombre: "asc" } }, { doctorId: "asc" }],
   });
   return filas.map((fila) => fila.doctor);
 }
@@ -201,14 +217,9 @@ export async function reservarCita(
   const fin = new Date(datos.inicio.getTime() + (datos.servicio.duracionMin + datos.servicio.bufferMin) * 60_000);
   for (const doctorId of datos.candidatos) {
     const cita = await transaccionTenant(orgId, async (tx) => {
-      const bloqueado = datos.bloquear === false
-        ? await tx.$queryRaw<{ id: bigint }[]>(Prisma.sql`SELECT id FROM doctores WHERE id = ${doctorId} AND activo`)
-        : await tx.$queryRaw<{ id: bigint }[]>(Prisma.sql`SELECT id FROM doctores WHERE id = ${doctorId} AND activo FOR UPDATE`);
-      if (bloqueado.length === 0) return null;
-      const choque = await tx.cita.count({
-        where: { doctorId, estado: { in: ESTADOS_OCUPAN }, inicio: { lt: fin }, fin: { gt: datos.inicio } },
-      });
-      if (choque > 0) return null;
+      const bloqueado = await bloquearAgenda(tx, [doctorId], datos.bloquear !== false);
+      if (!bloqueado[0]?.activo) return null;
+      if (await hayEmpalme(tx, doctorId, datos.inicio, fin)) return null;
       return tx.cita.create({
         data: {
           contactoId: datos.contactoId,
@@ -242,20 +253,12 @@ export async function reprogramarCita(
 ) {
   const fin = new Date(nuevoInicio.getTime() + (cita.fin.getTime() - cita.inicio.getTime()));
   return transaccionTenant(orgId, async (tx) => {
-    const bloqueado = bloquear
-      ? await tx.$queryRaw<{ id: bigint }[]>(Prisma.sql`SELECT id FROM doctores WHERE id = ${cita.doctorId} AND activo FOR UPDATE`)
-      : await tx.$queryRaw<{ id: bigint }[]>(Prisma.sql`SELECT id FROM doctores WHERE id = ${cita.doctorId} AND activo`);
-    if (bloqueado.length === 0) return null;
-    const choque = await tx.cita.count({
-      where: {
-        doctorId: cita.doctorId,
-        id: { not: cita.id },
-        estado: { in: ESTADOS_OCUPAN },
-        inicio: { lt: fin },
-        fin: { gt: nuevoInicio },
-      },
-    });
-    if (choque > 0) return null;
+    await tx.$queryRaw`SELECT id FROM citas WHERE id = ${cita.id} FOR UPDATE`;
+    const actual = await tx.cita.findFirst({ where: { id: cita.id } });
+    if (!actual || !["programada", "confirmada"].includes(actual.estado) || actual.doctorId !== cita.doctorId || +actual.inicio !== +cita.inicio || +actual.fin !== +cita.fin) return null;
+    const bloqueado = await bloquearAgenda(tx, [cita.doctorId], bloquear);
+    if (!bloqueado[0]?.activo) return null;
+    if (await hayEmpalme(tx, cita.doctorId, nuevoInicio, fin, cita.id)) return null;
     // recordatorioEnviadoAt = null: el aviso de la hora nueva debe volver a salir.
     return tx.cita.update({
       where: { id: cita.id },
