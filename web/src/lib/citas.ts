@@ -10,11 +10,11 @@ export type VariableRecordatorio =
   | "fecha_hora"
   | "titulo_cita"
   | "nombre_negocio";
-export function fechaHoraCita(date: Date) {
+export function fechaHoraCita(date: Date, zona = ZONA_CITAS) {
   return new Intl.DateTimeFormat("es-MX", {
     dateStyle: "full",
     timeStyle: "short",
-    timeZone: ZONA_CITAS,
+    timeZone: zona,
   }).format(date);
 }
 /** Horas de anticipación del recordatorio: 24 por defecto, entre 1 y 168 (una semana). */
@@ -46,11 +46,12 @@ export function valoresRecordatorio(
     inicio: Date;
     titulo: string;
     nombreNegocio: string;
+    zona?: string;
   },
 ) {
   const valores: Record<VariableRecordatorio, string> = {
     nombre_contacto: datos.nombreContacto,
-    fecha_hora: fechaHoraCita(datos.inicio),
+    fecha_hora: fechaHoraCita(datos.inicio, datos.zona),
     titulo_cita: datos.titulo,
     nombre_negocio: datos.nombreNegocio,
   };

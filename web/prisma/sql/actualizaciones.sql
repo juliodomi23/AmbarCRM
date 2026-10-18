@@ -1759,3 +1759,6 @@ CREATE OR REPLACE FUNCTION resolve_org_by_instagram(p_cuenta text)
 $$;
 REVOKE ALL ON FUNCTION resolve_org_by_instagram(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION resolve_org_by_instagram(text) TO crm_app;
+-- Reintentos acotados de recordatorios; heredan RLS y GRANT de citas.
+ALTER TABLE citas ADD COLUMN IF NOT EXISTS recordatorio_intentos INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE citas ADD COLUMN IF NOT EXISTS recordatorio_intentado_at TIMESTAMPTZ;

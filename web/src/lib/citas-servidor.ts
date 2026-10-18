@@ -61,7 +61,7 @@ export async function editarCita(orgId: bigint, id: bigint, datos: CambiosCita) 
       if (await hayEmpalme(tx, siguiente.doctorId, siguiente.inicio, siguiente.fin, id)) throw new ErrorCita("El especialista ya tiene una cita en ese horario", 409);
     }
     const cita = await tx.cita.update({ where: { id }, data: {
-      ...datos, ...(movida ? { recordatorioEnviadoAt: null } : {}),
+      ...datos, ...(movida ? { recordatorioEnviadoAt: null, recordatorioIntentos: 0, recordatorioIntentadoAt: null } : {}),
     }, include: incluirCita });
     return { cita, completada: actual.estado !== "completada" && cita.estado === "completada" };
   });

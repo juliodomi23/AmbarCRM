@@ -818,6 +818,8 @@ model Cita {
   notas                 String?
   estado                EstadoCita @default(programada)
   recordatorioEnviadoAt DateTime?  @map("recordatorio_enviado_at")
+  recordatorioIntentos Int        @default(0) @map("recordatorio_intentos")
+  recordatorioIntentadoAt DateTime? @map("recordatorio_intentado_at")
   servicioId            BigInt?    @map("servicio_id")
   tokenGestion          String?    @unique @map("token_gestion")
   origen                String     @default("interna")
