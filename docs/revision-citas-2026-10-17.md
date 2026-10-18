@@ -1,5 +1,20 @@
 # Revisión de Citas y Reservas en línea · 17 de octubre de 2026
 
+## Cambio del 18 de octubre: borrar canceladas
+
+DELETE interno exige módulo Citas y estado cancelada; cualquier otro estado responde 409,
+id ajeno/inexistente 404. Bloquea la fila antes de revisar evoluciones y borrar: una cita con
+evolución clínica ligada responde 409, aunque la FK permitiría SET NULL. Nunca se elimina
+historial clínico. Solicitudes de reseña, pendientes o procesadas, se conservan y su cita_id
+queda NULL mediante la FK existente; contacto, evento y detalle siguen disponibles.
+El esquema actual no tiene cobro/venta/pago asociado a Cita, ni una bitácora general para
+acciones de personal (AuditoriaBot es exclusiva del bot). No se inventan esas relaciones:
+ningún registro de dinero se modifica y no se añade borrado al bot. No se ofrece borrado
+en lote: requiere informar conflictos individuales y no es un cambio trivial.
+Detalle y lista usan Confirmador, errores del servidor, toast y recarga de agenda.
+El conteo arquitectónico sigue siendo 96 archivos; se comprueban los dos métodos protegidos
+de citas/[id] explícitamente, porque DELETE no agrega un archivo de ruta.
+
 Base: `eabde09`, rama `revision-citas`. Diagnóstico inicial antes de modificar código.
 Solo PostgreSQL desechable en 127.0.0.1:55450, sin servicios externos, push ni despliegue.
 Las referencias de esta tabla corresponden a la base; la evidencia final se añade al terminar.

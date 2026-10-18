@@ -61,6 +61,7 @@ function ListaCitas({
   guardando = false,
   onCambiarEstado,
   onSeleccionar,
+  onEliminar,
 }: {
   citas: Cita[];
   cargando: boolean;
@@ -68,6 +69,7 @@ function ListaCitas({
   guardando?: boolean;
   onCambiarEstado: (cita: Cita, estado: EstadoCita) => void;
   onSeleccionar: (cita: Cita) => void;
+  onEliminar?: (cita: Cita) => void;
 }) {
   return (
     <section>
@@ -116,6 +118,7 @@ function ListaCitas({
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              {cita.estado === "cancelada" && onEliminar && <button type="button" disabled={guardando} onClick={() => onEliminar(cita)} className="rounded-lg px-2 py-2 text-xs text-destructive">Eliminar</button>}
               <button
                 type="button"
                 onClick={() => onSeleccionar(cita)}
@@ -157,6 +160,7 @@ export function CalendarioSemanal({
   onNuevoHorario,
   onCambiarEstado,
   onSeleccionar,
+  onEliminar,
 }: {
   citas: Cita[];
   cargando: boolean;
@@ -168,6 +172,7 @@ export function CalendarioSemanal({
   onNuevoHorario: (fecha: string, minutos: number) => void;
   onCambiarEstado: (cita: Cita, estado: EstadoCita) => void;
   onSeleccionar: (cita: Cita) => void;
+  onEliminar?: (cita: Cita) => void;
 }) {
   const dias = Array.from({ length: 7 }, (_, indice) =>
     sumarDias(semana, indice),
@@ -360,6 +365,7 @@ export function CalendarioSemanal({
       </section>
 
       <ListaCitas
+        onEliminar={onEliminar}
         citas={citas}
         cargando={cargando}
         zona={zona}

@@ -43,6 +43,19 @@ export async function crearCitaInterna(orgId: bigint, datos: DatosAgenda, bloque
 
 export type CambiosCita = Partial<Pick<DatosAgenda, "titulo" | "notas" | "inicio" | "fin" | "doctorId">> & { estado?: EstadoCita };
 
+export async function eliminarCitaCancelada(orgId: bigint, id: bigint) {
+  return transaccionTenant(orgId, async (tx) => {
+    await tx.$queryRaw`SELECT id FROM citas WHERE id = ${id} FOR UPDATE`;
+    const cita = await tx.cita.findFirst({ where: { id } });
+    if (!cita) throw new ErrorCita("Cita inexistente", 404);
+    if (cita.estado !== "cancelada") throw new ErrorCita("Cancela la cita antes de eliminarla", 409);
+    if (await tx.evolucionClinica.count({ where: { citaId: id } })) {
+      throw new ErrorCita("No se puede eliminar la cita porque tiene una evolución clínica ligada", 409);
+    }
+    await tx.cita.delete({ where: { id } });
+  });
+}
+
 export async function editarCita(orgId: bigint, id: bigint, datos: CambiosCita) {
   return transaccionTenant(orgId, async (tx) => {
     await tx.$queryRaw`SELECT id FROM citas WHERE id = ${id} FOR UPDATE`;

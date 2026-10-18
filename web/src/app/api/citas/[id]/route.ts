@@ -2,7 +2,7 @@ import { avisosDeCita } from "@/lib/citas-avisos";
 import { NextRequest, NextResponse } from "next/server";
 import { aBigInt } from "@/lib/ids";
 import { conModulo, type SesionModulo } from "@/lib/con-modulo";
-import { editarCita, conErroresCita } from "@/lib/citas-servidor";
+import { editarCita, eliminarCitaCancelada, conErroresCita } from "@/lib/citas-servidor";
 import { referenciaPropia } from "@/lib/referencias";
 import { errorTextoCita, fechaEntradaCita } from "@/lib/citas-reglas";
 import { solicitarResena } from "@/lib/resenas-envio";
@@ -15,6 +15,13 @@ const ESTADOS = [
   "cancelada",
   "no_asistio",
 ] as const;
+
+export const DELETE = conModulo("citas", {}, conErroresCita(async (s: SesionModulo, _req: NextRequest, props: { params: Promise<{ id: string }> }) => {
+  const id = aBigInt((await props.params).id);
+  if (!id || id > 9223372036854775807n) return NextResponse.json({ error: "Cita inexistente" }, { status: 404 });
+  await eliminarCitaCancelada(s.orgId!, id);
+  return NextResponse.json({ ok: true });
+}));
 
 export const PATCH = conModulo("citas", {}, conErroresCita(async (s: SesionModulo, req: NextRequest, props: { params: Promise<{ id: string }> }) => {
   const b = await req.json().catch(() => null);

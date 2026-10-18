@@ -18,6 +18,7 @@ export function DetalleCitaModal({
   cita,
   zona = ZONA_CITAS,
   onEditar,
+  onEliminar,
   guardando,
   onClose,
   onCambiarEstado,
@@ -25,6 +26,7 @@ export function DetalleCitaModal({
   cita: Cita | null;
   zona?: string;
   onEditar?: () => void;
+  onEliminar?: () => void;
   guardando: boolean;
   onClose: () => void;
   onCambiarEstado: (estado: EstadoCita) => void;
@@ -89,6 +91,7 @@ export function DetalleCitaModal({
         </div>
 
         <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
+          {cita.estado === "cancelada" && onEliminar && <Boton type="button" variante="ghost" disabled={guardando} onClick={onEliminar}>Eliminar</Boton>}
           {onEditar && <Boton type="button" onClick={onEditar}>Editar cita</Boton>}
           <Boton type="button" variante="ghost" onClick={onClose}>
             Cerrar

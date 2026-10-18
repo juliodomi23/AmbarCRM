@@ -27,6 +27,7 @@ import type {
 } from "@/components/citas/tipos";
 import { Boton, EncabezadoPagina } from "@/components/ui";
 import { toast } from "@/components/Toaster";
+import { confirmar } from "@/components/Confirmador";
 
 function mensajeError(payload: unknown, respaldo: string) {
   if (
@@ -141,6 +142,20 @@ export function CitasCliente({
     }));
     await cargar();
     } catch { toast("No se pudo guardar la cita. Revisa tu conexión.", "error"); }
+    finally { setGuardando(false); }
+  }
+
+  async function eliminar(cita: Cita) {
+    setCitaSeleccionada(null);
+    if (!(await confirmar({ titulo: "Eliminar cita cancelada", mensaje: `¿Eliminar «${cita.titulo}»? Esta acción no se puede deshacer. Las citas con evolución clínica no se pueden eliminar.`, confirmar: "Eliminar" }))) return;
+    setGuardando(true);
+    try {
+      const respuesta = await fetch(`/api/citas/${cita.id}`, { method: "DELETE" });
+      const payload = await respuesta.json().catch(() => null);
+      if (!respuesta.ok) throw new Error(mensajeError(payload, "No se pudo eliminar la cita"));
+      toast("Cita eliminada");
+      await cargar();
+    } catch (error) { toast(error instanceof Error ? error.message : "No se pudo eliminar la cita. Revisa tu conexión.", "error"); }
     finally { setGuardando(false); }
   }
 
@@ -281,6 +296,7 @@ export function CitasCliente({
           void cambiarEstado(cita, estado)
         }
         onSeleccionar={setCitaSeleccionada}
+        onEliminar={(cita) => void eliminar(cita)}
       />
 
       <FormularioCitaModal
@@ -297,6 +313,7 @@ export function CitasCliente({
       />
       <DetalleCitaModal
         cita={citaSeleccionada}
+        onEliminar={() => { if (citaSeleccionada) void eliminar(citaSeleccionada); }}
         zona={zona}
         onEditar={() => {
           if (!citaSeleccionada) return;
