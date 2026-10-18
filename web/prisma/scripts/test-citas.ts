@@ -84,11 +84,11 @@ try {
   login("agente", "Doctor"); assert.equal((await list("")).status, 200); login();
   pasa("aislamiento A/B incluso por id y permisos por puesto en GET/POST/PATCH");
   const fuera = await runWithOrg(org.id, () => avisosDeCita({ doctorId: a.profesionales[0].id, inicio: instanteLocal(fecha, 1380, cfg.zona), fin: instanteLocal(sumarDias(fecha, 1), 30, cfg.zona) }));
-  assert.equal(fuera.length, 1);
+  assert.equal(fuera.length, 0);
   await runWithOrg(org.id, () => db.excepcionHorario.create({ data: { doctorId: a.profesionales[2].id, fecha: new Date(`${fecha}T00:00:00Z`) } }));
   await runWithOrg(org.id, async () => {
     assert.deepEqual(await reservas.horariosDeDoctor(cfg, a.servicio, a.profesionales[2].id, fecha), []);
-    assert.equal((await avisosDeCita({ doctorId: a.profesionales[2].id, inicio, fin })).length, 1);
+    assert.equal((await avisosDeCita({ doctorId: a.profesionales[2].id, inicio, fin })).length, 0);
     const porDoctor = await reservas.horariosPorDoctor(cfg, a.servicio, fecha, a.profesionales.map((d) => d.id));
     const orden = await reservas.candidatos(cfg, porDoctor, inicio.toISOString(), fecha);
     assert.equal(orden[0], String(a.profesionales[3].id));
@@ -96,10 +96,10 @@ try {
   await runWithOrg(org.id, async () => {
     await db.servicioReservaDoctor.deleteMany({ where: { servicioId: a.servicio.id, doctorId: a.profesionales[4].id } });
     const aviso = await avisosDeCita({ doctorId: a.profesionales[4].id, servicioId: a.servicio.id, inicio, fin });
-    assert.ok(aviso.some((a) => a.includes("no está configurado")));
+    assert.deepEqual(aviso, []);
     await db.servicioReservaDoctor.create({ data: { servicioId: a.servicio.id, doctorId: a.profesionales[4].id } });
   });
-  pasa("horario, excepciones, aviso de servicio incompatible y cualquiera con menor carga/desempate estable");
+  pasa("horario y excepciones públicos; solo se avisa sin horarios; cualquiera con menor carga/desempate estable");
   const reservaBody = { servicioId: String(a.servicio.id), doctorId: "cualquiera", fecha, horario: instanteLocal(fecha, 900, cfg.zona).toISOString(), nombre: "Cliente", telefono: "9615551234" };
   const publico = (body: object, ip: string) => publica.POST(req(`/api/public/reservas/${org.slug}`, "POST", body, ip), { params: Promise.resolve({ slug: org.slug }) });
   const reservasPublicas = await Promise.all(Array.from({ length: 4 }, (_, i) => publico({ ...reservaBody, horario: instanteLocal(fecha, 900 + i * 30, cfg.zona).toISOString() }, `telefono-${marca}-${i}`)));

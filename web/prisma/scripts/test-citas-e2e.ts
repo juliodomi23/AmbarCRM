@@ -48,11 +48,11 @@ try {
       assert.equal((await http("/api/reservas/horarios", "POST", { doctorId: String(doctor.id), diaSemana, inicio: "08:00", fin: "20:00" })).status, 201);
     }
     const fecha = sumarDias(fechaLocal(new Date(), escenario.zona), 2);
-    const inicio = instanteLocal(fecha, 1200, escenario.zona);
+    const inicio = instanteLocal(fecha, 1080, escenario.zona);
     const fin = new Date(+inicio + 30 * 60_000);
     const body = { contactoId: String(fixture.contacto.id), conversacionId: String(fixture.conv.id), doctorId: String(fixture.doctores[0].id), titulo: "Cita desde conversación", inicio: inicio.toISOString(), fin: fin.toISOString() };
     const creada = await http("/api/citas", "POST", body); assert.equal(creada.status, 201);
-    const { cita, avisos } = await creada.json(); assert.equal(avisos.length, 1);
+    const { cita, avisos } = await creada.json(); assert.equal(avisos.length, 0);
     assert.equal((await http(`/api/citas/${cita.id}`, "PATCH", { inicio: new Date(+inicio + 3600_000).toISOString(), fin: new Date(+fin + 3600_000).toISOString(), doctorId: String(fixture.doctores[1].id), titulo: "Movida por recepción" })).status, 200);
     for (const estado of ["confirmada", "en_sala", "completada"]) assert.equal((await http(`/api/citas/${cita.id}`, "PATCH", { estado })).status, 200);
     assert.equal((await http(`/api/citas/${cita.id}`, "PATCH", { estado: "programada" })).status, 409);
@@ -90,6 +90,6 @@ try {
     evidencias.push({ ...escenario, slug: org.slug, email, contactoId: String(fixture.contacto.id), conversacionId: String(fixture.conv.id), token: reserva.token, servicioId: String(servicio.id), semana, filas: ids.length, consultaMs: ms });
     console.log(`OK · ${escenario.nombre}: configuración HTTP, bandeja precargada, mover, estados, reserva pública, token, ${ids.length} citas paginadas en ${ms} ms`);
   }
-  await mkdir("../docs/pruebas-citas-2026-10-17", { recursive: true });
-  await writeFile("../docs/pruebas-citas-2026-10-17/fixtures.json", JSON.stringify(evidencias, null, 2));
+  await mkdir("../docs/pruebas-citas-horarios-2026-10-18", { recursive: true });
+  await writeFile("../docs/pruebas-citas-horarios-2026-10-18/fixtures.json", JSON.stringify(evidencias, null, 2));
 } finally { await dbRaw.$disconnect(); }
