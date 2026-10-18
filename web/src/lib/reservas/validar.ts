@@ -11,6 +11,7 @@ const entero = (valor: unknown, min: number, max: number) => {
 };
 
 export function validarServicioReserva(body: Record<string, unknown>) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return { error: "Datos de reservas inválidos" } as const;
   const nombre = texto(body.nombre, 120);
   const duracionMin = entero(body.duracionMin, 5, 720);
   const bufferMin = body.bufferMin === "" || body.bufferMin == null ? 0 : entero(body.bufferMin, 0, 240);
@@ -33,6 +34,7 @@ export function validarServicioReserva(body: Record<string, unknown>) {
 }
 
 export function validarHorarioDoctor(body: Record<string, unknown>) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return { error: "Datos de reservas inválidos" } as const;
   const doctorId = id(body.doctorId);
   const diaSemana = entero(body.diaSemana, 0, 6);
   const inicioMin = minutosDeHora(body.inicio);
@@ -47,6 +49,7 @@ export function validarHorarioDoctor(body: Record<string, unknown>) {
 
 /** Excepción de un día: sin horas = cerrado todo el día; con horas = horario especial. */
 export function validarExcepcion(body: Record<string, unknown>) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return { error: "Datos de reservas inválidos" } as const;
   const doctorId = id(body.doctorId);
   if (!doctorId) return { error: "Elige al especialista" } as const;
   if (!fechaValida(body.fecha)) return { error: "Fecha inválida" } as const;
@@ -62,6 +65,7 @@ export function validarExcepcion(body: Record<string, unknown>) {
 }
 
 export function validarAjustesReservas(body: Record<string, unknown>) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return { error: "Datos de reservas inválidos" } as const;
   const anticipacionMin = entero(body.anticipacionMin, 0, 10_080);
   const ventanaDias = entero(body.ventanaDias, 1, 90);
   const granularidadMin = entero(body.granularidadMin, 5, 120);

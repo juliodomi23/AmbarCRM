@@ -38,6 +38,7 @@ export async function POST(req: NextRequest, { params }: Props) {
   const limite = limitarIp(req, "cita", 60, 60_000);
   if (limite) return limite;
   const body = await req.json().catch(() => ({}));
+  if (!body || typeof body !== "object" || Array.isArray(body)) return errorPublico("Datos de reserva inválidos", 400);
   if (body.accion !== "cancelar") return errorPublico("Acción inválida", 400);
   const encontrada = await citaDelToken((await params).token);
   if (!encontrada) return errorPublico("Cita no encontrada", 404);

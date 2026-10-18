@@ -9,8 +9,6 @@ import {
   claveFecha,
   convertirFormularioAISO,
   fechaMexicoAUTC,
-  HORA_FIN,
-  HORA_INICIO,
   inicioDeSemana,
   sumarDias,
   valorFechaLocal,
@@ -215,8 +213,8 @@ export function CitasCliente({
 
   function abrirEnHorario(fecha: string, minutos: number) {
     const minutosLimitados = Math.min(
-      HORA_FIN * 60 - 60,
-      Math.max(HORA_INICIO * 60, minutos),
+      24 * 60 - 30,
+      Math.max(0, minutos),
     );
     const hora = Math.floor(minutosLimitados / 60);
     const minuto = minutosLimitados % 60;

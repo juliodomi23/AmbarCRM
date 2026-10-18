@@ -93,7 +93,13 @@ try {
     const orden = await reservas.candidatos(cfg, porDoctor, inicio.toISOString(), fecha);
     assert.equal(orden[0], String(a.profesionales[3].id));
   });
-  pasa("horario, excepciones y cualquiera elige menor carga con desempate estable");
+  await runWithOrg(org.id, async () => {
+    await db.servicioReservaDoctor.deleteMany({ where: { servicioId: a.servicio.id, doctorId: a.profesionales[4].id } });
+    const aviso = await avisosDeCita({ doctorId: a.profesionales[4].id, servicioId: a.servicio.id, inicio, fin });
+    assert.ok(aviso.some((a) => a.includes("no está configurado")));
+    await db.servicioReservaDoctor.create({ data: { servicioId: a.servicio.id, doctorId: a.profesionales[4].id } });
+  });
+  pasa("horario, excepciones, aviso de servicio incompatible y cualquiera con menor carga/desempate estable");
   const reservaBody = { servicioId: String(a.servicio.id), doctorId: "cualquiera", fecha, horario: instanteLocal(fecha, 900, cfg.zona).toISOString(), nombre: "Cliente", telefono: "9615551234" };
   const publico = (body: object, ip: string) => publica.POST(req(`/api/public/reservas/${org.slug}`, "POST", body, ip), { params: Promise.resolve({ slug: org.slug }) });
   const reservasPublicas = await Promise.all(Array.from({ length: 4 }, (_, i) => publico({ ...reservaBody, horario: instanteLocal(fecha, 900 + i * 30, cfg.zona).toISOString() }, `telefono-${marca}-${i}`)));

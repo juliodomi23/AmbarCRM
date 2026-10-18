@@ -55,6 +55,7 @@ export async function POST(req: NextRequest, { params }: Props) {
   const negocio = await negocioPublico((await params).slug);
   if (!negocio) return errorPublico("Este negocio no tiene reservas en línea", 404);
   const b = await req.json().catch(() => ({}));
+  if (!b || typeof b !== "object" || Array.isArray(b)) return errorPublico("Datos de reserva inválidos", 400);
   const nombre = String(b.nombre ?? "").trim().slice(0, 120);
   const telefono = telefonoMx(b.telefono);
   const servicioId = aBigInt(String(b.servicioId ?? ""));
