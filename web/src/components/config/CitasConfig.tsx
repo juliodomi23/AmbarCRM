@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Boton } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import type { VariableRecordatorio } from "@/lib/citas";
+import { duracionCitas } from "@/lib/citas-duracion";
 
 type Plantilla = {
   name: string;
@@ -35,6 +36,19 @@ export function CitasConfig({
   canales: any[];
 }) {
   const inicial = modulo.config ?? {};
+  const [duracionMin, setDuracionMin] = useState(duracionCitas(inicial));
+  const [guardandoDuracion, setGuardandoDuracion] = useState(false);
+
+  async function guardarDuracion() {
+    if (!Number.isInteger(duracionMin) || duracionMin < 5 || duracionMin > 480) return toast("La duración debe ser de 5 a 480 minutos", "error");
+    setGuardandoDuracion(true);
+    try {
+      const res = await fetch("/api/modulos", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clave: "citas", config: { duracionMin } }) });
+      const datos = await res.json();
+      toast(res.ok ? "Duración por defecto guardada" : datos.error ?? "No se pudo guardar la duración", res.ok ? "ok" : "error");
+    } catch { toast("No se pudo guardar la duración. Revisa tu conexión.", "error"); }
+    finally { setGuardandoDuracion(false); }
+  }
   const [canalId, setCanalId] = useState(
     String(inicial.canalId ?? canales[0]?.id ?? ""),
   );
@@ -98,6 +112,11 @@ export function CitasConfig({
 
   return (
     <div className="mt-4 space-y-3 border-t border-border pt-4">
+      <label className="block space-y-1">
+        <span className="text-sm font-medium">Duración por defecto de las citas (minutos)</span>
+        <input type="number" min={5} max={480} step={1} value={duracionMin} onChange={(evento) => setDuracionMin(Number(evento.target.value))} className="w-32 rounded-lg border p-2" />
+      </label>
+      <Boton onClick={() => void guardarDuracion()} disabled={guardandoDuracion}>{guardandoDuracion ? "Guardando…" : "Guardar duración"}</Boton>
       {errorPlantillas && <p role="alert" className="text-sm text-destructive">{errorPlantillas}</p>}
       <label className="block space-y-1">
         <span className="text-sm font-medium">Canal de WhatsApp</span>

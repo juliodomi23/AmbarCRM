@@ -24,6 +24,7 @@ export type EstadoCita =
   | "no_asistio";
 
 export type Cita = {
+  servicioId?: string | null;
   id: string;
   titulo: string;
   notas: string | null;
@@ -36,6 +37,7 @@ export type Cita = {
 };
 
 export type FormularioCita = {
+  servicioId?: string;
   contactoId: string;
   conversacionId: string;
   titulo: string;
@@ -45,6 +47,8 @@ export type FormularioCita = {
   responsableId: string;
   doctorId: string;
 };
+
+export type ServicioCita = { id: string; nombre: string; duracionMin: number; bufferMin: number; doctores: { doctorId: string }[] };
 
 export const ESTADOS_CITA: { valor: EstadoCita; etiqueta: string }[] = [
   { valor: "programada", etiqueta: "Programada" },

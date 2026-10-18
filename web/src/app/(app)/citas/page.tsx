@@ -4,6 +4,7 @@ import { moduloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
 import { configReservasEmpresa } from "@/lib/reservas/servidor";
 import { CitasCliente } from "@/components/citas/CitasCliente";
+import { duracionCitas } from "@/lib/citas-duracion";
 export const dynamic = "force-dynamic";
 export default async function CitasPage() {
   if (!(await moduloActivo("citas"))) redirect("/");
@@ -11,7 +12,7 @@ export default async function CitasPage() {
     moduloActivo("clientes"),
     moduloActivo("pacientes"),
   ]);
-  const [contactos, usuarios, doctores] = await Promise.all([
+  const [contactos, usuarios, doctores, servicios, moduloCitas] = await Promise.all([
     db.contacto.findMany({
       where:
         clientesActivo || pacientesActivo
@@ -23,9 +24,13 @@ export default async function CitasPage() {
     }),
     db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true } }),
     db.doctor.findMany({ orderBy: [{ activo: "desc" }, { nombre: "asc" }], include: { horarios: true, excepciones: true } }),
+    db.servicioReserva.findMany({ where: { activo: true }, include: { doctores: { select: { doctorId: true } } }, orderBy: { nombre: "asc" } }),
+    db.moduloOrg.findFirst({ where: { clave: "citas" }, select: { config: true } }),
   ]);
   return (
     <CitasCliente
+      servicios={serializar(servicios)}
+      duracionMin={duracionCitas(moduloCitas?.config)}
       zona={(await configReservasEmpresa()).zona}
       contactos={serializar(contactos)}
       usuarios={serializar(usuarios)}

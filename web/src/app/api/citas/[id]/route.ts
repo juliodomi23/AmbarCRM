@@ -37,6 +37,7 @@ export const PATCH = conModulo("citas", {}, conErroresCita(async (s: SesionModul
     inicio?: Date;
     fin?: Date;
     doctorId?: bigint | null;
+    servicioId?: bigint | null;
   } = {};
   if ("titulo" in b) data.titulo = String(b.titulo).trim();
   if ("notas" in b) data.notas = String(b.notas ?? "").trim() || null;
@@ -56,6 +57,11 @@ export const PATCH = conModulo("citas", {}, conErroresCita(async (s: SesionModul
     data.doctorId = doctorId;
   }
   if ("inicio" in b) data.inicio = fechaEntradaCita(b.inicio);
+  if ("servicioId" in b) {
+    const servicioId = b.servicioId ? aBigInt(String(b.servicioId)) : null;
+    if (b.servicioId && (!servicioId || servicioId > 9223372036854775807n)) return NextResponse.json({ error: "Servicio inválido" }, { status: 400 });
+    data.servicioId = servicioId;
+  }
   if ("fin" in b) data.fin = fechaEntradaCita(b.fin);
   if ((data.inicio && Number.isNaN(+data.inicio)) || (data.fin && Number.isNaN(+data.fin))) {
     return NextResponse.json({ error: "fecha inválida" }, { status: 400 });

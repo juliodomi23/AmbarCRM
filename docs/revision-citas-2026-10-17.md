@@ -1,5 +1,23 @@
 # Revisión de Citas y Reservas en línea · 17 de octubre de 2026
 
+## Cambio del 18 de octubre: servicio y duración
+
+Servicio activo propio > ModuloOrg.config.duracionMin de citas (entero 5–480) > 30 minutos.
+Sin fin explícito el servidor lo calcula. Sin servicio admite fin manual; al mover solo inicio
+conserva duración. Con servicio el servidor exige duración exacta y rechaza fin inconsistente
+con 400. La interfaz permite editar fin y explica por qué no puede guardarse una discrepancia;
+al elegir otro servicio o inicio recalcula, sin efectos que sobrescriban una edición manual.
+Servicio filtra especialistas activos, rellena título y se guarda en servicioId; título libre
+sigue disponible sin servicio. La duración se guarda independientemente de recordatorios y
+plantillas. No hay migración ni catálogo nuevo.
+
+Para altas internas, fin guarda la hora visible sin buffer; las consultas compartidas de
+ocupación añaden bufferMin a las internas con servicio, tanto al comprobar empalmes como al
+ofrecer disponibilidad pública. Las citas públicas/bot conservan su convención anterior
+(fin ya incluye margen), sin sumarlo dos veces. Sus endpoints y contratos no cambian.
+Las citas sin servicio admiten fin manual; el margen debe caber también en la jornada.
+Notas/estado sin cambios de agenda conservan servicios históricos inactivos.
+
 ## Cambio del 18 de octubre: jornada obligatoria
 
 Esta decisión sustituye el aviso permisivo documentado el 17: con al menos un HorarioDoctor,

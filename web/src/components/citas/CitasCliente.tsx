@@ -24,6 +24,7 @@ import type {
   EstadoCita,
   FormularioCita,
   UsuarioCita,
+  ServicioCita,
 } from "@/components/citas/tipos";
 import { Boton, EncabezadoPagina } from "@/components/ui";
 import { toast } from "@/components/Toaster";
@@ -47,11 +48,15 @@ export function CitasCliente({
   usuarios,
   doctores: doctoresIniciales,
   zona = ZONA_CITAS,
+  servicios = [],
+  duracionMin = 30,
 }: {
   contactos: ContactoCita[];
   usuarios: UsuarioCita[];
   doctores: DoctorCita[];
   zona?: string;
+  servicios?: ServicioCita[];
+  duracionMin?: number;
 }) {
   const params = useSearchParams();
   const cargaActual = useRef(0);
@@ -77,7 +82,7 @@ export function CitasCliente({
     titulo: "Cita",
     notas: "",
     inicio: valorInicial(0, zona),
-    fin: valorInicial(60, zona),
+    fin: valorInicial(duracionMin, zona),
     responsableId: "",
     doctorId: "",
   });
@@ -117,9 +122,13 @@ export function CitasCliente({
       method: editando ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ...(editando ? { titulo: formulario.titulo, notas: formulario.notas, doctorId: formulario.doctorId } : formulario),
-        inicio: convertirFormularioAISO(formulario.inicio, zona),
-        fin: convertirFormularioAISO(formulario.fin, zona),
+        ...(editando ? {
+          titulo: formulario.titulo, notas: formulario.notas,
+          ...(formulario.doctorId !== (editando.doctor?.id ?? "") ? { doctorId: formulario.doctorId } : {}),
+          ...((formulario.servicioId ?? "") !== (editando.servicioId ?? "") ? { servicioId: formulario.servicioId || null } : {}),
+        } : formulario),
+        ...(!editando || formulario.inicio !== valorFechaLocal(new Date(editando.inicio), zona) ? { inicio: convertirFormularioAISO(formulario.inicio, zona) } : {}),
+        ...(!editando || formulario.fin !== valorFechaLocal(new Date(editando.fin), zona) ? { fin: convertirFormularioAISO(formulario.fin, zona) } : {}),
       }),
     });
     const payload = await respuesta.json().catch(() => null);
@@ -139,7 +148,8 @@ export function CitasCliente({
       titulo: "Cita",
       notas: "",
       inicio: valorInicial(0, zona),
-      fin: valorInicial(60, zona),
+      fin: valorInicial(duracionMin, zona),
+      servicioId: "",
     }));
     await cargar();
     } catch { toast("No se pudo guardar la cita. Revisa tu conexión.", "error"); }
@@ -238,7 +248,7 @@ export function CitasCliente({
       minuto,
     ).padStart(2, "0")}`;
     const fin = new Date(
-      fechaMexicoAUTC(fecha, textoHora, zona).getTime() + 60 * 60_000,
+      fechaMexicoAUTC(fecha, textoHora, zona).getTime() + duracionMin * 60_000,
     );
     const inicio = fechaMexicoAUTC(fecha, textoHora, zona);
     const especialista = doctores.find((doctor) => doctor.id === filtroDoctor);
@@ -249,6 +259,8 @@ export function CitasCliente({
       inicio: `${fecha}T${textoHora}`,
       fin: valorFechaLocal(fin, zona),
       doctorId: filtroDoctor === "sin_asignar" ? "" : filtroDoctor,
+      servicioId: "",
+      titulo: "Cita",
     }));
     setEditando(null);
     setModalAbierto(true);
@@ -306,6 +318,11 @@ export function CitasCliente({
       />
 
       <FormularioCitaModal
+        key={editando?.id ?? (modalAbierto ? "nueva-abierta" : "cerrada")}
+        servicios={servicios}
+        duracionMin={duracionMin}
+        zona={zona}
+        citaOriginal={editando}
         abierto={modalAbierto}
         editando={Boolean(editando)}
         guardando={guardando}
@@ -324,7 +341,7 @@ export function CitasCliente({
         onEditar={() => {
           if (!citaSeleccionada) return;
           const c = citaSeleccionada;
-          setFormulario({ contactoId: c.contacto.id, conversacionId: "", responsableId: c.responsable?.id ?? "", titulo: c.titulo, notas: c.notas ?? "", inicio: valorFechaLocal(new Date(c.inicio), zona), fin: valorFechaLocal(new Date(c.fin), zona), doctorId: c.doctor?.id ?? "" });
+          setFormulario({ contactoId: c.contacto.id, conversacionId: "", responsableId: c.responsable?.id ?? "", titulo: c.titulo, notas: c.notas ?? "", inicio: valorFechaLocal(new Date(c.inicio), zona), fin: valorFechaLocal(new Date(c.fin), zona), doctorId: c.doctor?.id ?? "", servicioId: c.servicioId ?? "" });
           setEditando(c); setCitaSeleccionada(null); setModalAbierto(true);
         }}
         guardando={guardando}

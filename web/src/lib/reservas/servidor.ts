@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { Prisma, type EstadoCita, type ServicioReserva } from "@prisma/client";
 import { db, dbRaw, runWithOrg } from "@/lib/db";
 import { transaccionTenant } from "@/lib/retail-db";
+import { finOcupado } from "@/lib/citas-duracion";
 import {
   calcularHorarios,
   diaSemana,
@@ -29,10 +30,15 @@ export async function bloquearAgenda(tx: Prisma.TransactionClient, ids: bigint[]
 }
 
 export async function hayEmpalme(tx: Prisma.TransactionClient, doctorId: bigint, inicio: Date, fin: Date, excluirCitaId?: bigint) {
-  return (await tx.cita.count({ where: {
-    doctorId, estado: { in: ESTADOS_OCUPAN }, inicio: { lt: fin }, fin: { gt: inicio },
-    ...(excluirCitaId === undefined ? {} : { id: { not: excluirCitaId } }),
-  } })) > 0;
+  const [fila] = await tx.$queryRaw<{ existe: boolean }[]>`
+    SELECT EXISTS (
+      SELECT 1 FROM citas c LEFT JOIN servicios_reserva s ON s.id = c.servicio_id
+      WHERE c.doctor_id = ${doctorId} AND c.estado IN ('programada', 'confirmada', 'en_sala', 'completada')
+        AND c.inicio < ${fin}
+        AND c.fin + CASE WHEN c.origen = 'interna' THEN COALESCE(s.buffer_min, 0) ELSE 0 END * INTERVAL '1 minute' > ${inicio}
+        AND (${excluirCitaId ?? null}::bigint IS NULL OR c.id <> ${excluirCitaId ?? null}::bigint)
+    ) AS existe`;
+  return fila.existe;
 }
 
 export type ConfigReservas = {
@@ -131,10 +137,10 @@ export async function horariosDeDoctor(
       fin: { gt: desde },
       ...(excluirCitaId !== undefined ? { id: { not: excluirCitaId } } : {}),
     },
-    select: { inicio: true, fin: true },
+    select: { inicio: true, fin: true, origen: true, servicio: { select: { bufferMin: true } } },
   });
   return calcularHorarios({
-    fecha, zona: cfg.zona, ventanas, ocupados, duracionMin: servicio.duracionMin, bufferMin: servicio.bufferMin,
+    fecha, zona: cfg.zona, ventanas, ocupados: ocupados.map((cita) => ({ inicio: cita.inicio, fin: finOcupado(cita) })), duracionMin: servicio.duracionMin, bufferMin: servicio.bufferMin,
     granularidadMin: cfg.granularidadMin, anticipacionMin: cfg.anticipacionMin, ahora,
   });
 }

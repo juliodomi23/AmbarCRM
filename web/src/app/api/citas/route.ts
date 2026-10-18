@@ -47,7 +47,7 @@ export const POST = conModulo("citas", {}, conErroresCita(async (s: SesionModulo
   if (!b || typeof b !== "object" || Array.isArray(b)) return NextResponse.json({ error: "Datos de cita inválidos" }, { status: 400 });
   const error = errorTextoCita({ titulo: b.titulo, notas: b.notas ?? null });
   if (error) return NextResponse.json({ error }, { status: 400 });
-  for (const campo of ["doctorId", "contactoId", "conversacionId", "responsableId"]) {
+  for (const campo of ["doctorId", "contactoId", "conversacionId", "responsableId", "servicioId"]) {
     if (b[campo] != null && b[campo] !== "") {
       const valor = aBigInt(String(b[campo]));
       if (!valor || valor > 9223372036854775807n) return NextResponse.json({ error: `${campo} inválido` }, { status: 400 });
@@ -55,13 +55,12 @@ export const POST = conModulo("citas", {}, conErroresCita(async (s: SesionModulo
   }
   const doctorId = b.doctorId ? aBigInt(String(b.doctorId)) : null;
   const inicio = fechaEntradaCita(b.inicio),
-    fin = fechaEntradaCita(b.fin);
+    fin = b.fin === undefined ? undefined : fechaEntradaCita(b.fin);
   if (
     !b.contactoId ||
     !String(b.titulo ?? "").trim() ||
     Number.isNaN(+inicio) ||
-    Number.isNaN(+fin) ||
-    fin <= inicio
+    (fin !== undefined && (Number.isNaN(+fin) || fin <= inicio))
   )
     return NextResponse.json(
       { error: "datos de cita inválidos" },
@@ -98,7 +97,7 @@ export const POST = conModulo("citas", {}, conErroresCita(async (s: SesionModulo
   }
   const cita = await crearCitaInterna(s.orgId!, {
     contactoId, conversacionId, responsableId: responsableId ?? s.userId,
-    doctorId, titulo: String(b.titulo).trim(), notas: String(b.notas ?? "").trim() || null, inicio, fin,
+    doctorId, servicioId: b.servicioId ? aBigInt(String(b.servicioId)) : null, titulo: String(b.titulo).trim(), notas: String(b.notas ?? "").trim() || null, inicio, fin,
   });
   return NextResponse.json(serializar({ cita, avisos: await avisosDeCita(cita) }), { status: 201 });
 }));

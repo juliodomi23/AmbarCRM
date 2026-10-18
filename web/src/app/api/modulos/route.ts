@@ -74,6 +74,9 @@ async function manejarPATCH(req: NextRequest) {
       { status: 400 },
     );
   // La conexión con Aurum (clave cifrada) solo se cambia desde /api/lealtad/conexion.
+  if (clave === "citas" && Object.hasOwn(config, "duracionMin") && (!Number.isInteger(config.duracionMin) || config.duracionMin < 5 || config.duracionMin > 480)) {
+    return NextResponse.json({ error: "La duración por defecto debe ser un entero entre 5 y 480 minutos" }, { status: 400 });
+  }
   delete (config as Record<string, unknown>).aurum;
   const puestos = normalizarPuestos(
     (config as Record<string, unknown>).puestosPermitidos,
