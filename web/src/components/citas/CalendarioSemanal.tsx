@@ -2,6 +2,8 @@
 
 import { puedeCambiarEstado } from "@/lib/citas-reglas";
 import { eventosDelDia } from "./eventos";
+import { ventanasCita } from "@/lib/citas-horarios";
+import type { DoctorCita } from "./tipos";
 
 import {
   ALTURA_HORA,
@@ -150,6 +152,7 @@ function ListaCitas({
 }
 
 export function CalendarioSemanal({
+  agenda,
   citas,
   cargando,
   zona = ZONA_CITAS,
@@ -162,6 +165,7 @@ export function CalendarioSemanal({
   onSeleccionar,
   onEliminar,
 }: {
+  agenda?: DoctorCita;
   citas: Cita[];
   cargando: boolean;
   zona?: string;
@@ -353,6 +357,11 @@ export function CalendarioSemanal({
                     aria-label={`Crear cita el ${dia}`}
                     title={`Crear cita el ${dia}`}
                   >
+                    {agenda?.horarios?.length ? (() => {
+                      const ventanas = ventanasCita({ horarios: agenda.horarios, excepciones: agenda.excepciones ?? [] }, dia);
+                      const tramos = Array.from({ length: (horaFin - horaInicio) * 12 }, (_, indice) => horaInicio * 60 + indice * 5);
+                      return tramos.filter((minuto) => !ventanas.some((ventana) => minuto >= ventana.inicioMin && minuto + 5 <= ventana.finMin)).map((minuto) => <div key={minuto} aria-hidden="true" className="pointer-events-none absolute inset-x-0 bg-muted/80" style={{ top: (minuto / 60 - horaInicio) * ALTURA_HORA, height: ALTURA_HORA / 12 }} />);
+                    })() : null}
                     {eventosDelDia(citas, dia, zona).map((evento) => (
                       <EventoCalendario key={evento.cita.id} evento={evento} dia={dia} zona={zona} horaInicio={horaInicio} onSeleccionar={onSeleccionar} />
                     ))}

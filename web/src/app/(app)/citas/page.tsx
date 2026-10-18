@@ -22,7 +22,7 @@ export default async function CitasPage() {
       take: 500,
     }),
     db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true } }),
-    db.doctor.findMany({ orderBy: [{ activo: "desc" }, { nombre: "asc" }] }),
+    db.doctor.findMany({ orderBy: [{ activo: "desc" }, { nombre: "asc" }], include: { horarios: true, excepciones: true } }),
   ]);
   return (
     <CitasCliente

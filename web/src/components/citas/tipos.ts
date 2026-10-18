@@ -11,6 +11,8 @@ export type DoctorCita = {
   cedula: string | null;
   color: string;
   activo: boolean;
+  horarios?: { diaSemana: number; inicioMin: number; finMin: number }[];
+  excepciones?: { fecha: string; inicioMin: number | null; finMin: number | null }[];
 };
 
 export type EstadoCita =

@@ -1,5 +1,17 @@
 # Revisión de Citas y Reservas en línea · 17 de octubre de 2026
 
+## Cambio del 18 de octubre: jornada obligatoria
+
+Esta decisión sustituye el aviso permisivo documentado el 17: con al menos un HorarioDoctor,
+la agenda interna exige inicio y fin dentro de una misma ventana efectiva del día del negocio.
+Respeta ExcepcionHorario (cierre u horario especial), sin cruzar descansos; responde 409 con
+el horario disponible. Sin ninguna regla semanal permite guardar y avisa que hay que definirla.
+Sin especialista no comprueba jornada ni empalmes. No cambia reservas públicas ni bot.
+Crear y mover solo admiten desde hoy local; una hora anterior del mismo día está permitida.
+Notas/estado de citas históricas no revalidan jornada ni pasado; las transiciones finales previas
+se conservan. El calendario atenúa fuera de jornada solo al seleccionar un especialista;
+los clics inválidos explican el motivo sin abrir el formulario.
+
 ## Cambio del 18 de octubre: borrar canceladas
 
 DELETE interno exige módulo Citas y estado cancelada; cualquier otro estado responde 409,

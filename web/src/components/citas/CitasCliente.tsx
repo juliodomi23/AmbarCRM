@@ -28,6 +28,7 @@ import type {
 import { Boton, EncabezadoPagina } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import { confirmar } from "@/components/Confirmador";
+import { errorFechaPasada, errorHorarioCita } from "@/lib/citas-horarios";
 
 function mensajeError(payload: unknown, respaldo: string) {
   if (
@@ -239,6 +240,10 @@ export function CitasCliente({
     const fin = new Date(
       fechaMexicoAUTC(fecha, textoHora, zona).getTime() + 60 * 60_000,
     );
+    const inicio = fechaMexicoAUTC(fecha, textoHora, zona);
+    const especialista = doctores.find((doctor) => doctor.id === filtroDoctor);
+    const error = errorFechaPasada(inicio, zona) ?? (especialista ? errorHorarioCita({ horarios: especialista.horarios ?? [], excepciones: especialista.excepciones ?? [] }, inicio, fin, zona) : null);
+    if (error) { toast(error, "error"); return; }
     setFormulario((actual) => ({
       ...actual,
       inicio: `${fecha}T${textoHora}`,
@@ -284,6 +289,7 @@ export function CitasCliente({
         </label>
       </div>
       <CalendarioSemanal
+        agenda={filtroDoctor ? doctores.find((doctor) => doctor.id === filtroDoctor) : undefined}
         zona={zona}
         guardando={guardando}
         citas={citas.filter((c) => (!filtroDoctor || (filtroDoctor === "sin_asignar" ? !c.doctor : c.doctor?.id === filtroDoctor)) && (!filtroEspecialidad || c.doctor?.especialidad === filtroEspecialidad) && (!filtroEstado || c.estado === filtroEstado))}

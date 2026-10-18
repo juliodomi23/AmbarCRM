@@ -2,6 +2,22 @@ import { Prisma, type EstadoCita } from "@prisma/client";
 import { transaccionTenant } from "@/lib/retail-db";
 import { bloquearAgenda, ESTADOS_OCUPAN, hayEmpalme } from "@/lib/reservas/servidor";
 import { errorIntervaloCita, puedeCambiarEstado } from "@/lib/citas-reglas";
+import { configReservas } from "@/lib/reservas/servidor";
+import { errorFechaPasada, errorHorarioCita } from "@/lib/citas-horarios";
+
+async function validarHorario(tx: Prisma.TransactionClient, datos: { inicio: Date; fin: Date; doctorId: bigint | null }) {
+  const modulo = await tx.moduloOrg.findFirst({ where: { clave: "reservas_en_linea" }, select: { config: true } });
+  const { zona } = configReservas(modulo?.config);
+  const pasado = errorFechaPasada(datos.inicio, zona);
+  if (pasado) throw new ErrorCita(pasado);
+  if (datos.doctorId === null) return;
+  const [horarios, excepciones] = await Promise.all([
+    tx.horarioDoctor.findMany({ where: { doctorId: datos.doctorId } }),
+    tx.excepcionHorario.findMany({ where: { doctorId: datos.doctorId } }),
+  ]);
+  const error = errorHorarioCita({ horarios, excepciones }, datos.inicio, datos.fin, zona);
+  if (error) throw new ErrorCita(error, 409);
+}
 
 export class ErrorCita extends Error {
   constructor(message: string, readonly status = 400) { super(message); }
@@ -37,6 +53,7 @@ export async function crearCitaInterna(orgId: bigint, datos: DatosAgenda, bloque
       if (!doctor?.activo) throw new ErrorCita("Especialista inexistente o inactivo");
       if (await hayEmpalme(tx, doctor.id, datos.inicio, datos.fin)) throw new ErrorCita("El especialista ya tiene una cita en ese horario", 409);
     }
+    await validarHorario(tx, datos);
     return tx.cita.create({ data: datos, include: incluirCita });
   });
 }
@@ -70,6 +87,7 @@ export async function editarCita(orgId: bigint, id: bigint, datos: CambiosCita) 
     const ids = [actual.doctorId, siguiente.doctorId].filter((valor): valor is bigint => valor !== null);
     const doctores = await bloquearAgenda(tx, ids);
     if (movida && siguiente.doctorId !== null && !doctores.find((d) => d.id === siguiente.doctorId)?.activo) throw new ErrorCita("Reasigna la cita a un especialista activo");
+    if (movida) await validarHorario(tx, siguiente);
     if (siguiente.doctorId !== null && ESTADOS_OCUPAN.includes(siguiente.estado) && (movida || !ESTADOS_OCUPAN.includes(actual.estado))) {
       if (await hayEmpalme(tx, siguiente.doctorId, siguiente.inicio, siguiente.fin, id)) throw new ErrorCita("El especialista ya tiene una cita en ese horario", 409);
     }
