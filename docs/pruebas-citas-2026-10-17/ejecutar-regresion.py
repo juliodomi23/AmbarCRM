@@ -24,7 +24,7 @@ def run(label,args,cwd=WEB,data=None,timeout=600,extra=None,redact=False):
  with (OUT/'ejecuciones.txt').open('a',encoding='utf-8') as f: f.write('\n## '+label+' · salida '+str(code)+'\n'+output+'\n')
  print(json.dumps(row,ensure_ascii=False),flush=True); return code
 def detener_app():
- script = "$items = Get-NetTCPConnection -LocalPort 3118 -State Listen -ErrorAction SilentlyContinue; foreach ($item in $items) { $proceso = Get-CimInstance Win32_Process -Filter (\"ProcessId = \" + $item.OwningProcess); if ($proceso.CommandLine -match 'next.*start.*3118') { Stop-Process -Id $item.OwningProcess -Force } else { throw 'Proceso inesperado en puerto de pruebas' } }"
+ script = "$items = Get-NetTCPConnection -LocalPort 3118 -State Listen -ErrorAction SilentlyContinue; foreach ($item in $items) { $proceso = Get-CimInstance Win32_Process -Filter (\"ProcessId = \" + $item.OwningProcess); if ($proceso.CommandLine -match 'next.*start.*3118') { Stop-Process -Id $item.OwningProcess -Force } else { throw 'Proceso inesperado en puerto de pruebas' } }; exit 0"
  subprocess.run(['powershell','-NoProfile','-Command',script],check=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
 
 def iniciar_app():

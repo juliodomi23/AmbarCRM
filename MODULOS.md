@@ -262,7 +262,8 @@ hasta 2000 candidatas por empresa y ejecución, y cuenta enviados, fallidos, omi
 Un fallo conocido libera la reclamación: hasta tres intentos con separación mínima de
 15 minutos. Reprogramar reinicia el recordatorio y sus intentos. Una empresa con error
 no detiene a las demás. Una caída del proceso durante el envío externo puede dejar una
-reclamación sin resolver; no se reintenta una entrega incierta automáticamente para evitar duplicados.
+reclamación sin resolver, que no se recupera automáticamente. Si el proveedor devuelve
+un timeout tras aceptar el mensaje, un reintento puede duplicarlo; el límite sigue siendo tres intentos.
 
 ### Operación clínica
 

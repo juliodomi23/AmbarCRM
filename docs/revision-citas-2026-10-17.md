@@ -120,8 +120,10 @@ No hay una guía de módulos separada en este árbol: se actualizó `MODULOS.md`
   decisión sobre las variables y una plantilla aprobada; no se modificó ninguna plantilla.
 - Reintentos: solo fallos conocidos, tres intentos separados 15 min. Sin teléfono/canal no
   se reclama. Entrega externa y registro local no pueden ser atómicos: un proceso que muere
-  tras reclamar o un timeout de entrega incierta requieren revisión operativa. No se prometen
-  entregas exactamente una vez ni se liberan reclamaciones antiguas a ciegas.
+  tras reclamar deja una marca que requiere revisión operativa. Un timeout reportado como
+  fallo permite reintento y puede duplicar una entrega que el proveedor sí aceptó: no se
+  promete exactamente una entrega ni se liberan reclamaciones antiguas a ciegas.
+  Las marcas históricas previas a esta corrección no se reinterpretan automáticamente.
 - La agenda interna avisa después de guardar fuera de jornada o con servicio incompatible.
   No bloquea. Las reservas y el bot siguen exigiendo disponibilidad válida.
 - Permisos por puesto son del módulo completo; «cada doctor solo ve su propia agenda»
@@ -151,3 +153,50 @@ ocultarla. Cambiar ese diseño queda para revisión de Julio con una clínica re
 - 🛑 Decidir vínculo usuario–doctor, permisos por agenda y etiquetas por giro.
 - 🛑 Probar un recordatorio real con plantilla aprobada; decidir inclusión de doctor/enlace y recuperación de entregas inciertas.
 - 🛑 Ensayo con respaldo real y prueba de `test-lealtad-aurum.ts` contra Aurum de pruebas antes de despliegue.
+
+## Commits de la revisión
+
+| Commit | Cambio |
+|---|---|
+| `662076c` | Documentar diagnóstico inicial de citas y reservas antes de corregir |
+| `2a1c842` | Unificar empalmes y serializar creación y edición de citas por especialista |
+| `d988268` | Proteger estados finales y cancelación pública frente a cambios concurrentes |
+| `1e96620` | Validar textos referencias fechas y rangos de la agenda interna |
+| `3677aca` | Reintentar recordatorios fallidos con límite persistente y recorrer lotes |
+| `f94d258` | Serializar el límite público por teléfono y excluir especialistas inactivos |
+| `6e44b83` | Corregir agenda con varios especialistas zonas avisos y errores de interfaz |
+| `461e96f` | Probar citas estados cron reservas y tres giros con fixtures desechables |
+| `fe49ec0` | Validar cuerpos públicos y dejar la regresión local reproducible sin red |
+| `9a897e5` | Documentar revisión por giro caminos de citas y decisiones pendientes |
+| `9441637` | Alinear reseñas con estados finales y aislar los límites de login de cada E2E |
+
+La entrega añade un último commit con resultados y capturas. El SHA del fast-forward
+se entrega al finalizar, una vez creado ese commit.
+
+## Incidencias de la regresión y correcciones del arnés
+
+La primera batería completa terminó con dos fallos reales registrados: `test-resenas-e2e.ts`
+esperaba 200 al pasar completada a cancelada; se actualizó a 409 y se añadió comprobar que
+la cita sigue completada y que existe una sola solicitud de reseña. `test-sinred-e2e.ts`
+agotó el límite de 30 logins por IP acumulado por archivos anteriores. Se mantiene el límite
+original y se reinicia la app compilada entre archivos E2E para aislar sus contadores.
+No se modificó auth ni se relajaron controles. Las pruebas originales de reservas concurrentes
+y de la API del bot no se modificaron. Se repite la batería completa en otra BD desechable.
+
+El primer arranque en frío alcanzó el PostgreSQL temporal de inicialización y `schema.sql`
+falló con «database system is shutting down»; la siguiente etapa detectó que faltaba ajustes.
+La espera del arnés ahora exige TCP a 127.0.0.1, que solo está disponible en el servidor final.
+Ambos intentos fallidos permanecen en el log, y la preparación posterior pasó.
+
+En la app final se capturaron además 50 citas de un especialista en escritorio y el aviso de
+desactivación con dos citas futuras conservadas en móvil. Se comprobó por teclado que
+Shift+Tab vuelve del primer control al último dentro del modal y que Escape lo cierra
+y devuelve el foco al botón Doctores. Hay 20 capturas JPEG.
+
+## Resultado de la regresión y cierre
+
+51 tests y 34 checks aprobados; TypeScript, lint, Prisma validate, build y SQL idempotente
+aprobados. Aislamiento en 84 tablas. Los fallos previos y su resolución están en la
+[sección de regresión](regresion-pre-merge-2026-10-17.md). App local detenida y contenedor
+retirado. Se añade la evidencia y se admite únicamente el merge local fast-forward;
+el SHA efectivo y la verificación del prompt restaurado se entregan en el chat.

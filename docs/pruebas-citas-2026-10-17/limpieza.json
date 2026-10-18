@@ -1,0 +1,10 @@
+{
+  "contenedor_retirado": true,
+  "volumen_anonimo_final_retirado": true,
+  "puerto_3118_libre": true,
+  "contenedor": "ambarcrm-citas-20261017",
+  "base_pruebas": "127.0.0.1:55450/crm",
+  "tests_aprobados": 51,
+  "checks_aprobados": 34,
+  "produccion_tocada": false
+}

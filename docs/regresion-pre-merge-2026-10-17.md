@@ -1241,3 +1241,218 @@ Tras guardar este informe/evidencia se comprueba árbol limpio y se ejecuta solo
 `git switch modulos-fase-2` y `git merge --ff-only canal-instagram`.
 Ante un merge no fast-forward se detiene, sin reset/rebase/commit de merge.
 La entrega consigna el resultado real y SHA final.
+
+
+## Revisión de Citas y Reservas en línea · 17-oct-2026
+
+Resultado final: **51 tests y 34 checks aprobados**. TypeScript, lint, Prisma validate,
+build y SQL idempotente aprobados. Aislamiento en **84 tablas**. No hubo push ni deploy.
+
+### Entorno y evidencia
+
+- PostgreSQL 16 nuevo `ambarcrm-citas-20261017`, únicamente en `127.0.0.1:55450`.
+- `schema.sql` → `multi-tenant.sql` → `actualizaciones.sql` ×3. Otras tres aplicaciones
+  en la batería base; todas con ON_ERROR_STOP. No se usó prisma db push.
+- Credenciales sintéticas, variables reales neutralizadas y bloqueo de sockets/fetch/DNS
+  externos. Graph y recordatorios simulados; sin dependencias nuevas ni producción.
+- App compilada en `127.0.0.1:3118`. Reinicio entre archivos E2E para aislar contadores,
+  manteniendo los límites de login originales. Las pruebas usan crm_app con RLS.
+- La batería final usa otra BD desechable nueva. La base/build pasaron; tras corregir una
+  operación de parada del arnés se repitieron TODOS los tests/checks desde aislamiento.
+  Se conservan ambas ejecuciones aprobadas de aislamiento; la tabla usa la última.
+
+[Instrucciones reproducibles](pruebas-citas-2026-10-17/README.md),
+[salidas completas](pruebas-citas-2026-10-17/ejecuciones.txt),
+[códigos y tiempos de todos los intentos](pruebas-citas-2026-10-17/resultados.json),
+[primera batería completa](pruebas-citas-2026-10-17/regresion-primera.json),
+[batería final](pruebas-citas-2026-10-17/regresion-final.json) y
+[log de la app](pruebas-citas-2026-10-17/app-regresion.txt).
+
+### Preparación y validación final
+
+| Ejecución | Código | Segundos |
+|---|---|---|
+| `schema` | 0 | 0.58 |
+| `multi-tenant` | 0 | 0.45 |
+| `actualizaciones-1` | 0 | 1.51 |
+| `actualizaciones-2` | 0 | 0.57 |
+| `actualizaciones-3` | 0 | 0.77 |
+| `rol-prueba` | 0 | 0.34 |
+| `fixture-plataforma` | 0 | 0.36 |
+| `fixture-ar` | 0 | 1.05 |
+| `regresion-actualizaciones-1` | 0 | 0.64 |
+| `regresion-actualizaciones-2` | 0 | 0.61 |
+| `regresion-actualizaciones-3` | 0 | 0.56 |
+| `prisma-generate` | 0 | 3.3 |
+| `tsc` | 0 | 7.23 |
+| `lint` | 0 | 37.05 |
+| `prisma-validate` | 0 | 1.24 |
+| `build` | 0 | 33.24 |
+
+### Tests de la regresión completa
+
+| Archivo | Primera batería | Final | Segundos final |
+|---|---|---|---|
+| `test-a3-e2e.ts` | PASA (0) | PASA (0) | 3.48 |
+| `test-a3-fixes-e2e.ts` | PASA (0) | PASA (0) | 3.38 |
+| `test-a4-e2e.ts` | PASA (0) | PASA (0) | 3.51 |
+| `test-aislamiento.ts` | PASA (0) | PASA (0) | 9.46 |
+| `test-automatizaciones.ts` | PASA (0) | PASA (0) | 6.13 |
+| `test-bot-api.ts` | PASA (0) | PASA (0) | 27.47 |
+| `test-caja-a2-e2e.ts` | PASA (0) | PASA (0) | 3.92 |
+| `test-caja-dinero.ts` | PASA (0) | PASA (0) | 2.95 |
+| `test-caja-e2e.ts` | PASA (0) | PASA (0) | 2.24 |
+| `test-canales-api.ts` | PASA (0) | PASA (0) | 2.12 |
+| `test-canales-base.ts` | PASA (0) | PASA (0) | 2.18 |
+| `test-canales-e2e.ts` | PASA (0) | PASA (0) | 2.0 |
+| `test-canales-instagram.ts` | PASA (0) | PASA (0) | 17.2 |
+| `test-canales-messenger.ts` | PASA (0) | PASA (0) | 2.96 |
+| `test-citas-e2e.ts` | PASA (0) | PASA (0) | 7.86 |
+| `test-citas.ts` | PASA (0) | PASA (0) | 6.05 |
+| `test-cobros-cancelar-eliminar-e2e.ts` | PASA (0) | PASA (0) | 3.55 |
+| `test-cobros-db.ts` | PASA (0) | PASA (0) | 2.57 |
+| `test-cobros-e2e.ts` | PASA (0) | PASA (0) | 17.01 |
+| `test-concurrencia-caja-a2.ts` | PASA (0) | PASA (0) | 9.3 |
+| `test-concurrencia-caja.ts` | PASA (0) | PASA (0) | 12.46 |
+| `test-concurrencia-cobros.ts` | PASA (0) | PASA (0) | 4.53 |
+| `test-concurrencia-cotizaciones.ts` | PASA (0) | PASA (0) | 5.26 |
+| `test-concurrencia-nota-credito.ts` | PASA (0) | PASA (0) | 6.17 |
+| `test-concurrencia-pedidos.ts` | PASA (0) | PASA (0) | 5.22 |
+| `test-concurrencia-resenas.ts` | PASA (0) | PASA (0) | 4.94 |
+| `test-concurrencia-retail.ts` | PASA (0) | PASA (0) | 8.21 |
+| `test-concurrencia-sinred.ts` | PASA (0) | PASA (0) | 4.89 |
+| `test-concurrencia-varias-cajas.ts` | PASA (0) | PASA (0) | 4.03 |
+| `test-cotizaciones-e2e.ts` | PASA (0) | PASA (0) | 4.72 |
+| `test-cotizaciones-zona.ts` | PASA (0) | PASA (0) | 2.45 |
+| `test-cupos-concurrentes.ts` | PASA (0) | PASA (0) | 1.71 |
+| `test-messenger-desconexion.ts` | PASA (0) | PASA (0) | 7.72 |
+| `test-messenger-facebook-http.ts` | PASA (0) | PASA (0) | 1.64 |
+| `test-messenger-facebook-rutas.ts` | PASA (0) | PASA (0) | 2.83 |
+| `test-messenger-facebook.ts` | PASA (0) | PASA (0) | 2.26 |
+| `test-paridad-precios.ts` | PASA (0) | PASA (0) | 7.28 |
+| `test-pedidos-e2e.ts` | PASA (0) | PASA (0) | 3.37 |
+| `test-precios-promociones.ts` | PASA (0) | PASA (0) | 2.58 |
+| `test-referencias.ts` | PASA (0) | PASA (0) | 1.37 |
+| `test-reportes-cuadre.ts` | PASA (0) | PASA (0) | 2.11 |
+| `test-resenas-e2e.ts` | FALLA (1) | PASA (0) | 3.24 |
+| `test-reservas-concurrentes.ts` | PASA (0) | PASA (0) | 1.27 |
+| `test-servidores-e2e.ts` | PASA (0) | PASA (0) | 2.86 |
+| `test-sinred-e2e.ts` | FALLA (1) | PASA (0) | 3.0 |
+| `test-sql-inventario-negativo.ts` | PASA (0) | PASA (0) | 0.77 |
+| `test-total-cobrado-cliente.ts` | PASA (0) | PASA (0) | 1.05 |
+| `test-tours-dinero.ts` | PASA (0) | PASA (0) | 0.94 |
+| `test-vencimiento-pedidos.ts` | PASA (0) | PASA (0) | 1.3 |
+| `test-webhook-manual.ts` | PASA (0) | PASA (0) | 1.86 |
+| `test-webhooks-salientes.ts` | PASA (0) | PASA (0) | 2.94 |
+
+### Checks de la regresión completa
+
+| Archivo | Primera batería | Final | Segundos final |
+|---|---|---|---|
+| `check-a3.ts` | PASA (0) | PASA (0) | 0.6 |
+| `check-arquitectura-modulos.ts` | PASA (0) | PASA (0) | 0.86 |
+| `check-audio-ogg.ts` | PASA (0) | PASA (0) | 0.68 |
+| `check-aurum-webhook.ts` | PASA (0) | PASA (0) | 1.21 |
+| `check-busqueda.ts` | PASA (0) | PASA (0) | 0.65 |
+| `check-caja-a2.ts` | PASA (0) | PASA (0) | 0.87 |
+| `check-caja-offline.ts` | PASA (0) | PASA (0) | 0.78 |
+| `check-caja-sinred.ts` | PASA (0) | PASA (0) | 0.79 |
+| `check-caja.ts` | PASA (0) | PASA (0) | 1.02 |
+| `check-campos-personalizados.ts` | PASA (0) | PASA (0) | 0.87 |
+| `check-canales-ui.ts` | PASA (0) | PASA (0) | 1.71 |
+| `check-cantidades-retail.ts` | PASA (0) | PASA (0) | 0.94 |
+| `check-citas.ts` | PASA (0) | PASA (0) | 0.76 |
+| `check-clientes-automotriz.ts` | PASA (0) | PASA (0) | 0.76 |
+| `check-contratos-cobros.ts` | PASA (0) | PASA (0) | 0.87 |
+| `check-cotizaciones.ts` | PASA (0) | PASA (0) | 1.01 |
+| `check-demo.ts` | PASA (0) | PASA (0) | 1.04 |
+| `check-instagram.ts` | PASA (0) | PASA (0) | 1.61 |
+| `check-lealtad.ts` | PASA (0) | PASA (0) | 0.75 |
+| `check-legal.ts` | PASA (0) | PASA (0) | 0.69 |
+| `check-pedidos-en-linea.ts` | PASA (0) | PASA (0) | 0.92 |
+| `check-permisos-modulos.ts` | PASA (0) | PASA (0) | 0.94 |
+| `check-plantilla-meta.ts` | PASA (0) | PASA (0) | 0.85 |
+| `check-precios.ts` | PASA (0) | PASA (0) | 0.97 |
+| `check-proxy.ts` | PASA (0) | PASA (0) | 0.85 |
+| `check-reportes-a4.ts` | PASA (0) | PASA (0) | 0.77 |
+| `check-resenas.ts` | PASA (0) | PASA (0) | 1.23 |
+| `check-reservas.ts` | PASA (0) | PASA (0) | 0.91 |
+| `check-retail.ts` | PASA (0) | PASA (0) | 2.08 |
+| `check-seeds-seguridad.ts` | PASA (0) | PASA (0) | 0.71 |
+| `check-seguridad.ts` | PASA (0) | PASA (0) | 0.97 |
+| `check-servidores.ts` | PASA (0) | PASA (0) | 0.79 |
+| `check-sw-push.ts` | PASA (0) | PASA (0) | 1.67 |
+| `check-viajes-academia.ts` | PASA (0) | PASA (0) | 1.13 |
+
+### Fallos conservados y correcciones
+
+1. TypeScript inicial: sesión y prop de zona, inferencia de paginación, Response opcional
+   y contrato del proveedor simulado. Tipos corregidos; TypeScript final aprobado.
+2. Focal de Citas: referencia a doctor ajeno devolvía 409 desde una cita completada;
+   se valida la referencia de empresa primero y responde 400.
+3. Reservas concurrentes: unicidad del contacto, corregida recuperando el ganador;
+   después, Prisma no deserializaba void del advisory lock: SELECT 1 desde la función.
+4. Build móvil: DLL de Prisma bloqueada por next start. Se detuvo exclusivamente :3118
+   y el build posterior pasó.
+5. Arranque en frío: schema salió 2 al conectar al PostgreSQL temporal que se apagaba;
+   actualizaciones salió 3 por tabla ausente. Se espera al servidor final mediante TCP.
+6. Primera batería, reseñas: esperaba cancelar una cita completada con 200. Se actualizó
+   a 409 y se verifica estado completada y una sola reseña. Focal y repetición final pasan.
+7. Primera batería, sin red: alcanzó 30 logins por IP acumulados entre archivos. Reiniciar
+   la app entre E2E aísla los tests sin relajar auth. Focal y repetición final pasan.
+8. El arnés terminó en 1 al intentar detener una app ya ausente. Se hizo idempotente,
+   conservando el rechazo a un proceso inesperado en :3118. Se repitió toda la batería
+   test/check desde aislamiento. [Detalle del arnés](pruebas-citas-2026-10-17/incidencias-arnes.txt).
+
+Los mensajes de error provocados intencionalmente por los tests (proveedor simulado roto,
+rechazos de validación o unicidad) se conservan; las aserciones y el código del proceso
+establecen el resultado. La batería final no contiene códigos distintos de cero.
+
+| Intento con fallo | Código | Veces conservadas |
+|---|---|---|
+| `tsc` | 2 | 2 |
+| `test-citas-focal` | 1 | 3 |
+| `tsc-focal` | 2 | 1 |
+| `build-movil` | 1 | 1 |
+| `schema` | 2 | 1 |
+| `regresion-actualizaciones-1` | 3 | 1 |
+| `test-resenas-e2e.ts` | 1 | 1 |
+| `test-sinred-e2e.ts` | 1 | 1 |
+
+### Evidencia de Citas y Reservas
+
+`test-citas.ts` aprueba 13 grupos: altas/ediciones/movimientos y empalmes, dos POST con
+201/409, estados, reseña única, validaciones, permisos, empresa A/B, zonas, excepciones,
+servicio incompatible, cinco especialistas, límites públicos, token y cron. El control
+negativo de agenda demuestra duplicados sin bloqueo y solo una cita con bloqueo; el
+log conserva los números reales. Las pruebas originales del bot y de reservas concurrentes
+pasan sin modificaciones. Sin rutas nuevas; arquitectura de módulos aprobada.
+
+El cron prueba 105 candidatas en lotes, dos ejecuciones sin duplicar, estados/ventana,
+omisión sin teléfono/canal sin reclamar, recuperación, máximo tres intentos y aislamiento
+del error de una empresa. La entrega real ante un timeout tiene las limitaciones documentadas.
+
+`test-citas-e2e.ts` prueba con sesión real y HTTP: clínica pequeña (2 especialistas),
+clínica grande (10 y 500 citas más medianoche) y salón (5 técnicas, precio/duración/buffer),
+desde configuración y cita ligada a conversación hasta completada, reserva pública y token.
+
+- Clínica pequeña: 13 filas paginadas, 29 ms de consulta local.
+- Clínica grande: 501 filas paginadas, 131 ms de consulta local.
+- Salón de belleza: 41 filas paginadas, 28 ms de consulta local.
+
+[Informe de hallazgos, faltantes por giro, caminos de un clic y commits](revision-citas-2026-10-17.md).
+[20 capturas verificadas](capturas/revision-citas-2026-10-17/README.md), incluidas las fechas completas
+en móvil, filtro de la clínica grande, especialista desactivado con citas conservadas,
+confirmación pública y cancelación/token inválido. Se comprobó el ciclo de foco y su restauración.
+
+### Limpieza y cierre
+
+App de :3118 detenida y contenedor desechable retirado junto con su volumen anónimo final:
+[comprobación](pruebas-citas-2026-10-17/limpieza.json). Producción, main, meta-tech-provider,
+ambarcrm-db y los flujos excluidos de Meta no se tocaron. Evidencia preparada para merge
+local exclusivamente fast-forward; SHA efectivo y restauración del prompt se verifican
+y se informan en la entrega del chat tras crear el commit de evidencia.
+
+🛑 Julio: revisión con datos reales de una clínica; recordatorio real con plantilla aprobada;
+ensayo con respaldo real y Aurum de pruebas. Los faltantes y decisiones de producto
+(usuario–doctor, etiquetas por giro, confirmación/reprogramación por token) quedan en el informe.

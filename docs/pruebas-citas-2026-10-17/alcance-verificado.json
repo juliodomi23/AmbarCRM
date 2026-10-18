@@ -1,0 +1,12 @@
+{
+  "base": "eabde09a0faec069a8fc5846066452bfed851723",
+  "rutas_nuevas": [],
+  "flujos_meta_excluidos_modificados": false,
+  "push": false,
+  "deploy": false,
+  "produccion": false,
+  "base_datos": "127.0.0.1:55450/crm",
+  "contenedor": "ambarcrm-citas-20261017",
+  "proveedores": "simulados, bloqueo de conexiones externas mediante sin-red.mjs",
+  "capturas": 20
+}

@@ -1,0 +1,3 @@
+Preparación en frío: schema salió 2 al conectar al PostgreSQL temporal; actualizaciones salió 3 por relación ajustes ausente. Se corrigió la espera TCP y se recreó la BD.
+Build móvil inicial: salida 1 por DLL Prisma en uso; se detuvo exclusivamente next start :3118 y la repetición pasó.
+Repetición completa después de 9441637: base aprobada e aislamiento aprobado; el arnés terminó con salida 1 al intentar detener una app que no estaba ejecutándose. Get-NetTCPConnection sin listener dejó el código de PowerShell en 1. Se añadió salida 0 explícita tras la comprobación, conservando el throw si el puerto pertenece a un proceso inesperado. Se reanuda TODA la batería de test/check desde aislamiento, sin repetir el build que ya pasó y sin cambios de código del producto.

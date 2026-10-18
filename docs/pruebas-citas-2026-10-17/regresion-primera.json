@@ -1,0 +1,507 @@
+[
+  {
+    "prueba": "schema",
+    "codigo": 0,
+    "segundos": 1.21
+  },
+  {
+    "prueba": "multi-tenant",
+    "codigo": 0,
+    "segundos": 0.82
+  },
+  {
+    "prueba": "actualizaciones-1",
+    "codigo": 0,
+    "segundos": 3.07
+  },
+  {
+    "prueba": "actualizaciones-2",
+    "codigo": 0,
+    "segundos": 1.09
+  },
+  {
+    "prueba": "actualizaciones-3",
+    "codigo": 0,
+    "segundos": 1.09
+  },
+  {
+    "prueba": "rol-prueba",
+    "codigo": 0,
+    "segundos": 0.69
+  },
+  {
+    "prueba": "fixture-plataforma",
+    "codigo": 0,
+    "segundos": 0.94
+  },
+  {
+    "prueba": "fixture-ar",
+    "codigo": 0,
+    "segundos": 2.38
+  },
+  {
+    "prueba": "regresion-actualizaciones-1",
+    "codigo": 0,
+    "segundos": 1.4
+  },
+  {
+    "prueba": "regresion-actualizaciones-2",
+    "codigo": 0,
+    "segundos": 1.24
+  },
+  {
+    "prueba": "regresion-actualizaciones-3",
+    "codigo": 0,
+    "segundos": 1.48
+  },
+  {
+    "prueba": "prisma-generate",
+    "codigo": 0,
+    "segundos": 7.35
+  },
+  {
+    "prueba": "tsc",
+    "codigo": 0,
+    "segundos": 36.02
+  },
+  {
+    "prueba": "lint",
+    "codigo": 0,
+    "segundos": 64.23
+  },
+  {
+    "prueba": "prisma-validate",
+    "codigo": 0,
+    "segundos": 8.07
+  },
+  {
+    "prueba": "build",
+    "codigo": 0,
+    "segundos": 52.91
+  },
+  {
+    "prueba": "test-aislamiento.ts",
+    "codigo": 0,
+    "segundos": 3.12
+  },
+  {
+    "prueba": "test-a3-e2e.ts",
+    "codigo": 0,
+    "segundos": 2.44
+  },
+  {
+    "prueba": "test-a3-fixes-e2e.ts",
+    "codigo": 0,
+    "segundos": 2.3
+  },
+  {
+    "prueba": "test-a4-e2e.ts",
+    "codigo": 0,
+    "segundos": 2.65
+  },
+  {
+    "prueba": "test-automatizaciones.ts",
+    "codigo": 0,
+    "segundos": 4.7
+  },
+  {
+    "prueba": "test-bot-api.ts",
+    "codigo": 0,
+    "segundos": 13.24
+  },
+  {
+    "prueba": "test-caja-a2-e2e.ts",
+    "codigo": 0,
+    "segundos": 2.51
+  },
+  {
+    "prueba": "test-caja-dinero.ts",
+    "codigo": 0,
+    "segundos": 2.3
+  },
+  {
+    "prueba": "test-caja-e2e.ts",
+    "codigo": 0,
+    "segundos": 1.98
+  },
+  {
+    "prueba": "test-canales-api.ts",
+    "codigo": 0,
+    "segundos": 1.86
+  },
+  {
+    "prueba": "test-canales-base.ts",
+    "codigo": 0,
+    "segundos": 1.65
+  },
+  {
+    "prueba": "test-canales-e2e.ts",
+    "codigo": 0,
+    "segundos": 1.82
+  },
+  {
+    "prueba": "test-canales-instagram.ts",
+    "codigo": 0,
+    "segundos": 17.39
+  },
+  {
+    "prueba": "test-canales-messenger.ts",
+    "codigo": 0,
+    "segundos": 3.08
+  },
+  {
+    "prueba": "test-citas-e2e.ts",
+    "codigo": 0,
+    "segundos": 8.17
+  },
+  {
+    "prueba": "test-citas.ts",
+    "codigo": 0,
+    "segundos": 5.1
+  },
+  {
+    "prueba": "test-cobros-cancelar-eliminar-e2e.ts",
+    "codigo": 0,
+    "segundos": 3.09
+  },
+  {
+    "prueba": "test-cobros-db.ts",
+    "codigo": 0,
+    "segundos": 1.75
+  },
+  {
+    "prueba": "test-cobros-e2e.ts",
+    "codigo": 0,
+    "segundos": 3.3
+  },
+  {
+    "prueba": "test-concurrencia-caja-a2.ts",
+    "codigo": 0,
+    "segundos": 1.91
+  },
+  {
+    "prueba": "test-concurrencia-caja.ts",
+    "codigo": 0,
+    "segundos": 1.78
+  },
+  {
+    "prueba": "test-concurrencia-cobros.ts",
+    "codigo": 0,
+    "segundos": 1.36
+  },
+  {
+    "prueba": "test-concurrencia-cotizaciones.ts",
+    "codigo": 0,
+    "segundos": 1.57
+  },
+  {
+    "prueba": "test-concurrencia-nota-credito.ts",
+    "codigo": 0,
+    "segundos": 1.48
+  },
+  {
+    "prueba": "test-concurrencia-pedidos.ts",
+    "codigo": 0,
+    "segundos": 1.68
+  },
+  {
+    "prueba": "test-concurrencia-resenas.ts",
+    "codigo": 0,
+    "segundos": 2.44
+  },
+  {
+    "prueba": "test-concurrencia-retail.ts",
+    "codigo": 0,
+    "segundos": 6.45
+  },
+  {
+    "prueba": "test-concurrencia-sinred.ts",
+    "codigo": 0,
+    "segundos": 2.87
+  },
+  {
+    "prueba": "test-concurrencia-varias-cajas.ts",
+    "codigo": 0,
+    "segundos": 2.67
+  },
+  {
+    "prueba": "test-cotizaciones-e2e.ts",
+    "codigo": 0,
+    "segundos": 8.13
+  },
+  {
+    "prueba": "test-cotizaciones-zona.ts",
+    "codigo": 0,
+    "segundos": 4.43
+  },
+  {
+    "prueba": "test-cupos-concurrentes.ts",
+    "codigo": 0,
+    "segundos": 4.81
+  },
+  {
+    "prueba": "test-messenger-desconexion.ts",
+    "codigo": 0,
+    "segundos": 18.9
+  },
+  {
+    "prueba": "test-messenger-facebook-http.ts",
+    "codigo": 0,
+    "segundos": 3.22
+  },
+  {
+    "prueba": "test-messenger-facebook-rutas.ts",
+    "codigo": 0,
+    "segundos": 4.16
+  },
+  {
+    "prueba": "test-messenger-facebook.ts",
+    "codigo": 0,
+    "segundos": 3.74
+  },
+  {
+    "prueba": "test-paridad-precios.ts",
+    "codigo": 0,
+    "segundos": 5.65
+  },
+  {
+    "prueba": "test-pedidos-e2e.ts",
+    "codigo": 0,
+    "segundos": 3.52
+  },
+  {
+    "prueba": "test-precios-promociones.ts",
+    "codigo": 0,
+    "segundos": 5.55
+  },
+  {
+    "prueba": "test-referencias.ts",
+    "codigo": 0,
+    "segundos": 4.37
+  },
+  {
+    "prueba": "test-reportes-cuadre.ts",
+    "codigo": 0,
+    "segundos": 10.9
+  },
+  {
+    "prueba": "test-resenas-e2e.ts",
+    "codigo": 1,
+    "segundos": 12.45
+  },
+  {
+    "prueba": "test-reservas-concurrentes.ts",
+    "codigo": 0,
+    "segundos": 3.86
+  },
+  {
+    "prueba": "test-servidores-e2e.ts",
+    "codigo": 0,
+    "segundos": 5.11
+  },
+  {
+    "prueba": "test-sinred-e2e.ts",
+    "codigo": 1,
+    "segundos": 2.52
+  },
+  {
+    "prueba": "test-sql-inventario-negativo.ts",
+    "codigo": 0,
+    "segundos": 1.18
+  },
+  {
+    "prueba": "test-total-cobrado-cliente.ts",
+    "codigo": 0,
+    "segundos": 2.04
+  },
+  {
+    "prueba": "test-tours-dinero.ts",
+    "codigo": 0,
+    "segundos": 1.82
+  },
+  {
+    "prueba": "test-vencimiento-pedidos.ts",
+    "codigo": 0,
+    "segundos": 1.68
+  },
+  {
+    "prueba": "test-webhook-manual.ts",
+    "codigo": 0,
+    "segundos": 2.15
+  },
+  {
+    "prueba": "test-webhooks-salientes.ts",
+    "codigo": 0,
+    "segundos": 6.89
+  },
+  {
+    "prueba": "check-a3.ts",
+    "codigo": 0,
+    "segundos": 1.69
+  },
+  {
+    "prueba": "check-arquitectura-modulos.ts",
+    "codigo": 0,
+    "segundos": 2.27
+  },
+  {
+    "prueba": "check-audio-ogg.ts",
+    "codigo": 0,
+    "segundos": 1.51
+  },
+  {
+    "prueba": "check-aurum-webhook.ts",
+    "codigo": 0,
+    "segundos": 1.8
+  },
+  {
+    "prueba": "check-busqueda.ts",
+    "codigo": 0,
+    "segundos": 1.04
+  },
+  {
+    "prueba": "check-caja-a2.ts",
+    "codigo": 0,
+    "segundos": 1.43
+  },
+  {
+    "prueba": "check-caja-offline.ts",
+    "codigo": 0,
+    "segundos": 1.17
+  },
+  {
+    "prueba": "check-caja-sinred.ts",
+    "codigo": 0,
+    "segundos": 1.02
+  },
+  {
+    "prueba": "check-caja.ts",
+    "codigo": 0,
+    "segundos": 1.09
+  },
+  {
+    "prueba": "check-campos-personalizados.ts",
+    "codigo": 0,
+    "segundos": 1.29
+  },
+  {
+    "prueba": "check-canales-ui.ts",
+    "codigo": 0,
+    "segundos": 2.65
+  },
+  {
+    "prueba": "check-cantidades-retail.ts",
+    "codigo": 0,
+    "segundos": 2.06
+  },
+  {
+    "prueba": "check-citas.ts",
+    "codigo": 0,
+    "segundos": 1.68
+  },
+  {
+    "prueba": "check-clientes-automotriz.ts",
+    "codigo": 0,
+    "segundos": 1.31
+  },
+  {
+    "prueba": "check-contratos-cobros.ts",
+    "codigo": 0,
+    "segundos": 1.93
+  },
+  {
+    "prueba": "check-cotizaciones.ts",
+    "codigo": 0,
+    "segundos": 2.1
+  },
+  {
+    "prueba": "check-demo.ts",
+    "codigo": 0,
+    "segundos": 2.17
+  },
+  {
+    "prueba": "check-instagram.ts",
+    "codigo": 0,
+    "segundos": 3.36
+  },
+  {
+    "prueba": "check-lealtad.ts",
+    "codigo": 0,
+    "segundos": 1.43
+  },
+  {
+    "prueba": "check-legal.ts",
+    "codigo": 0,
+    "segundos": 2.09
+  },
+  {
+    "prueba": "check-pedidos-en-linea.ts",
+    "codigo": 0,
+    "segundos": 1.92
+  },
+  {
+    "prueba": "check-permisos-modulos.ts",
+    "codigo": 0,
+    "segundos": 1.57
+  },
+  {
+    "prueba": "check-plantilla-meta.ts",
+    "codigo": 0,
+    "segundos": 1.53
+  },
+  {
+    "prueba": "check-precios.ts",
+    "codigo": 0,
+    "segundos": 1.91
+  },
+  {
+    "prueba": "check-proxy.ts",
+    "codigo": 0,
+    "segundos": 1.32
+  },
+  {
+    "prueba": "check-reportes-a4.ts",
+    "codigo": 0,
+    "segundos": 1.8
+  },
+  {
+    "prueba": "check-resenas.ts",
+    "codigo": 0,
+    "segundos": 1.85
+  },
+  {
+    "prueba": "check-reservas.ts",
+    "codigo": 0,
+    "segundos": 2.15
+  },
+  {
+    "prueba": "check-retail.ts",
+    "codigo": 0,
+    "segundos": 1.73
+  },
+  {
+    "prueba": "check-seeds-seguridad.ts",
+    "codigo": 0,
+    "segundos": 1.53
+  },
+  {
+    "prueba": "check-seguridad.ts",
+    "codigo": 0,
+    "segundos": 3.19
+  },
+  {
+    "prueba": "check-servidores.ts",
+    "codigo": 0,
+    "segundos": 2.13
+  },
+  {
+    "prueba": "check-sw-push.ts",
+    "codigo": 0,
+    "segundos": 15.47
+  },
+  {
+    "prueba": "check-viajes-academia.ts",
+    "codigo": 0,
+    "segundos": 2.72
+  }
+]

@@ -1,0 +1,95 @@
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 452ms
+✓ Running next.config.mjs took 48ms
+prisma:error
+Invalid `prisma.servidor.create()` invocation:
+
+
+Unique constraint failed on the (not available)
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 866ms
+✓ Running next.config.mjs took 90ms
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 728ms
+✓ Running next.config.mjs took 86ms
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 866ms
+✓ Running next.config.mjs took 98ms
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 750ms
+✓ Running next.config.mjs took 103ms
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 767ms
+✓ Running next.config.mjs took 95ms
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 644ms
+✓ Running next.config.mjs took 82ms
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 484ms
+✓ Running next.config.mjs took 72ms
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 350ms
+✓ Running next.config.mjs took 47ms
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 386ms
+✓ Running next.config.mjs took 56ms
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 358ms
+✓ Running next.config.mjs took 50ms
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 731ms
+✓ Running next.config.mjs took 99ms
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 887ms
+✓ Running next.config.mjs took 118ms
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 758ms
+✓ Running next.config.mjs took 118ms
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 558ms
+✓ Running next.config.mjs took 50ms
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 433ms
+✓ Running next.config.mjs took 52ms
+prisma:error
+Invalid `prisma.servidor.create()` invocation:
+
+
+Unique constraint failed on the (not available)
+▲ Next.js 16.3.8
+- Local:         http://127.0.0.1:3118
+- Network:       http://127.0.0.1:3118
+✓ Ready in 380ms
+✓ Running next.config.mjs took 46ms
