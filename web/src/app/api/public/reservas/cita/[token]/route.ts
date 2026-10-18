@@ -44,6 +44,10 @@ export async function POST(req: NextRequest, { params }: Props) {
   const { orgId, cita } = encontrada;
   if (!["programada", "confirmada"].includes(cita.estado)) return errorPublico("Esta cita ya no se puede cancelar", 409);
   if (cita.inicio <= new Date()) return errorPublico("La cita ya empezó; escríbele al negocio", 409);
-  await runWithOrg(orgId, () => db.cita.update({ where: { id: cita.id }, data: { estado: "cancelada" } }));
+  const cancelada = await runWithOrg(orgId, () => db.cita.updateMany({
+    where: { id: cita.id, estado: { in: ["programada", "confirmada"] }, inicio: { gt: new Date() } },
+    data: { estado: "cancelada" },
+  }));
+  if (!cancelada.count) return errorPublico("La cita cambió; vuelve a consultar el enlace", 409);
   return NextResponse.json({ ok: true, estado: "cancelada" });
 }

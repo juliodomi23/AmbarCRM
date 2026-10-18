@@ -37,3 +37,19 @@ Las referencias de esta tabla corresponden a la base; la evidencia final se aña
 ## Evidencia y entrega final
 
 Pendiente: pruebas, capturas, matriz por giro, caminos de un clic y SHA del merge condicionado a toda la regresión.
+
+## Estados y reprogramación implementados
+
+| Actual | Siguientes permitidos (además del mismo estado) |
+|---|---|
+| programada | confirmada, en_sala, completada, cancelada, no_asistio |
+| confirmada | en_sala, completada, cancelada, no_asistio |
+| en_sala | completada, cancelada |
+| completada / cancelada / no_asistio | ninguno |
+
+Reprogramar inicio/fin/especialista solo desde programada o confirmada. Cambio real reinicia
+recordatorio; escribir la misma fecha no lo reinicia. El cambio de estado y el indicador
+`completada` se calculan bajo bloqueo de la cita: dos PATCH simultáneos solicitan una sola
+reseña y el envío queda fuera de la transacción. El bot comparte las transiciones; sus
+respuestas válidas se conservan, pero reabrir un estado final ahora responde 409.
+Cancelación pública condiciona estado e inicio en el UPDATE para no cancelar un cierre concurrente.

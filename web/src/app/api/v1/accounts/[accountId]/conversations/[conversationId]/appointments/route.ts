@@ -16,6 +16,7 @@ import {
   reprogramarCita,
   reservarCita,
 } from "@/lib/reservas/servidor";
+import { editarCita, conErroresCita } from "@/lib/citas-servidor";
 import { enlacePublicoGestion } from "@/lib/citas";
 import { fechaLocal } from "@/lib/reservas/horarios";
 
@@ -204,10 +205,7 @@ async function manejarPATCH(req: NextRequest, props: Props) {
       where: { id: citaId, contactoId: acceso.conv.contactoId },
     });
     if (!cita) return NextResponse.json({ error: "cita inexistente" }, { status: 404 });
-    const actualizada = await db.cita.update({
-      where: { id: cita.id },
-      data: { estado: body.estado },
-    });
+    const { cita: actualizada } = await editarCita(acceso.bot.orgId, cita.id, { estado: body.estado });
     await auditarBot(acceso.bot, acceso.conv.id, `cita_${body.estado}`, {
       entidad: "cita",
       entidadId: cita.id,
@@ -227,4 +225,4 @@ async function manejarPATCH(req: NextRequest, props: Props) {
 
 export const GET = conErrores(manejarGET);
 export const POST = conErrores(manejarPOST);
-export const PATCH = conErrores(manejarPATCH);
+export const PATCH = conErrores(conErroresCita(manejarPATCH));
