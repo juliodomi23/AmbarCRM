@@ -1,0 +1,17 @@
+[
+  {
+    "prueba": "prisma/scripts/test-citas-horarios.ts",
+    "codigo": 0,
+    "segundos": 3.11
+  },
+  {
+    "prueba": "../docs/pruebas-citas-horarios-2026-10-18/visual.ts",
+    "codigo": 1,
+    "segundos": 1.32
+  },
+  {
+    "prueba": "../docs/pruebas-citas-horarios-2026-10-18/visual.mts",
+    "codigo": 0,
+    "segundos": 1.54
+  }
+]

@@ -1,5 +1,33 @@
 # Revisión de Citas y Reservas en línea · 17 de octubre de 2026
 
+## Cierre del cambio del 18 de octubre de 2026
+
+52 pruebas y 34 checks pasan en la BD desechable, incluido test-citas-horarios (ocho grupos),
+bot y reservas concurrentes originales sin modificaciones. TypeScript, lint, Prisma validate,
+generación, build y actualizaciones.sql ×3 pasan. Aislamiento en 84 tablas. El informe de
+[regresión](regresion-pre-merge-2026-10-17.md) contiene resultado individual y fallos iniciales.
+Las [11 capturas](capturas/citas-horarios-2026-10-18/README.md) muestran formulario con fin
+automático, bloqueo, calendario atenuado y Confirmador en móvil y escritorio; además se
+creó con servicio y se borró una cancelada desde móvil. Se conservan datetime-local a 390 px:
+fechas legibles, inputs de 306 px, step de cinco minutos y scroll del modal.
+App detenida, contenedor desechable y volumen retirados. Solo merge local fast-forward.
+
+| Commit | Tarea |
+|---|---|
+| 77ff9e4 | Borrado de canceladas, protección clínica y Confirmador |
+| fab28a8 | Jornada obligatoria y excepción sin horarios |
+| dab35d9 | Servicio, configuración de duración y fin automático |
+| e670e00 | Pulido y compatibilidad de edición de reservas históricas |
+| 6fd82ae | Pruebas nuevas y actualización de expectativas internas |
+| cedb95f | Documentación de las reglas nuevas |
+
+El commit final añade regresión, capturas y evidencia. Se entrega su SHA efectivo en el chat.
+Fuera de alcance: borrado masivo (conflictos por cita), vínculo de dinero inexistente y
+bitácora general inexistente. La prueba comprueba las FK reales, sin inventar un cobro ligado.
+
+🛑 Julio: probar en demo horarios reales de una clínica y un salón, confirmar la duración
+por defecto por giro, ensayar con respaldo real y correr Aurum de pruebas antes de desplegar.
+
 ## Cambio del 18 de octubre: servicio y duración
 
 Servicio activo propio > ModuloOrg.config.duracionMin de citas (entero 5–480) > 30 minutos.

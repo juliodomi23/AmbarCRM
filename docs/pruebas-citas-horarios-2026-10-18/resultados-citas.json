@@ -1,0 +1,12 @@
+[
+  {
+    "prueba": "test-citas-horarios.ts",
+    "codigo": 1,
+    "segundos": 6.37
+  },
+  {
+    "prueba": "test-citas.ts",
+    "codigo": 0,
+    "segundos": 5.44
+  }
+]

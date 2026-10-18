@@ -1,0 +1,42 @@
+[
+  {
+    "prueba": "regresion-actualizaciones-1",
+    "codigo": 0,
+    "segundos": 0.65
+  },
+  {
+    "prueba": "regresion-actualizaciones-2",
+    "codigo": 0,
+    "segundos": 0.58
+  },
+  {
+    "prueba": "regresion-actualizaciones-3",
+    "codigo": 0,
+    "segundos": 0.56
+  },
+  {
+    "prueba": "prisma-generate",
+    "codigo": 0,
+    "segundos": 3.95
+  },
+  {
+    "prueba": "tsc",
+    "codigo": 0,
+    "segundos": 16.99
+  },
+  {
+    "prueba": "lint",
+    "codigo": 0,
+    "segundos": 32.7
+  },
+  {
+    "prueba": "prisma-validate",
+    "codigo": 0,
+    "segundos": 1.18
+  },
+  {
+    "prueba": "build",
+    "codigo": 0,
+    "segundos": 30.24
+  }
+]

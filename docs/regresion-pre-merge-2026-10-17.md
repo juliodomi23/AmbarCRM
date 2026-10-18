@@ -1,5 +1,176 @@
 # Regresión previa al merge de Meta
 
+## 18-oct-2026 · Borrado, horarios y duración de Citas
+
+Base verificada `89b55b7` en `modulos-fase-2`; trabajo en `citas-borrar-horarios-duracion`.
+**52/52 pruebas y 34/34 checks aprobados**, además de TypeScript, lint, Prisma validate,
+generación, build y SQL idempotente ×3. Aislamiento de lectura/escritura en **84 tablas**.
+Solo PostgreSQL desechable en 127.0.0.1:55450, inicializado con schema.sql, multi-tenant.sql
+y actualizaciones.sql, nunca prisma db push. Preload de bloqueo de red externa y
+proveedores simulados; sin push, deploy, producción ni cambios a main/meta-tech-provider.
+
+### Evidencia y alcance
+
+[Salidas completas](pruebas-citas-horarios-2026-10-18/ejecuciones.txt),
+[resultados por prueba](pruebas-citas-horarios-2026-10-18/resultados-pruebas.json),
+[comprobaciones base](pruebas-citas-horarios-2026-10-18/resultados-base.json),
+[arnés e incidencias](pruebas-citas-horarios-2026-10-18/README.md) y
+[11 capturas móvil/escritorio](capturas/citas-horarios-2026-10-18/README.md).
+
+El nuevo test de horarios aprueba ocho grupos: borrado permitido/conflictos/aislamiento,
+reseña conservada, evolución conservada, jornada/descansos/cierres/horario especial,
+ausencia de horarios, pasado local, servicio/default/30, fin calculado/inconsistente,
+margen interno, movimiento de duración manual, reserva histórica del bot y permisos.
+La FK del esquema solo enlaza Cita con evoluciones y solicitudes de reseña; no existe
+cobro ligado y no se inventó esa relación para simular una prueba. No se modifica dinero.
+Los tests originales de bot y reservas concurrentes pasan **sin cambios**.
+Control de agenda: **sin protección 10/10 altas; con protección 1/10**.
+El borrado usa el mismo bloqueo de fila existente; no se introduce una nueva estrategia
+de concurrencia ni se cambia la protección del bot o de reservas.
+
+HTTP con sesión real: clínica pequeña de 2 especialistas (13 filas/37 ms), grande de 10
+(501 filas/162 ms) y salón de 5 técnicas (41 filas/28 ms). Son consultas locales sintéticas,
+no cifras de producción. Desde UI compilada se creó una cita con servicio de 30 min,
+inicio 09:30, fin visible 10:00 y margen separado de 15 min; se borró una cancelada con
+Confirmador y recarga. Cierre no abre formulario. En móvil 390×844 se leen fecha y hora,
+ambos inputs miden 306 px y tienen step=300; el modal permite desplazarse.
+Se conservan datetime-local con evidencia visual. Todos los especialistas: cero atenuaciones.
+
+### Fallos reales e iteraciones corregidas
+
+- Test nuevo, primer intento: CHECK SQL rechazó el estado inventado `pendiente` de reseña.
+  Se corrigió el fixture a `reservada` (intento pendiente real), sin cambiar SQL.
+- Prisma generate inicial: EPERM de Windows porque una prueba tenía abierta su DLL.
+  Se repitió toda la batería base en secuencia y pasó; no se relajaron verificaciones.
+- Test nuevo, segundo intento: el fixture había restablecido configuración sin limitar
+  puestos y esperaba 403 para Cajero. Se fijó puestosPermitidos antes de esa comprobación.
+- Fixture visual inicial: tsx interpretó .ts fuera del paquete como CJS y rechazó await
+  superior. Se cambió a .mts y se ejecutó correctamente.
+- La escritura de datetime-local con fill del automatizador no actualizaba React.
+  Se comprobó por teclado y alta guardada, sin cambiar código por ese comportamiento.
+
+Todos estos intentos permanecen en ejecuciones.txt y en los JSON focales cuando corresponden.
+La corrida completa del código final no tiene fallos.
+
+### Resultado individual del código final
+
+| Prueba | Resultado | Salida | Segundos |
+|---|---|---|---|
+| `regresion-actualizaciones-1` | OK | 0 | 0.65 |
+| `regresion-actualizaciones-2` | OK | 0 | 0.58 |
+| `regresion-actualizaciones-3` | OK | 0 | 0.56 |
+| `prisma-generate` | OK | 0 | 3.95 |
+| `tsc` | OK | 0 | 16.99 |
+| `lint` | OK | 0 | 32.7 |
+| `prisma-validate` | OK | 0 | 1.18 |
+| `build` | OK | 0 | 30.24 |
+| `test-aislamiento.ts` | OK | 0 | 2.43 |
+| `test-a3-e2e.ts` | OK | 0 | 1.95 |
+| `test-a3-fixes-e2e.ts` | OK | 0 | 1.85 |
+| `test-a4-e2e.ts` | OK | 0 | 2.13 |
+| `test-automatizaciones.ts` | OK | 0 | 4.15 |
+| `test-bot-api.ts` | OK | 0 | 12.09 |
+| `test-caja-a2-e2e.ts` | OK | 0 | 2.77 |
+| `test-caja-dinero.ts` | OK | 0 | 2.07 |
+| `test-caja-e2e.ts` | OK | 0 | 2.2 |
+| `test-canales-api.ts` | OK | 0 | 1.68 |
+| `test-canales-base.ts` | OK | 0 | 1.48 |
+| `test-canales-e2e.ts` | OK | 0 | 1.82 |
+| `test-canales-instagram.ts` | OK | 0 | 16.76 |
+| `test-canales-messenger.ts` | OK | 0 | 2.84 |
+| `test-citas-e2e.ts` | OK | 0 | 8.44 |
+| `test-citas-horarios.ts` | OK | 0 | 3.65 |
+| `test-citas.ts` | OK | 0 | 5.4 |
+| `test-cobros-cancelar-eliminar-e2e.ts` | OK | 0 | 3.45 |
+| `test-cobros-db.ts` | OK | 0 | 1.61 |
+| `test-cobros-e2e.ts` | OK | 0 | 3.19 |
+| `test-concurrencia-caja-a2.ts` | OK | 0 | 1.64 |
+| `test-concurrencia-caja.ts` | OK | 0 | 1.61 |
+| `test-concurrencia-cobros.ts` | OK | 0 | 1.04 |
+| `test-concurrencia-cotizaciones.ts` | OK | 0 | 1.47 |
+| `test-concurrencia-nota-credito.ts` | OK | 0 | 1.26 |
+| `test-concurrencia-pedidos.ts` | OK | 0 | 1.45 |
+| `test-concurrencia-resenas.ts` | OK | 0 | 2.23 |
+| `test-concurrencia-retail.ts` | OK | 0 | 6.63 |
+| `test-concurrencia-sinred.ts` | OK | 0 | 2.3 |
+| `test-concurrencia-varias-cajas.ts` | OK | 0 | 1.56 |
+| `test-cotizaciones-e2e.ts` | OK | 0 | 2.13 |
+| `test-cotizaciones-zona.ts` | OK | 0 | 1.15 |
+| `test-cupos-concurrentes.ts` | OK | 0 | 1.14 |
+| `test-messenger-desconexion.ts` | OK | 0 | 4.22 |
+| `test-messenger-facebook-http.ts` | OK | 0 | 1.19 |
+| `test-messenger-facebook-rutas.ts` | OK | 0 | 2.47 |
+| `test-messenger-facebook.ts` | OK | 0 | 1.63 |
+| `test-paridad-precios.ts` | OK | 0 | 4.84 |
+| `test-pedidos-e2e.ts` | OK | 0 | 2.68 |
+| `test-precios-promociones.ts` | OK | 0 | 2.2 |
+| `test-referencias.ts` | OK | 0 | 0.93 |
+| `test-reportes-cuadre.ts` | OK | 0 | 1.44 |
+| `test-resenas-e2e.ts` | OK | 0 | 3.07 |
+| `test-reservas-concurrentes.ts` | OK | 0 | 1.17 |
+| `test-servidores-e2e.ts` | OK | 0 | 2.69 |
+| `test-sinred-e2e.ts` | OK | 0 | 2.98 |
+| `test-sql-inventario-negativo.ts` | OK | 0 | 0.66 |
+| `test-total-cobrado-cliente.ts` | OK | 0 | 1.13 |
+| `test-tours-dinero.ts` | OK | 0 | 0.98 |
+| `test-vencimiento-pedidos.ts` | OK | 0 | 1.24 |
+| `test-webhook-manual.ts` | OK | 0 | 1.48 |
+| `test-webhooks-salientes.ts` | OK | 0 | 2.88 |
+| `check-a3.ts` | OK | 0 | 0.55 |
+| `check-arquitectura-modulos.ts` | OK | 0 | 0.92 |
+| `check-audio-ogg.ts` | OK | 0 | 0.62 |
+| `check-aurum-webhook.ts` | OK | 0 | 1.43 |
+| `check-busqueda.ts` | OK | 0 | 0.68 |
+| `check-caja-a2.ts` | OK | 0 | 0.83 |
+| `check-caja-offline.ts` | OK | 0 | 0.75 |
+| `check-caja-sinred.ts` | OK | 0 | 0.69 |
+| `check-caja.ts` | OK | 0 | 0.67 |
+| `check-campos-personalizados.ts` | OK | 0 | 0.64 |
+| `check-canales-ui.ts` | OK | 0 | 1.06 |
+| `check-cantidades-retail.ts` | OK | 0 | 0.69 |
+| `check-citas.ts` | OK | 0 | 0.66 |
+| `check-clientes-automotriz.ts` | OK | 0 | 0.61 |
+| `check-contratos-cobros.ts` | OK | 0 | 0.7 |
+| `check-cotizaciones.ts` | OK | 0 | 0.96 |
+| `check-demo.ts` | OK | 0 | 1.11 |
+| `check-instagram.ts` | OK | 0 | 1.05 |
+| `check-lealtad.ts` | OK | 0 | 0.58 |
+| `check-legal.ts` | OK | 0 | 0.63 |
+| `check-pedidos-en-linea.ts` | OK | 0 | 0.7 |
+| `check-permisos-modulos.ts` | OK | 0 | 0.7 |
+| `check-plantilla-meta.ts` | OK | 0 | 0.62 |
+| `check-precios.ts` | OK | 0 | 0.61 |
+| `check-proxy.ts` | OK | 0 | 0.6 |
+| `check-reportes-a4.ts` | OK | 0 | 0.62 |
+| `check-resenas.ts` | OK | 0 | 0.71 |
+| `check-reservas.ts` | OK | 0 | 0.74 |
+| `check-retail.ts` | OK | 0 | 0.82 |
+| `check-seeds-seguridad.ts` | OK | 0 | 0.78 |
+| `check-seguridad.ts` | OK | 0 | 0.77 |
+| `check-servidores.ts` | OK | 0 | 0.68 |
+| `check-sw-push.ts` | OK | 0 | 1.49 |
+| `check-viajes-academia.ts` | OK | 0 | 0.71 |
+
+### Limpieza y cierre local
+
+App :3118 detenida por puerto y comando verificado; contenedor
+`ambarcrm-citas-horarios-20261018` retirado con su volumen anónimo.
+[Comprobación de limpieza](pruebas-citas-horarios-2026-10-18/limpieza.json).
+Merge permitido exclusivamente con árbol limpio y fast-forward a modulos-fase-2;
+el SHA efectivo se verifica y entrega en el chat después del commit de evidencia.
+Los dos prompts sin seguimiento del usuario se conservan.
+
+Se recorta el borrado en lote porque requiere resolución de conflictos individuales.
+No se crea vínculo de cobro ni bitácora general inexistentes; AuditoriaBot conserva su
+función exclusiva. No se añade DELETE al bot ni se cambia su documentación o contrato.
+Sin librerías ni cambios de esquema.
+
+🛑 Julio: probar la demo con horarios reales de clínica y salón; confirmar la duración
+por defecto de cada giro; ensayo con respaldo real y Aurum de pruebas antes del despliegue.
+
+## Historial anterior
+
+
 > Actualización del 17-oct-2026: **46/46 tests y 33/33 checks pasan** tras completar el retiro forzado de Messenger. Ver la sección final fechada; las secciones iniciales conservan la preparación anterior.
 
 Preparación del 16-oct-2026 (America/Mexico_City); nombre de informe solicitado para el 17.

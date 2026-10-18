@@ -1,0 +1,82 @@
+[
+  {
+    "prueba": "schema",
+    "codigo": 0,
+    "segundos": 0.96
+  },
+  {
+    "prueba": "multi-tenant",
+    "codigo": 0,
+    "segundos": 0.66
+  },
+  {
+    "prueba": "actualizaciones-1",
+    "codigo": 0,
+    "segundos": 1.94
+  },
+  {
+    "prueba": "actualizaciones-2",
+    "codigo": 0,
+    "segundos": 0.85
+  },
+  {
+    "prueba": "actualizaciones-3",
+    "codigo": 0,
+    "segundos": 0.55
+  },
+  {
+    "prueba": "rol-prueba",
+    "codigo": 0,
+    "segundos": 0.34
+  },
+  {
+    "prueba": "fixture-plataforma",
+    "codigo": 0,
+    "segundos": 0.31
+  },
+  {
+    "prueba": "fixture-ar",
+    "codigo": 0,
+    "segundos": 1.33
+  },
+  {
+    "prueba": "regresion-actualizaciones-1",
+    "codigo": 0,
+    "segundos": 22.03
+  },
+  {
+    "prueba": "regresion-actualizaciones-2",
+    "codigo": 0,
+    "segundos": 16.17
+  },
+  {
+    "prueba": "regresion-actualizaciones-3",
+    "codigo": 0,
+    "segundos": 11.11
+  },
+  {
+    "prueba": "prisma-generate",
+    "codigo": 1,
+    "segundos": 17.15
+  },
+  {
+    "prueba": "tsc",
+    "codigo": 0,
+    "segundos": 18.86
+  },
+  {
+    "prueba": "lint",
+    "codigo": 0,
+    "segundos": 108.04
+  },
+  {
+    "prueba": "prisma-validate",
+    "codigo": 0,
+    "segundos": 1.08
+  },
+  {
+    "prueba": "build",
+    "codigo": 0,
+    "segundos": 73.96
+  }
+]

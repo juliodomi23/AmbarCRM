@@ -1,0 +1,13 @@
+{
+  "fecha": "2026-10-18",
+  "puertoApp": 3118,
+  "appDetenidaPorPuertoYComandoVerificado": true,
+  "puertoLibreComprobado": true,
+  "contenedor": "ambarcrm-citas-horarios-20261018",
+  "puertoPostgresVerificado": "127.0.0.1:55450",
+  "contenedorYVolumenAnonimoRetirados": true,
+  "ausenciaContenedorComprobada": true,
+  "push": false,
+  "deploy": false,
+  "produccionModificada": false
+}
