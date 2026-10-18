@@ -1,17 +1,18 @@
+import { avisosDeCita } from "@/lib/citas-avisos";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { serializar } from "@/lib/serialize";
-import { conModulo } from "@/lib/con-modulo";
+import { conModulo, type SesionModulo } from "@/lib/con-modulo";
 import { paginacionListado } from "@/lib/paginacion";
 import { crearCitaInterna, conErroresCita, incluirCita } from "@/lib/citas-servidor";
-import { errorTextoCita } from "@/lib/citas-reglas";
+import { errorTextoCita, fechaEntradaCita } from "@/lib/citas-reglas";
 import { configReservasEmpresa } from "@/lib/reservas/servidor";
 import { referenciaPropia } from "@/lib/referencias";
 
 export const dynamic = "force-dynamic";
 
-export const GET = conModulo("citas", {}, conErroresCita(async (s, req: NextRequest) => {
+export const GET = conModulo("citas", {}, conErroresCita(async (s: SesionModulo, req: NextRequest) => {
   const parametros = req.nextUrl.searchParams;
   const desde = new Date(parametros.get("desde") ?? Date.now());
   const hasta = parametros.get("hasta")
@@ -22,9 +23,12 @@ export const GET = conModulo("citas", {}, conErroresCita(async (s, req: NextRequ
   }
   const contactoTexto = parametros.get("contactoId");
   const contactoId = aBigInt(contactoTexto);
-  if (contactoTexto && contactoId === null) {
+  if (contactoTexto && (contactoId === null || contactoId <= 0 || contactoId > 9223372036854775807n)) {
     return NextResponse.json({ error: "contacto inválido" }, { status: 400 });
   }
+  const cursorTexto = parametros.get("cursor");
+  const cursor = aBigInt(cursorTexto);
+  if (cursorTexto && (!cursor || cursor > 9223372036854775807n)) return NextResponse.json({ error: "Cursor de citas inválido" }, { status: 400 });
   const paginacion = paginacionListado(req);
   const citas = await db.cita.findMany({
     where: {
@@ -38,7 +42,7 @@ export const GET = conModulo("citas", {}, conErroresCita(async (s, req: NextRequ
   return NextResponse.json(serializar({ citas, siguienteCursor: citas.length === paginacion.take ? String(citas.at(-1)!.id) : null, zona: (await configReservasEmpresa()).zona }));
 }));
 
-export const POST = conModulo("citas", {}, conErroresCita(async (s, req: NextRequest) => {
+export const POST = conModulo("citas", {}, conErroresCita(async (s: SesionModulo, req: NextRequest) => {
   const b = await req.json().catch(() => null);
   if (!b || typeof b !== "object" || Array.isArray(b)) return NextResponse.json({ error: "Datos de cita inválidos" }, { status: 400 });
   const error = errorTextoCita({ titulo: b.titulo, notas: b.notas ?? null });
@@ -50,8 +54,8 @@ export const POST = conModulo("citas", {}, conErroresCita(async (s, req: NextReq
     }
   }
   const doctorId = b.doctorId ? aBigInt(String(b.doctorId)) : null;
-  const inicio = new Date(b.inicio),
-    fin = new Date(b.fin);
+  const inicio = fechaEntradaCita(b.inicio),
+    fin = fechaEntradaCita(b.fin);
   if (
     !b.contactoId ||
     !String(b.titulo ?? "").trim() ||
@@ -96,5 +100,5 @@ export const POST = conModulo("citas", {}, conErroresCita(async (s, req: NextReq
     contactoId, conversacionId, responsableId: responsableId ?? s.userId,
     doctorId, titulo: String(b.titulo).trim(), notas: String(b.notas ?? "").trim() || null, inicio, fin,
   });
-  return NextResponse.json(serializar({ cita }), { status: 201 });
+  return NextResponse.json(serializar({ cita, avisos: await avisosDeCita(cita) }), { status: 201 });
 }));

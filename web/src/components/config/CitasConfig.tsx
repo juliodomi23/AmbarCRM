@@ -38,6 +38,7 @@ export function CitasConfig({
   const [canalId, setCanalId] = useState(
     String(inicial.canalId ?? canales[0]?.id ?? ""),
   );
+  const [errorPlantillas, setErrorPlantillas] = useState("");
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
   const [plantillaNombre, setPlantillaNombre] = useState(
     String(inicial.plantilla?.name ?? ""),
@@ -52,16 +53,17 @@ export function CitasConfig({
   const cantidad = useMemo(() => totalVariables(plantilla), [plantilla]);
 
   useEffect(() => {
+    setErrorPlantillas("");
     if (!canalId) return setPlantillas([]);
     void fetch(`/api/meta/templates?canalId=${encodeURIComponent(canalId)}`)
-      .then((res) => res.json())
+      .then(async (res) => { if (!res.ok) throw new Error("No se pudieron cargar las plantillas aprobadas"); return res.json(); })
       .then((data) =>
         setPlantillas(
           (data.plantillas ?? []).filter(
             (item: Plantilla) => item.status === "APPROVED",
           ),
         ),
-      );
+      ).catch(() => setErrorPlantillas("No se pudieron cargar las plantillas aprobadas. Revisa el canal e intenta de nuevo."));
   }, [canalId]);
 
   useEffect(() => {
@@ -96,6 +98,7 @@ export function CitasConfig({
 
   return (
     <div className="mt-4 space-y-3 border-t border-border pt-4">
+      {errorPlantillas && <p role="alert" className="text-sm text-destructive">{errorPlantillas}</p>}
       <label className="block space-y-1">
         <span className="text-sm font-medium">Canal de WhatsApp</span>
         <select
@@ -130,6 +133,7 @@ export function CitasConfig({
         <input
           type="number"
           min={1}
+          max={168}
           value={anticipacionHoras}
           onChange={(e) => setAnticipacionHoras(Number(e.target.value))}
           className="w-32 rounded-lg border p-2"

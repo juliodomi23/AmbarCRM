@@ -9,6 +9,7 @@ export function GestionCita({ token }: { token: string }) {
   const ruta = `/api/public/reservas/cita/${encodeURIComponent(token)}`;
   const [cita, setCita] = useState<Cita | null>(null);
   const [error, setError] = useState("");
+  const [guardando, setGuardando] = useState(false);
   const [confirmar, setConfirmar] = useState(false);
 
   useEffect(() => {
@@ -16,15 +17,19 @@ export function GestionCita({ token }: { token: string }) {
       const data = await res.json().catch(() => ({}));
       if (res.ok) setCita(data);
       else setError(data.error ?? "Cita no encontrada");
-    });
+    }).catch(() => setError("No se pudo cargar la cita. Revisa tu conexión."));
   }, [ruta]);
 
   async function cancelar() {
+    setGuardando(true);
+    try {
     const res = await fetch(ruta, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "cancelar" }) });
     const data = await res.json().catch(() => ({}));
     setConfirmar(false);
     if (res.ok && cita) setCita({ ...cita, estado: "cancelada" });
     else setError(data.error ?? "No se pudo cancelar");
+    } catch { setError("No se pudo cancelar. Revisa tu conexión e intenta de nuevo."); }
+    finally { setGuardando(false); }
   }
 
   const cancelable = cita && ["programada", "confirmada"].includes(cita.estado) && new Date(cita.inicio) > new Date();
@@ -45,7 +50,7 @@ export function GestionCita({ token }: { token: string }) {
           )}
           {cancelable && confirmar && (
             <div className="flex justify-center gap-3 text-sm">
-              <button type="button" onClick={cancelar} className="rounded-lg bg-destructive px-3 py-1.5 font-medium text-destructive-foreground">Sí, cancelar</button>
+              <button type="button" disabled={guardando} onClick={cancelar} className="rounded-lg bg-destructive px-3 py-1.5 font-medium text-destructive-foreground">Sí, cancelar</button>
               <button type="button" onClick={() => setConfirmar(false)}>No</button>
             </div>
           )}

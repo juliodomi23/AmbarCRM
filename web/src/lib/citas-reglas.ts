@@ -31,3 +31,10 @@ export function errorTextoCita(datos: { titulo?: unknown; notas?: unknown }) {
   }
   return null;
 }
+
+export function fechaEntradaCita(valor: unknown) {
+  if (typeof valor !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/.test(valor)) return new Date(NaN);
+  const dia = new Date(`${valor.slice(0, 10)}T12:00:00Z`);
+  if (!Number.isFinite(+dia) || dia.toISOString().slice(0, 10) !== valor.slice(0, 10)) return new Date(NaN);
+  return new Date(valor);
+}

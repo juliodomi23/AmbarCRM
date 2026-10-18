@@ -1,8 +1,10 @@
 "use client";
 
+import { puedeCambiarEstado } from "@/lib/citas-reglas";
+import { eventosDelDia } from "./eventos";
+
 import {
   ALTURA_HORA,
-  claveFecha,
   fechaMexicoAUTC,
   HORA_FIN,
   HORA_INICIO,
@@ -18,90 +20,52 @@ import {
   type EstadoCita,
 } from "@/components/citas/tipos";
 
-function EtiquetaSemana({ semana }: { semana: string }) {
+function EtiquetaSemana({ semana, zona }: { semana: string; zona: string }) {
   const inicio = new Intl.DateTimeFormat("es-MX", {
     day: "numeric",
     month: "short",
-    timeZone: ZONA_CITAS,
-  }).format(fechaMexicoAUTC(semana, "12:00"));
+    timeZone: zona,
+  }).format(fechaMexicoAUTC(semana, "12:00", zona));
   const fin = new Intl.DateTimeFormat("es-MX", {
     day: "numeric",
     month: "short",
     year: "numeric",
-    timeZone: ZONA_CITAS,
-  }).format(fechaMexicoAUTC(sumarDias(semana, 6), "12:00"));
+    timeZone: zona,
+  }).format(fechaMexicoAUTC(sumarDias(semana, 6), "12:00", zona));
   return <>{inicio} – {fin}</>;
 }
 
-function EventoCalendario({
-  cita,
-  onSeleccionar,
-}: {
-  cita: Cita;
+function EventoCalendario({ evento, dia, zona, horaInicio, onSeleccionar }: {
+  evento: ReturnType<typeof eventosDelDia>[number]; dia: string; zona: string; horaInicio: number;
   onSeleccionar: (cita: Cita) => void;
 }) {
-  const partes = partesEnZona(new Date(cita.inicio));
-  const minutoInicio = partes.hour * 60 + partes.minute;
-  const duracion = Math.max(
-    30,
-    (new Date(cita.fin).getTime() - new Date(cita.inicio).getTime()) / 60_000,
-  );
-  const top = Math.max(
-    0,
-    ((minutoInicio - HORA_INICIO * 60) / 60) * ALTURA_HORA,
-  );
-  const altoDisponible =
-    (HORA_FIN - HORA_INICIO) * ALTURA_HORA - Math.min(top, 738);
-  const alto = Math.max(
-    30,
-    Math.min((duracion / 60) * ALTURA_HORA, altoDisponible),
-  );
-
-  return (
-    <button
-      type="button"
-      className={[
-        "absolute inset-x-1 z-10 overflow-hidden rounded-md border-l-4",
-        "px-2 py-1 text-xs shadow-sm",
-        estiloEstado(cita.estado),
-      ].join(" ")}
-      style={{
-        top: Math.min(top, 738),
-        height: alto,
-        borderLeftColor: cita.doctor?.color,
-      }}
-      onClick={(evento) => {
-        evento.stopPropagation();
-        onSeleccionar(cita);
-      }}
-      onKeyDown={(evento) => {
-        if (evento.key === "Enter" || evento.key === " ") {
-          evento.stopPropagation();
-          onSeleccionar(cita);
-        }
-      }}
-      title={`${cita.titulo} · ${cita.contacto.nombre}`}
-    >
+  const { cita, inicio, fin, columna, columnas } = evento;
+  const partes = partesEnZona(new Date(inicio), zona);
+  const desde = +fechaMexicoAUTC(dia, "00:00", zona);
+  const minutos = (inicio - desde) / 60_000;
+  return <button type="button"
+    className={`absolute z-10 overflow-hidden rounded-md border-l-4 px-1 py-1 text-left text-xs shadow-sm focus-visible:outline focus-visible:outline-2 ${estiloEstado(cita.estado)}`}
+    style={{ top: ((minutos - horaInicio * 60) / 60) * ALTURA_HORA, height: Math.max(18, ((fin - inicio) / 3_600_000) * ALTURA_HORA), left: `calc(${columna * 100 / columnas}% + 2px)`, width: `calc(${100 / columnas}% - 4px)`, borderLeftColor: cita.doctor?.color }}
+    onClick={(e) => { e.stopPropagation(); onSeleccionar(cita); }}
+    title={`${cita.titulo} · ${cita.contacto.nombre} · ${cita.doctor?.nombre ?? "Sin asignar"}`}>
       <span className="block truncate font-semibold">{cita.titulo}</span>
-      <span className="block truncate opacity-80">
-        {String(partes.hour).padStart(2, "0")}:
-        {String(partes.minute).padStart(2, "0")} · {cita.contacto.nombre}
-      </span>
-      {cita.doctor && (
-        <span className="block truncate opacity-75">{cita.doctor.nombre}</span>
-      )}
-    </button>
-  );
+      <span className="block truncate">{String(partes.hour).padStart(2, "0")}:{String(partes.minute).padStart(2, "0")} · {cita.contacto.nombre}</span>
+      {cita.doctor && <span className="block truncate">{cita.doctor.nombre}{cita.doctor.activo ? "" : " (inactivo)"}</span>}
+    </button>;
 }
 
 function ListaCitas({
   citas,
   cargando,
+  zona = ZONA_CITAS,
+  guardando = false,
   onCambiarEstado,
   onSeleccionar,
 }: {
   citas: Cita[];
   cargando: boolean;
+  zona?: string;
+  guardando?: boolean;
   onCambiarEstado: (cita: Cita, estado: EstadoCita) => void;
   onSeleccionar: (cita: Cita) => void;
 }) {
@@ -146,9 +110,9 @@ function ListaCitas({
                   month: "short",
                   hour: "2-digit",
                   minute: "2-digit",
-                  timeZone: ZONA_CITAS,
+                  timeZone: zona,
                 }).format(new Date(cita.inicio))}
-                {cita.doctor ? ` · ${cita.doctor.nombre}` : ""}
+                {cita.doctor ? ` · ${cita.doctor.nombre}${cita.doctor.activo ? "" : " (inactivo; reasignar)"}` : ""}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -160,6 +124,7 @@ function ListaCitas({
                 Abrir
               </button>
               <select
+                disabled={guardando}
                 value={cita.estado}
                 onChange={(evento) =>
                   onCambiarEstado(cita, evento.target.value as EstadoCita)
@@ -168,7 +133,7 @@ function ListaCitas({
                 aria-label={`Estado de ${cita.titulo}`}
               >
                 {ESTADOS_CITA.map((estado) => (
-                  <option key={estado.valor} value={estado.valor}>
+                  <option key={estado.valor} value={estado.valor} disabled={!puedeCambiarEstado(cita.estado, estado.valor)}>
                     {estado.etiqueta}
                   </option>
                 ))}
@@ -184,6 +149,8 @@ function ListaCitas({
 export function CalendarioSemanal({
   citas,
   cargando,
+  zona = ZONA_CITAS,
+  guardando = false,
   semana,
   hoy,
   onCambiarSemana,
@@ -193,6 +160,8 @@ export function CalendarioSemanal({
 }: {
   citas: Cita[];
   cargando: boolean;
+  zona?: string;
+  guardando?: boolean;
   semana: string;
   hoy: string;
   onCambiarSemana: (semana: string) => void;
@@ -204,6 +173,12 @@ export function CalendarioSemanal({
     sumarDias(semana, indice),
   );
 
+  const segmentos = dias.map((dia) => eventosDelDia(citas, dia, zona));
+  const horaInicio = Math.min(HORA_INICIO, ...segmentos.flat().map((e) => partesEnZona(new Date(e.inicio), zona).hour));
+  const horaFin = Math.max(HORA_FIN, ...segmentos.flat().map((e) => {
+    const fin = partesEnZona(new Date(e.fin), zona);
+    return fin.hour === 0 && fin.minute === 0 ? 24 : Math.ceil(fin.hour + fin.minute / 60);
+  }));
   return (
     <>
       <section
@@ -253,7 +228,7 @@ export function CalendarioSemanal({
             </button>
           </div>
           <p className="text-sm font-semibold capitalize text-foreground">
-            <EtiquetaSemana semana={semana} />
+            <EtiquetaSemana semana={semana} zona={zona} />
           </p>
           <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
             {ESTADOS_CITA.slice(0, 3).map((estado) => (
@@ -279,7 +254,7 @@ export function CalendarioSemanal({
             >
               <div className="border-r border-border" />
               {dias.map((dia) => {
-                const fecha = fechaMexicoAUTC(dia, "12:00");
+                const fecha = fechaMexicoAUTC(dia, "12:00", zona);
                 const esHoy = dia === hoy;
                 return (
                   <div
@@ -298,7 +273,7 @@ export function CalendarioSemanal({
                     >
                       {new Intl.DateTimeFormat("es-MX", {
                         weekday: "short",
-                        timeZone: ZONA_CITAS,
+                        timeZone: zona,
                       }).format(fecha)}
                     </p>
                     <p
@@ -312,7 +287,7 @@ export function CalendarioSemanal({
                     >
                       {new Intl.DateTimeFormat("es-MX", {
                         day: "numeric",
-                        timeZone: ZONA_CITAS,
+                        timeZone: zona,
                       }).format(fecha)}
                     </p>
                   </div>
@@ -322,16 +297,16 @@ export function CalendarioSemanal({
 
             <div
               className="relative"
-              style={{ height: (HORA_FIN - HORA_INICIO) * ALTURA_HORA }}
+              style={{ height: (horaFin - horaInicio) * ALTURA_HORA }}
             >
               {Array.from(
-                { length: HORA_FIN - HORA_INICIO + 1 },
-                (_, indice) => HORA_INICIO + indice,
+                { length: horaFin - horaInicio + 1 },
+                (_, indice) => horaInicio + indice,
               ).map((hora) => (
                 <div
                   key={hora}
                   className="absolute inset-x-0 border-t border-border/70"
-                  style={{ top: (hora - HORA_INICIO) * ALTURA_HORA }}
+                  style={{ top: (hora - horaInicio) * ALTURA_HORA }}
                 >
                   <span
                     className={[
@@ -360,26 +335,22 @@ export function CalendarioSemanal({
                     onClick={(evento) => {
                       const rect = evento.currentTarget.getBoundingClientRect();
                       const minutos =
-                        HORA_INICIO * 60 +
+                        horaInicio * 60 +
                         Math.round(
                           ((evento.clientY - rect.top) / ALTURA_HORA) * 2,
                         ) *
                           30;
                       onNuevoHorario(dia, minutos);
                     }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onNuevoHorario(dia, horaInicio * 60); } }}
+                    aria-label={`Crear cita el ${dia}`}
                     title={`Crear cita el ${dia}`}
                   >
-                    {citas
-                      .filter(
-                        (cita) => claveFecha(new Date(cita.inicio)) === dia,
-                      )
-                      .map((cita) => (
-                        <EventoCalendario
-                          key={cita.id}
-                          cita={cita}
-                          onSeleccionar={onSeleccionar}
-                        />
-                      ))}
+                    {eventosDelDia(citas, dia, zona).map((evento) => (
+                      <EventoCalendario key={evento.cita.id} evento={evento} dia={dia} zona={zona} horaInicio={horaInicio} onSeleccionar={onSeleccionar} />
+                    ))}
                   </div>
                 ))}
               </div>
@@ -391,6 +362,8 @@ export function CalendarioSemanal({
       <ListaCitas
         citas={citas}
         cargando={cargando}
+        zona={zona}
+        guardando={guardando}
         onCambiarEstado={onCambiarEstado}
         onSeleccionar={onSeleccionar}
       />

@@ -1,4 +1,5 @@
 "use client";
+import { useFocoModal } from "./useFocoModal";
 
 import { useState } from "react";
 import { Boton, Campo, Modal } from "@/components/ui";
@@ -24,6 +25,7 @@ export function DoctoresModal({
   const [cedula, setCedula] = useState("");
   const [color, setColor] = useState("#0EA5E9");
 
+  useFocoModal(abierto);
   return (
     <Modal abierto={abierto} onClose={onClose} titulo="Doctores">
       <div className="max-h-[75vh] space-y-4 overflow-y-auto pr-1">

@@ -5,8 +5,8 @@ import { toast } from "@/components/Toaster";
 /** Enlace público de reservas, listo para copiar y mandar por WhatsApp o redes. */
 export function EnlacePublico({ url }: { url: string }) {
   async function copiar() {
-    await navigator.clipboard.writeText(url).catch(() => null);
-    toast("Enlace copiado");
+    try { await navigator.clipboard.writeText(url); toast("Enlace copiado"); }
+    catch { toast("No se pudo copiar. Selecciona el enlace y cópialo manualmente.", "error"); }
   }
   return (
     <div className="surface flex flex-wrap items-center gap-2 p-3">

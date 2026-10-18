@@ -195,7 +195,15 @@ export async function candidatosParaHorario(
 export async function contactoPorTelefono(telefono10: string, nombre: string) {
   const existente = await db.contacto.findFirst({ where: { telefono: { endsWith: telefono10 } } });
   if (existente) return existente;
-  return db.contacto.create({ data: { nombre, telefono: `52${telefono10}`, fuente: "web" } });
+  try {
+    return await db.contacto.create({ data: { nombre, telefono: `52${telefono10}`, fuente: "web" } });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const creado = await db.contacto.findFirst({ where: { telefono: `52${telefono10}` } });
+      if (creado) return creado;
+    }
+    throw error;
+  }
 }
 
 /**
@@ -223,7 +231,7 @@ export async function reservarCita(
     const cita = await transaccionTenant(orgId, async (tx) => {
       if (datos.limiteTelefono) {
         const { telefono, maximo } = datos.limiteTelefono;
-        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`${orgId}:${telefono}`}, 0))`;
+        await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(${`${orgId}:${telefono}`}, 0))`;
         const recientes = await tx.cita.count({ where: {
           origen: "en_linea", createdAt: { gte: new Date(Date.now() - 86_400_000) }, contacto: { telefono: { endsWith: telefono } },
         } });

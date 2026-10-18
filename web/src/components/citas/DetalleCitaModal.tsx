@@ -1,5 +1,7 @@
 "use client";
+import { useFocoModal } from "./useFocoModal";
 
+import { puedeCambiarEstado } from "@/lib/citas-reglas";
 import Link from "next/link";
 import { Boton, Modal } from "@/components/ui";
 import { ZONA_CITAS } from "@/components/citas/fecha";
@@ -14,15 +16,20 @@ const ACCIONES: { estado: EstadoCita; etiqueta: string; clase: string }[] = [
 
 export function DetalleCitaModal({
   cita,
+  zona = ZONA_CITAS,
+  onEditar,
   guardando,
   onClose,
   onCambiarEstado,
 }: {
   cita: Cita | null;
+  zona?: string;
+  onEditar?: () => void;
   guardando: boolean;
   onClose: () => void;
   onCambiarEstado: (estado: EstadoCita) => void;
 }) {
+  useFocoModal(Boolean(cita));
   if (!cita) return null;
   const horario = new Intl.DateTimeFormat("es-MX", {
     weekday: "long",
@@ -30,7 +37,7 @@ export function DetalleCitaModal({
     month: "long",
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: ZONA_CITAS,
+    timeZone: zona,
   }).format(new Date(cita.inicio));
 
   return (
@@ -41,7 +48,7 @@ export function DetalleCitaModal({
           <p className="capitalize text-muted-foreground">{horario}</p>
           <p className="text-muted-foreground">
             {cita.doctor
-              ? `${cita.doctor.nombre}${
+              ? `${cita.doctor.nombre}${cita.doctor.activo ? "" : " (inactivo; reasignar)"}${
                   cita.doctor.especialidad ? ` · ${cita.doctor.especialidad}` : ""
                 }`
               : "Sin doctor asignado"}
@@ -58,7 +65,7 @@ export function DetalleCitaModal({
               <button
                 key={accion.estado}
                 type="button"
-                disabled={guardando}
+                disabled={guardando || !puedeCambiarEstado(cita.estado, accion.estado)}
                 onClick={() => onCambiarEstado(accion.estado)}
                 className={[
                   "rounded-lg px-3 py-2 text-sm font-medium transition duration-150 hover:brightness-110 active:scale-[.98]",
@@ -73,7 +80,7 @@ export function DetalleCitaModal({
           </div>
           <button
             type="button"
-            disabled={guardando}
+            disabled={guardando || !puedeCambiarEstado(cita.estado, "cancelada")}
             onClick={() => onCambiarEstado("cancelada")}
             className="mt-2 w-full rounded-lg border border-destructive/30 px-3 py-2 text-sm text-destructive"
           >
@@ -82,6 +89,7 @@ export function DetalleCitaModal({
         </div>
 
         <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
+          {onEditar && <Boton type="button" onClick={onEditar}>Editar cita</Boton>}
           <Boton type="button" variante="ghost" onClick={onClose}>
             Cerrar
           </Boton>

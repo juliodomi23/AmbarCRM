@@ -1,4 +1,5 @@
 "use client";
+import { useFocoModal } from "./useFocoModal";
 
 import { Boton, Campo, Modal } from "@/components/ui";
 import type {
@@ -10,6 +11,7 @@ import type {
 
 export function FormularioCitaModal({
   abierto,
+  editando = false,
   guardando,
   formulario,
   contactos,
@@ -20,6 +22,7 @@ export function FormularioCitaModal({
   onSubmit,
 }: {
   abierto: boolean;
+  editando?: boolean;
   guardando: boolean;
   formulario: FormularioCita;
   contactos: ContactoCita[];
@@ -29,8 +32,9 @@ export function FormularioCitaModal({
   onClose: () => void;
   onSubmit: (evento: React.FormEvent) => void;
 }) {
+  useFocoModal(abierto);
   return (
-    <Modal abierto={abierto} onClose={onClose} titulo="Nueva cita">
+    <Modal abierto={abierto} onClose={onClose} titulo={editando ? "Editar cita" : "Nueva cita"}>
       <form onSubmit={onSubmit} className="space-y-3">
         <label className="block space-y-1">
           <span className="text-sm font-medium text-muted-foreground">
@@ -45,7 +49,7 @@ export function FormularioCitaModal({
           >
             <option value="">Sin asignar</option>
             {doctores
-              .filter((doctor) => doctor.activo)
+              .filter((doctor) => doctor.activo || doctor.id === formulario.doctorId)
               .map((doctor) => (
                 <option key={doctor.id} value={doctor.id}>
                   {doctor.nombre}
@@ -60,6 +64,7 @@ export function FormularioCitaModal({
           </span>
           <select
             required
+            disabled={editando}
             value={formulario.contactoId}
             onChange={(evento) =>
               onChange({ ...formulario, contactoId: evento.target.value })
@@ -81,6 +86,7 @@ export function FormularioCitaModal({
             onChange({ ...formulario, titulo: evento.target.value })
           }
           required
+          maxLength={200}
         />
         <div className="grid grid-cols-2 gap-3">
           <Campo
@@ -107,6 +113,7 @@ export function FormularioCitaModal({
             Responsable
           </span>
           <select
+            disabled={editando}
             value={formulario.responsableId}
             onChange={(evento) =>
               onChange({ ...formulario, responsableId: evento.target.value })
@@ -127,6 +134,7 @@ export function FormularioCitaModal({
           </span>
           <textarea
             rows={3}
+            maxLength={5000}
             value={formulario.notas}
             onChange={(evento) =>
               onChange({ ...formulario, notas: evento.target.value })
@@ -143,7 +151,7 @@ export function FormularioCitaModal({
             Cancelar
           </Boton>
           <Boton type="submit" disabled={guardando}>
-            {guardando ? "Creando…" : "Crear cita"}
+            {guardando ? "Guardando…" : editando ? "Guardar cambios" : "Crear cita"}
           </Boton>
         </div>
       </form>

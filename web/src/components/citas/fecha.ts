@@ -11,9 +11,9 @@ type PartesFecha = {
   minute: number;
 };
 
-export function partesEnZona(fecha: Date): PartesFecha {
+export function partesEnZona(fecha: Date, zona = ZONA_CITAS): PartesFecha {
   const partes = new Intl.DateTimeFormat("en-CA", {
-    timeZone: ZONA_CITAS,
+    timeZone: zona,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -40,8 +40,8 @@ function claveDesdePartes(partes: PartesFecha) {
     .join("-");
 }
 
-export function claveFecha(fecha: Date) {
-  return claveDesdePartes(partesEnZona(fecha));
+export function claveFecha(fecha: Date, zona = ZONA_CITAS) {
+  return claveDesdePartes(partesEnZona(fecha, zona));
 }
 
 export function sumarDias(clave: string, cantidad: number) {
@@ -56,14 +56,14 @@ export function inicioDeSemana(clave: string) {
   return sumarDias(clave, -diasDesdeLunes);
 }
 
-export function fechaMexicoAUTC(clave: string, hora: string) {
+export function fechaMexicoAUTC(clave: string, hora: string, zona = ZONA_CITAS) {
   const [year, month, day] = clave.split("-").map(Number);
   const [hours, minutes] = hora.split(":").map(Number);
   const objetivo = Date.UTC(year, month - 1, day, hours, minutes);
   let resultado = new Date(objetivo);
 
   for (let intento = 0; intento < 2; intento += 1) {
-    const partes = partesEnZona(resultado);
+    const partes = partesEnZona(resultado, zona);
     const representacionUTC = Date.UTC(
       partes.year,
       partes.month - 1,
@@ -77,21 +77,23 @@ export function fechaMexicoAUTC(clave: string, hora: string) {
   return resultado;
 }
 
-export function valorFechaLocal(fecha: Date) {
-  const partes = partesEnZona(fecha);
+export function valorFechaLocal(fecha: Date, zona = ZONA_CITAS) {
+  const partes = partesEnZona(fecha, zona);
   const hora = `${String(partes.hour).padStart(2, "0")}:${String(
     partes.minute,
   ).padStart(2, "0")}`;
   return `${claveDesdePartes(partes)}T${hora}`;
 }
 
-export function valorInicial(duracionMinutos = 0) {
+export function valorInicial(duracionMinutos = 0, zona = ZONA_CITAS) {
   const bloque = 30 * 60_000;
   const siguienteBloque = Math.ceil(Date.now() / bloque) * bloque;
-  return valorFechaLocal(new Date(siguienteBloque + duracionMinutos * 60_000));
+  return valorFechaLocal(new Date(siguienteBloque + duracionMinutos * 60_000), zona);
 }
 
-export function convertirFormularioAISO(valor: string) {
+export function convertirFormularioAISO(valor: string, zona = ZONA_CITAS) {
   const [fecha, hora] = valor.split("T");
-  return fechaMexicoAUTC(fecha, hora).toISOString();
+  const instante = fechaMexicoAUTC(fecha, hora, zona);
+  if (valorFechaLocal(instante, zona) !== valor) throw new RangeError("Esa hora local no existe por el cambio de horario");
+  return instante.toISOString();
 }

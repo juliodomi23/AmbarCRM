@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { moduloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
+import { configReservasEmpresa } from "@/lib/reservas/servidor";
 import { CitasCliente } from "@/components/citas/CitasCliente";
 export const dynamic = "force-dynamic";
 export default async function CitasPage() {
@@ -16,15 +17,16 @@ export default async function CitasPage() {
         clientesActivo || pacientesActivo
           ? { expediente: { isNot: null } }
           : undefined,
-      include: { expediente: { select: { id: true } } },
+      select: { id: true, nombre: true, expediente: { select: { id: true } } },
       orderBy: { nombre: "asc" },
       take: 500,
     }),
-    db.usuario.findMany({ where: { activo: true } }),
+    db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true } }),
     db.doctor.findMany({ orderBy: [{ activo: "desc" }, { nombre: "asc" }] }),
   ]);
   return (
     <CitasCliente
+      zona={(await configReservasEmpresa()).zona}
       contactos={serializar(contactos)}
       usuarios={serializar(usuarios)}
       doctores={serializar(doctores)}

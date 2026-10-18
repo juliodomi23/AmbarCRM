@@ -40,7 +40,8 @@ export function diaSemana(fecha: string) {
 
 export function fechaValida(fecha: unknown): fecha is string {
   if (typeof fecha !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return false;
-  return new Date(`${fecha}T12:00:00Z`).toISOString().slice(0, 10) === fecha;
+  const instante = new Date(`${fecha}T12:00:00Z`);
+  return Number.isFinite(+instante) && instante.toISOString().slice(0, 10) === fecha;
 }
 
 /** Suma días a una fecha AAAA-MM-DD sin pasar por zonas horarias. */

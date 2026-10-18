@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db, dbRaw, runWithOrg } from "@/lib/db";
 import { getProvider } from "@/lib/channel";
 import { horasAnticipacion, valoresRecordatorio, type VariableRecordatorio } from "@/lib/citas";
 import { aBigInt } from "@/lib/ids";
@@ -8,6 +8,17 @@ import { configReservasEmpresa } from "@/lib/reservas/servidor";
 type Config = { anticipacionHoras?: number; canalId?: string; plantilla?: { name: string; language: string }; mapeoVariables?: VariableRecordatorio[] };
 export type ConteoRecordatorios = { enviados: number; fallidos: number; omitidos: number; revisados: number };
 export const conteoRecordatorios = (): ConteoRecordatorios => ({ enviados: 0, fallidos: 0, omitidos: 0, revisados: 0 });
+
+export async function procesarRecordatorios(proveedor = getProvider) {
+  const orgs = await dbRaw.$queryRaw<{ id: bigint }[]>`SELECT id FROM orgs WHERE activo = true ORDER BY id`;
+  const conteo = conteoRecordatorios();
+  const empresasConError: string[] = [];
+  for (const org of orgs) {
+    try { await runWithOrg(org.id, () => recordatoriosDeLaEmpresa(conteo, proveedor)); }
+    catch (error) { empresasConError.push(String(org.id)); console.error(`[cron/recordatorios-citas] org ${org.id}:`, error); }
+  }
+  return { ok: true, ...conteo, empresasConError };
+}
 
 export async function recordatoriosDeLaEmpresa(conteo: ConteoRecordatorios, proveedor = getProvider, ahora = new Date()) {
   const modulo = await db.moduloOrg.findFirst({ where: { clave: "citas", activo: true } });

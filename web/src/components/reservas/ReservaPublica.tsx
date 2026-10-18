@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Doctor = { id: string; nombre: string };
 type Servicio = { id: string; nombre: string; descripcion: string | null; duracionMin: number; precio: number; doctores: Doctor[] };
@@ -12,6 +12,8 @@ const moneda = (n: number) => n.toLocaleString("es-MX", { style: "currency", cur
 
 /** Asistente público de reservas: servicio → especialista → día → hora → datos. */
 export function ReservaPublica({ slug }: { slug: string }) {
+  const cargaDias = useRef(0);
+  const cargaHoras = useRef(0);
   const base = `/api/public/reservas/${encodeURIComponent(slug)}`;
   const [datos, setDatos] = useState<Datos | null>(null);
   const [error, setError] = useState("");
@@ -33,7 +35,7 @@ export function ReservaPublica({ slug }: { slug: string }) {
       const data = await res.json().catch(() => ({}));
       if (res.ok) setDatos(data);
       else setError(data.error ?? "No se pudo cargar la agenda");
-    });
+    }).catch(() => setError("No se pudo cargar la agenda. Revisa tu conexión."));
   }, [base]);
 
   const formato = useCallback(
@@ -45,24 +47,34 @@ export function ReservaPublica({ slug }: { slug: string }) {
     new Intl.DateTimeFormat("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }).format(new Date(`${dia}T12:00:00Z`));
 
   async function cargarDias(servicioId: string, doctorId: string, desde?: string) {
-    const q = new URLSearchParams({ servicio: servicioId, doctor: doctorId, ...(desde ? { desde } : {}) });
-    const res = await fetch(`${base}/horarios?${q}`);
-    const data = await res.json().catch(() => ({}));
-    setDias((previos) => (desde ? [...(previos ?? []), ...(data.dias ?? [])] : (data.dias ?? [])));
-    setSiguiente(data.siguiente ?? null);
+    const turno = ++cargaDias.current;
+    setError("");
+    try {
+      const q = new URLSearchParams({ servicio: servicioId, doctor: doctorId, ...(desde ? { desde } : {}) });
+      const res = await fetch(`${base}/horarios?${q}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "No se pudieron cargar los días disponibles");
+      if (turno !== cargaDias.current) return;
+      setDias((previos) => (desde ? [...(previos ?? []), ...data.dias] : data.dias));
+      setSiguiente(data.siguiente ?? null);
+    } catch (error) { if (turno === cargaDias.current) { setDias([]); setError(error instanceof Error ? error.message : "No se pudieron cargar los días"); } }
   }
 
   async function cargarHorarios(dia: string) {
     if (!servicio || !doctor) return;
-    setFecha(dia);
-    setHorario(null);
-    setHorarios(null);
-    const q = new URLSearchParams({ servicio: servicio.id, doctor, fecha: dia });
-    const data = await (await fetch(`${base}/horarios?${q}`)).json().catch(() => ({}));
-    setHorarios(data.horarios ?? []);
+    const turno = ++cargaHoras.current;
+    setFecha(dia); setHorario(null); setHorarios(null); setError("");
+    try {
+      const q = new URLSearchParams({ servicio: servicio.id, doctor, fecha: dia });
+      const res = await fetch(`${base}/horarios?${q}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "No se pudieron cargar los horarios");
+      if (turno === cargaHoras.current) setHorarios(data.horarios);
+    } catch (error) { if (turno === cargaHoras.current) { setHorarios([]); setError(error instanceof Error ? error.message : "No se pudieron cargar los horarios"); } }
   }
 
   function elegirServicio(s: Servicio) {
+    cargaDias.current++; cargaHoras.current++;
     setServicio(s);
     setFecha(null);
     setHorarios(null);
@@ -75,6 +87,7 @@ export function ReservaPublica({ slug }: { slug: string }) {
 
   function elegirDoctor(id: string) {
     if (!servicio) return;
+    cargaHoras.current++;
     setDoctor(id);
     setFecha(null);
     setHorarios(null);
@@ -88,6 +101,7 @@ export function ReservaPublica({ slug }: { slug: string }) {
     if (!servicio || !doctor || !fecha || !horario) return;
     setEnviando(true);
     setError("");
+    try {
     const res = await fetch(base, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -98,6 +112,8 @@ export function ReservaPublica({ slug }: { slug: string }) {
     if (res.ok) return setConfirmada(data);
     setError(data.error ?? "No se pudo agendar");
     if (res.status === 409) void cargarHorarios(fecha);
+    } catch { setError("No se pudo confirmar. Revisa tu conexión antes de intentar de nuevo."); }
+    finally { setEnviando(false); }
   }
 
   if (error && !datos) return <Marco><p className="text-center text-sm text-muted-foreground">{error}</p></Marco>;
@@ -125,6 +141,7 @@ export function ReservaPublica({ slug }: { slug: string }) {
 
   return (
     <Marco negocio={datos.negocio}>
+      {error && <p role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">{error}</p>}
       <Paso numero={1} titulo="¿Qué servicio quieres?">
         {datos.servicios.length === 0 && <p className="text-sm text-muted-foreground">Por ahora no hay servicios para agendar.</p>}
         <div className="grid gap-2">
@@ -192,13 +209,12 @@ export function ReservaPublica({ slug }: { slug: string }) {
       {horario && (
         <Paso numero={5} titulo="Tus datos">
           <form onSubmit={confirmar} className="space-y-3">
-            <input required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Tu nombre"
+            <input required aria-label="Tu nombre" maxLength={120} value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Tu nombre"
               autoComplete="name" className="w-full rounded-lg border bg-card px-3 py-2 text-sm" />
-            <input required value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="WhatsApp (10 dígitos)"
+            <input required aria-label="WhatsApp (10 dígitos)" maxLength={20} value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="WhatsApp (10 dígitos)"
               inputMode="tel" autoComplete="tel" className="w-full rounded-lg border bg-card px-3 py-2 text-sm" />
-            <textarea value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="¿Algo que debamos saber? (opcional)"
+            <textarea aria-label="Notas opcionales" maxLength={500} value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="¿Algo que debamos saber? (opcional)"
               rows={2} className="w-full rounded-lg border bg-card px-3 py-2 text-sm" />
-            {error && <p className="text-sm text-destructive">{error}</p>}
             <button type="submit" disabled={enviando}
               className="w-full rounded-lg bg-primary py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60">
               {enviando ? "Agendando…" : `Confirmar · ${formato(horario, { weekday: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}`}
