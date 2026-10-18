@@ -158,8 +158,9 @@ async function main() {
   assert.equal(deCita[0].estado, "omitida");
   assert.match(deCita[0].detalle ?? "", /canal oficial/);
   assert.equal(await patch(`/api/citas/${cita.id}`, { notas: "sin cambio de estado" }), 200);
-  assert.equal(await patch(`/api/citas/${cita.id}`, { estado: "cancelada" }), 200);
-  assert.equal((await solicitudes(cita.contactoId)).length, 1, "solo el paso a completada solicita");
+  assert.equal(await patch(`/api/citas/${cita.id}`, { estado: "cancelada" }), 409);
+  assert.equal((await transaccionTenant(orgId, (tx) => tx.cita.findUniqueOrThrow({ where: { id: cita.id } }))).estado, "completada");
+  assert.equal((await solicitudes(cita.contactoId)).length, 1, "el rechazo de cambiar un estado final no duplica la solicitud");
   assert.equal(await patch(`/api/ventas/${venta.id}`, { estado: "preparando" }), 200);
   assert.equal((await solicitudes(venta.contactoId!)).length, 0, "una venta que no llega a entregada no solicita");
   assert.equal(await patch(`/api/ventas/${venta.id}`, { estado: "entregada" }), 200);

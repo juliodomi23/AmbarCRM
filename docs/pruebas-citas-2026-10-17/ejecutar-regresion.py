@@ -23,11 +23,26 @@ def run(label,args,cwd=WEB,data=None,timeout=600,extra=None,redact=False):
  (OUT/'resultados.json').write_text(json.dumps(RESULTS,ensure_ascii=False,indent=2),encoding='utf-8')
  with (OUT/'ejecuciones.txt').open('a',encoding='utf-8') as f: f.write('\n## '+label+' · salida '+str(code)+'\n'+output+'\n')
  print(json.dumps(row,ensure_ascii=False),flush=True); return code
+def detener_app():
+ script = "$items = Get-NetTCPConnection -LocalPort 3118 -State Listen -ErrorAction SilentlyContinue; foreach ($item in $items) { $proceso = Get-CimInstance Win32_Process -Filter (\"ProcessId = \" + $item.OwningProcess); if ($proceso.CommandLine -match 'next.*start.*3118') { Stop-Process -Id $item.OwningProcess -Force } else { throw 'Proceso inesperado en puerto de pruebas' } }"
+ subprocess.run(['powershell','-NoProfile','-Command',script],check=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+
+def iniciar_app():
+ with (TEMP/'ambarcrm-citas-app.log').open('ab') as log:
+  app=subprocess.Popen(['node','--import','./prisma/scripts/meta-facebook-simulado.mjs','node_modules/next/dist/bin/next','start','-p','3118','-H','127.0.0.1'],cwd=WEB,env=ENV,stdout=log,stderr=subprocess.STDOUT)
+  (TEMP/'ambarcrm-citas-app-pid.txt').write_text(str(app.pid))
+ for intento in range(50):
+  if app.poll() is not None: raise RuntimeError('La app terminó antes de estar disponible')
+  try:
+   if urllib.request.urlopen('http://127.0.0.1:3118/login',timeout=2).status==200: return app.pid
+  except Exception: time.sleep(0.2)
+ raise RuntimeError('No arrancó la app de pruebas')
+
 PSQL=['docker','exec','-i',CONTAINER,'psql','-X','-U','dueno','-d','crm','-v','ON_ERROR_STOP=1','-q']
 mode=sys.argv[1]
 if mode=='sql':
  for _ in range(30):
-  if subprocess.run(['docker','exec',CONTAINER,'pg_isready','-U','dueno','-d','crm'],capture_output=True).returncode==0: break
+  if subprocess.run(['docker','exec',CONTAINER,'pg_isready','-h','127.0.0.1','-U','dueno','-d','crm'],capture_output=True).returncode==0: break
   time.sleep(1)
  assert run('schema',PSQL,data=(ROOT/'schema.sql').read_bytes())==0
  assert run('multi-tenant',PSQL,data=(WEB/'prisma/sql/multi-tenant.sql').read_bytes())==0
@@ -39,11 +54,11 @@ elif mode=='base':
  for i in range(1,4): assert run('regresion-actualizaciones-'+str(i),PSQL,data=(WEB/'prisma/sql/actualizaciones.sql').read_bytes())==0
  for label,args in [('prisma-generate',['node','node_modules/prisma/build/index.js','generate']),('tsc',['node','node_modules/typescript/bin/tsc','--noEmit']),('lint',['node','node_modules/eslint/bin/eslint.js','.']),('prisma-validate',['node','node_modules/prisma/build/index.js','validate']),('build',['cmd','/c','npm run build'])]: run(label,args)
 elif mode=='app':
- with (TEMP/'ambarcrm-citas-app.log').open('wb') as log:
-  app=subprocess.Popen(['node','--import','./prisma/scripts/meta-facebook-simulado.mjs','node_modules/next/dist/bin/next','start','-p','3118','-H','127.0.0.1'],cwd=WEB,env=ENV,stdout=log,stderr=subprocess.STDOUT)
-  (TEMP/'ambarcrm-citas-app-pid.txt').write_text(str(app.pid)); print('App PID',app.pid)
+ print('App PID',iniciar_app(),flush=True)
 elif mode=='pruebas':
  for f in sorted((WEB/'prisma/scripts').glob('test-*.ts'),key=lambda p:(p.name!='test-aislamiento.ts',p.name)):
   if f.name=='test-lealtad-aurum.ts': continue
+  if f.name.endswith('-e2e.ts'):
+   detener_app(); iniciar_app()
   run(f.name,['node',str(TSX),str(f)],extra={'NEXTAUTH_URL':'https://crm.prueba.test'} if f.name=='test-canales-messenger.ts' else None)
  for f in sorted((WEB/'scripts').glob('check-*.ts')): run(f.name,['node',str(TSX),str(f)])
