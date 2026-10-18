@@ -5,6 +5,8 @@ import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
 import { paginacionListado } from "@/lib/paginacion";
 import { crearCitaInterna, conErroresCita, incluirCita } from "@/lib/citas-servidor";
+import { errorTextoCita } from "@/lib/citas-reglas";
+import { configReservasEmpresa } from "@/lib/reservas/servidor";
 import { referenciaPropia } from "@/lib/referencias";
 
 export const dynamic = "force-dynamic";
@@ -15,28 +17,38 @@ export const GET = conModulo("citas", {}, conErroresCita(async (s, req: NextRequ
   const hasta = parametros.get("hasta")
     ? new Date(parametros.get("hasta")!)
     : new Date(desde.getTime() + 7 * 86400000);
-  if (Number.isNaN(+desde) || Number.isNaN(+hasta)) {
-    return NextResponse.json({ error: "rango de fechas inválido" }, { status: 400 });
+  if (![desde, hasta].every((f) => Number.isFinite(+f) && f.getUTCFullYear() >= 2000 && f.getUTCFullYear() <= 2100) || hasta <= desde || +hasta - +desde > 62 * 86400000) {
+    return NextResponse.json({ error: "El rango debe ser mayor que cero y de máximo 62 días, entre 2000 y 2100" }, { status: 400 });
   }
   const contactoTexto = parametros.get("contactoId");
   const contactoId = aBigInt(contactoTexto);
   if (contactoTexto && contactoId === null) {
     return NextResponse.json({ error: "contacto inválido" }, { status: 400 });
   }
+  const paginacion = paginacionListado(req);
   const citas = await db.cita.findMany({
     where: {
-      inicio: { gte: desde, lt: hasta },
+      inicio: { lt: hasta }, fin: { gt: desde },
       contactoId: contactoId ?? undefined,
     },
     include: incluirCita,
-    orderBy: { inicio: "asc" },
-    ...paginacionListado(req),
+    orderBy: [{ inicio: "asc" }, { id: "asc" }],
+    ...paginacion,
   });
-  return NextResponse.json(serializar({ citas }));
+  return NextResponse.json(serializar({ citas, siguienteCursor: citas.length === paginacion.take ? String(citas.at(-1)!.id) : null, zona: (await configReservasEmpresa()).zona }));
 }));
 
 export const POST = conModulo("citas", {}, conErroresCita(async (s, req: NextRequest) => {
-  const b = await req.json().catch(() => ({}));
+  const b = await req.json().catch(() => null);
+  if (!b || typeof b !== "object" || Array.isArray(b)) return NextResponse.json({ error: "Datos de cita inválidos" }, { status: 400 });
+  const error = errorTextoCita({ titulo: b.titulo, notas: b.notas ?? null });
+  if (error) return NextResponse.json({ error }, { status: 400 });
+  for (const campo of ["doctorId", "contactoId", "conversacionId", "responsableId"]) {
+    if (b[campo] != null && b[campo] !== "") {
+      const valor = aBigInt(String(b[campo]));
+      if (!valor || valor > 9223372036854775807n) return NextResponse.json({ error: `${campo} inválido` }, { status: 400 });
+    }
+  }
   const doctorId = b.doctorId ? aBigInt(String(b.doctorId)) : null;
   const inicio = new Date(b.inicio),
     fin = new Date(b.fin);
@@ -76,6 +88,9 @@ export const POST = conModulo("citas", {}, conErroresCita(async (s, req: NextReq
       { error: "conversación o responsable inexistente" },
       { status: 400 },
     );
+  }
+  if (conversacionId && !(await db.conversacion.findFirst({ where: { id: conversacionId, contactoId } }))) {
+    return NextResponse.json({ error: "La conversación no pertenece al contacto" }, { status: 400 });
   }
   const cita = await crearCitaInterna(s.orgId!, {
     contactoId, conversacionId, responsableId: responsableId ?? s.userId,

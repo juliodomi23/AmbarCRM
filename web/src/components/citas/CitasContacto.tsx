@@ -16,7 +16,7 @@ export function CitasContacto({
 
   useEffect(() => {
     const desde = new Date();
-    const hasta = new Date(desde.getTime() + 180 * 86_400_000);
+    const hasta = new Date(desde.getTime() + 62 * 86_400_000);
     void fetch(
       `/api/citas?contactoId=${contactoId}&desde=${desde.toISOString()}&hasta=${hasta.toISOString()}`,
     )

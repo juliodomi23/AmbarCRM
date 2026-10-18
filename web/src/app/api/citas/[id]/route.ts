@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { conModulo } from "@/lib/con-modulo";
 import { editarCita, conErroresCita } from "@/lib/citas-servidor";
+import { errorTextoCita } from "@/lib/citas-reglas";
 import { solicitarResena } from "@/lib/resenas-envio";
 
 const ESTADOS = [
@@ -15,7 +15,11 @@ const ESTADOS = [
 ] as const;
 
 export const PATCH = conModulo("citas", {}, conErroresCita(async (s, req: NextRequest, props: { params: Promise<{ id: string }> }) => {
-  const b = await req.json().catch(() => ({}));
+  const b = await req.json().catch(() => null);
+  if (!b || typeof b !== "object" || Array.isArray(b)) return NextResponse.json({ error: "Datos de cita inválidos" }, { status: 400 });
+  const error = errorTextoCita(b);
+  if (error) return NextResponse.json({ error }, { status: 400 });
+  if (["contactoId", "conversacionId", "responsableId"].some((campo) => campo in b)) return NextResponse.json({ error: "Esta edición solo admite título, notas, horario, especialista y estado" }, { status: 400 });
   const { id } = await props.params;
   const data: {
     titulo?: string;
@@ -26,7 +30,7 @@ export const PATCH = conModulo("citas", {}, conErroresCita(async (s, req: NextRe
     doctorId?: bigint | null;
   } = {};
   if ("titulo" in b) data.titulo = String(b.titulo).trim();
-  if ("notas" in b) data.notas = String(b.notas).trim() || null;
+  if ("notas" in b) data.notas = String(b.notas ?? "").trim() || null;
   if ("estado" in b) {
     if (!ESTADOS.includes(b.estado)) {
       return NextResponse.json({ error: "estado inválido" }, { status: 400 });
@@ -38,24 +42,16 @@ export const PATCH = conModulo("citas", {}, conErroresCita(async (s, req: NextRe
     if (b.doctorId && doctorId === null) {
       return NextResponse.json({ error: "doctor inválido" }, { status: 400 });
     }
-    if (doctorId) {
-      const doctor = await db.doctor.findFirst({ where: { id: doctorId, activo: true } });
-      if (!doctor) {
-        return NextResponse.json(
-          { error: "doctor inexistente o inactivo" },
-          { status: 400 },
-        );
-      }
-    }
+    if (doctorId !== null && (doctorId <= 0 || doctorId > 9223372036854775807n)) return NextResponse.json({ error: "Especialista inválido" }, { status: 400 });
     data.doctorId = doctorId;
   }
-  if (b.inicio) data.inicio = new Date(b.inicio);
-  if (b.fin) data.fin = new Date(b.fin);
+  if ("inicio" in b) data.inicio = new Date(typeof b.inicio === "string" ? b.inicio : "");
+  if ("fin" in b) data.fin = new Date(typeof b.fin === "string" ? b.fin : "");
   if ((data.inicio && Number.isNaN(+data.inicio)) || (data.fin && Number.isNaN(+data.fin))) {
     return NextResponse.json({ error: "fecha inválida" }, { status: 400 });
   }
   const citaId = aBigInt(id);
-  if (!citaId) return NextResponse.json({ error: "Cita inexistente" }, { status: 404 });
+  if (!citaId || citaId > 9223372036854775807n) return NextResponse.json({ error: "Cita inexistente" }, { status: 404 });
   const { cita, completada } = await editarCita(s.orgId!, citaId, data);
   if (completada) {
     await solicitarResena(s.orgId!, { evento: "cita", citaId, contactoId: cita.contactoId });
