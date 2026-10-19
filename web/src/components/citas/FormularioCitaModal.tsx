@@ -63,6 +63,7 @@ export function FormularioCitaModal({
     motivo = errorIntervaloCita(inicio, fin);
     if (!motivo && movida) motivo = errorFechaPasada(inicio, zona) ?? (especialista ? errorHorarioCita({ horarios: especialista.horarios ?? [], excepciones: especialista.excepciones ?? [] }, inicio, finDeCita(fin, servicio?.bufferMin ?? 0), zona) : null);
     if (!motivo && movida && servicio && +fin !== +finDeCita(inicio, servicio.duracionMin)) motivo = `El fin debe coincidir con los ${servicio.duracionMin} minutos del servicio`;
+    if (!motivo && movida && formulario.servicioId && !servicio) motivo = "El servicio de esta cita ya no está activo. Elige otro servicio para reprogramarla.";
   } catch { motivo = "Completa una fecha y hora válidas en la zona del negocio"; }
 
   function cambiarInicio(inicio: string) {
@@ -129,6 +130,7 @@ export function FormularioCitaModal({
             className="w-full rounded-lg border border-input px-3 py-2 text-sm"
           >
             <option value="">Selecciona un contacto…</option>
+            {citaOriginal && !contactos.some((contacto) => contacto.id === citaOriginal.contacto.id) && <option value={citaOriginal.contacto.id}>{citaOriginal.contacto.nombre}</option>}
             {contactos.map((contacto) => (
               <option key={contacto.id} value={contacto.id}>
                 {contacto.nombre}

@@ -5,19 +5,14 @@ import { serializar } from "@/lib/serialize";
 import { configReservasEmpresa } from "@/lib/reservas/servidor";
 import { CitasCliente } from "@/components/citas/CitasCliente";
 import { duracionCitas } from "@/lib/citas-duracion";
+import { aBigInt } from "@/lib/ids";
 export const dynamic = "force-dynamic";
-export default async function CitasPage() {
+export default async function CitasPage({ searchParams }: { searchParams: Promise<{ contactoId?: string | string[] }> }) {
   if (!(await moduloActivo("citas"))) redirect("/");
-  const [clientesActivo, pacientesActivo] = await Promise.all([
-    moduloActivo("clientes"),
-    moduloActivo("pacientes"),
-  ]);
+  const parametros = await searchParams;
+  const contactoId = typeof parametros.contactoId === "string" ? aBigInt(parametros.contactoId) : null;
   const [contactos, usuarios, doctores, servicios, moduloCitas] = await Promise.all([
     db.contacto.findMany({
-      where:
-        clientesActivo || pacientesActivo
-          ? { expediente: { isNot: null } }
-          : undefined,
       select: { id: true, nombre: true, expediente: { select: { id: true } } },
       orderBy: { nombre: "asc" },
       take: 500,
@@ -27,6 +22,10 @@ export default async function CitasPage() {
     db.servicioReserva.findMany({ where: { activo: true }, include: { doctores: { select: { doctorId: true } } }, orderBy: { nombre: "asc" } }),
     db.moduloOrg.findFirst({ where: { clave: "citas" }, select: { config: true } }),
   ]);
+  if (contactoId && contactoId <= 9223372036854775807n && !contactos.some((contacto) => contacto.id === contactoId)) {
+    const precargado = await db.contacto.findFirst({ where: { id: contactoId }, select: { id: true, nombre: true, expediente: { select: { id: true } } } });
+    if (precargado) contactos.push(precargado);
+  }
   return (
     <CitasCliente
       servicios={serializar(servicios)}

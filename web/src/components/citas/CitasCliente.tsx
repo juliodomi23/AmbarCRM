@@ -205,6 +205,7 @@ export function CitasCliente({
     color: string;
   }) {
     setGuardando(true);
+    try {
     const respuesta = await fetch("/api/doctores", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -213,15 +214,19 @@ export function CitasCliente({
     const payload = await respuesta.json().catch(() => null);
     setGuardando(false);
     if (!respuesta.ok) {
-      toast(mensajeError(payload, "No se pudo agregar el doctor"), "error");
-      return;
+      toast(mensajeError(payload, "No se pudo agregar el especialista"), "error");
+      return false;
     }
     setDoctores((actuales) => [...actuales, payload.doctor]);
-    toast("Doctor agregado");
+    toast("Especialista agregado");
+    return true;
+    } catch { toast("No se pudo agregar el especialista. Revisa tu conexión.", "error"); return false; }
+    finally { setGuardando(false); }
   }
 
   async function alternarDoctor(doctor: DoctorCita) {
     setGuardando(true);
+    try {
     const respuesta = await fetch(`/api/doctores/${doctor.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -230,12 +235,14 @@ export function CitasCliente({
     const payload = await respuesta.json().catch(() => null);
     setGuardando(false);
     if (!respuesta.ok) {
-      toast(mensajeError(payload, "No se pudo actualizar el doctor"), "error");
+      toast(mensajeError(payload, "No se pudo actualizar el especialista"), "error");
       return;
     }
     setDoctores((actuales) => actuales.map((actual) => actual.id === doctor.id ? { ...actual, activo: !actual.activo } : actual));
     if (payload.aviso) setAvisos([payload.aviso]);
     await cargar();
+    } catch { toast("No se pudo actualizar el especialista. Revisa tu conexión.", "error"); }
+    finally { setGuardando(false); }
   }
 
   function abrirEnHorario(fecha: string, minutos: number) {
@@ -276,7 +283,7 @@ export function CitasCliente({
         acciones={
           <>
             <Boton variante="ghost" onClick={() => setModalDoctores(true)}>
-              Doctores
+              Especialistas
             </Boton>
             <Boton onClick={() => {
               setFormulario({ contactoId: contactoInicial, conversacionId: params.get("conversacionId") ?? "", titulo: "Cita", notas: "", inicio: valorInicial(0, zona), fin: valorInicial(duracionMin, zona), responsableId: "", doctorId: filtroDoctor === "sin_asignar" ? "" : filtroDoctor, servicioId: "" });
@@ -360,7 +367,7 @@ export function CitasCliente({
         doctores={doctores}
         guardando={guardando}
         onClose={() => setModalDoctores(false)}
-        onCrear={(datos) => void crearDoctor(datos)}
+        onCrear={crearDoctor}
         onAlternar={(doctor) => void alternarDoctor(doctor)}
       />
     </div>

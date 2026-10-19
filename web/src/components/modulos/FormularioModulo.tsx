@@ -80,6 +80,7 @@ export function FormularioModulo({
 
   async function solicitar(metodo: "POST" | "PATCH" | "DELETE", cuerpo: Record<string, string> | null, exito: string) {
     setEnviando(true);
+    try {
     const res = await fetch(endpoint, {
       method: metodo,
       headers: { "Content-Type": "application/json" },
@@ -92,6 +93,8 @@ export function FormularioModulo({
     if (!edicion) setValores(valoresIniciales(campos));
     setAbierto(false);
     router.refresh();
+    } catch { toast("No se pudo completar. Revisa tu conexión e intenta de nuevo.", "error"); }
+    finally { setEnviando(false); }
   }
 
   async function borrar() {

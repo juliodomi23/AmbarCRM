@@ -17,7 +17,7 @@ export function DoctoresModal({
   doctores: DoctorCita[];
   guardando: boolean;
   onClose: () => void;
-  onCrear: (datos: { nombre: string; especialidad: string; cedula: string; color: string }) => void;
+  onCrear: (datos: { nombre: string; especialidad: string; cedula: string; color: string }) => Promise<boolean>;
   onAlternar: (doctor: DoctorCita) => void;
 }) {
   const [nombre, setNombre] = useState("");
@@ -27,7 +27,7 @@ export function DoctoresModal({
 
   useFocoModal(abierto);
   return (
-    <Modal abierto={abierto} onClose={onClose} titulo="Doctores">
+    <Modal abierto={abierto} onClose={onClose} titulo="Especialistas">
       <div className="max-h-[75vh] space-y-4 overflow-y-auto pr-1">
         <div className="space-y-2">
           {doctores.map((doctor) => (
@@ -58,21 +58,21 @@ export function DoctoresModal({
             </div>
           ))}
           {doctores.length === 0 && (
-            <p className="text-sm text-muted-foreground">Aún no hay doctores.</p>
+            <p className="text-sm text-muted-foreground">Aún no hay especialistas.</p>
           )}
         </div>
 
         <form
           className="space-y-3 border-t border-border pt-4"
-          onSubmit={(evento) => {
+          onSubmit={async (evento) => {
             evento.preventDefault();
-            onCrear({ nombre, especialidad, cedula, color });
+            if (!(await onCrear({ nombre, especialidad, cedula, color }))) return;
             setNombre("");
             setEspecialidad("");
             setCedula("");
           }}
         >
-          <h3 className="text-sm font-semibold">Agregar doctor</h3>
+          <h3 className="text-sm font-semibold">Agregar especialista</h3>
           <Campo label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required />
           <Campo
             label="Especialidad"

@@ -38,6 +38,7 @@ export function CitasConfig({
   const inicial = modulo.config ?? {};
   const [duracionMin, setDuracionMin] = useState(duracionCitas(inicial));
   const [guardandoDuracion, setGuardandoDuracion] = useState(false);
+  const [guardandoRecordatorios, setGuardandoRecordatorios] = useState(false);
 
   async function guardarDuracion() {
     if (!Number.isInteger(duracionMin) || duracionMin < 5 || duracionMin > 480) return toast("La duración debe ser de 5 a 480 minutos", "error");
@@ -67,30 +68,38 @@ export function CitasConfig({
   const cantidad = useMemo(() => totalVariables(plantilla), [plantilla]);
 
   useEffect(() => {
+    let vigente = true;
     setErrorPlantillas("");
-    if (!canalId) return setPlantillas([]);
+    setPlantillas([]);
+    if (!canalId) return;
     void fetch(`/api/meta/templates?canalId=${encodeURIComponent(canalId)}`)
       .then(async (res) => { if (!res.ok) throw new Error("No se pudieron cargar las plantillas aprobadas"); return res.json(); })
-      .then((data) =>
+      .then((data) => {
+        if (!vigente) return;
         setPlantillas(
           (data.plantillas ?? []).filter(
             (item: Plantilla) => item.status === "APPROVED",
           ),
-        ),
-      ).catch(() => setErrorPlantillas("No se pudieron cargar las plantillas aprobadas. Revisa el canal e intenta de nuevo."));
+        );
+      }).catch(() => { if (vigente) setErrorPlantillas("No se pudieron cargar las plantillas aprobadas. Revisa el canal e intenta de nuevo."); });
+    return () => { vigente = false; };
   }, [canalId]);
 
   useEffect(() => {
+    if (!plantilla) return;
     setMapeo((actual) =>
       Array.from(
         { length: cantidad },
         (_, i) => actual[i] ?? "nombre_contacto",
       ),
     );
-  }, [cantidad]);
+  }, [cantidad, plantilla]);
 
   async function guardar() {
     if (!plantilla) return toast("Selecciona una plantilla aprobada", "error");
+    if (!Number.isFinite(anticipacionHoras) || anticipacionHoras < 1 || anticipacionHoras > 168) return toast("La anticipación debe ser de 1 a 168 horas", "error");
+    setGuardandoRecordatorios(true);
+    try {
     const res = await fetch("/api/modulos", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -104,10 +113,13 @@ export function CitasConfig({
         },
       }),
     });
+    const datos = await res.json().catch(() => ({}));
     toast(
-      res.ok ? "Configuración de Citas guardada" : "No se pudo guardar",
+      res.ok ? "Configuración de Citas guardada" : datos.error ?? "No se pudo guardar",
       res.ok ? "ok" : "error",
     );
+    } catch { toast("No se pudieron guardar los recordatorios. Revisa tu conexión.", "error"); }
+    finally { setGuardandoRecordatorios(false); }
   }
 
   return (
@@ -182,7 +194,7 @@ export function CitasConfig({
           </select>
         </label>
       ))}
-      <Boton onClick={guardar}>Guardar recordatorios</Boton>
+      <Boton onClick={guardar} disabled={guardandoRecordatorios || !plantilla}>{guardandoRecordatorios ? "Guardando…" : "Guardar recordatorios"}</Boton>
     </div>
   );
 }

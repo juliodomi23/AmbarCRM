@@ -43,11 +43,12 @@ function EventoCalendario({ evento, dia, zona, horaInicio, onSeleccionar }: {
 }) {
   const { cita, inicio, fin, columna, columnas } = evento;
   const partes = partesEnZona(new Date(inicio), zona);
-  const desde = +fechaMexicoAUTC(dia, "00:00", zona);
-  const minutos = (inicio - desde) / 60_000;
+  const minutos = partes.hour * 60 + partes.minute;
+  const partesFin = partesEnZona(new Date(fin), zona);
+  const minutosFin = fin >= +fechaMexicoAUTC(sumarDias(dia, 1), "00:00", zona) ? 1440 : partesFin.hour * 60 + partesFin.minute;
   return <button type="button"
     className={`absolute z-10 overflow-hidden rounded-md border-l-4 px-1 py-1 text-left text-xs shadow-sm focus-visible:outline focus-visible:outline-2 ${estiloEstado(cita.estado)}`}
-    style={{ top: ((minutos - horaInicio * 60) / 60) * ALTURA_HORA, height: Math.max(18, ((fin - inicio) / 3_600_000) * ALTURA_HORA), left: `calc(${columna * 100 / columnas}% + 2px)`, width: `calc(${100 / columnas}% - 4px)`, borderLeftColor: cita.doctor?.color }}
+    style={{ top: ((minutos - horaInicio * 60) / 60) * ALTURA_HORA, height: Math.max(18, ((minutosFin - minutos) / 60) * ALTURA_HORA), left: `calc(${columna * 100 / columnas}% + 2px)`, width: `calc(${100 / columnas}% - 4px)`, borderLeftColor: cita.doctor?.color }}
     onClick={(e) => { e.stopPropagation(); onSeleccionar(cita); }}
     title={`${cita.titulo} · ${cita.contacto.nombre} · ${cita.doctor?.nombre ?? "Sin asignar"}`}>
       <span className="block truncate font-semibold">{cita.titulo}</span>
@@ -183,8 +184,9 @@ export function CalendarioSemanal({
   );
 
   const segmentos = dias.map((dia) => eventosDelDia(citas, dia, zona));
-  const horaInicio = Math.min(HORA_INICIO, ...segmentos.flat().map((e) => partesEnZona(new Date(e.inicio), zona).hour));
-  const horaFin = Math.max(HORA_FIN, ...segmentos.flat().map((e) => {
+  const jornadas = agenda ? dias.flatMap((dia) => ventanasCita({ horarios: agenda.horarios ?? [], excepciones: agenda.excepciones ?? [] }, dia)) : [];
+  const horaInicio = Math.min(HORA_INICIO, ...jornadas.map((v) => Math.floor(v.inicioMin / 60)), ...segmentos.flat().map((e) => partesEnZona(new Date(e.inicio), zona).hour));
+  const horaFin = Math.max(HORA_FIN, ...jornadas.map((v) => Math.ceil(v.finMin / 60)), ...segmentos.flat().map((e) => {
     const fin = partesEnZona(new Date(e.fin), zona);
     return fin.hour === 0 && fin.minute === 0 ? 24 : Math.ceil(fin.hour + fin.minute / 60);
   }));

@@ -12,6 +12,7 @@ const moneda = (n: number) => n.toLocaleString("es-MX", { style: "currency", cur
 
 /** Asistente público de reservas: servicio → especialista → día → hora → datos. */
 export function ReservaPublica({ slug }: { slug: string }) {
+  const avisoError = useRef<HTMLParagraphElement>(null);
   const cargaDias = useRef(0);
   const cargaHoras = useRef(0);
   const base = `/api/public/reservas/${encodeURIComponent(slug)}`;
@@ -29,6 +30,11 @@ export function ReservaPublica({ slug }: { slug: string }) {
   const [notas, setNotas] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [confirmada, setConfirmada] = useState<Confirmada | null>(null);
+
+  useEffect(() => {
+    if (!error) return;
+    avisoError.current?.focus();
+  }, [error]);
 
   useEffect(() => {
     void fetch(base).then(async (res) => {
@@ -60,10 +66,11 @@ export function ReservaPublica({ slug }: { slug: string }) {
     } catch (error) { if (turno === cargaDias.current) { setDias([]); setError(error instanceof Error ? error.message : "No se pudieron cargar los días"); } }
   }
 
-  async function cargarHorarios(dia: string) {
+  async function cargarHorarios(dia: string, conservarError = false) {
     if (!servicio || !doctor) return;
     const turno = ++cargaHoras.current;
-    setFecha(dia); setHorario(null); setHorarios(null); setError("");
+    setFecha(dia); setHorario(null); setHorarios(null);
+    if (!conservarError) setError("");
     try {
       const q = new URLSearchParams({ servicio: servicio.id, doctor, fecha: dia });
       const res = await fetch(`${base}/horarios?${q}`);
@@ -82,6 +89,8 @@ export function ReservaPublica({ slug }: { slug: string }) {
     const unico = s.doctores.length === 1 ? s.doctores[0].id : null;
     setDoctor(unico);
     setDias(null);
+    setSiguiente(null);
+    setError("");
     if (unico) void cargarDias(s.id, unico);
   }
 
@@ -93,6 +102,7 @@ export function ReservaPublica({ slug }: { slug: string }) {
     setHorarios(null);
     setHorario(null);
     setDias(null);
+    setSiguiente(null);
     void cargarDias(servicio.id, id);
   }
 
@@ -111,7 +121,7 @@ export function ReservaPublica({ slug }: { slug: string }) {
     setEnviando(false);
     if (res.ok) return setConfirmada(data);
     setError(data.error ?? "No se pudo agendar");
-    if (res.status === 409) void cargarHorarios(fecha);
+    if (res.status === 409) void cargarHorarios(fecha, true);
     } catch { setError("No se pudo confirmar. Revisa tu conexión antes de intentar de nuevo."); }
     finally { setEnviando(false); }
   }
@@ -141,7 +151,7 @@ export function ReservaPublica({ slug }: { slug: string }) {
 
   return (
     <Marco negocio={datos.negocio}>
-      {error && <p role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">{error}</p>}
+      {error && <p ref={avisoError} tabIndex={-1} role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">{error}</p>}
       <Paso numero={1} titulo="¿Qué servicio quieres?">
         {datos.servicios.length === 0 && <p className="text-sm text-muted-foreground">Por ahora no hay servicios para agendar.</p>}
         <div className="grid gap-2">

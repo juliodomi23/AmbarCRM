@@ -6,8 +6,8 @@ import { FormularioModulo, type CampoFormulario } from "@/components/modulos/For
 import { EnlacePublico } from "@/components/reservas/EnlacePublico";
 import { db } from "@/lib/db";
 import { moduloActivo } from "@/lib/modulos";
-import { hoyMexico, opcionesDe } from "@/lib/opciones-formularios";
-import { horaTexto } from "@/lib/reservas/horarios";
+import { opcionesDe } from "@/lib/opciones-formularios";
+import { fechaLocal, horaTexto } from "@/lib/reservas/horarios";
 import { configReservas } from "@/lib/reservas/servidor";
 import { getSesion } from "@/lib/session";
 
@@ -38,16 +38,17 @@ export default async function ReservasEnLineaPage() {
   if (!sesion?.user?.orgId) redirect("/login");
   if (!(await moduloActivo("reservas_en_linea"))) redirect("/");
   const esAdmin = sesion.user.rol === "admin";
-  const hoy = new Date(`${hoyMexico()}T00:00:00Z`);
-  const [org, modulo, doctores, servicios, horarios, excepciones] = await Promise.all([
+  const modulo = await db.moduloOrg.findFirst({ where: { clave: "reservas_en_linea" }, select: { config: true } });
+  const cfg = configReservas(modulo?.config);
+  const fechaHoy = fechaLocal(new Date(), cfg.zona);
+  const hoy = new Date(`${fechaHoy}T00:00:00Z`);
+  const [org, doctores, servicios, horarios, excepciones] = await Promise.all([
     db.org.findUnique({ where: { id: BigInt(sesion.user.orgId) }, select: { slug: true } }),
-    db.moduloOrg.findFirst({ where: { clave: "reservas_en_linea" }, select: { config: true } }),
     db.doctor.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
     db.servicioReserva.findMany({ include: { doctores: { include: { doctor: true } } }, orderBy: { nombre: "asc" } }),
     db.horarioDoctor.findMany({ include: { doctor: true }, orderBy: [{ diaSemana: "asc" }, { inicioMin: "asc" }] }),
     db.excepcionHorario.findMany({ where: { fecha: { gte: hoy } }, include: { doctor: true }, orderBy: { fecha: "asc" }, take: 100 }),
   ]);
-  const cfg = configReservas(modulo?.config);
   const enlace = `${(process.env.NEXTAUTH_URL ?? "").replace(/\/+$/, "")}/reservar/${org?.slug ?? ""}`;
   const opcionesDoctor = opcionesDe(doctores, (d) => d.nombre);
 
@@ -70,19 +71,20 @@ export default async function ReservasEnLineaPage() {
       <EnlacePublico url={enlace} />
       {doctores.length === 0 && (
         <p className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
-          Primero da de alta a tus especialistas en <Link href="/citas" className="font-medium underline">Citas → Doctores</Link> (el módulo Citas debe estar activo).
+          Primero da de alta a tus especialistas en <Link href="/citas" className="font-medium underline">Citas → Especialistas</Link> (el módulo Citas debe estar activo).
         </p>
       )}
 
-      <Seccion titulo="Ajustes" descripcion={`Anticipación ${cfg.anticipacionMin} min · hasta ${cfg.ventanaDias} días a futuro · horarios cada ${cfg.granularidadMin} min · máximo ${cfg.maxPorTelefono} citas por teléfono al día`}
+      <Seccion titulo="Ajustes" descripcion={`${cfg.zona} · anticipación ${cfg.anticipacionMin} min · hasta ${cfg.ventanaDias} días a futuro · horarios cada ${cfg.granularidadMin} min · máximo ${cfg.maxPorTelefono} citas por teléfono en 24 horas`}
         accion={esAdmin && (
           <FormularioModulo boton="Cambiar" titulo="Ajustes de reservas" endpoint="/api/reservas/ajustes" discreto
-            valores={{ anticipacionMin: String(cfg.anticipacionMin), ventanaDias: String(cfg.ventanaDias), granularidadMin: String(cfg.granularidadMin), maxPorTelefono: String(cfg.maxPorTelefono) }}
+            valores={{ zona: cfg.zona, anticipacionMin: String(cfg.anticipacionMin), ventanaDias: String(cfg.ventanaDias), granularidadMin: String(cfg.granularidadMin), maxPorTelefono: String(cfg.maxPorTelefono) }}
             campos={[
+              { nombre: "zona", etiqueta: "Zona horaria del negocio", tipo: "texto", requerido: true, ayuda: "Ejemplos: America/Mexico_City, America/Cancun o America/Tijuana. Cambiarla conserva el instante de las citas existentes." },
               { nombre: "anticipacionMin", etiqueta: "Anticipación mínima (minutos)", tipo: "numero", requerido: true },
               { nombre: "ventanaDias", etiqueta: "Días a futuro que se pueden agendar", tipo: "numero", requerido: true },
               { nombre: "granularidadMin", etiqueta: "Ofrecer horarios cada (minutos)", tipo: "numero", requerido: true },
-              { nombre: "maxPorTelefono", etiqueta: "Máximo de citas por teléfono al día", tipo: "numero", requerido: true },
+              { nombre: "maxPorTelefono", etiqueta: "Máximo de citas por teléfono en 24 horas", tipo: "numero", requerido: true },
             ]} />
         )}>
         <></>
@@ -135,7 +137,7 @@ export default async function ReservasEnLineaPage() {
         accion={esAdmin && doctores.length > 0 && (
           <FormularioModulo boton="+ Día especial" titulo="Día especial" endpoint="/api/reservas/excepciones" campos={[
             { nombre: "doctorId", etiqueta: "Especialista", tipo: "seleccion", requerido: true, opciones: opcionesDoctor },
-            { nombre: "fecha", etiqueta: "Fecha", tipo: "fecha", requerido: true, valorInicial: hoyMexico() },
+            { nombre: "fecha", etiqueta: "Fecha", tipo: "fecha", requerido: true, valorInicial: fechaHoy },
             { nombre: "inicio", etiqueta: "Desde (vacío = cerrado todo el día)", tipo: "hora" },
             { nombre: "fin", etiqueta: "Hasta", tipo: "hora" },
             { nombre: "motivo", etiqueta: "Motivo", tipo: "texto" },

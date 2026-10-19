@@ -53,7 +53,7 @@ export function DetalleCitaModal({
               ? `${cita.doctor.nombre}${cita.doctor.activo ? "" : " (inactivo; reasignar)"}${
                   cita.doctor.especialidad ? ` · ${cita.doctor.especialidad}` : ""
                 }`
-              : "Sin doctor asignado"}
+              : "Sin especialista asignado"}
           </p>
           {cita.notas && <p className="mt-2 whitespace-pre-wrap">{cita.notas}</p>}
         </div>
