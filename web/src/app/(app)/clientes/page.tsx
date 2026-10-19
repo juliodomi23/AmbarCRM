@@ -29,7 +29,7 @@ export default async function ClientesPage() {
       where: { expediente: { is: null } },
       select: { id: true, nombre: true, telefono: true, email: true },
       orderBy: { nombre: "asc" },
-      take: 500,
+      take: 30,
     }),
     moduloActivo("citas"),
   ]);

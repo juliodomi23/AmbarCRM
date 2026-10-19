@@ -100,6 +100,11 @@ ruta("PATCH", "/api/doctores/:id", ({ params, cuerpo }) => {
 for (const [ruta_, modulo, clave] of [["/api/pacientes", "pacientes", "pacientes"], ["/api/clientes", "clientes", "clientes"]] as const) {
   ruta("GET", ruta_, ({ url }) => {
     exigirModulo(modulo);
+    if (url.searchParams.get("sinFicha") === "1") {
+      const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
+      const contactos = almacen.datos.contactos.filter((c) => !c.esCliente && (!q || c.nombre.toLowerCase().includes(q) || c.telefono?.includes(q))).slice(0, 31);
+      return { contactos: contactos.slice(0, 30), hayMas: contactos.length > 30 };
+    }
     const id = url.searchParams.get("contactoId");
     return { [clave]: almacen.datos.contactos.filter((c) => c.esCliente && (!id || c.id === id)).map((c) => ({ id: c.id, contactoId: c.id })) };
   });
@@ -108,6 +113,7 @@ for (const [ruta_, modulo, clave] of [["/api/pacientes", "pacientes", "pacientes
     const d = almacen.datos;
     let c = cuerpo.contactoId ? contactoDe(d, String(cuerpo.contactoId)) : undefined;
     if (cuerpo.contactoId && !c) throw new ErrorApi(400, "contacto inexistente");
+    if (c?.esCliente) throw new ErrorApi(409, "Este contacto ya tiene ficha. Ábrela para consultar o editar sus datos.");
     if (!c) {
       const nombre = String(cuerpo.nombre ?? "").trim();
       if (!nombre) throw new ErrorApi(400, "El nombre es obligatorio");

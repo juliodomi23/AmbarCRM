@@ -1,5 +1,7 @@
 "use client";
 
+import { DatosPersonalesFicha } from "./DatosPersonalesFicha";
+import { SelectorContactoFicha } from "./SelectorContactoFicha";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -92,6 +94,7 @@ export function ClientesCliente({
   const router = useRouter();
   const [busqueda, setBusqueda] = useState("");
   const [modal, setModal] = useState(false);
+  const [usarContacto, setUsarContacto] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [formulario, setFormulario] = useState(FORMULARIO_INICIAL);
   const filtrados = useMemo(() => {
@@ -115,7 +118,9 @@ export function ClientesCliente({
 
   async function guardar(evento: React.FormEvent) {
     evento.preventDefault();
+    if (guardando) return;
     setGuardando(true);
+    try {
     const respuesta = await fetch(`/api/${modo}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -130,7 +135,10 @@ export function ClientesCliente({
     setModal(false);
     setFormulario(FORMULARIO_INICIAL);
     toast(modo === "pacientes" ? "Paciente creado" : "Cliente creado");
+    setUsarContacto(false);
     router.refresh();
+    } catch { toast("No se pudo guardar. Revisa tu conexión e intenta de nuevo.", "error"); }
+    finally { setGuardando(false); }
   }
 
   return (
@@ -139,7 +147,7 @@ export function ClientesCliente({
         titulo={modo === "pacientes" ? "Pacientes" : "Clientes"}
         descripcion={modo === "pacientes"
               ? "Personas con expediente clínico, alergias e historial de atención."
-              : "Personas con ficha de servicio, preferencias e historial de atención."}
+              : "Preferencias, sensibilidades e historial para preparar cada visita."}
         acciones={
           <>
             <Boton onClick={() => setModal(true)}>
@@ -154,8 +162,9 @@ export function ClientesCliente({
           type="search"
           value={busqueda}
           onChange={(evento) => setBusqueda(evento.target.value)}
+          aria-label="Buscar clientes por nombre, teléfono o correo"
           placeholder="Buscar por nombre, teléfono o correo…"
-          className="min-w-60 flex-1 rounded-lg border border-input bg-card px-3 py-2 text-sm"
+          className="min-w-0 w-full sm:w-auto sm:min-w-60 flex-1 rounded-lg border border-input bg-card px-3 py-2 text-sm"
         />
         <Resumen etiqueta={modo === "pacientes" ? "Pacientes" : "Clientes"} valor={clientes.length} />
         <Resumen etiqueta="Con alertas" valor={conAlertas} alerta={conAlertas > 0} />
@@ -176,7 +185,7 @@ export function ClientesCliente({
                   <div className="min-w-0 flex-1">
                     <Link
                       href={`/${modo}/${cliente.id}`}
-                      className="font-semibold text-foreground hover:text-primary"
+                      className="break-words font-semibold text-foreground hover:text-primary"
                     >
                       {cliente.nombre}
                     </Link>
@@ -194,7 +203,7 @@ export function ClientesCliente({
                 <div className="mt-3 rounded-lg bg-muted px-3 py-2 text-xs">
                   {siguiente ? (
                     <>
-                      <p className="font-medium">Próxima cita</p>
+                      <p className="font-medium">Próxima cita · {siguiente.titulo}</p>
                       <p className="text-muted-foreground">
                         {new Intl.DateTimeFormat("es-MX", {
                           dateStyle: "medium",
@@ -208,13 +217,13 @@ export function ClientesCliente({
                     <p className="text-muted-foreground">Sin próxima cita</p>
                   )}
                 </div>
-                <div className="mt-3 flex justify-end gap-3 text-sm font-medium">
+                <div className="mt-3 flex flex-wrap items-center justify-end gap-2 text-sm font-medium">
                   {citasActivo && (
-                    <Link href={`/citas?contactoId=${cliente.id}`} className="text-primary">
+                    <Link href={`/citas?contactoId=${cliente.id}`} className="inline-flex min-h-11 items-center rounded-lg bg-primary px-3 text-primary-foreground">
                       Agendar
                     </Link>
                   )}
-                  <Link href={`/${modo}/${cliente.id}`} className="text-primary">
+                  <Link href={`/${modo}/${cliente.id}`} className="inline-flex min-h-11 items-center px-2 text-primary">
                     {modo === "pacientes" ? "Ver expediente" : "Ver ficha"}
                   </Link>
                 </div>
@@ -243,25 +252,12 @@ export function ClientesCliente({
         titulo={`Nuevo ${modo === "pacientes" ? "paciente" : "cliente"}`}
       >
         <form onSubmit={guardar} className="space-y-3">
-          <label className="block space-y-1">
-            <span className="text-sm font-medium text-muted-foreground">
-              Convertir contacto existente
-            </span>
-            <select
-              value={formulario.contactoId}
-              onChange={(evento) => set("contactoId", evento.target.value)}
-              className="w-full rounded-lg border border-input px-3 py-2 text-sm"
-            >
-              <option value="">Crear como contacto nuevo</option>
-              {contactosDisponibles.map((contacto) => (
-                <option key={contacto.id} value={contacto.id}>
-                  {contacto.nombre}
-                  {contacto.telefono ? ` · +${contacto.telefono}` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-          {!formulario.contactoId && (
+          <div className="grid grid-cols-2 gap-2" aria-label="Origen del cliente">
+            <button type="button" disabled={guardando} aria-pressed={!usarContacto} className={`min-h-11 rounded-lg border px-3 text-sm ${!usarContacto ? "border-primary bg-primary/10 text-primary" : "border-input"}`} onClick={() => { setUsarContacto(false); set("contactoId", ""); }}>Persona nueva</button>
+            <button type="button" disabled={guardando} aria-pressed={usarContacto} className={`min-h-11 rounded-lg border px-3 text-sm ${usarContacto ? "border-primary bg-primary/10 text-primary" : "border-input"}`} onClick={() => setUsarContacto(true)}>Ya es contacto</button>
+          </div>
+          {usarContacto && <SelectorContactoFicha modo={modo} contactos={contactosDisponibles} value={formulario.contactoId} onChange={(id) => set("contactoId", id)} />}
+          {!usarContacto && (
             <>
               <Campo
                 label="Nombre"
@@ -269,9 +265,12 @@ export function ClientesCliente({
                 onChange={(evento) => set("nombre", evento.target.value)}
                 required
               />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <Campo
-                  label="Teléfono"
+                  label="WhatsApp o teléfono"
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="Ej. 961 123 4567"
                   value={formulario.telefono}
                   onChange={(evento) => set("telefono", evento.target.value)}
                 />
@@ -284,34 +283,24 @@ export function ClientesCliente({
               </div>
             </>
           )}
-          <div className="grid grid-cols-2 gap-3">
-            <Campo
-              label="Fecha de nacimiento"
-              type="date"
-              value={formulario.fechaNacimiento}
-              onChange={(evento) => set("fechaNacimiento", evento.target.value)}
-            />
-            <Campo
-              label="Sexo"
-              value={formulario.sexo}
-              onChange={(evento) => set("sexo", evento.target.value)}
-            />
-          </div>
           <Area
-            label="Alergias o sensibilidades"
+            label={modo === "pacientes" ? "Alergias" : "Alergias o sensibilidades"}
+            placeholder={modo === "pacientes" ? "" : "Ej. sensibilidad al adhesivo, al acrílico o a fragancias"}
             value={formulario.alergias}
             onChange={(valor) => set("alergias", valor)}
           />
           <Area
-            label="Preferencias y antecedentes"
+            label={modo === "pacientes" ? "Antecedentes clínicos" : "Preferencias de servicio"}
+            placeholder={modo === "pacientes" ? "" : "Ej. forma de uña, tonos favoritos, estilo de pestañas"}
             value={formulario.antecedentes}
             onChange={(valor) => set("antecedentes", valor)}
           />
+          <DatosPersonalesFicha clinica={modo === "pacientes"} fechaNacimiento={formulario.fechaNacimiento} sexo={formulario.sexo} onChange={set} />
           <div className="flex justify-end gap-2 pt-2">
             <Boton type="button" variante="ghost" onClick={() => setModal(false)}>
               Cancelar
             </Boton>
-            <Boton type="submit" disabled={guardando}>
+            <Boton type="submit" disabled={guardando || (usarContacto && !formulario.contactoId)}>
               {guardando
                 ? "Guardando…"
                 : `Crear ${modo === "pacientes" ? "paciente" : "cliente"}`}
@@ -350,9 +339,11 @@ function Area({
   label,
   value,
   onChange,
+  placeholder,
 }: {
   label: string;
   value: string;
+  placeholder?: string;
   onChange: (value: string) => void;
 }) {
   return (
@@ -360,6 +351,7 @@ function Area({
       <span className="text-sm font-medium text-muted-foreground">{label}</span>
       <textarea
         rows={2}
+        placeholder={placeholder}
         value={value}
         onChange={(evento) => onChange(evento.target.value)}
         className="w-full rounded-lg border border-input px-3 py-2 text-sm"

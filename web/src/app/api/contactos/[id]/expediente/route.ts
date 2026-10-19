@@ -6,6 +6,7 @@ import { moduloHabilitado, requireModuloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
 import { requireSesion } from "@/lib/session";
 import { conErrores } from "@/lib/errores-api";
+import { fechaNacimientoFicha } from "@/lib/fichas";
 
 const CAMPOS_TEXTO = [
   "sexo",
@@ -44,17 +45,17 @@ async function manejarPATCH(
   const { id } = await props.params;
   const acceso = await validarAcceso(id);
   if ("respuesta" in acceso) return acceso.respuesta;
-  const body = await req.json().catch(() => ({}));
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Datos de ficha inválidos" }, { status: 400 });
   const data: Record<string, string | Date | null> = {};
   for (const campo of CAMPOS_TEXTO) {
-    data[campo] = String(body[campo] ?? "").trim() || null;
+    if (campo in body) data[campo] = String(body[campo] ?? "").trim() || null;
   }
-  const fecha = String(body.fechaNacimiento ?? "");
-  const fechaNacimiento = fecha ? new Date(`${fecha}T00:00:00.000Z`) : null;
-  if (fechaNacimiento && Number.isNaN(fechaNacimiento.getTime())) {
+  const fechaNacimiento = fechaNacimientoFicha(body.fechaNacimiento);
+  if (fechaNacimiento === undefined) {
     return NextResponse.json({ error: "fecha de nacimiento inválida" }, { status: 400 });
   }
-  data.fechaNacimiento = fechaNacimiento;
+  if ("fechaNacimiento" in body) data.fechaNacimiento = fechaNacimiento;
   const expediente = await db.expedientePaciente.upsert({
     where: { contactoId: acceso.contactoId },
     create: { contactoId: acceso.contactoId, ...data },
@@ -70,25 +71,28 @@ async function manejarPOST(
   const { id } = await props.params;
   const acceso = await validarAcceso(id);
   if ("respuesta" in acceso) return acceso.respuesta;
-  const body = await req.json().catch(() => ({}));
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Datos de servicio inválidos" }, { status: 400 });
   const contenido = String(body.contenido ?? "").trim();
   if (!contenido) {
     return NextResponse.json({ error: "La evolución no puede estar vacía" }, { status: 400 });
   }
 
-  const doctorId = aBigInt(String(body.doctorId ?? ""));
+  let doctorId = aBigInt(String(body.doctorId ?? ""));
+  if (body.doctorId && !doctorId) return NextResponse.json({ error: "Especialista inválido" }, { status: 400 });
   if (doctorId && !(await db.doctor.findUnique({ where: { id: doctorId } }))) {
     return NextResponse.json({ error: "doctor inexistente" }, { status: 400 });
   }
   const citaId = aBigInt(String(body.citaId ?? ""));
+  if (body.citaId && !citaId) return NextResponse.json({ error: "Cita inválida" }, { status: 400 });
   const agenda = await accesoAgendaActual();
-  if (
-    citaId &&
-    !(await db.cita.findFirst({
+  if (citaId) {
+    const cita = await db.cita.findFirst({
       where: { id: citaId, contactoId: acceso.contactoId, ...agenda.where },
-    }))
-  ) {
-    return NextResponse.json({ error: "cita inexistente" }, { status: 400 });
+    });
+    if (!cita) return NextResponse.json({ error: "cita inexistente" }, { status: 400 });
+    if (doctorId && doctorId !== cita.doctorId) return NextResponse.json({ error: "La especialista debe coincidir con la cita relacionada" }, { status: 400 });
+    doctorId = cita.doctorId;
   }
 
   const expediente = await db.expedientePaciente.upsert({

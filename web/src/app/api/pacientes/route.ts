@@ -5,17 +5,13 @@ import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
+import { fechaNacimientoFicha, contactosSinFicha } from "@/lib/fichas";
+import { telefonoContacto } from "@/lib/reservas/telefono";
+import { transaccionTenant } from "@/lib/retail-db";
 import { paginacionListado } from "@/lib/paginacion";
 
 function texto(valor: unknown) {
   return String(valor ?? "").trim() || null;
-}
-
-function fechaNacimiento(valor: unknown) {
-  const fecha = texto(valor);
-  if (!fecha) return null;
-  const resultado = new Date(`${fecha}T00:00:00.000Z`);
-  return Number.isNaN(resultado.getTime()) ? undefined : resultado;
 }
 
 const incluirPaciente = (where: Prisma.CitaWhereInput) => ({
@@ -29,6 +25,11 @@ const incluirPaciente = (where: Prisma.CitaWhereInput) => ({
 } satisfies Prisma.ContactoInclude);
 
 export const GET = conModulo("pacientes", {}, async (sesion, req: NextRequest) => {
+  if (req.nextUrl.searchParams.get("sinFicha") === "1") {
+    const q = (req.nextUrl.searchParams.get("q") ?? "").trim();
+    if (q.length > 100) return NextResponse.json({ error: "La búsqueda admite hasta 100 caracteres" }, { status: 400 });
+    return NextResponse.json(serializar(await contactosSinFicha(q)));
+  }
   const acceso = await accesoAgenda(sesion);
   const contactoId = aBigInt(req.nextUrl.searchParams.get("contactoId"));
   const pacientes = await db.contacto.findMany({
@@ -42,8 +43,9 @@ export const GET = conModulo("pacientes", {}, async (sesion, req: NextRequest) =
 
 export const POST = conModulo("pacientes", {}, async (sesion, req: NextRequest) => {
   const acceso = await accesoAgenda(sesion);
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const fecha = fechaNacimiento(body.fechaNacimiento);
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Datos de ficha inválidos" }, { status: 400 });
+  const fecha = fechaNacimientoFicha(body.fechaNacimiento);
   if (fecha === undefined) {
     return NextResponse.json({ error: "Fecha de nacimiento inválida" }, { status: 400 });
   }
@@ -62,11 +64,8 @@ export const POST = conModulo("pacientes", {}, async (sesion, req: NextRequest) 
     if (!contacto) {
       return NextResponse.json({ error: "Contacto inexistente" }, { status: 404 });
     }
-    await db.expedientePaciente.upsert({
-      where: { contactoId },
-      create: { contactoId, ...expediente },
-      update: expediente,
-    });
+    if (await db.expedientePaciente.findUnique({ where: { contactoId }, select: { id: true } })) return NextResponse.json({ error: "Este contacto ya tiene ficha. Ábrela para consultar o editar sus datos." }, { status: 409 });
+    await db.expedientePaciente.create({ data: { contactoId, ...expediente } });
     const paciente = await db.contacto.findUnique({
       where: { id: contactoId },
       include: incluirPaciente(acceso.where),
@@ -77,23 +76,28 @@ export const POST = conModulo("pacientes", {}, async (sesion, req: NextRequest) 
   if (!nombre) {
     return NextResponse.json({ error: "El nombre es obligatorio" }, { status: 400 });
   }
-  const telefono = texto(body.telefono);
-  if (telefono && (await db.contacto.findFirst({ where: { telefono } }))) {
-    return NextResponse.json(
-      { error: "Ese teléfono ya existe; crea el expediente desde Contactos" },
-      { status: 409 },
-    );
-  }
-  const paciente = await db.contacto.create({
-    data: {
-      nombre,
-      telefono,
-      email: texto(body.email),
-      fuente: "manual",
-      responsableId: sesion.userId,
-      expediente: { create: expediente },
-    },
-    include: incluirPaciente(acceso.where),
+  const telefono = texto(body.telefono) ? telefonoContacto(body.telefono) : null;
+  if (texto(body.telefono) && !telefono) return NextResponse.json({ error: "Introduce un teléfono válido con lada" }, { status: 400 });
+  const resultado = await transaccionTenant(sesion.orgId!, async (tx) => {
+    if (telefono) {
+      await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(${`ficha:${sesion.orgId}:${telefono.ultimos10}`}, 0))`;
+      const [duplicado] = await tx.$queryRaw<{ existe: boolean }[]>`
+        SELECT EXISTS (SELECT 1 FROM contactos
+        WHERE right(regexp_replace(telefono, '[^0-9]', '', 'g'), 10) = ${telefono.ultimos10}) AS existe`;
+      if (duplicado.existe) return null;
+    }
+    return tx.contacto.create({
+      data: {
+        nombre,
+        telefono: telefono?.completo ?? null,
+        email: texto(body.email),
+        fuente: "manual",
+        responsableId: sesion.userId,
+        expediente: { create: expediente },
+      },
+      include: incluirPaciente(acceso.where),
+    });
   });
-  return NextResponse.json(serializar({ paciente }), { status: 201 });
+  if (!resultado) return NextResponse.json({ error: "Ese teléfono ya existe. Selecciona el contacto existente para crear su ficha." }, { status: 409 });
+  return NextResponse.json(serializar({ paciente: resultado }), { status: 201 });
 });

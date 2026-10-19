@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Boton, Campo } from "@/components/ui";
+import { DatosPersonalesFicha } from "@/components/clientes/DatosPersonalesFicha";
+import { Boton } from "@/components/ui";
 import { ZONA_CITAS } from "@/components/citas/fecha";
 import type { DoctorCita } from "@/components/citas/tipos";
 import { toast } from "@/components/Toaster";
@@ -82,6 +83,7 @@ export function ExpedienteCliente({
   const [doctorId, setDoctorId] = useState("");
   const [citaId, setCitaId] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [registrando, setRegistrando] = useState(false);
 
   function set(campo: keyof typeof formulario, valor: string) {
     setFormulario((actual) => ({ ...actual, [campo]: valor }));
@@ -89,7 +91,9 @@ export function ExpedienteCliente({
 
   async function guardar(evento: React.FormEvent) {
     evento.preventDefault();
+    if (guardando) return;
     setGuardando(true);
+    try {
     const respuesta = await fetch(`/api/contactos/${contacto.id}/expediente`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -102,25 +106,31 @@ export function ExpedienteCliente({
       return;
     }
     toast(esClinica ? "Expediente guardado" : "Ficha guardada");
+    } catch { toast("No se pudo guardar. Revisa tu conexión e intenta de nuevo.", "error"); }
+    finally { setGuardando(false); }
   }
 
   async function agregarEvolucion(evento: React.FormEvent) {
     evento.preventDefault();
-    setGuardando(true);
+    if (registrando) return;
+    setRegistrando(true);
+    try {
     const respuesta = await fetch(`/api/contactos/${contacto.id}/expediente`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contenido: nota, doctorId, citaId }),
     });
     const payload = await respuesta.json().catch(() => null);
-    setGuardando(false);
+    setRegistrando(false);
     if (!respuesta.ok) {
       toast(errorApi(payload, `No se pudo registrar ${esClinica ? "la evolución" : "el servicio"}`), "error");
       return;
     }
     setEvoluciones((actuales) => [payload.evolucion, ...actuales]);
-    setNota("");
-    toast(esClinica ? "Evolución registrada" : "Servicio registrado");
+    setNota(""); setCitaId(""); setDoctorId("");
+    toast(esClinica ? "Evolución registrada" : "Atención registrada");
+    } catch { toast("No se pudo registrar. Revisa tu conexión e intenta de nuevo.", "error"); }
+    finally { setRegistrando(false); }
   }
 
   return (
@@ -130,8 +140,8 @@ export function ExpedienteCliente({
           <Link href={`/${modo}`} className="text-sm text-primary hover:underline">
             ← {esClinica ? "Pacientes" : "Clientes"}
           </Link>
-          <h1 className="mt-1 text-2xl font-bold">
-            {esClinica ? "Expediente" : "Ficha"} de {contacto.nombre}
+          <h1 className="mt-1 break-words text-2xl font-bold">
+            {esClinica ? "Expediente" : "Ficha de servicio"} de {contacto.nombre}
           </h1>
           <p className="text-sm text-muted-foreground">
             {contacto.telefono ? `+${contacto.telefono}` : "Sin teléfono"}
@@ -141,7 +151,7 @@ export function ExpedienteCliente({
         {citasActivo && (
           <Link
             href={`/citas?contactoId=${contacto.id}`}
-            className="rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground"
+            className="inline-flex min-h-11 items-center rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground"
           >
             Nueva cita
           </Link>
@@ -155,6 +165,10 @@ export function ExpedienteCliente({
         </div>
       )}
 
+      {!soloBasico && formulario.alergias.trim() && !["no", "ninguna", "ninguno"].includes(formulario.alergias.trim().toLowerCase()) && <aside className="rounded-xl border border-warning/30 bg-warning/10 p-4">
+        <h2 className="text-sm font-semibold">{esClinica ? "Alergias a tener en cuenta" : "Antes de comenzar el servicio"}</h2>
+        <p className="mt-1 whitespace-pre-wrap break-words text-sm">{formulario.alergias}</p>
+      </aside>}
       {!soloBasico && (
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
         <form
@@ -162,29 +176,22 @@ export function ExpedienteCliente({
           className="space-y-4 surface p-5"
         >
           <h2 className="font-semibold">
-            {esClinica ? "Datos clínicos" : "Perfil del cliente"}
+            {esClinica ? "Datos clínicos" : "Preferencias y cuidados"}
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Campo
-              label="Fecha de nacimiento"
-              type="date"
-              value={formulario.fechaNacimiento}
-              onChange={(e) => set("fechaNacimiento", e.target.value)}
-            />
-            <Campo label="Sexo" value={formulario.sexo} onChange={(e) => set("sexo", e.target.value)} />
-          </div>
           <AreaTexto
             label={esClinica ? "Alergias" : "Alergias o sensibilidades"}
             value={formulario.alergias}
             onChange={(v) => set("alergias", v)}
           />
           <AreaTexto
-            label={esClinica ? "Antecedentes clínicos" : "Preferencias y antecedentes"}
+            label={esClinica ? "Antecedentes clínicos" : "Preferencias de servicio"}
+            placeholder={esClinica ? undefined : "Forma y tonos de uñas, largo o estilo de pestañas, presión del masaje…"}
             value={formulario.antecedentes}
             onChange={(v) => set("antecedentes", v)}
           />
           <AreaTexto
             label={esClinica ? "Medicamentos actuales" : "Productos o tratamientos a evitar"}
+            placeholder={esClinica ? undefined : "Productos que le han causado molestias o que prefiere evitar"}
             value={formulario.medicamentos}
             onChange={(v) => set("medicamentos", v)}
           />
@@ -193,9 +200,10 @@ export function ExpedienteCliente({
             value={formulario.observaciones}
             onChange={(v) => set("observaciones", v)}
           />
+          <DatosPersonalesFicha clinica={esClinica} fechaNacimiento={formulario.fechaNacimiento} sexo={formulario.sexo} onChange={set} />
           <div className="flex justify-end">
             <Boton type="submit" disabled={guardando}>
-              Guardar {esClinica ? "expediente" : "ficha"}
+              {guardando ? "Guardando…" : `Guardar ${esClinica ? "expediente" : "ficha"}`}
             </Boton>
           </div>
         </form>
@@ -206,10 +214,11 @@ export function ExpedienteCliente({
             className="space-y-3 surface p-5"
           >
             <h2 className="font-semibold">
-              {esClinica ? "Nueva evolución" : "Nuevo servicio"}
+              {esClinica ? "Nueva evolución" : "Registrar atención"}
             </h2>
             <AreaTexto
-              label={esClinica ? "Nota clínica" : "Notas del servicio"}
+              label={esClinica ? "Nota clínica" : "¿Qué se realizó en esta visita?"}
+              placeholder={esClinica ? undefined : "Ej. retoque de pestañas, técnica y productos utilizados, tono de gel y cuidados indicados"}
               value={nota}
               onChange={setNota}
               required
@@ -219,6 +228,7 @@ export function ExpedienteCliente({
                 label={esClinica ? "Doctor" : "Especialista"}
                 value={doctorId}
                 onChange={setDoctorId}
+                disabled={Boolean(citaId)}
                 opciones={doctores.map((doctor) => ({
                   valor: doctor.id,
                   etiqueta: doctor.nombre,
@@ -228,16 +238,16 @@ export function ExpedienteCliente({
                 <Selector
                   label="Cita relacionada"
                   value={citaId}
-                  onChange={setCitaId}
+                  onChange={(id) => { setCitaId(id); setDoctorId(citas.find((c) => c.id === id)?.doctor?.id ?? ""); }}
                   opciones={citas.map((cita) => ({
                     valor: cita.id,
-                    etiqueta: cita.titulo,
+                    etiqueta: `${new Intl.DateTimeFormat("es-MX", { dateStyle: "short", timeStyle: "short", timeZone: zona }).format(new Date(cita.inicio))} · ${cita.titulo}`,
                   }))}
                 />
               )}
             </div>
-            <Boton type="submit" disabled={guardando}>
-              Registrar {esClinica ? "evolución" : "servicio"}
+            <Boton type="submit" disabled={registrando || !nota.trim()}>
+              {registrando ? "Registrando…" : `Registrar ${esClinica ? "evolución" : "atención"}`}
             </Boton>
           </form>
 
@@ -277,17 +287,21 @@ function AreaTexto({
   value,
   onChange,
   required = false,
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
+  placeholder?: string;
 }) {
   return (
     <label className="block space-y-1">
       <span className="text-sm font-medium text-muted-foreground">{label}</span>
       <textarea
         rows={3}
+        maxLength={10000}
+        placeholder={placeholder}
         value={value}
         required={required}
         onChange={(evento) => onChange(evento.target.value)}
@@ -302,16 +316,19 @@ function Selector({
   value,
   opciones,
   onChange,
+  disabled,
 }: {
   label: string;
   value: string;
   opciones: { valor: string; etiqueta: string }[];
+  disabled?: boolean;
   onChange: (value: string) => void;
 }) {
   return (
     <label className="block space-y-1">
       <span className="text-sm font-medium text-muted-foreground">{label}</span>
       <select
+        disabled={disabled}
         value={value}
         onChange={(evento) => onChange(evento.target.value)}
         className="w-full rounded-lg border border-input px-3 py-2 text-sm"
