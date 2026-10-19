@@ -1,15 +1,12 @@
 export const ZONA_CITAS = "America/Mexico_City";
 
-/** Enlace público para ver/cancelar una cita (página /reservar/cita/[token]); null sin NEXTAUTH_URL. */
+/** Enlace público de gestión de la cita; null sin NEXTAUTH_URL. */
 export function enlacePublicoGestion(token: string) {
   const base = (process.env.NEXTAUTH_URL ?? "").replace(/\/+$/, "");
   return base ? `${base}/reservar/cita/${token}` : null;
 }
-export type VariableRecordatorio =
-  | "nombre_contacto"
-  | "fecha_hora"
-  | "titulo_cita"
-  | "nombre_negocio";
+export const VARIABLES_RECORDATORIO = ["nombre_contacto", "fecha_hora", "titulo_cita", "nombre_negocio", "enlace_gestion"] as const;
+export type VariableRecordatorio = (typeof VARIABLES_RECORDATORIO)[number];
 export function fechaHoraCita(date: Date, zona = ZONA_CITAS) {
   return new Intl.DateTimeFormat("es-MX", {
     dateStyle: "full",
@@ -47,6 +44,7 @@ export function valoresRecordatorio(
     titulo: string;
     nombreNegocio: string;
     zona?: string;
+    enlaceGestion?: string;
   },
 ) {
   const valores: Record<VariableRecordatorio, string> = {
@@ -54,6 +52,7 @@ export function valoresRecordatorio(
     fecha_hora: fechaHoraCita(datos.inicio, datos.zona),
     titulo_cita: datos.titulo,
     nombre_negocio: datos.nombreNegocio,
+    enlace_gestion: datos.enlaceGestion ?? "",
   };
   return mapeo.map((variable) => valores[variable]);
 }

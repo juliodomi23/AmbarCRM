@@ -32,6 +32,7 @@ export function detalleGestion({ cita, config, reprogramable }: CitaGestion) {
   return {
     servicio: cita.titulo, inicio: cita.inicio, fin: cita.fin, estado: cita.estado,
     especialista: cita.doctor?.nombre ?? null, zona: config.zona, reprogramable,
+    confirmable: cita.estado === "programada" && cita.inicio > new Date(),
   };
 }
 

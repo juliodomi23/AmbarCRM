@@ -25,6 +25,21 @@ function citaVista(d: Datos, c: any) {
   };
 }
 
+ruta("GET", "/api/citas/contactos", ({ url }) => {
+  exigirModulo("citas");
+  const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
+  const telefono = q.replace(/\D/g, "");
+  const contactos = almacen.datos.contactos.filter((c) => !q || c.nombre.toLowerCase().includes(q) || (telefono.length >= 3 && (c.telefono ?? "").includes(telefono)))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  return { contactos: contactos.slice(0, 30).map((c) => ({ id: c.id, nombre: c.nombre, telefono: c.telefono, expediente: c.esCliente ? { id: c.id } : null })), hayMas: contactos.length > 30 };
+});
+
+ruta("POST", "/api/citas/:id/enlace", ({ params }) => {
+  exigirModulo("citas");
+  if (!(almacen.datos.extra.citas ?? []).some((c) => c.id === params.id)) throw new ErrorApi(404, "Cita inexistente");
+  return { demostracion: true, mensaje: "En una cuenta activa puedes compartir el enlace personal del paciente. La demo no crea enlaces ni envía mensajes." };
+});
+
 ruta("GET", "/api/citas", ({ url }) => {
   exigirModulo("citas");
   const d = almacen.datos;

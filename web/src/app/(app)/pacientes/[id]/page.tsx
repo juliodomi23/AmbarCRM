@@ -1,3 +1,4 @@
+import { configReservasEmpresa } from "@/lib/reservas/servidor";
 import { notFound, redirect } from "next/navigation";
 import { ExpedienteCliente } from "@/components/contactos/ExpedienteCliente";
 import { accesoAgendaActual } from "@/lib/citas-acceso";
@@ -44,6 +45,7 @@ export default async function PacientePage({
   if (!contacto) notFound();
   return (
     <ExpedienteCliente
+      zona={(await configReservasEmpresa()).zona}
       contacto={serializar(contacto)}
       doctores={serializar(doctores)}
       citas={serializar(citas)}

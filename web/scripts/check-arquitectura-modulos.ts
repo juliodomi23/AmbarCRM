@@ -9,11 +9,11 @@ for (const ruta of rutas) {
   const contenido = await readFile(new URL(ruta.replaceAll("\\", "/"), raizApi), "utf8");
   if (contenido.includes("conModulo(")) rutasConModulo.push(ruta);
 }
-assert.equal(rutasConModulo.length, 97, "97 rutas de módulos con conModulo: 96 previas y búsqueda de contactos de citas");
+assert.equal(rutasConModulo.length, 98, "98 rutas de módulos con conModulo: 97 previas y enlace personal de citas");
 assert.equal(rutas.filter((r) => r.replaceAll("\\", "/").startsWith("webhooks-salientes/")).length, 3, "3 rutas de administración de webhooks con permiso admin");
 assert.equal(rutas.filter((r) => r.replaceAll("\\", "/").startsWith("automatizaciones/")).length, 4, "4 rutas de administración de automatizaciones con permiso admin");
 assert.equal(rutas.filter((r) => r.replaceAll("\\", "/").startsWith("instagram/")).length, 1, "una ruta de webhook de Instagram con firma");
-assert.equal(rutasConModulo.length + 3 + 4 + 1, 105, "97 rutas de módulos, 7 administrativas y el webhook de Instagram");
+assert.equal(rutasConModulo.length + 3 + 4 + 1, 106, "98 rutas de módulos, 7 administrativas y el webhook de Instagram");
 
 const detalleCitas = await readFile(new URL("citas/[id]/route.ts", raizApi), "utf8");
 assert.equal((detalleCitas.match(/export const (PATCH|DELETE) = conModulo\("citas"/g) ?? []).length, 2, "citas/[id] protege PATCH y DELETE");

@@ -11,6 +11,7 @@ import { referenciaPropia } from "@/lib/referencias";
 import { requireSesion } from "@/lib/session";
 import { conErrores } from "@/lib/errores-api";
 import { moduloVisibleEnOrg } from "@/lib/modulos-plataforma";
+import { VARIABLES_RECORDATORIO } from "@/lib/citas";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +77,9 @@ async function manejarPATCH(req: NextRequest) {
   // La conexión con Aurum (clave cifrada) solo se cambia desde /api/lealtad/conexion.
   if (clave === "citas" && Object.hasOwn(config, "duracionMin") && (!Number.isInteger(config.duracionMin) || config.duracionMin < 5 || config.duracionMin > 480)) {
     return NextResponse.json({ error: "La duración por defecto debe ser un entero entre 5 y 480 minutos" }, { status: 400 });
+  }
+  if (clave === "citas" && Object.hasOwn(config, "mapeoVariables") && (!Array.isArray(config.mapeoVariables) || config.mapeoVariables.length > 100 || config.mapeoVariables.some((v: unknown) => typeof v !== "string" || !VARIABLES_RECORDATORIO.some((permitida) => permitida === v)))) {
+    return NextResponse.json({ error: "Las variables del recordatorio no son válidas" }, { status: 400 });
   }
   delete (config as Record<string, unknown>).aurum;
   const puestos = normalizarPuestos(

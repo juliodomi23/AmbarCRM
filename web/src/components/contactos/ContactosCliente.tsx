@@ -408,7 +408,7 @@ export function ContactosCliente({
                   >
                     Editar
                   </button>
-                  {citasActivo && (!tipoFicha || c.esCliente) && (
+                  {citasActivo && (
                     <Link
                       href={`/citas?contactoId=${c.id}`}
                       className="mr-3 text-primary hover:underline"
@@ -512,7 +512,7 @@ export function ContactosCliente({
               >
                 Editar
               </button>
-              {citasActivo && (!tipoFicha || c.esCliente) && (
+              {citasActivo && (
                 <Link
                   href={`/citas?contactoId=${c.id}`}
                   className="font-medium text-primary"

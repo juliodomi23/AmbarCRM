@@ -42,13 +42,22 @@ export async function POST(req: NextRequest, { params }: Props) {
   if (limite) return limite;
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object" || Array.isArray(body)) return errorPublico("Datos de reserva inválidos", 400);
-  if (!["cancelar", "reprogramar"].includes(body.accion)) return errorPublico("Acción inválida", 400);
+  if (!["cancelar", "reprogramar", "confirmar"].includes(body.accion)) return errorPublico("Acción inválida", 400);
   const { token } = await params;
   const encontrada = await citaDelToken(token);
   if (!encontrada) return errorPublico("Cita no encontrada", 404);
   const { orgId, cita, config } = encontrada;
   if (!["programada", "confirmada"].includes(cita.estado)) return errorPublico("Esta cita ya no se puede modificar en línea", 409);
   if (cita.inicio <= new Date()) return errorPublico("La cita ya empezó; escríbele al negocio", 409);
+  if (body.accion === "confirmar") {
+    if (body.inicioOriginal !== cita.inicio.toISOString()) return errorPublico("La cita cambió; vuelve a consultar el enlace", 409);
+    const confirmada = await runWithOrg(orgId, () => db.cita.updateMany({
+      where: { id: cita.id, inicio: cita.inicio, estado: { in: ["programada", "confirmada"] }, AND: { inicio: { gt: new Date() } } },
+      data: { estado: "confirmada" },
+    }));
+    if (!confirmada.count) return errorPublico("La cita cambió; vuelve a consultar el enlace", 409);
+    return NextResponse.json({ ok: true, estado: "confirmada" });
+  }
   if (body.accion === "cancelar") {
     const cancelada = await runWithOrg(orgId, () => db.cita.updateMany({
       where: { id: cita.id, estado: { in: ["programada", "confirmada"] }, inicio: cita.inicio, AND: { inicio: { gt: new Date() } } },

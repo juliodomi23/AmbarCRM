@@ -50,6 +50,7 @@ export function ExpedienteCliente({
   citas,
   citasActivo,
   modo = "clientes",
+  zona = ZONA_CITAS,
   soloBasico = false,
 }: {
   contacto: {
@@ -62,6 +63,7 @@ export function ExpedienteCliente({
   doctores: DoctorCita[];
   citas: CitaExpediente[];
   citasActivo: boolean;
+  zona?: string;
   modo?: "clientes" | "pacientes";
   soloBasico?: boolean;
 }) {
@@ -250,7 +252,7 @@ export function ExpedienteCliente({
                   {new Intl.DateTimeFormat("es-MX", {
                     dateStyle: "medium",
                     timeStyle: "short",
-                    timeZone: ZONA_CITAS,
+                    timeZone: zona,
                   }).format(new Date(evolucion.createdAt))}
                   {evolucion.doctor ? ` · ${evolucion.doctor.nombre}` : ""}
                   {evolucion.cita ? ` · ${evolucion.cita.titulo}` : ""}

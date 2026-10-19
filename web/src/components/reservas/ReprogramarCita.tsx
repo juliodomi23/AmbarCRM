@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export type CitaGestionPublica = { servicio: string; inicio: string; estado: string; especialista: string | null; zona: string; reprogramable: boolean };
+export type CitaGestionPublica = { servicio: string; inicio: string; estado: string; especialista: string | null; zona: string; reprogramable: boolean; confirmable: boolean };
 
 export function ReprogramarCita({ ruta, cita, onActualizada, onClose, onRecargar }: {
   ruta: string;

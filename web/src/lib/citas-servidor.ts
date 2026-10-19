@@ -6,6 +6,7 @@ import { configReservas } from "@/lib/reservas/servidor";
 import { errorFechaPasada, errorHorarioCita } from "@/lib/citas-horarios";
 import { duracionCitas, finDeCita, finVisible } from "@/lib/citas-duracion";
 import { accesoAgenda, permiteEspecialista, type IdentidadAgenda } from "@/lib/citas-acceso";
+import { nuevoTokenCita } from "@/lib/citas-token";
 
 async function resolverDuracion(tx: Prisma.TransactionClient, datos: { inicio: Date; fin?: Date; doctorId: bigint | null; servicioId?: bigint | null }) {
   if (datos.servicioId) await tx.$queryRaw`SELECT id FROM servicios_reserva WHERE id = ${datos.servicioId} FOR SHARE`;
@@ -72,7 +73,7 @@ export async function crearCitaInterna(orgId: bigint, datos: DatosAgenda, bloque
       if (await hayEmpalme(tx, datos.doctorId, datos.inicio, finDeCita(fin, bufferMin))) throw new ErrorCita("El especialista ya tiene una cita en ese horario", 409);
     }
     await validarHorario(tx, { ...datos, fin: finDeCita(fin, bufferMin) });
-    return tx.cita.create({ data: { ...datos, fin }, include: incluirCita });
+    return tx.cita.create({ data: { ...datos, fin, tokenGestion: nuevoTokenCita() }, include: incluirCita });
   });
 }
 

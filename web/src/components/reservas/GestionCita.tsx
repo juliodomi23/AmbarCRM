@@ -20,7 +20,7 @@ export function GestionCita({ token }: { token: string }) {
       const data = await res.json().catch(() => ({}));
       if (abort.signal.aborted) return;
       if (res.ok) setCita(data);
-      else setError(data.error ?? "Cita no encontrada");
+      else { setCita(null); setError(data.error ?? "Cita no encontrada"); }
     }).catch(() => { if (!abort.signal.aborted) setError("No se pudo cargar la cita. Revisa tu conexión."); });
     return () => abort.abort();
   }, [ruta, revision]);
@@ -31,9 +31,22 @@ export function GestionCita({ token }: { token: string }) {
     const res = await fetch(ruta, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "cancelar" }) });
     const data = await res.json().catch(() => ({}));
     setConfirmar(false);
-    if (res.ok && cita) { setCita({ ...cita, estado: "cancelada", reprogramable: false }); setError(""); setMensaje("Tu cita quedó cancelada."); }
+    if (res.ok && cita) { setCita({ ...cita, estado: "cancelada", reprogramable: false, confirmable: false }); setError(""); setMensaje("Tu cita quedó cancelada."); }
     else setError(data.error ?? "No se pudo cancelar");
     } catch { setError("No se pudo cancelar. Revisa tu conexión e intenta de nuevo."); }
+    finally { setGuardando(false); }
+  }
+
+  async function confirmarAsistencia() {
+    if (!cita) return;
+    setGuardando(true); setError(""); setMensaje("");
+    try {
+      const res = await fetch(ruta, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "confirmar", inicioOriginal: cita.inicio }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "No se pudo confirmar la asistencia");
+      setCita({ ...cita, estado: "confirmada", confirmable: false });
+      setMensaje("Tu asistencia quedó confirmada. Te esperamos en el horario de tu cita.");
+    } catch (err) { setError(err instanceof Error ? err.message : "No se pudo confirmar. Revisa tu conexión."); }
     finally { setGuardando(false); }
   }
 
@@ -51,10 +64,12 @@ export function GestionCita({ token }: { token: string }) {
           </p>
           <p className="text-sm capitalize text-muted-foreground">Estado: {cita.estado.replaceAll("_", " ")}</p>
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          {error && <button type="button" disabled={guardando} onClick={() => { setError(""); setRevision((n) => n + 1); }} className="min-h-11 text-sm text-primary underline">Volver a consultar mi cita</button>}
           <div className="flex flex-wrap items-center justify-center gap-3">
-          {cita.reprogramable && !confirmar && !reprogramando && <button type="button" onClick={() => { setMensaje(""); setError(""); setReprogramando(true); }} className="min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">Cambiar fecha y hora</button>}
+          {cita.confirmable && !confirmar && !reprogramando && <button type="button" disabled={guardando} onClick={confirmarAsistencia} className="min-h-11 rounded-lg bg-success px-4 py-2 text-sm font-medium text-success-foreground">{guardando ? "Confirmando…" : "Confirmar mi asistencia"}</button>}
+          {cita.reprogramable && !confirmar && !reprogramando && <button type="button" disabled={guardando} onClick={() => { setMensaje(""); setError(""); setReprogramando(true); }} className="min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">Cambiar fecha y hora</button>}
           {cancelable && !confirmar && !reprogramando && (
-            <button type="button" onClick={() => setConfirmar(true)} className="min-h-11 px-3 text-sm font-medium text-destructive">Cancelar cita</button>
+            <button type="button" disabled={guardando} onClick={() => setConfirmar(true)} className="min-h-11 px-3 text-sm font-medium text-destructive">Cancelar cita</button>
           )}
           {cancelable && confirmar && (
             <div className="flex justify-center gap-3 text-sm">

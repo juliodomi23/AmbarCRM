@@ -64,7 +64,7 @@ function proximaCita(citas: CitaCliente[]) {
     .filter(
       (cita) =>
         new Date(cita.inicio) >= new Date() &&
-        !["cancelada", "no_asistio"].includes(cita.estado),
+        ["programada", "confirmada", "en_sala"].includes(cita.estado),
     )
     .sort((a, b) => +new Date(a.inicio) - +new Date(b.inicio))[0];
 }
@@ -81,10 +81,12 @@ export function ClientesCliente({
   contactosDisponibles,
   citasActivo,
   modo = "clientes",
+  zona = ZONA_CITAS,
 }: {
   clientes: Cliente[];
   contactosDisponibles: ContactoDisponible[];
   citasActivo: boolean;
+  zona?: string;
   modo?: "clientes" | "pacientes";
 }) {
   const router = useRouter();
@@ -197,7 +199,7 @@ export function ClientesCliente({
                         {new Intl.DateTimeFormat("es-MX", {
                           dateStyle: "medium",
                           timeStyle: "short",
-                          timeZone: ZONA_CITAS,
+                          timeZone: zona,
                         }).format(new Date(siguiente.inicio))}
                         {siguiente.doctor ? ` · ${siguiente.doctor.nombre}` : ""}
                       </p>

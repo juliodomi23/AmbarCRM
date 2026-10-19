@@ -18,6 +18,7 @@ const OPCIONES: { value: VariableRecordatorio; label: string }[] = [
   { value: "fecha_hora", label: "Fecha y hora de la cita" },
   { value: "titulo_cita", label: "Título de la cita" },
   { value: "nombre_negocio", label: "Nombre del negocio" },
+  { value: "enlace_gestion", label: "Enlace para confirmar, reprogramar o cancelar" },
 ];
 
 function totalVariables(plantilla?: Plantilla) {

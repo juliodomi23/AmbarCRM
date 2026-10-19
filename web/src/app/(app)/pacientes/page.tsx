@@ -1,3 +1,4 @@
+import { configReservasEmpresa } from "@/lib/reservas/servidor";
 import { redirect } from "next/navigation";
 import { ClientesCliente } from "@/components/clientes/ClientesCliente";
 import { accesoAgendaActual } from "@/lib/citas-acceso";
@@ -16,10 +17,10 @@ export default async function PacientesPage() {
       include: {
         expediente: true,
         citas: {
-          where: acceso.where,
+          where: { ...acceso.where, inicio: { gte: new Date() }, estado: { in: ["programada", "confirmada", "en_sala"] } },
           include: { doctor: true },
-          orderBy: { inicio: "desc" },
-          take: 10,
+          orderBy: { inicio: "asc" },
+          take: 1,
         },
       },
       orderBy: { nombre: "asc" },
@@ -34,6 +35,7 @@ export default async function PacientesPage() {
   ]);
   return (
     <ClientesCliente
+      zona={(await configReservasEmpresa()).zona}
       clientes={serializar(pacientes)}
       contactosDisponibles={serializar(contactosDisponibles)}
       citasActivo={citasActivo}

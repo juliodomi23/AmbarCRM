@@ -1,5 +1,6 @@
 "use client";
 import { useFocoModal } from "./useFocoModal";
+import { EnlaceCita } from "./EnlaceCita";
 
 import { puedeCambiarEstado } from "@/lib/citas-reglas";
 import Link from "next/link";
@@ -90,6 +91,7 @@ export function DetalleCitaModal({
           </button>
         </div>
 
+        <EnlaceCita key={cita.id} citaId={cita.id} />
         <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
           {cita.estado === "cancelada" && onEliminar && <Boton type="button" variante="ghost" disabled={guardando} onClick={onEliminar}>Eliminar</Boton>}
           {onEditar && <Boton type="button" onClick={onEditar}>Editar cita</Boton>}
