@@ -1,0 +1,23 @@
+[
+  {
+    "pantalla": "ficha-movil",
+    "ancho": 390,
+    "main": 380,
+    "viewport": 390
+  },
+  {
+    "pantalla": "ficha-escritorio",
+    "ancho": 1440,
+    "viewport": 1440
+  },
+  {
+    "pantalla": "buscar-contacto-movil",
+    "ancho": 390,
+    "viewport": 390
+  },
+  {
+    "pantalla": "reserva-movil",
+    "ancho": 380,
+    "viewport": 390
+  }
+]

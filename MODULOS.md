@@ -27,6 +27,13 @@ Un cliente puede crearse desde cero o a partir de un contacto existente. Con el
 módulo activo, Contactos muestra la acción **Crear ficha**. Citas también permite
 agendar contactos que todavía no tienen ficha.
 
+Para uñas, pestañas y spa se combinan **Clientes + Citas + Reservas en línea**.
+La ficha destaca sensibilidades y preferencias; **Registrar atención** conserva
+las notas de cada visita y su especialista. La conversión busca contactos sin ficha
+en el directorio completo y no sobrescribe una ficha existente. La reserva pública
+avanza por etapas y muestra un resumen editable con duración, precio y hora local.
+[Preparación, aceptación y límites del paquete](docs/piloto-belleza.md).
+
 ## Módulo Pacientes
 
 Pacientes usa `/pacientes` y el mismo contacto base, pero presenta la información

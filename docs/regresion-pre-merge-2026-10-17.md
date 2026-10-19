@@ -1749,3 +1749,14 @@ Prisma validate y compilación local con Webpack/fuentes simuladas aprobados.
 Verificados confirmación móvil y copia del enlace desde recepción en navegador.
 Sin mensajes externos ni producción. Entorno desechable retirado.
 [Informe](citas-entrega-2026-10-19.md) · [Resultados](pruebas-citas-entrega-2026-10-19/resumen-regresion.md).
+
+## Belleza y experiencia de reserva · 19 de octubre de 2026
+
+Ficha de servicio sin sobrescritura al repetir alta, teléfonos normalizados con
+protección concurrente, búsqueda de contactos sin ficha en todo el directorio y
+atención relacionada con la especialista de su cita. Reserva por etapas y ficha
+adaptada a uñas, pestañas y spa. Regresión de 57 scripts y 34 comprobaciones aprobada;
+TypeScript, lint de cambios, Prisma validate y build Webpack/fuentes simuladas aprobados.
+Verificación visual en móvil y escritorio. App, contenedor y volumen desechables
+retirados. Sin producción ni mensajes externos.
+[Informe](belleza-ui-ux-2026-10-19.md) · [Resultados](pruebas-belleza-2026-10-19/resumen-regresion.md).

@@ -1,0 +1,111 @@
+# Resultado final de la regresión de Belleza y Citas
+
+Regresión completa: 57 scripts de prueba y 34 comprobaciones aprobados.
+Postgres desechable, RLS con crm_app, datos sintéticos y proveedores externos bloqueados.
+Aurum real se excluye porque requiere un servicio externo de pruebas.
+
+Se muestra el último resultado de cada caso. Los intentos anteriores, incluidos fallos,
+se conservan en resultados.json y ejecuciones.txt. Build local con fuentes simuladas.
+
+| Prueba | Salida | Segundos |
+|---|---:|---:|
+| schema | 0 | 0.56 |
+| multi-tenant | 0 | 0.48 |
+| actualizaciones-1 | 0 | 1.59 |
+| actualizaciones-2 | 0 | 0.52 |
+| actualizaciones-3 | 0 | 0.65 |
+| prisma-validate | 0 | 3.53 |
+| tsc | 0 | 15.02 |
+| lint-cambios | 0 | 15.0 |
+| build-webpack | 0 | 88.8 |
+| test-a3-e2e.ts | 0 | 1.9 |
+| test-a3-fixes-e2e.ts | 0 | 1.75 |
+| test-a4-e2e.ts | 0 | 1.93 |
+| test-aislamiento.ts | 0 | 2.62 |
+| test-automatizaciones.ts | 0 | 7.16 |
+| test-belleza-e2e.ts | 0 | 2.08 |
+| test-bot-api.ts | 0 | 15.21 |
+| test-caja-a2-e2e.ts | 0 | 2.39 |
+| test-caja-dinero.ts | 0 | 1.77 |
+| test-caja-e2e.ts | 0 | 2.24 |
+| test-canales-api.ts | 0 | 1.5 |
+| test-canales-base.ts | 0 | 1.17 |
+| test-canales-e2e.ts | 0 | 1.63 |
+| test-canales-instagram.ts | 0 | 16.17 |
+| test-canales-messenger.ts | 0 | 2.9 |
+| test-citas-autoservicio-e2e.ts | 0 | 3.13 |
+| test-citas-e2e.ts | 0 | 6.48 |
+| test-citas-entrega-e2e.ts | 0 | 2.06 |
+| test-citas-horarios.ts | 0 | 2.95 |
+| test-citas-integral.ts | 0 | 2.48 |
+| test-citas-precarga-e2e.ts | 0 | 1.38 |
+| test-citas.ts | 0 | 4.41 |
+| test-cobros-cancelar-eliminar-e2e.ts | 0 | 2.89 |
+| test-cobros-db.ts | 0 | 1.48 |
+| test-cobros-e2e.ts | 0 | 2.86 |
+| test-concurrencia-caja-a2.ts | 0 | 1.42 |
+| test-concurrencia-caja.ts | 0 | 1.47 |
+| test-concurrencia-cobros.ts | 0 | 0.86 |
+| test-concurrencia-cotizaciones.ts | 0 | 1.06 |
+| test-concurrencia-nota-credito.ts | 0 | 1.2 |
+| test-concurrencia-pedidos.ts | 0 | 1.29 |
+| test-concurrencia-resenas.ts | 0 | 2.09 |
+| test-concurrencia-retail.ts | 0 | 6.25 |
+| test-concurrencia-sinred.ts | 0 | 1.64 |
+| test-concurrencia-varias-cajas.ts | 0 | 1.19 |
+| test-cotizaciones-e2e.ts | 0 | 1.97 |
+| test-cotizaciones-zona.ts | 0 | 1.29 |
+| test-cupos-concurrentes.ts | 0 | 1.05 |
+| test-messenger-desconexion.ts | 0 | 4.99 |
+| test-messenger-facebook-http.ts | 0 | 1.55 |
+| test-messenger-facebook-rutas.ts | 0 | 1.97 |
+| test-messenger-facebook.ts | 0 | 1.45 |
+| test-paridad-precios.ts | 0 | 4.26 |
+| test-pedidos-e2e.ts | 0 | 2.15 |
+| test-precios-promociones.ts | 0 | 1.95 |
+| test-referencias.ts | 0 | 0.77 |
+| test-reportes-cuadre.ts | 0 | 1.19 |
+| test-resenas-e2e.ts | 0 | 2.83 |
+| test-reservas-concurrentes.ts | 0 | 1.26 |
+| test-servidores-e2e.ts | 0 | 2.42 |
+| test-sinred-e2e.ts | 0 | 2.77 |
+| test-sql-inventario-negativo.ts | 0 | 0.63 |
+| test-total-cobrado-cliente.ts | 0 | 1.0 |
+| test-tours-dinero.ts | 0 | 0.83 |
+| test-vencimiento-pedidos.ts | 0 | 1.13 |
+| test-webhook-manual.ts | 0 | 1.34 |
+| test-webhooks-salientes.ts | 0 | 2.33 |
+| check-a3.ts | 0 | 0.51 |
+| check-arquitectura-modulos.ts | 0 | 0.83 |
+| check-audio-ogg.ts | 0 | 0.53 |
+| check-aurum-webhook.ts | 0 | 0.9 |
+| check-busqueda.ts | 0 | 0.53 |
+| check-caja-a2.ts | 0 | 0.97 |
+| check-caja-offline.ts | 0 | 0.69 |
+| check-caja-sinred.ts | 0 | 0.64 |
+| check-caja.ts | 0 | 0.59 |
+| check-campos-personalizados.ts | 0 | 0.52 |
+| check-canales-ui.ts | 0 | 1.22 |
+| check-cantidades-retail.ts | 0 | 0.61 |
+| check-citas.ts | 0 | 0.53 |
+| check-clientes-automotriz.ts | 0 | 0.54 |
+| check-contratos-cobros.ts | 0 | 0.65 |
+| check-cotizaciones.ts | 0 | 0.71 |
+| check-demo.ts | 0 | 0.93 |
+| check-instagram.ts | 0 | 0.97 |
+| check-lealtad.ts | 0 | 0.5 |
+| check-legal.ts | 0 | 0.6 |
+| check-pedidos-en-linea.ts | 0 | 0.59 |
+| check-permisos-modulos.ts | 0 | 0.54 |
+| check-plantilla-meta.ts | 0 | 0.53 |
+| check-precios.ts | 0 | 0.51 |
+| check-proxy.ts | 0 | 0.5 |
+| check-reportes-a4.ts | 0 | 0.52 |
+| check-resenas.ts | 0 | 0.56 |
+| check-reservas.ts | 0 | 0.55 |
+| check-retail.ts | 0 | 0.6 |
+| check-seeds-seguridad.ts | 0 | 0.52 |
+| check-seguridad.ts | 0 | 0.57 |
+| check-servidores.ts | 0 | 0.53 |
+| check-sw-push.ts | 0 | 1.06 |
+| check-viajes-academia.ts | 0 | 0.52 |
