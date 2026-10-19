@@ -49,10 +49,12 @@ de los permisos de Pacientes/Clientes. Usa contactos ficticios durante el ensayo
 | Fin de jornada | Probar duración más margen cerca del cierre | Solo se ofrece si ambos caben completos |
 | Cierre/horario especial | Consultar la fecha configurada | Prevalece la excepción sobre el horario semanal |
 | Conflicto | Dos clientes eligen el mismo horario | Solo uno reserva o reprograma; el otro recibe aviso y otras opciones |
+| Confirmación por cliente | Confirmar desde el enlace de una cita interna y una pública | Cambia a confirmada sin reabrir estados finales; rechaza un horario obsoleto |
 | Cambio por cliente | Cambiar fecha y hora desde su enlace | Mantiene servicio/doctor y reemplaza el horario solo al confirmar |
 | Cambio por recepción | Editar mientras el cliente tiene el enlace abierto | El cambio obsoleto se rechaza y el cliente vuelve a consultar |
 | Cancelación | Cancelar una cita futura | Libera el horario y conserva el estado en historial |
 | Llegada y cierre | Confirmada → en sala → completada; otra como no asistió | Respeta las transiciones y no reabre estados finales |
+| Paciente sin chat | Reservar con canal oficial fijo y plantilla configurada | Recibe el aviso y queda historial en la conversación del canal correcto |
 | Recordatorio real | Ejecutar cron con plantilla aprobada y teléfono autorizado | Llega con variables y hora correctas, una sola vez |
 | Recordatorio tras mover | Reprogramar una cita que tenía recordatorio | Reinicia el aviso para la hora nueva |
 

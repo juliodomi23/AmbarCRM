@@ -164,7 +164,8 @@ el recordatorio y sus intentos; conserva especialista y duración. Sin preferenc
 ordena por menor cantidad de citas ocupantes del día local y se desempata por nombre e id.
 El enlace `enlaceGestion` permite consultar, cancelar y reprogramar una cita futura,
 conservando servicio y especialista. La reprogramación vuelve a comprobar disponibilidad
-y reinicia el recordatorio. La confirmación de asistencia por token sigue fuera del alcance.
+y reinicia el recordatorio. El paciente también puede confirmar asistencia desde el enlace personal, con validación
+del horario que está viendo. No reabre estados finales.
 Los formatos de las respuestas del bot se conservan. El acceso restringido de un usuario
 a su agenda no cambia los permisos del bot.
 

@@ -358,7 +358,7 @@ origen "en línea". Requiere el módulo Citas (los especialistas son sus doctore
   por IP, tope de citas creadas por teléfono en 24 h serializado por empresa y teléfono,
   fechas solo dentro de la ventana. Dos altas simultáneas del mismo contacto reutilizan
   el registro ganador. Los servicios sin especialistas activos no se ofrecen al público.
-  El cliente consulta, reprograma o cancela con `/reservar/cita/<token>` (32 hex), sin cuenta y sin
+  El cliente consulta, confirma, reprograma o cancela con `/reservar/cita/<token>` (32 hex), sin cuenta y sin
   ver datos personales.
 - Los recordatorios por WhatsApp son los del módulo Citas (plantilla y anticipación).
 
@@ -381,8 +381,14 @@ El enlace público permite reprogramar citas futuras programadas/confirmadas con
 servicio y especialista disponibles. Conserva ambos, la duración y el margen; excluye
 su propia cita al consultar huecos y vuelve a validar bajo bloqueo al guardar.
 Reinicia los recordatorios, mantiene el token y rechaza una versión obsoleta.
-La confirmación pública de asistencia sigue fuera del producto; el bot sí confirma.
+El enlace también permite confirmar asistencia en citas programadas futuras, con
+control del horario original e idempotencia. No reabre citas canceladas o finalizadas.
 Prueba de sesiones reales: `test-citas-autoservicio-e2e.ts`.
+Recepción obtiene/copia el enlace personal desde el detalle de una cita, incluidas
+las internas antiguas; el servidor aplica el alcance de agenda. La variable de plantilla
+`enlace_gestion` incluye ese enlace. Con canal oficial fijo, los recordatorios crean o
+reutilizan la conversación correcta de un paciente nuevo; sin canal fijo requieren una
+conversación oficial existente. Sin URL pública no se envían enlaces vacíos ni se consumen intentos.
 [Guía para configurar y operar Citas](docs/guia-operacion-citas.md).
 
 ## Módulo Lealtad (Aurum)

@@ -1738,3 +1738,14 @@ tres veces y Prisma generate/validate aprobados. Tras el ajuste final de interfa
 repitieron TypeScript, lint, compilación local y ensayo HTTP de citas.
 Build con Webpack/fuentes simuladas, sin proveedores externos ni producción.
 [Informe](citas-autoservicio-2026-10-19.md) · [Resultados](pruebas-citas-autoservicio-2026-10-19/resumen-regresion.md).
+
+## Entrega de Citas para clínica · 19 de octubre de 2026
+
+Recordatorios para pacientes sin conversación previa con canal oficial fijo,
+enlaces personales para citas internas y confirmación pública de asistencia.
+Corregidos el próximo horario en Clientes/Pacientes y su zona horaria.
+Regresión de 56 scripts y 34 comprobaciones aprobada; TypeScript, lint,
+Prisma validate y compilación local con Webpack/fuentes simuladas aprobados.
+Verificados confirmación móvil y copia del enlace desde recepción en navegador.
+Sin mensajes externos ni producción. Entorno desechable retirado.
+[Informe](citas-entrega-2026-10-19.md) · [Resultados](pruebas-citas-entrega-2026-10-19/resumen-regresion.md).

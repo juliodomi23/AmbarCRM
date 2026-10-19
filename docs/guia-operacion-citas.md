@@ -70,8 +70,10 @@ el bot y las reservas públicas siempre requieren disponibilidad configurada.
 
 ## Qué puede hacer el cliente con su enlace
 
-Al reservar recibe un enlace personal para consultar su cita, **Cambiar fecha y hora** o cancelar.
-Debe guardarlo y evitar compartirlo: quien tenga el enlace puede gestionar esa cita.
+Al reservar recibe un enlace personal para consultar su cita, confirmar asistencia,
+**Cambiar fecha y hora** o cancelar. Para una cita creada por recepción, abre el detalle
+en Citas y pulsa **Obtener enlace**; puedes copiarlo y compartirlo con el paciente.
+El paciente debe guardarlo y evitar compartirlo: quien tenga el enlace puede gestionar esa cita.
 El enlace no muestra nombre ni teléfono del cliente.
 
 Para reprogramar, elige día y hora libres y pulsa **Confirmar cambio de horario**.
@@ -85,11 +87,21 @@ opciones para elegir otra. Si recepción modificó la cita mientras tanto, pulsa
 **Volver a consultar mi cita** antes de confirmar otro cambio. Ante un fallo de conexión,
 consulta el enlace para verificar si el cambio alcanzó a guardarse.
 
+Para confirmar, pulsa **Confirmar mi asistencia**. Si recepción cambió el horario,
+vuelve a consultar el enlace y confirma la fecha actual. Una cita cancelada o que ya
+empezó no se puede confirmar.
+
 ## Recordatorios de WhatsApp
 
 Un administrador configura en Configuración → Módulos → Citas el canal, la plantilla
 aprobada, la anticipación y el valor de cada variable. Guarda y verifica que el mapeo
 coincida con la plantilla: nombre del contacto, fecha/hora, servicio o negocio según corresponda.
+Puedes mapear **Enlace para confirmar, reprogramar o cancelar** a una variable del cuerpo
+de una plantilla aprobada que admita ese dato. No cambia automáticamente el texto de Meta.
+Con un canal oficial fijo, un paciente nuevo puede recibir el aviso aunque todavía no
+haya escrito: el sistema crea o reutiliza su conversación en ese canal. Sin canal fijo,
+necesita una conversación oficial activa. La dirección pública del CRM debe estar configurada
+para enviar el enlace; si falta, el aviso con enlace queda omitido sin consumir intentos.
 
 El responsable técnico debe programar `POST /api/cron/recordatorios-citas` autenticado
 con `x-api-key` y la clave del entorno. La clave nunca se entrega al cliente en un enlace público.
