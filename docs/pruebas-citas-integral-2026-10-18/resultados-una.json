@@ -1,0 +1,17 @@
+[
+  {
+    "prueba": "../docs/pruebas-citas-integral-2026-10-18/visual.mts",
+    "codigo": 0,
+    "segundos": 2.95
+  },
+  {
+    "prueba": "../docs/pruebas-citas-integral-2026-10-18/ocupar.mts",
+    "codigo": 0,
+    "segundos": 0.92
+  },
+  {
+    "prueba": "prisma/scripts/test-citas-integral.ts",
+    "codigo": 1,
+    "segundos": 9.54
+  }
+]

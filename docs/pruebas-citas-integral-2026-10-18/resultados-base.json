@@ -1,0 +1,77 @@
+[
+  {
+    "prueba": "regresion-actualizaciones-1",
+    "codigo": 0,
+    "segundos": 0.68
+  },
+  {
+    "prueba": "regresion-actualizaciones-2",
+    "codigo": 0,
+    "segundos": 0.77
+  },
+  {
+    "prueba": "regresion-actualizaciones-3",
+    "codigo": 0,
+    "segundos": 1.0
+  },
+  {
+    "prueba": "prisma-generate",
+    "codigo": 0,
+    "segundos": 9.49
+  },
+  {
+    "prueba": "tsc",
+    "codigo": 0,
+    "segundos": 20.97
+  },
+  {
+    "prueba": "lint",
+    "codigo": 0,
+    "segundos": 123.04
+  },
+  {
+    "prueba": "prisma-validate",
+    "codigo": 0,
+    "segundos": 1.6
+  },
+  {
+    "prueba": "build",
+    "codigo": 1,
+    "segundos": 5.49
+  },
+  {
+    "prueba": "regresion-actualizaciones-1",
+    "codigo": 0,
+    "segundos": 0.89
+  },
+  {
+    "prueba": "regresion-actualizaciones-2",
+    "codigo": 0,
+    "segundos": 0.94
+  },
+  {
+    "prueba": "regresion-actualizaciones-3",
+    "codigo": 0,
+    "segundos": 0.89
+  },
+  {
+    "prueba": "prisma-generate",
+    "codigo": 124,
+    "segundos": 8705.71
+  },
+  {
+    "prueba": "tsc",
+    "codigo": 0,
+    "segundos": 60.73
+  },
+  {
+    "prueba": "lint",
+    "codigo": 0,
+    "segundos": 107.64
+  },
+  {
+    "prueba": "prisma-validate",
+    "codigo": 0,
+    "segundos": 1.73
+  }
+]

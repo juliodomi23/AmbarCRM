@@ -1,0 +1,62 @@
+[
+  {
+    "prueba": "test-citas-integral.ts",
+    "codigo": 0,
+    "segundos": 14.52
+  },
+  {
+    "prueba": "test-citas-horarios.ts",
+    "codigo": 0,
+    "segundos": 4.89
+  },
+  {
+    "prueba": "test-citas.ts",
+    "codigo": 0,
+    "segundos": 6.64
+  },
+  {
+    "prueba": "test-reservas-concurrentes.ts",
+    "codigo": 0,
+    "segundos": 2.27
+  },
+  {
+    "prueba": "test-citas-integral.ts",
+    "codigo": 0,
+    "segundos": 5.0
+  },
+  {
+    "prueba": "test-citas-horarios.ts",
+    "codigo": 0,
+    "segundos": 4.88
+  },
+  {
+    "prueba": "test-citas.ts",
+    "codigo": 0,
+    "segundos": 7.61
+  },
+  {
+    "prueba": "test-reservas-concurrentes.ts",
+    "codigo": 0,
+    "segundos": 2.23
+  },
+  {
+    "prueba": "test-citas-integral.ts",
+    "codigo": 0,
+    "segundos": 9.64
+  },
+  {
+    "prueba": "test-citas-horarios.ts",
+    "codigo": 0,
+    "segundos": 4.16
+  },
+  {
+    "prueba": "test-citas.ts",
+    "codigo": 0,
+    "segundos": 6.07
+  },
+  {
+    "prueba": "test-reservas-concurrentes.ts",
+    "codigo": 0,
+    "segundos": 1.65
+  }
+]

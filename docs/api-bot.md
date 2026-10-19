@@ -165,6 +165,12 @@ ordena por menor cantidad de citas ocupantes del día local y se desempata por n
 El enlace `enlaceGestion` sigue permitiendo consulta/cancelación, sin confirmación ni
 reprogramación pública por token. Los formatos de las respuestas válidas se conservan.
 
+Revisión del 18-oct-2026: al mover desde el bot una cita creada en la agenda interna
+con servicio, la disponibilidad incluye su margen posterior y el fin visible conserva
+la duración original. Las citas originadas en bot/reservas ya incluyen ese margen en
+`fin`; no se suma dos veces. Confirmar y mover revalidan la jornada dentro de la
+transacción. Las horas locales inexistentes por cambio de horario responden 400.
+
 ## Cotizaciones
 
 Requieren el módulo **Cotizaciones** activo. Se crean para el contacto de la conversación, nunca para uno

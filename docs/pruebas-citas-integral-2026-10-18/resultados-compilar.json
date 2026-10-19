@@ -1,0 +1,27 @@
+[
+  {
+    "prueba": "build-next",
+    "codigo": 4294967295,
+    "segundos": 129.6
+  },
+  {
+    "prueba": "build-webpack",
+    "codigo": 1,
+    "segundos": 70.33
+  },
+  {
+    "prueba": "build-webpack",
+    "codigo": 0,
+    "segundos": 147.11
+  },
+  {
+    "prueba": "build-webpack",
+    "codigo": 0,
+    "segundos": 97.96
+  },
+  {
+    "prueba": "build-webpack",
+    "codigo": 0,
+    "segundos": 94.66
+  }
+]

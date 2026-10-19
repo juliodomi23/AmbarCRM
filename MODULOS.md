@@ -280,6 +280,14 @@ La semana se carga por páginas de hasta 200, sin truncar agendas grandes. `GET 
 admite un rango máximo de 62 días y devuelve `siguienteCursor`. El panel del contacto
 conserva sus 180 días consultando tres rangos de 60.
 
+La agenda admite contactos sin expediente, aunque Clientes o Pacientes esté activo.
+Desde ficha o conversación incluye el contacto precargado aunque quede fuera de las
+primeras 500 opciones. El catálogo y los estados vacíos usan «Especialistas» como
+etiqueta común; especialidad y cédula siguen siendo opcionales.
+Al seleccionar un especialista, el rango visible también incluye sus jornadas anteriores
+a las 8 o posteriores a las 20. La posición de las citas usa la hora local incluso al
+cambiar el horario de verano.
+
 Crear o editar con especialista comparte `FOR UPDATE` y revisión de empalmes con el
 bot y reservas públicas (choque: 409). Sin especialista se permite coincidir. Con al menos
 una regla semanal, la cita completa y su margen deben caber en una sola ventana efectiva;
@@ -350,8 +358,20 @@ origen "en línea". Requiere el módulo Citas (los especialistas son sus doctore
   ver datos personales.
 - Los recordatorios por WhatsApp son los del módulo Citas (plantilla y anticipación).
 
+La zona IANA se edita en los ajustes de reservas; agenda, días especiales, reservas y
+recordatorios usan esa zona. Cambiarla conserva los instantes de las citas existentes.
+Los horarios semanales y días especiales se guardan bajo bloqueo del especialista:
+no admiten superposición ni mezclar un cierre con una apertura en la misma fecha.
+En datos antiguos contradictorios prevalece el cierre. Confirmar vuelve a validar
+jornada, servicio, relación con el especialista y disponibilidad bajo el mismo bloqueo.
+
+Una vez que un servicio tiene citas, su duración y margen no se cambian: crea otro
+servicio y desactiva el anterior si corresponde. Nombre, precio y visibilidad siguen
+editables. Esto conserva los horarios ya vendidos sin migrar el esquema.
+
 Pruebas: `prisma/scripts/test-reservas-concurrentes.ts` (conservada sin cambios),
-`test-citas.ts` y `test-citas-e2e.ts`. La regresión las descubre por `test-*.ts` en
+`test-citas.ts`, `test-citas-horarios.ts`, `test-citas-integral.ts`, `test-citas-precarga-e2e.ts`
+y `test-citas-e2e.ts`. La regresión las descubre por `test-*.ts` en
 `docs/pruebas-citas-2026-10-17/ejecutar-regresion.py`.
 El enlace público permite consultar/cancelar; confirmar y reprogramar por token siguen
 fuera del producto actual. El bot sí confirma, cancela y reprograma dentro de sus reglas.

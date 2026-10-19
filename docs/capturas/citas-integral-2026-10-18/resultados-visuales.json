@@ -1,0 +1,31 @@
+{
+  "resoluciones": [
+    "1440x1000",
+    "390x844"
+  ],
+  "jornadaExtendida": [
+    "06:00",
+    "22:00"
+  ],
+  "contactoSinExpedienteVisible": true,
+  "servicio": {
+    "duracionMin": 30,
+    "bufferMin": 15,
+    "finVisible": "06:30"
+  },
+  "conflicto": {
+    "mensaje": "Ese horario ya no está disponible, elige otro",
+    "foco": "alert",
+    "scrollY": 0,
+    "horarioRetirado": true
+  },
+  "marca": "Clínica · revisión integral local",
+  "reserva": "2026-10-19 07:30 America/Tijuana",
+  "gestion": "cancelada",
+  "mapeoPersistido": [
+    "nombre_contacto",
+    "titulo_cita",
+    "fecha_hora",
+    "nombre_negocio"
+  ]
+}

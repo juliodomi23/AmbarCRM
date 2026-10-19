@@ -1,0 +1,42 @@
+[
+  {
+    "prueba": "schema",
+    "codigo": 0,
+    "segundos": 0.7
+  },
+  {
+    "prueba": "multi-tenant",
+    "codigo": 0,
+    "segundos": 0.6
+  },
+  {
+    "prueba": "actualizaciones-1",
+    "codigo": 0,
+    "segundos": 2.33
+  },
+  {
+    "prueba": "actualizaciones-2",
+    "codigo": 0,
+    "segundos": 0.72
+  },
+  {
+    "prueba": "actualizaciones-3",
+    "codigo": 0,
+    "segundos": 0.83
+  },
+  {
+    "prueba": "rol-prueba",
+    "codigo": 0,
+    "segundos": 0.36
+  },
+  {
+    "prueba": "fixture-plataforma",
+    "codigo": 0,
+    "segundos": 0.38
+  },
+  {
+    "prueba": "fixture-ar",
+    "codigo": 0,
+    "segundos": 1.7
+  }
+]
