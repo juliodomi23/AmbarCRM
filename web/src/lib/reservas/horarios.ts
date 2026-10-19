@@ -67,9 +67,11 @@ export function horaTexto(minutos: number) {
 /** Horario efectivo de un día: si hay excepciones mandan (sin horas = cerrado); si no, la regla semanal. */
 export function ventanasDelDia(reglas: Ventana[], excepciones: Excepcion[]): Ventana[] {
   if (excepciones.length > 0) {
+    if (excepciones.some((e) => e.inicioMin === null || e.finMin === null)) return [];
     return excepciones
       .filter((e): e is Ventana => e.inicioMin !== null && e.finMin !== null)
-      .map(({ inicioMin, finMin }) => ({ inicioMin, finMin }));
+      .map(({ inicioMin, finMin }) => ({ inicioMin, finMin }))
+      .sort((a, b) => a.inicioMin - b.inicioMin);
   }
   return [...reglas].sort((a, b) => a.inicioMin - b.inicioMin);
 }
@@ -92,11 +94,16 @@ export function calcularHorarios(entrada: {
   const total = (entrada.duracionMin + entrada.bufferMin) * 60_000;
   const paso = Math.max(5, entrada.granularidadMin) * 60_000;
   const libres = new Set<string>();
+  const formatoLocal = new Intl.DateTimeFormat("en-CA", { timeZone: entrada.zona, year: "numeric", month: "2-digit", day: "2-digit", hourCycle: "h23", hour: "2-digit", minute: "2-digit" });
 
   for (const ventana of entrada.ventanas) {
     const inicio = instanteLocal(entrada.fecha, ventana.inicioMin, entrada.zona).getTime();
     const fin = instanteLocal(entrada.fecha, ventana.finMin, entrada.zona).getTime();
     for (let s = inicio; s + total <= fin; s += paso) {
+      const partes = formatoLocal.formatToParts(new Date(s));
+      const valor = (tipo: string) => partes.find((p) => p.type === tipo)!.value;
+      const minutoLocal = Number(valor("hour")) * 60 + Number(valor("minute"));
+      if (`${valor("year")}-${valor("month")}-${valor("day")}` !== entrada.fecha || minutoLocal < ventana.inicioMin || minutoLocal >= ventana.finMin) continue;
       if (s < temprano) continue;
       const e = s + total;
       if (ocupados.some(([a, b]) => a < e && s < b)) continue;

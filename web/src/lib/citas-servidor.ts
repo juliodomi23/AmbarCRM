@@ -7,6 +7,7 @@ import { errorFechaPasada, errorHorarioCita } from "@/lib/citas-horarios";
 import { duracionCitas, finDeCita, finVisible } from "@/lib/citas-duracion";
 
 async function resolverDuracion(tx: Prisma.TransactionClient, datos: { inicio: Date; fin?: Date; doctorId: bigint | null; servicioId?: bigint | null }) {
+  if (datos.servicioId) await tx.$queryRaw`SELECT id FROM servicios_reserva WHERE id = ${datos.servicioId} FOR SHARE`;
   const servicio = datos.servicioId ? await tx.servicioReserva.findFirst({ where: { id: datos.servicioId, activo: true } }) : null;
   if (datos.servicioId && !servicio) throw new ErrorCita("Servicio inexistente o inactivo");
   if (servicio && datos.doctorId !== null && !(await tx.servicioReservaDoctor.findFirst({ where: { servicioId: servicio.id, doctorId: datos.doctorId } }))) {
@@ -60,13 +61,13 @@ type DatosAgenda = {
 
 export async function crearCitaInterna(orgId: bigint, datos: DatosAgenda, bloquear = true) {
   return transaccionTenant(orgId, async (tx) => {
+    const doctores = datos.doctorId !== null ? await bloquearAgenda(tx, [datos.doctorId], bloquear) : [];
+    if (datos.doctorId !== null && !doctores[0]?.activo) throw new ErrorCita("Especialista inexistente o inactivo");
     const { fin, bufferMin } = await resolverDuracion(tx, datos);
     const error = errorIntervaloCita(datos.inicio, fin);
     if (error) throw new ErrorCita(error);
     if (datos.doctorId !== null) {
-      const [doctor] = await bloquearAgenda(tx, [datos.doctorId], bloquear);
-      if (!doctor?.activo) throw new ErrorCita("Especialista inexistente o inactivo");
-      if (await hayEmpalme(tx, doctor.id, datos.inicio, finDeCita(fin, bufferMin))) throw new ErrorCita("El especialista ya tiene una cita en ese horario", 409);
+      if (await hayEmpalme(tx, datos.doctorId, datos.inicio, finDeCita(fin, bufferMin))) throw new ErrorCita("El especialista ya tiene una cita en ese horario", 409);
     }
     await validarHorario(tx, { ...datos, fin: finDeCita(fin, bufferMin) });
     return tx.cita.create({ data: { ...datos, fin }, include: incluirCita });
@@ -93,6 +94,8 @@ export async function editarCita(orgId: bigint, id: bigint, datos: CambiosCita) 
     await tx.$queryRaw`SELECT id FROM citas WHERE id = ${id} FOR UPDATE`;
     const actual = await tx.cita.findFirst({ where: { id }, include: { servicio: { select: { bufferMin: true } } } });
     if (!actual) throw new ErrorCita("Cita inexistente", 404);
+    const ids = [actual.doctorId, "doctorId" in datos ? datos.doctorId : actual.doctorId].filter((valor): valor is bigint => valor != null);
+    const doctores = await bloquearAgenda(tx, ids);
     let bufferMin = 0;
     if (datos.inicio || datos.fin || "servicioId" in datos || "doctorId" in datos) {
       const inicio = datos.inicio ?? actual.inicio;
@@ -110,8 +113,6 @@ export async function editarCita(orgId: bigint, id: bigint, datos: CambiosCita) 
     if (movida && !["programada", "confirmada"].includes(actual.estado)) throw new ErrorCita("Solo se pueden reprogramar citas programadas o confirmadas", 409);
     const error = errorIntervaloCita(siguiente.inicio, siguiente.fin);
     if (error) throw new ErrorCita(error);
-    const ids = [actual.doctorId, siguiente.doctorId].filter((valor): valor is bigint => valor !== null);
-    const doctores = await bloquearAgenda(tx, ids);
     if (movida && siguiente.doctorId !== null && !doctores.find((d) => d.id === siguiente.doctorId)?.activo) throw new ErrorCita("Reasigna la cita a un especialista activo");
     const ocupacion = { ...siguiente, fin: finDeCita(siguiente.fin, bufferMin) };
     if (movida || siguiente.servicioId !== actual.servicioId) await validarHorario(tx, ocupacion);

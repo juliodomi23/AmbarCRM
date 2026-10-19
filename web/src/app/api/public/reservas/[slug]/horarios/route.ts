@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const q = req.nextUrl.searchParams;
   const servicioId = aBigInt(q.get("servicio"));
   const doctor = q.get("doctor") ?? SIN_PREFERENCIA;
-  if (!servicioId) return errorPublico("Servicio inválido", 400);
+  if (!servicioId || servicioId > 9223372036854775807n) return errorPublico("Servicio inválido", 400);
 
   return runWithOrg(negocio.orgId, async () => {
     const servicio = await db.servicioReserva.findFirst({ where: { id: servicioId, activo: true } });

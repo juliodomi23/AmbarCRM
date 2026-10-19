@@ -19,6 +19,7 @@ import {
 import { editarCita, conErroresCita } from "@/lib/citas-servidor";
 import { enlacePublicoGestion } from "@/lib/citas";
 import { fechaLocal } from "@/lib/reservas/horarios";
+import { finOcupado } from "@/lib/citas-duracion";
 
 const ESTADOS_BOT = ["confirmada", "cancelada"] as const;
 type Props = { params: Promise<{ accountId: string; conversationId: string }> };
@@ -55,9 +56,10 @@ async function manejarPOST(req: NextRequest, props: Props) {
     const { conv: conversacion, bot } = acceso;
 
     const b = await req.json().catch(() => ({}));
+    if (!b || typeof b !== "object" || Array.isArray(b)) return NextResponse.json({ error: "Datos de cita inválidos" }, { status: 400 });
     const cfg = await configReservasEmpresa();
     const servicioId = aBigInt(String(b.servicioId ?? ""));
-    if (servicioId === null) return NextResponse.json({ error: "servicioId requerido" }, { status: 400 });
+    if (!servicioId || servicioId > 9223372036854775807n) return NextResponse.json({ error: "servicioId inválido o faltante" }, { status: 400 });
     const profesionalId = b.profesionalId == null || b.profesionalId === "" ? null : aBigInt(String(b.profesionalId));
     if (b.profesionalId != null && b.profesionalId !== "" && profesionalId === null) {
       return NextResponse.json({ error: "profesionalId inválido" }, { status: 400 });
@@ -141,7 +143,7 @@ async function reprogramar(
 ) {
   const { conv: conversacion, bot } = acceso;
   const citaId = aBigInt(String(body.citaId ?? ""));
-  if (citaId === null) return NextResponse.json({ error: "citaId requerido" }, { status: 400 });
+  if (!citaId || citaId > 9223372036854775807n) return NextResponse.json({ error: "citaId inválido o faltante" }, { status: 400 });
   const cfg = await configReservasEmpresa();
   if (!fechaEnAgenda(cfg, body.fecha)) {
     return NextResponse.json({ error: "fecha inválida o fuera de la agenda" }, { status: 400 });
@@ -149,7 +151,7 @@ async function reprogramar(
   const nuevoInicio = inicioDeFechaHora(cfg, body.fecha, body.hora);
   if (!nuevoInicio) return NextResponse.json({ error: "hora inválida (HH:MM)" }, { status: 400 });
 
-  const cita = await db.cita.findFirst({ where: { id: citaId, contactoId: conversacion.contactoId } });
+  const cita = await db.cita.findFirst({ where: { id: citaId, contactoId: conversacion.contactoId }, include: { servicio: { select: { bufferMin: true } } } });
   if (!cita) return NextResponse.json({ error: "cita inexistente" }, { status: 404 });
   if (!["programada", "confirmada"].includes(cita.estado)) {
     return NextResponse.json({ error: `una cita ${cita.estado} no se puede reprogramar` }, { status: 409 });
@@ -161,7 +163,7 @@ async function reprogramar(
     );
   }
   // La duración total (servicio + margen) es la de la cita misma.
-  const duracionMin = Math.round((cita.fin.getTime() - cita.inicio.getTime()) / 60_000);
+  const duracionMin = (finOcupado(cita).getTime() - cita.inicio.getTime()) / 60_000;
   const libres = await horariosDeDoctor(cfg, { duracionMin, bufferMin: 0 }, cita.doctorId, body.fecha as string, new Date(), cita.id);
   if (!libres.includes(nuevoInicio.toISOString())) {
     return NextResponse.json({ error: "ese horario no está disponible" }, { status: 409 });
@@ -188,6 +190,7 @@ async function manejarPATCH(req: NextRequest, props: Props) {
     const acceso = await conversacionDelBot(botAutenticado, conversationId, "citas");
     if (!acceso.conv) return acceso.respuesta;
     const body = await req.json().catch(() => ({}));
+    if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Datos de cita inválidos" }, { status: 400 });
     if (body.fecha !== undefined || body.hora !== undefined) {
       if (body.estado !== undefined) {
         return NextResponse.json({ error: "reprograma o cambia el estado, no ambos a la vez" }, { status: 400 });
@@ -195,7 +198,7 @@ async function manejarPATCH(req: NextRequest, props: Props) {
       return reprogramar(acceso, body);
     }
     const citaId = aBigInt(String(body.citaId ?? ""));
-    if (citaId === null || !ESTADOS_BOT.includes(body.estado)) {
+    if (!citaId || citaId > 9223372036854775807n || !ESTADOS_BOT.includes(body.estado)) {
       return NextResponse.json(
         { error: "Se requiere citaId y estado confirmada o cancelada" },
         { status: 400 },

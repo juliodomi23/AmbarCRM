@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { Prisma, type EstadoCita, type ServicioReserva } from "@prisma/client";
-import { db, dbRaw, runWithOrg } from "@/lib/db";
+import { db, dbRaw, orgActual, runWithOrg } from "@/lib/db";
 import { transaccionTenant } from "@/lib/retail-db";
 import { finOcupado } from "@/lib/citas-duracion";
 import {
@@ -77,7 +77,11 @@ export function fechaEnAgenda(cfg: ConfigReservas, fecha: unknown, ahora = new D
 /** Instante UTC de una fecha AAAA-MM-DD y hora HH:MM locales del negocio, o null si la hora es inválida. */
 export function inicioDeFechaHora(cfg: ConfigReservas, fecha: string, hora: unknown) {
   const minutos = minutosDeHora(hora);
-  return minutos === null || minutos >= 1440 ? null : instanteLocal(fecha, minutos, cfg.zona);
+  if (!fechaValida(fecha) || minutos === null || minutos >= 1440) return null;
+  const instante = instanteLocal(fecha, minutos, cfg.zona);
+  const local = new Intl.DateTimeFormat("en-GB", { timeZone: cfg.zona, hourCycle: "h23", hour: "2-digit", minute: "2-digit" }).format(instante);
+  const [horas, minuto] = local.split(":").map(Number);
+  return fechaLocal(instante, cfg.zona) === fecha && horas * 60 + minuto === minutos ? instante : null;
 }
 
 function zonaValida(zona: string) {
@@ -118,18 +122,23 @@ export async function horariosDeDoctor(
   ahora = new Date(),
   /** Al reprogramar: la cita que se mueve no debe bloquearse a sí misma. */
   excluirCitaId?: bigint,
-) {
-  if (!(await db.doctor.findFirst({ where: { id: doctorId, activo: true }, select: { id: true } }))) return [];
+  cliente?: Prisma.TransactionClient,
+): Promise<string[]> {
+  if (!cliente) {
+    const orgId = await orgActual();
+    return orgId ? transaccionTenant(orgId, (tx) => horariosDeDoctor(cfg, servicio, doctorId, fecha, ahora, excluirCitaId, tx)) : [];
+  }
+  if (!(await cliente.doctor.findFirst({ where: { id: doctorId, activo: true }, select: { id: true } }))) return [];
   const [reglas, excepciones] = await Promise.all([
-    db.horarioDoctor.findMany({ where: { doctorId, diaSemana: diaSemana(fecha) } }),
-    db.excepcionHorario.findMany({ where: { doctorId, fecha: new Date(`${fecha}T00:00:00Z`) } }),
+    cliente.horarioDoctor.findMany({ where: { doctorId, diaSemana: diaSemana(fecha) } }),
+    cliente.excepcionHorario.findMany({ where: { doctorId, fecha: new Date(`${fecha}T00:00:00Z`) } }),
   ]);
   const ventanas = ventanasDelDia(reglas, excepciones);
   if (ventanas.length === 0) return [];
   // Margen de un día a cada lado: una ventana local puede cruzar la medianoche UTC.
   const desde = instanteLocal(sumarDias(fecha, -1), 0, cfg.zona);
   const hasta = instanteLocal(sumarDias(fecha, 2), 0, cfg.zona);
-  const ocupados = await db.cita.findMany({
+  const ocupados = await cliente.cita.findMany({
     where: {
       doctorId,
       estado: { in: ESTADOS_OCUPAN },
@@ -232,7 +241,6 @@ export async function reservarCita(
     limiteTelefono?: { telefono: string; maximo: number };
   },
 ) {
-  const fin = new Date(datos.inicio.getTime() + (datos.servicio.duracionMin + datos.servicio.bufferMin) * 60_000);
   for (const doctorId of datos.candidatos) {
     const cita = await transaccionTenant(orgId, async (tx) => {
       if (datos.limiteTelefono) {
@@ -245,7 +253,14 @@ export async function reservarCita(
       }
       const bloqueado = await bloquearAgenda(tx, [doctorId], datos.bloquear !== false);
       if (!bloqueado[0]?.activo) return null;
-      if (!(await tx.servicioReserva.findFirst({ where: { id: datos.servicio.id, activo: true }, select: { id: true } }))) return null;
+      await tx.$queryRaw`SELECT id FROM servicios_reserva WHERE id = ${datos.servicio.id} FOR SHARE`;
+      const servicio = await tx.servicioReserva.findFirst({ where: { id: datos.servicio.id, activo: true, doctores: { some: { doctorId } } } });
+      if (!servicio || servicio.duracionMin !== datos.servicio.duracionMin || servicio.bufferMin !== datos.servicio.bufferMin) return null;
+      const modulo = await tx.moduloOrg.findFirst({ where: { clave: "reservas_en_linea" }, select: { config: true } });
+      const cfg = configReservas(modulo?.config);
+      const fecha = fechaLocal(datos.inicio, cfg.zona);
+      if (!fechaEnAgenda(cfg, fecha) || !(await horariosDeDoctor(cfg, servicio, doctorId, fecha, new Date(), undefined, tx)).includes(datos.inicio.toISOString())) return null;
+      const fin = new Date(+datos.inicio + (servicio.duracionMin + servicio.bufferMin) * 60_000);
       if (await hayEmpalme(tx, doctorId, datos.inicio, fin)) return null;
       return tx.cita.create({
         data: {
@@ -253,7 +268,7 @@ export async function reservarCita(
           conversacionId: datos.conversacionId ?? null,
           doctorId,
           servicioId: datos.servicio.id,
-          titulo: datos.servicio.nombre,
+          titulo: servicio.nombre,
           notas: datos.notas,
           inicio: datos.inicio,
           fin,
@@ -281,11 +296,16 @@ export async function reprogramarCita(
   const fin = new Date(nuevoInicio.getTime() + (cita.fin.getTime() - cita.inicio.getTime()));
   return transaccionTenant(orgId, async (tx) => {
     await tx.$queryRaw`SELECT id FROM citas WHERE id = ${cita.id} FOR UPDATE`;
-    const actual = await tx.cita.findFirst({ where: { id: cita.id } });
+    const actual = await tx.cita.findFirst({ where: { id: cita.id }, include: { servicio: { select: { bufferMin: true } } } });
     if (!actual || !["programada", "confirmada"].includes(actual.estado) || actual.doctorId !== cita.doctorId || +actual.inicio !== +cita.inicio || +actual.fin !== +cita.fin) return null;
     const bloqueado = await bloquearAgenda(tx, [cita.doctorId], bloquear);
     if (!bloqueado[0]?.activo) return null;
-    if (await hayEmpalme(tx, cita.doctorId, nuevoInicio, fin, cita.id)) return null;
+    const modulo = await tx.moduloOrg.findFirst({ where: { clave: "reservas_en_linea" }, select: { config: true } });
+    const cfg = configReservas(modulo?.config);
+    const fecha = fechaLocal(nuevoInicio, cfg.zona);
+    const ocupacion = { duracionMin: (+fin - +nuevoInicio) / 60_000, bufferMin: actual.origen === "interna" ? actual.servicio?.bufferMin ?? 0 : 0 };
+    if (!fechaEnAgenda(cfg, fecha) || !(await horariosDeDoctor(cfg, ocupacion, cita.doctorId, fecha, new Date(), cita.id, tx)).includes(nuevoInicio.toISOString())) return null;
+    if (await hayEmpalme(tx, cita.doctorId, nuevoInicio, finOcupado({ ...actual, fin }), cita.id)) return null;
     // recordatorioEnviadoAt = null: el aviso de la hora nueva debe volver a salir.
     return tx.cita.update({
       where: { id: cita.id },

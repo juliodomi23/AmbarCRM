@@ -8,6 +8,7 @@ export const PATCH = conModulo(
   {},
   async (sesion, req: NextRequest, props: { params: Promise<{ id: string }> }) => {
   const body = await req.json().catch(() => ({}));
+  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Datos de especialista inválidos" }, { status: 400 });
   const { id } = await props.params;
   const doctorId = aBigInt(id);
   if (!doctorId || doctorId > 9223372036854775807n || !(await db.doctor.findFirst({ where: { id: doctorId } }))) return NextResponse.json({ error: "Especialista inexistente" }, { status: 404 });

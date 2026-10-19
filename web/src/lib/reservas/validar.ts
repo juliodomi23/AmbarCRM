@@ -4,8 +4,14 @@ import { fechaValida, minutosDeHora } from "./horarios.ts";
 /** Validadores de la configuración de Reservas en línea (sin base de datos). */
 
 const texto = (valor: unknown, maximo: number) => String(valor ?? "").trim().slice(0, maximo) || null;
-const id = (valor: unknown) => (/^\d+$/.test(String(valor ?? "")) ? BigInt(String(valor)) : null);
+const id = (valor: unknown) => {
+  const texto = String(valor ?? "");
+  if (!/^\d{1,19}$/.test(texto)) return null;
+  const numero = BigInt(texto);
+  return numero > 0n && numero <= 9223372036854775807n ? numero : null;
+};
 const entero = (valor: unknown, min: number, max: number) => {
+  if ((typeof valor !== "string" && typeof valor !== "number") || String(valor).trim() === "") return null;
   const n = Number(valor);
   return Number.isInteger(n) && n >= min && n <= max ? n : null;
 };
@@ -70,9 +76,15 @@ export function validarAjustesReservas(body: Record<string, unknown>) {
   const ventanaDias = entero(body.ventanaDias, 1, 90);
   const granularidadMin = entero(body.granularidadMin, 5, 120);
   const maxPorTelefono = entero(body.maxPorTelefono, 1, 20);
+  const zona = body.zona;
+  if (zona !== undefined) {
+    if (typeof zona !== "string" || !zona.trim()) return { error: "Zona horaria inválida" } as const;
+    try { new Intl.DateTimeFormat("es-MX", { timeZone: zona }); }
+    catch { return { error: "Zona horaria inválida" } as const; }
+  }
   if (anticipacionMin === null) return { error: "La anticipación debe ser de 0 a 10,080 minutos" } as const;
   if (ventanaDias === null) return { error: "Se puede agendar de 1 a 90 días a futuro" } as const;
   if (granularidadMin === null) return { error: "Los horarios deben ir cada 5 a 120 minutos" } as const;
   if (maxPorTelefono === null) return { error: "Máximo de citas por teléfono: 1 a 20" } as const;
-  return { data: { anticipacionMin, ventanaDias, granularidadMin, maxPorTelefono } } as const;
+  return { data: { anticipacionMin, ventanaDias, granularidadMin, maxPorTelefono, ...(typeof zona === "string" ? { zona } : {}) } } as const;
 }

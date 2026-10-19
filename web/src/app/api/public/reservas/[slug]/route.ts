@@ -37,7 +37,7 @@ export async function GET(req: NextRequest, { params }: Props) {
     ]);
     const marca = normalizarMarca(ajustes);
     return NextResponse.json({
-      negocio: { nombre: marca.nombre || negocio.nombre, logo: marca.logo, colorPrimario: marca.colorPrimario },
+      negocio: { nombre: ajustes?.marcaNombre?.trim() || ajustes?.nombreNegocio?.trim() || negocio.nombre, logo: marca.logo, colorPrimario: marca.colorPrimario },
       zona: negocio.config.zona,
       ventanaDias: negocio.config.ventanaDias,
       servicios: servicios.map((s) => ({
@@ -59,6 +59,7 @@ export async function POST(req: NextRequest, { params }: Props) {
   const nombre = String(b.nombre ?? "").trim().slice(0, 120);
   const telefono = telefonoMx(b.telefono);
   const servicioId = aBigInt(String(b.servicioId ?? ""));
+  if (!servicioId || servicioId > 9223372036854775807n) return errorPublico("Servicio inválido", 400);
   const inicio = new Date(String(b.horario ?? ""));
   if (!nombre || !servicioId || !fechaValida(b.fecha) || Number.isNaN(+inicio)) return errorPublico("Faltan datos de la reserva", 400);
   if (!telefono) return errorPublico("El teléfono debe tener 10 dígitos", 400);
