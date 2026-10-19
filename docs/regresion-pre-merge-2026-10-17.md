@@ -1729,3 +1729,12 @@ Excluido: `test-lealtad-aurum.ts`, que requiere un Aurum real.
 La compilación Webpack, TypeScript, lint, Prisma validate, reintentos y fallos del entorno
 se conservan en los otros archivos `resultados-*.json` y `ejecuciones.txt`. No se
 declara aprobado el comando normal de despliegue con tipografías reales.
+
+## Ampliación de Citas · 19 de octubre de 2026
+
+Búsqueda de contactos en el directorio completo, agenda por integrante y reprogramación
+pública por token. Regresión de 55 scripts y 34 checks aprobada; actualización SQL repetida
+tres veces y Prisma generate/validate aprobados. Tras el ajuste final de interfaz se
+repitieron TypeScript, lint, compilación local y ensayo HTTP de citas.
+Build con Webpack/fuentes simuladas, sin proveedores externos ni producción.
+[Informe](citas-autoservicio-2026-10-19.md) · [Resultados](pruebas-citas-autoservicio-2026-10-19/resumen-regresion.md).

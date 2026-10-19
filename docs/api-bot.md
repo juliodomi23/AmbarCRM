@@ -162,8 +162,11 @@ confirmar una cita `en_sala`. Repetir el mismo estado permitido sigue siendo ide
 Los cambios se validan bajo bloqueo de cita y especialista. Una reprogramación reinicia
 el recordatorio y sus intentos; conserva especialista y duración. Sin preferencia se
 ordena por menor cantidad de citas ocupantes del día local y se desempata por nombre e id.
-El enlace `enlaceGestion` sigue permitiendo consulta/cancelación, sin confirmación ni
-reprogramación pública por token. Los formatos de las respuestas válidas se conservan.
+El enlace `enlaceGestion` permite consultar, cancelar y reprogramar una cita futura,
+conservando servicio y especialista. La reprogramación vuelve a comprobar disponibilidad
+y reinicia el recordatorio. La confirmación de asistencia por token sigue fuera del alcance.
+Los formatos de las respuestas del bot se conservan. El acceso restringido de un usuario
+a su agenda no cambia los permisos del bot.
 
 Revisión del 18-oct-2026: al mover desde el bot una cita creada en la agenda interna
 con servicio, la disponibilidad incluye su margen posterior y el fin visible conserva

@@ -24,8 +24,8 @@ en `/clientes` con preferencias, sensibilidades, historial y próximas citas.
 Esto sirve para negocios de uñas, pestañas, cejas y otros servicios recurrentes.
 
 Un cliente puede crearse desde cero o a partir de un contacto existente. Con el
-módulo activo, Contactos muestra la acción **Crear ficha** y Citas ofrece solo a
-las personas que ya tienen ficha.
+módulo activo, Contactos muestra la acción **Crear ficha**. Citas también permite
+agendar contactos que todavía no tienen ficha.
 
 ## Módulo Pacientes
 
@@ -281,8 +281,8 @@ admite un rango máximo de 62 días y devuelve `siguienteCursor`. El panel del c
 conserva sus 180 días consultando tres rangos de 60.
 
 La agenda admite contactos sin expediente, aunque Clientes o Pacientes esté activo.
-Desde ficha o conversación incluye el contacto precargado aunque quede fuera de las
-primeras 500 opciones. El catálogo y los estados vacíos usan «Especialistas» como
+El formulario busca en todo el directorio por nombre o teléfono, con hasta 30
+coincidencias por consulta. Desde ficha o conversación conserva el contacto precargado. El catálogo y los estados vacíos usan «Especialistas» como
 etiqueta común; especialidad y cédula siguen siendo opcionales.
 Al seleccionar un especialista, el rango visible también incluye sus jornadas anteriores
 a las 8 o posteriores a las 20. La posición de las citas usa la hora local incluso al
@@ -301,8 +301,12 @@ Solo `programada`/`confirmada` pueden moverse. `completada`, `cancelada` y `no_a
 son finales; cancelada/no_asistio liberan horario. `en_sala` admite completar o cancelar.
 Completar simultáneamente produce una sola solicitud de reseña, fuera de la transacción.
 Título obligatorio (200 caracteres), notas hasta 5000, duración hasta 24 horas y fechas
-entre 2000 y 2100 con zona explícita. Los puestos controlan acceso al módulo; aún no
-existe vínculo usuario–doctor para restringir cada usuario a una agenda propia.
+entre 2000 y 2100 con zona explícita. Los puestos controlan acceso al módulo.
+En Configuración → Usuarios, el administrador limita a cada agente a toda la agenda
+o a un especialista. El servidor aplica el alcance a lecturas y modificaciones,
+fichas, listados y resumen; sin vínculo, un acceso restringido no ve citas.
+Administradores conservan acceso completo. El alta y la activación de especialistas
+requieren admin. Contactos y Expedientes conservan sus permisos independientes.
 
 Solo se crean o mueven citas desde el día local actual: una hora anterior del mismo día
 está permitida; días anteriores responden 400. Notas y estado históricos siguen editables
@@ -354,7 +358,7 @@ origen "en línea". Requiere el módulo Citas (los especialistas son sus doctore
   por IP, tope de citas creadas por teléfono en 24 h serializado por empresa y teléfono,
   fechas solo dentro de la ventana. Dos altas simultáneas del mismo contacto reutilizan
   el registro ganador. Los servicios sin especialistas activos no se ofrecen al público.
-  El cliente consulta o cancela con `/reservar/cita/<token>` (32 hex), sin cuenta y sin
+  El cliente consulta, reprograma o cancela con `/reservar/cita/<token>` (32 hex), sin cuenta y sin
   ver datos personales.
 - Los recordatorios por WhatsApp son los del módulo Citas (plantilla y anticipación).
 
@@ -373,8 +377,13 @@ Pruebas: `prisma/scripts/test-reservas-concurrentes.ts` (conservada sin cambios)
 `test-citas.ts`, `test-citas-horarios.ts`, `test-citas-integral.ts`, `test-citas-precarga-e2e.ts`
 y `test-citas-e2e.ts`. La regresión las descubre por `test-*.ts` en
 `docs/pruebas-citas-2026-10-17/ejecutar-regresion.py`.
-El enlace público permite consultar/cancelar; confirmar y reprogramar por token siguen
-fuera del producto actual. El bot sí confirma, cancela y reprograma dentro de sus reglas.
+El enlace público permite reprogramar citas futuras programadas/confirmadas con
+servicio y especialista disponibles. Conserva ambos, la duración y el margen; excluye
+su propia cita al consultar huecos y vuelve a validar bajo bloqueo al guardar.
+Reinicia los recordatorios, mantiene el token y rechaza una versión obsoleta.
+La confirmación pública de asistencia sigue fuera del producto; el bot sí confirma.
+Prueba de sesiones reales: `test-citas-autoservicio-e2e.ts`.
+[Guía para configurar y operar Citas](docs/guia-operacion-citas.md).
 
 ## Módulo Lealtad (Aurum)
 
