@@ -2,6 +2,9 @@ import {
   getMetricasDashboard,
   getPrimerosPasos,
 } from "@/lib/services/dashboard";
+import { accesoAgendaActual } from "@/lib/citas-acceso";
+import { configReservasEmpresa } from "@/lib/reservas/servidor";
+import { fechaLocal, instanteLocal, sumarDias } from "@/lib/reservas/horarios";
 import { getSesion } from "@/lib/session";
 import { IconoDescargar } from "@/components/icons";
 import { PrimerosPasos } from "@/components/PrimerosPasos";
@@ -25,16 +28,16 @@ export default async function DashboardPage() {
   const session = await getSesion();
   const esAdmin = session?.user?.rol === "admin";
   const citasActivo = await moduloActivo("citas");
-  const claveHoy = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Mexico_City",
-  }).format(new Date());
-  const inicioHoy = new Date(`${claveHoy}T00:00:00-06:00`);
-  const finHoy = new Date(`${claveHoy}T23:59:59.999-06:00`);
+  const acceso = await accesoAgendaActual();
+  const { zona } = await configReservasEmpresa();
+  const claveHoy = fechaLocal(new Date(), zona);
+  const inicioHoy = instanteLocal(claveHoy, 0, zona);
+  const finHoy = instanteLocal(sumarDias(claveHoy, 1), 0, zona);
   const [m, pasos, citasHoy] = await Promise.all([
     getMetricasDashboard(),
     esAdmin ? getPrimerosPasos() : null,
     citasActivo
-      ? db.cita.count({ where: { inicio: { gte: inicioHoy, lte: finHoy } } })
+      ? db.cita.count({ where: { ...acceso.where, inicio: { gte: inicioHoy, lt: finHoy } } })
       : 0,
   ]);
   const hoy = new Date();

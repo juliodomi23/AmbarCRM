@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { accesoAgendaActual } from "@/lib/citas-acceso";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { moduloHabilitado, requireModuloActivo } from "@/lib/modulos";
@@ -80,10 +81,11 @@ async function manejarPOST(
     return NextResponse.json({ error: "doctor inexistente" }, { status: 400 });
   }
   const citaId = aBigInt(String(body.citaId ?? ""));
+  const agenda = await accesoAgendaActual();
   if (
     citaId &&
     !(await db.cita.findFirst({
-      where: { id: citaId, contactoId: acceso.contactoId },
+      where: { id: citaId, contactoId: acceso.contactoId, ...agenda.where },
     }))
   ) {
     return NextResponse.json({ error: "cita inexistente" }, { status: 400 });

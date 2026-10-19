@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { ExpedienteCliente } from "@/components/contactos/ExpedienteCliente";
+import { accesoAgendaActual } from "@/lib/citas-acceso";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { moduloActivo, moduloHabilitado } from "@/lib/modulos";
@@ -13,6 +14,7 @@ export default async function ClientePage({
   params: Promise<{ id: string }>;
 }) {
   if (!(await moduloActivo("clientes"))) redirect("/");
+  const acceso = await accesoAgendaActual();
   const id = aBigInt((await params).id);
   if (id === null) notFound();
   const [pacientesHabilitado, pacientesAccesible] = await Promise.all([
@@ -29,6 +31,7 @@ export default async function ClientePage({
             expediente: {
               include: {
                 evoluciones: {
+                  where: acceso.restringida ? { OR: [{ citaId: null }, { cita: { is: acceso.where } }] } : {},
                   include: { doctor: true, cita: true, registradoPor: true },
                   orderBy: { createdAt: "desc" },
                 },
@@ -40,7 +43,7 @@ export default async function ClientePage({
       ? Promise.resolve([])
       : db.doctor.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
     db.cita.findMany({
-      where: { contactoId: id },
+      where: { contactoId: id, ...acceso.where },
       include: { doctor: true },
       orderBy: { inicio: "desc" },
       take: 20,

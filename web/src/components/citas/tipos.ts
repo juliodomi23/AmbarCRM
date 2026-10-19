@@ -1,6 +1,7 @@
 export type ContactoCita = {
   id: string;
   nombre: string;
+  telefono?: string | null;
   expediente?: { id: string } | null;
 };
 export type UsuarioCita = { id: string; nombre: string };

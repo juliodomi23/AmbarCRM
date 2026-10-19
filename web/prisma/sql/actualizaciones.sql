@@ -1762,3 +1762,7 @@ GRANT EXECUTE ON FUNCTION resolve_org_by_instagram(text) TO crm_app;
 -- Reintentos acotados de recordatorios; heredan RLS y GRANT de citas.
 ALTER TABLE citas ADD COLUMN IF NOT EXISTS recordatorio_intentos INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE citas ADD COLUMN IF NOT EXISTS recordatorio_intentado_at TIMESTAMPTZ;
+
+-- La restricción permanece aunque se elimine el especialista: nunca abre toda la agenda.
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS agenda_solo_propia BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS agenda_doctor_id BIGINT REFERENCES doctores(id) ON DELETE SET NULL;

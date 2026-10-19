@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton, Campo } from "@/components/ui";
 import { api } from "@/components/config/tabs/shared";
+import { AccesoAgendaUsuario, CamposAccesoAgenda, type EspecialistaAgenda } from "./AccesoAgendaUsuario";
 
 const VALOR_OTRO = "__otro__";
 
@@ -54,9 +55,13 @@ function PuestoSelector({
 export function TabUsuarios({
   usuarios,
   puestosSugeridos,
+  especialistasAgenda = [],
+  citasHabilitadas = false,
 }: {
   usuarios: any[];
   puestosSugeridos: string[];
+  especialistasAgenda?: EspecialistaAgenda[];
+  citasHabilitadas?: boolean;
 }) {
   const router = useRouter();
   const puestoInicial = puestosSugeridos.includes("Agente") ? "Agente" : puestosSugeridos[0];
@@ -66,6 +71,8 @@ export function TabUsuarios({
     password: "",
     rol: "agente",
     puesto: puestoInicial ?? "Agente",
+    agendaSoloPropia: false,
+    agendaDoctorId: "",
   });
   const [puestosEditados, setPuestosEditados] = useState<Record<string, string>>(
     Object.fromEntries(usuarios.map((usuario) => [String(usuario.id), usuario.puesto])),
@@ -80,6 +87,8 @@ export function TabUsuarios({
         password: "",
         rol: "agente",
         puesto: puestoInicial ?? "Agente",
+        agendaSoloPropia: false,
+        agendaDoctorId: "",
       });
       router.refresh();
     }
@@ -124,7 +133,7 @@ export function TabUsuarios({
           <span className="text-sm font-medium text-muted-foreground">Rol</span>
           <select
             value={form.rol}
-            onChange={(evento) => setForm({ ...form, rol: evento.target.value })}
+            onChange={(evento) => setForm({ ...form, rol: evento.target.value, ...(evento.target.value === "admin" ? { agendaSoloPropia: false, agendaDoctorId: "" } : {}) })}
             className="min-h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm"
           >
             <option value="agente">Agente</option>
@@ -140,6 +149,7 @@ export function TabUsuarios({
           />
         </label>
         <div className="sm:col-span-2">
+          {citasHabilitadas && form.rol !== "admin" && <CamposAccesoAgenda value={form} onChange={(acceso) => setForm({ ...form, ...acceso })} especialistas={especialistasAgenda} />}
           <Boton type="submit">+ Invitar integrante</Boton>
         </div>
       </form>
@@ -166,6 +176,7 @@ export function TabUsuarios({
                   <td className="px-4 py-3">
                     <p className="font-medium text-foreground">{usuario.nombre}</p>
                     <p className="text-xs text-muted-foreground">{usuario.email}</p>
+                    {citasHabilitadas && <div className="mt-3 min-w-64"><AccesoAgendaUsuario key={`${id}-${usuario.agendaSoloPropia}-${usuario.agendaDoctorId}`} usuario={{ ...usuario, id }} especialistas={especialistasAgenda} onSaved={() => router.refresh()} /></div>}
                   </td>
                   <td className="px-4 py-3 capitalize text-muted-foreground">{usuario.rol}</td>
                   <td className="min-w-72 space-y-2 px-4 py-3">

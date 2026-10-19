@@ -311,6 +311,9 @@ model Usuario {
   passwordHash String     @map("password_hash")
   rol          RolUsuario @default(agente)
   puesto       String     @default("Agente")
+  agendaSoloPropia Boolean @default(false) @map("agenda_solo_propia")
+  agendaDoctorId BigInt? @map("agenda_doctor_id")
+  agendaDoctor Doctor? @relation("AccesoAgenda", fields: [agendaDoctorId], references: [id], onDelete: SetNull)
   avatarUrl    String?    @map("avatar_url")
   activo       Boolean    @default(true)
   createdAt    DateTime   @default(now()) @map("created_at")
@@ -856,6 +859,7 @@ model Doctor {
   servicios   ServicioReservaDoctor[]
   horarios    HorarioDoctor[]
   excepciones ExcepcionHorario[]
+  usuariosAgenda Usuario[] @relation("AccesoAgenda")
 
   @@unique([orgId, nombre])
   @@index([orgId, activo])

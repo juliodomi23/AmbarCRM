@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { validarPuesto } from "@/lib/puestos";
 import { requireSesion } from "@/lib/session";
 import { conErrores } from "@/lib/errores-api";
+import { validarAccesoAgenda } from "@/lib/citas-acceso";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +14,11 @@ async function manejarPATCH(req: NextRequest, props: { params: Promise<{ id: str
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
 
-  const body = await req.json().catch(() => ({}));
-  const data: Record<string, unknown> = {};
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
+  const acceso = await validarAccesoAgenda(body);
+  if ("error" in acceso) return NextResponse.json({ error: acceso.error }, { status: 400 });
+  const data: Record<string, unknown> = { ...acceso.data };
   if ("nombre" in body) data.nombre = body.nombre;
   if ("rol" in body) data.rol = body.rol === "admin" ? "admin" : "agente";
   if ("puesto" in body) {

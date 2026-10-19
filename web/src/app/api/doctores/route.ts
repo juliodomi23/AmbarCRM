@@ -12,7 +12,7 @@ export const GET = conModulo("citas", {}, async (sesion, req: NextRequest) => {
   return NextResponse.json(serializar({ doctores }));
 });
 
-export const POST = conModulo("citas", {}, async (sesion, req: NextRequest) => {
+export const POST = conModulo("citas", { admin: true }, async (sesion, req: NextRequest) => {
   const body = await req.json().catch(() => ({}));
   const nombre = String(body.nombre ?? "").trim();
   if (!nombre) {

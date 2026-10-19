@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
+import { accesoAgenda } from "@/lib/citas-acceso";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { serializar } from "@/lib/serialize";
@@ -16,20 +18,22 @@ function fechaNacimiento(valor: unknown) {
   return Number.isNaN(resultado.getTime()) ? undefined : resultado;
 }
 
-const incluirPaciente = {
+const incluirPaciente = (where: Prisma.CitaWhereInput) => ({
   expediente: true,
   citas: {
+    where,
     include: { doctor: true },
     orderBy: { inicio: "desc" as const },
     take: 10,
   },
-};
+} satisfies Prisma.ContactoInclude);
 
 export const GET = conModulo("pacientes", {}, async (sesion, req: NextRequest) => {
+  const acceso = await accesoAgenda(sesion);
   const contactoId = aBigInt(req.nextUrl.searchParams.get("contactoId"));
   const pacientes = await db.contacto.findMany({
     where: { expediente: { isNot: null }, id: contactoId ?? undefined },
-    include: incluirPaciente,
+    include: incluirPaciente(acceso.where),
     orderBy: { nombre: "asc" },
     ...paginacionListado(req),
   });
@@ -37,6 +41,7 @@ export const GET = conModulo("pacientes", {}, async (sesion, req: NextRequest) =
 });
 
 export const POST = conModulo("pacientes", {}, async (sesion, req: NextRequest) => {
+  const acceso = await accesoAgenda(sesion);
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const fecha = fechaNacimiento(body.fechaNacimiento);
   if (fecha === undefined) {
@@ -64,7 +69,7 @@ export const POST = conModulo("pacientes", {}, async (sesion, req: NextRequest) 
     });
     const paciente = await db.contacto.findUnique({
       where: { id: contactoId },
-      include: incluirPaciente,
+      include: incluirPaciente(acceso.where),
     });
     return NextResponse.json(serializar({ paciente }), { status: 201 });
   }
@@ -88,7 +93,7 @@ export const POST = conModulo("pacientes", {}, async (sesion, req: NextRequest) 
       responsableId: sesion.userId,
       expediente: { create: expediente },
     },
-    include: incluirPaciente,
+    include: incluirPaciente(acceso.where),
   });
   return NextResponse.json(serializar({ paciente }), { status: 201 });
 });

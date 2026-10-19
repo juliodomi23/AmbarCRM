@@ -140,7 +140,7 @@ export function ReservaPublica({ slug }: { slug: string }) {
             {confirmada.especialista ? ` con ${confirmada.especialista}` : ""}
           </p>
           <p className="font-semibold first-letter:uppercase">{formato(confirmada.inicio, { dateStyle: "full", timeStyle: "short" })}</p>
-          <p className="text-xs text-muted-foreground">Hora del negocio. Guarda este enlace para consultar o cancelar tu cita:</p>
+          <p className="text-xs text-muted-foreground">Hora del negocio. Guarda este enlace para consultar, cambiar de horario o cancelar tu cita:</p>
           <a href={`/reservar/cita/${confirmada.token}`} className="inline-block rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
             Ver mi cita
           </a>

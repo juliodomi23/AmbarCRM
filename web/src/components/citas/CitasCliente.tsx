@@ -51,6 +51,8 @@ export function CitasCliente({
   zona = ZONA_CITAS,
   servicios = [],
   duracionMin = 30,
+  agendaPropia = false,
+  puedeAdministrar = false,
 }: {
   contactos: ContactoCita[];
   usuarios: UsuarioCita[];
@@ -58,10 +60,13 @@ export function CitasCliente({
   zona?: string;
   servicios?: ServicioCita[];
   duracionMin?: number;
+  agendaPropia?: boolean;
+  puedeAdministrar?: boolean;
 }) {
   const params = useSearchParams();
   const cargaActual = useRef(0);
-  const [filtroDoctor, setFiltroDoctor] = useState("");
+  const doctorPropio = agendaPropia ? doctoresIniciales[0]?.id ?? "" : "";
+  const [filtroDoctor, setFiltroDoctor] = useState(doctorPropio);
   const [filtroEspecialidad, setFiltroEspecialidad] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
   const [editando, setEditando] = useState<Cita | null>(null);
@@ -85,7 +90,7 @@ export function CitasCliente({
     inicio: valorInicial(0, zona),
     fin: valorInicial(duracionMin, zona),
     responsableId: "",
-    doctorId: "",
+    doctorId: doctorPropio,
   });
   const hoy = claveFecha(new Date(), zona);
 
@@ -246,6 +251,10 @@ export function CitasCliente({
   }
 
   function abrirEnHorario(fecha: string, minutos: number) {
+    if (agendaPropia && !doctores.some((d) => d.id === doctorPropio && d.activo)) {
+      toast("Pide al administrador que asigne un especialista activo a tu cuenta.", "error");
+      return;
+    }
     const minutosLimitados = Math.min(
       24 * 60 - 30,
       Math.max(0, minutos),
@@ -282,10 +291,10 @@ export function CitasCliente({
         descripcion={`Calendario en zona horaria ${zona}.`}
         acciones={
           <>
-            <Boton variante="ghost" onClick={() => setModalDoctores(true)}>
+            {puedeAdministrar && <Boton variante="ghost" onClick={() => setModalDoctores(true)}>
               Especialistas
-            </Boton>
-            <Boton onClick={() => {
+            </Boton>}
+            <Boton disabled={agendaPropia && !doctores.some((d) => d.activo)} onClick={() => {
               setFormulario({ contactoId: contactoInicial, conversacionId: params.get("conversacionId") ?? "", titulo: "Cita", notas: "", inicio: valorInicial(0, zona), fin: valorInicial(duracionMin, zona), responsableId: "", doctorId: filtroDoctor === "sin_asignar" ? "" : filtroDoctor, servicioId: "" });
               setEditando(null); setModalAbierto(true);
             }}>+ Nueva cita</Boton>
@@ -294,10 +303,11 @@ export function CitasCliente({
       />
 
       {avisos.length > 0 && <div role="status" className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">{avisos.map((aviso) => <p key={aviso}>{aviso}</p>)}</div>}
+      {agendaPropia && <p role="status" className="text-sm text-muted-foreground">{doctorPropio ? "Tu acceso está limitado a la agenda de tu especialista asignado." : "No tienes especialista asignado. Pide al administrador que configure tu acceso a la agenda."}</p>}
       <div className="flex flex-wrap gap-3">
         <label className="text-sm">Especialista
-          <select aria-label="Filtrar por especialista" value={filtroDoctor} onChange={(e) => setFiltroDoctor(e.target.value)} className="ml-2 rounded-lg border border-input bg-card p-2">
-            <option value="">Todos</option><option value="sin_asignar">Sin asignar</option>
+          <select aria-label="Filtrar por especialista" disabled={agendaPropia} value={filtroDoctor} onChange={(e) => setFiltroDoctor(e.target.value)} className="ml-2 rounded-lg border border-input bg-card p-2">
+            {!agendaPropia && <><option value="">Todos</option><option value="sin_asignar">Sin asignar</option></>}
             {doctores.map((d) => <option key={d.id} value={d.id}>{d.nombre}{d.activo ? "" : " (inactivo)"}</option>)}
           </select>
         </label>
@@ -342,6 +352,7 @@ export function CitasCliente({
         contactos={contactos}
         usuarios={usuarios}
         doctores={doctores}
+        agendaPropia={agendaPropia}
         onChange={setFormulario}
         onClose={() => setModalAbierto(false)}
         onSubmit={(evento) => void crear(evento)}

@@ -1,4 +1,5 @@
 "use client";
+import { SelectorContactoCita } from "./SelectorContactoCita";
 import { useFocoModal } from "./useFocoModal";
 import { useState } from "react";
 import Link from "next/link";
@@ -29,6 +30,7 @@ export function FormularioCitaModal({
   duracionMin = 30,
   zona = ZONA_CITAS,
   citaOriginal,
+  agendaPropia = false,
   onChange,
   onClose,
   onSubmit,
@@ -44,6 +46,7 @@ export function FormularioCitaModal({
   duracionMin?: number;
   zona?: string;
   citaOriginal?: Cita | null;
+  agendaPropia?: boolean;
   onChange: (formulario: FormularioCita) => void;
   onClose: () => void;
   onSubmit: (evento: React.FormEvent) => void;
@@ -97,12 +100,13 @@ export function FormularioCitaModal({
           </span>
           <select
             value={formulario.doctorId}
+            disabled={agendaPropia}
             onChange={(evento) =>
               onChange({ ...formulario, doctorId: evento.target.value })
             }
             className="w-full rounded-lg border border-input px-3 py-2 text-sm"
           >
-            <option value="">Sin asignar</option>
+            {!agendaPropia && <option value="">Sin asignar</option>}
             {especialista && !especialista.activo && <option value={especialista.id} disabled>{especialista.nombre} · inactivo (historial)</option>}
             {doctores
               .filter((doctor) => doctor.activo && (!servicio || servicio.doctores.some((item) => item.doctorId === doctor.id)))
@@ -116,28 +120,13 @@ export function FormularioCitaModal({
         </label>
         {especialista && !especialista.activo && <p role="status" className="text-sm text-warning">Especialista inactivo; se conserva en el historial. Selecciona uno activo para reasignar.</p>}
         {especialista?.activo && !especialista.horarios?.length && <p role="status" className="text-sm text-warning">Sin horarios definidos: se permite agendar. <Link href="/reservas-en-linea" className="underline">Definir horario en Reservas en línea</Link>.</p>}
-        <label className="block space-y-1">
-          <span className="text-sm font-medium text-muted-foreground">
-            Contacto
-          </span>
-          <select
-            required
-            disabled={editando}
-            value={formulario.contactoId}
-            onChange={(evento) =>
-              onChange({ ...formulario, contactoId: evento.target.value })
-            }
-            className="w-full rounded-lg border border-input px-3 py-2 text-sm"
-          >
-            <option value="">Selecciona un contacto…</option>
-            {citaOriginal && !contactos.some((contacto) => contacto.id === citaOriginal.contacto.id) && <option value={citaOriginal.contacto.id}>{citaOriginal.contacto.nombre}</option>}
-            {contactos.map((contacto) => (
-              <option key={contacto.id} value={contacto.id}>
-                {contacto.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectorContactoCita
+          abierto={abierto}
+          editando={editando}
+          value={formulario.contactoId}
+          contactos={citaOriginal && !contactos.some((c) => c.id === citaOriginal.contacto.id) ? [citaOriginal.contacto, ...contactos] : contactos}
+          onChange={(contactoId) => onChange({ ...formulario, contactoId })}
+        />
         <Campo
           label="Título"
           value={formulario.titulo}

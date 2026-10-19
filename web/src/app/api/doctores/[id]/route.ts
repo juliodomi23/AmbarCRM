@@ -5,7 +5,7 @@ import { conModulo } from "@/lib/con-modulo";
 
 export const PATCH = conModulo(
   "citas",
-  {},
+  { admin: true },
   async (sesion, req: NextRequest, props: { params: Promise<{ id: string }> }) => {
   const body = await req.json().catch(() => ({}));
   if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Datos de especialista inválidos" }, { status: 400 });

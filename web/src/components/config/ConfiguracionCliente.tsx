@@ -25,6 +25,7 @@ type Tab = (typeof TABS)[number] | "Clientes Ámbar CRM";
 export function ConfiguracionCliente({
   embudos, usuarios, puestosSugeridos, canales, plantillas, ajustes, bots, orgs = null,
   modulosPorOrg = null, modulos = [],
+  especialistasAgenda = [], citasHabilitadas = false,
 }: {
   embudos: any[];
   usuarios: any[];
@@ -36,6 +37,8 @@ export function ConfiguracionCliente({
   orgs?: any[] | null;
   modulosPorOrg?: Record<string, any[]> | null;
   modulos?: any[];
+  especialistasAgenda?: { id: string; nombre: string; activo: boolean }[];
+  citasHabilitadas?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("Embudos");
   const tabs: Tab[] = orgs ? [...TABS, "Clientes Ámbar CRM"] : [...TABS];
@@ -69,7 +72,7 @@ export function ConfiguracionCliente({
       {tab === "Marca" && <MarcaConfig ajustes={ajustes} />}
       {tab === "Embudos" && <TabEmbudos embudos={embudos} />}
       {tab === "Usuarios" && (
-        <TabUsuarios usuarios={usuarios} puestosSugeridos={puestosSugeridos} />
+        <TabUsuarios usuarios={usuarios} puestosSugeridos={puestosSugeridos} especialistasAgenda={especialistasAgenda} citasHabilitadas={citasHabilitadas} />
       )}
       {tab === "Canales" && <Canales canales={canales} />}
       {tab === "Plantillas" && <TabPlantillas plantillas={plantillas} />}

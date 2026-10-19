@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { validarPuesto } from "@/lib/puestos";
 import { requireSesion } from "@/lib/session";
+import { validarAccesoAgenda } from "@/lib/citas-acceso";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,11 @@ export async function POST(req: NextRequest) {
   const s = await requireSesion(true);
   if ("error" in s) return s.error;
 
-  const { nombre, email, password, rol, puesto } = await req.json().catch(() => ({}));
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
+  const { nombre, email, password, rol, puesto } = body;
+  const acceso = await validarAccesoAgenda(body);
+  if ("error" in acceso) return NextResponse.json({ error: acceso.error }, { status: 400 });
   if (!nombre || !email || !password) {
     return NextResponse.json({ error: "faltan campos" }, { status: 400 });
   }
@@ -33,6 +38,7 @@ export async function POST(req: NextRequest) {
       passwordHash: await bcrypt.hash(password, 10),
       rol: rol === "admin" ? "admin" : "agente",
       puesto: puestoValidado.valor,
+      ...acceso.data,
     },
   });
   return NextResponse.json({ ok: true, id: u.id.toString() });

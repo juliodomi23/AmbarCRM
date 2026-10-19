@@ -19,7 +19,7 @@ const ESTADOS = [
 export const DELETE = conModulo("citas", {}, conErroresCita(async (s: SesionModulo, _req: NextRequest, props: { params: Promise<{ id: string }> }) => {
   const id = aBigInt((await props.params).id);
   if (!id || id > 9223372036854775807n) return NextResponse.json({ error: "Cita inexistente" }, { status: 404 });
-  await eliminarCitaCancelada(s.orgId!, id);
+  await eliminarCitaCancelada(s.orgId!, id, s);
   return NextResponse.json({ ok: true });
 }));
 
@@ -68,7 +68,7 @@ export const PATCH = conModulo("citas", {}, conErroresCita(async (s: SesionModul
   }
   const citaId = aBigInt(id);
   if (!citaId || citaId > 9223372036854775807n) return NextResponse.json({ error: "Cita inexistente" }, { status: 404 });
-  const { cita, completada } = await editarCita(s.orgId!, citaId, data);
+  const { cita, completada } = await editarCita(s.orgId!, citaId, data, s);
   if (completada) {
     await solicitarResena(s.orgId!, { evento: "cita", citaId, contactoId: cita.contactoId });
   }

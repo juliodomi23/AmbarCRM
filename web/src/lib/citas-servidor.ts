@@ -5,6 +5,7 @@ import { errorIntervaloCita, puedeCambiarEstado } from "@/lib/citas-reglas";
 import { configReservas } from "@/lib/reservas/servidor";
 import { errorFechaPasada, errorHorarioCita } from "@/lib/citas-horarios";
 import { duracionCitas, finDeCita, finVisible } from "@/lib/citas-duracion";
+import { accesoAgenda, permiteEspecialista, type IdentidadAgenda } from "@/lib/citas-acceso";
 
 async function resolverDuracion(tx: Prisma.TransactionClient, datos: { inicio: Date; fin?: Date; doctorId: bigint | null; servicioId?: bigint | null }) {
   if (datos.servicioId) await tx.$queryRaw`SELECT id FROM servicios_reserva WHERE id = ${datos.servicioId} FOR SHARE`;
@@ -59,8 +60,9 @@ type DatosAgenda = {
   contactoId: bigint; conversacionId: bigint | null; responsableId: bigint | null;
 };
 
-export async function crearCitaInterna(orgId: bigint, datos: DatosAgenda, bloquear = true) {
+export async function crearCitaInterna(orgId: bigint, datos: DatosAgenda, bloquear = true, sesion?: IdentidadAgenda) {
   return transaccionTenant(orgId, async (tx) => {
+    if (sesion && !permiteEspecialista(await accesoAgenda(sesion, tx), datos.doctorId)) throw new ErrorCita("Solo puedes agendar con tu especialista asignado", 403);
     const doctores = datos.doctorId !== null ? await bloquearAgenda(tx, [datos.doctorId], bloquear) : [];
     if (datos.doctorId !== null && !doctores[0]?.activo) throw new ErrorCita("Especialista inexistente o inactivo");
     const { fin, bufferMin } = await resolverDuracion(tx, datos);
@@ -76,11 +78,12 @@ export async function crearCitaInterna(orgId: bigint, datos: DatosAgenda, bloque
 
 export type CambiosCita = Partial<Pick<DatosAgenda, "titulo" | "notas" | "inicio" | "fin" | "doctorId" | "servicioId">> & { estado?: EstadoCita };
 
-export async function eliminarCitaCancelada(orgId: bigint, id: bigint) {
+export async function eliminarCitaCancelada(orgId: bigint, id: bigint, sesion?: IdentidadAgenda) {
   return transaccionTenant(orgId, async (tx) => {
+    const acceso = sesion ? await accesoAgenda(sesion, tx) : null;
     await tx.$queryRaw`SELECT id FROM citas WHERE id = ${id} FOR UPDATE`;
     const cita = await tx.cita.findFirst({ where: { id } });
-    if (!cita) throw new ErrorCita("Cita inexistente", 404);
+    if (!cita || (acceso && !permiteEspecialista(acceso, cita.doctorId))) throw new ErrorCita("Cita inexistente", 404);
     if (cita.estado !== "cancelada") throw new ErrorCita("Cancela la cita antes de eliminarla", 409);
     if (await tx.evolucionClinica.count({ where: { citaId: id } })) {
       throw new ErrorCita("No se puede eliminar la cita porque tiene una evolución clínica ligada", 409);
@@ -89,11 +92,13 @@ export async function eliminarCitaCancelada(orgId: bigint, id: bigint) {
   });
 }
 
-export async function editarCita(orgId: bigint, id: bigint, datos: CambiosCita) {
+export async function editarCita(orgId: bigint, id: bigint, datos: CambiosCita, sesion?: IdentidadAgenda) {
   return transaccionTenant(orgId, async (tx) => {
+    const acceso = sesion ? await accesoAgenda(sesion, tx) : null;
     await tx.$queryRaw`SELECT id FROM citas WHERE id = ${id} FOR UPDATE`;
     const actual = await tx.cita.findFirst({ where: { id }, include: { servicio: { select: { bufferMin: true } } } });
-    if (!actual) throw new ErrorCita("Cita inexistente", 404);
+    if (!actual || (acceso && !permiteEspecialista(acceso, actual.doctorId))) throw new ErrorCita("Cita inexistente", 404);
+    if (acceso && "doctorId" in datos && !permiteEspecialista(acceso, datos.doctorId ?? null)) throw new ErrorCita("Solo puedes usar tu especialista asignado", 403);
     const ids = [actual.doctorId, "doctorId" in datos ? datos.doctorId : actual.doctorId].filter((valor): valor is bigint => valor != null);
     const doctores = await bloquearAgenda(tx, ids);
     let bufferMin = 0;

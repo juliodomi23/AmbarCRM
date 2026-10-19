@@ -71,6 +71,8 @@ export default async function ConfiguracionPage() {
 
   return (
     <ConfiguracionCliente
+      especialistasAgenda={serializar(await db.doctor.findMany({ select: { id: true, nombre: true, activo: true }, orderBy: { nombre: "asc" } }))}
+      citasHabilitadas={modulosActivos.some((m) => m.clave === "citas")}
       embudos={serializar(embudos)}
       usuarios={serializar(usuariosConAcceso)}
       puestosSugeridos={puestosSugeridos}

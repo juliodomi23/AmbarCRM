@@ -9,6 +9,7 @@ import { crearCitaInterna, conErroresCita, incluirCita } from "@/lib/citas-servi
 import { errorTextoCita, fechaEntradaCita } from "@/lib/citas-reglas";
 import { configReservasEmpresa } from "@/lib/reservas/servidor";
 import { referenciaPropia } from "@/lib/referencias";
+import { accesoAgenda } from "@/lib/citas-acceso";
 
 export const dynamic = "force-dynamic";
 
@@ -30,8 +31,10 @@ export const GET = conModulo("citas", {}, conErroresCita(async (s: SesionModulo,
   const cursor = aBigInt(cursorTexto);
   if (cursorTexto && (!cursor || cursor > 9223372036854775807n)) return NextResponse.json({ error: "Cursor de citas inválido" }, { status: 400 });
   const paginacion = paginacionListado(req);
+  const acceso = await accesoAgenda(s);
   const citas = await db.cita.findMany({
     where: {
+      ...acceso.where,
       inicio: { lt: hasta }, fin: { gt: desde },
       contactoId: contactoId ?? undefined,
     },
@@ -98,6 +101,6 @@ export const POST = conModulo("citas", {}, conErroresCita(async (s: SesionModulo
   const cita = await crearCitaInterna(s.orgId!, {
     contactoId, conversacionId, responsableId: responsableId ?? s.userId,
     doctorId, servicioId: b.servicioId ? aBigInt(String(b.servicioId)) : null, titulo: String(b.titulo).trim(), notas: String(b.notas ?? "").trim() || null, inicio, fin,
-  });
+  }, true, s);
   return NextResponse.json(serializar({ cita, avisos: await avisosDeCita(cita) }), { status: 201 });
 }));

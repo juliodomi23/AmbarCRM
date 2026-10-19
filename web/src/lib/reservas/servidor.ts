@@ -292,15 +292,24 @@ export async function reprogramarCita(
   cita: { id: bigint; doctorId: bigint; inicio: Date; fin: Date },
   nuevoInicio: Date,
   bloquear = true,
+  gestionPublica?: { token: string },
 ) {
   const fin = new Date(nuevoInicio.getTime() + (cita.fin.getTime() - cita.inicio.getTime()));
   return transaccionTenant(orgId, async (tx) => {
     await tx.$queryRaw`SELECT id FROM citas WHERE id = ${cita.id} FOR UPDATE`;
     const actual = await tx.cita.findFirst({ where: { id: cita.id }, include: { servicio: { select: { bufferMin: true } } } });
     if (!actual || !["programada", "confirmada"].includes(actual.estado) || actual.doctorId !== cita.doctorId || +actual.inicio !== +cita.inicio || +actual.fin !== +cita.fin) return null;
+    if (gestionPublica && (actual.tokenGestion !== gestionPublica.token || actual.inicio <= new Date())) return null;
     const bloqueado = await bloquearAgenda(tx, [cita.doctorId], bloquear);
     if (!bloqueado[0]?.activo) return null;
-    const modulo = await tx.moduloOrg.findFirst({ where: { clave: "reservas_en_linea" }, select: { config: true } });
+    if (gestionPublica) {
+      const org = await tx.org.findUnique({ where: { id: orgId }, select: { activo: true } });
+      if (!org?.activo || !actual.servicioId) return null;
+      await tx.$queryRaw`SELECT id FROM servicios_reserva WHERE id = ${actual.servicioId} FOR SHARE`;
+      if (!(await tx.servicioReserva.findFirst({ where: { id: actual.servicioId, activo: true, doctores: { some: { doctorId: cita.doctorId } } }, select: { id: true } }))) return null;
+    }
+    const modulo = await tx.moduloOrg.findFirst({ where: { clave: "reservas_en_linea" }, select: { config: true, activo: true } });
+    if (gestionPublica && !modulo?.activo) return null;
     const cfg = configReservas(modulo?.config);
     const fecha = fechaLocal(nuevoInicio, cfg.zona);
     const ocupacion = { duracionMin: (+fin - +nuevoInicio) / 60_000, bufferMin: actual.origen === "interna" ? actual.servicio?.bufferMin ?? 0 : 0 };
