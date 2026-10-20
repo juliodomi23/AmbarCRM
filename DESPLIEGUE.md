@@ -38,6 +38,25 @@ forma parte de este repositorio.
 
 Genera la clave de cifrado una sola vez y consérvala en el gestor de secretos. Si se pierde, no podrán descifrarse los tokens ya guardados.
 
+### Correo para recuperar contraseña (opcional)
+
+Carga estas variables en el servicio `app` de EasyPanel antes de desplegar el flujo:
+
+| Variable | Valor |
+|---|---|
+| `SMTP_HOST` | Servidor de tu proveedor SMTP |
+| `SMTP_PORT` | `587` con STARTTLS o `465` con TLS directo |
+| `SMTP_SECURE` | `false` para 587; `true` para 465 |
+| `SMTP_USER` | Usuario del proveedor |
+| `SMTP_PASSWORD` | Contraseña del proveedor (secreto, sin valor por defecto) |
+| `SMTP_FROM` | Remitente autorizado, por ejemplo `AmbarCRM <no-reply@ambarrojostudios.cloud>` |
+| `NEXTAUTH_URL` | URL pública HTTPS del CRM; es la base del enlace de recuperación |
+
+Si falta algún campo SMTP o es inválido, el login oculta el enlace y los envíos se omiten
+con un log sin datos personales. Aplica `prisma/sql/actualizaciones.sql` como dueño antes de
+arrancar la nueva versión. El token vence en 60 minutos; solicitar otro invalida los anteriores.
+Los límites de recuperación son 5 por hora por IP y por organización/correo, por proceso.
+
 ## 3. Base de datos y aplicación
 
 BD nueva, desde `web/` (con el usuario dueño de la BD, no `crm_app`):

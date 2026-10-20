@@ -1766,3 +1766,36 @@ ALTER TABLE citas ADD COLUMN IF NOT EXISTS recordatorio_intentado_at TIMESTAMPTZ
 -- La restricción permanece aunque se elimine el especialista: nunca abre toda la agenda.
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS agenda_solo_propia BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS agenda_doctor_id BIGINT REFERENCES doctores(id) ON DELETE SET NULL;
+
+-- Recuperación de contraseña: el token original nunca se persiste.
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_cambiada_at TIMESTAMPTZ;
+CREATE UNIQUE INDEX IF NOT EXISTS usuarios_id_org_id_key ON usuarios(id, org_id);
+
+CREATE TABLE IF NOT EXISTS restablecimientos_password (
+  id BIGSERIAL PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  usuario_id BIGINT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  vence_at TIMESTAMPTZ NOT NULL,
+  usado_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  FOREIGN KEY (usuario_id, org_id) REFERENCES usuarios(id, org_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS restablecimientos_password_usuario_id_idx ON restablecimientos_password(usuario_id);
+ALTER TABLE restablecimientos_password ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_isolation ON restablecimientos_password;
+CREATE POLICY org_isolation ON restablecimientos_password
+  USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+  WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
+GRANT SELECT, INSERT, UPDATE, DELETE ON restablecimientos_password TO crm_app;
+GRANT USAGE, SELECT ON SEQUENCE restablecimientos_password_id_seq TO crm_app;
+
+CREATE OR REPLACE FUNCTION resolve_org_by_password_hash(p_hash text)
+  RETURNS bigint LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
+    SELECT r.org_id FROM restablecimientos_password r
+    JOIN orgs o ON o.id = r.org_id AND o.activo
+    WHERE r.token_hash = p_hash AND r.usado_at IS NULL AND r.vence_at > now()
+    LIMIT 1;
+$$;
+REVOKE ALL ON FUNCTION resolve_org_by_password_hash(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION resolve_org_by_password_hash(text) TO crm_app;
