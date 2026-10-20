@@ -58,13 +58,23 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = (user as any).id;
         token.rol = (user as any).rol;
         token.orgId = (user as any).orgId;
         token.puesto = (user as any).puesto;
         (token as any).checkedAt = Date.now();
+      }
+      // `update()` desde el cliente (Mi perfil): nombre y correo se releen de la BD, nunca del payload.
+      if (trigger === "update" && token.id && token.orgId) {
+        const u = await runWithOrg(BigInt(token.orgId), () =>
+          db.usuario.findUnique({ where: { id: BigInt(token.id!) } })
+        );
+        if (u) {
+          token.name = u.nombre;
+          token.email = u.email;
+        }
       }
       // Revalida contra la BD cada 5 min: desactivar un usuario (o su org) mata su
       // sesión aunque el JWT siga vigente; un cambio de rol también se refleja.

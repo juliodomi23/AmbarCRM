@@ -5,9 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { Toaster, toast } from "@/components/Toaster";
+import { Toaster } from "@/components/Toaster";
 import { Confirmador } from "@/components/Confirmador";
-import { PedirDatos, pedirDatos } from "@/components/PedirDatos";
+import { PedirDatos } from "@/components/PedirDatos";
 import { PushSetup } from "@/components/PushSetup";
 import { IdentidadOffline, limpiarCajaLocal } from "@/components/caja/IdentidadOffline";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -156,31 +156,6 @@ export function AppShell({
   const [modulos, setModulos] = useState<NavItem[]>([]);
   const visible = (item: NavItem) => !item.soloAdmin || usuario.rol === "admin";
 
-  async function cambiarPassword() {
-    setUsuarioAbierto(false);
-    const datos = await pedirDatos({
-      titulo: "Cambiar contraseña",
-      confirmar: "Cambiar",
-      campos: [
-        { nombre: "actual", etiqueta: "Contraseña actual", tipo: "password", requerido: true },
-        {
-          nombre: "nueva", etiqueta: "Contraseña nueva", tipo: "password", requerido: true,
-          ayuda: "Mínimo 8 caracteres.",
-          validar: (v) => (v.length < 8 ? "Mínimo 8 caracteres" : null),
-        },
-        { nombre: "confirmar", etiqueta: "Repite la contraseña nueva", tipo: "password", requerido: true },
-      ],
-    });
-    if (!datos) return;
-    if (datos.nueva !== datos.confirmar) return toast("Las contraseñas nuevas no coinciden", "error");
-    const res = await fetch("/api/cuenta/password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ actual: datos.actual, nueva: datos.nueva }),
-    });
-    const d = await res.json().catch(() => ({}));
-    toast(res.ok ? "Contraseña actualizada" : d.error ?? "No se pudo cambiar la contraseña", res.ok ? "ok" : "error");
-  }
   // Zona fija: el servidor corre en UTC y el navegador en hora local; si no coinciden,
   // React marca error de hidratación (#418) y el saludo sale mal.
   // ponytail: zona de México fija; tomarla de los ajustes de la org si hay clientes en otras zonas.
@@ -383,15 +358,16 @@ export function AppShell({
         {usuarioAbierto && (
           <div className="mt-2 rounded-xl bg-card p-1 text-foreground shadow-pop">
             <ThemeToggle />
-            <button
-              onClick={cambiarPassword}
+            <Link
+              href="/perfil"
+              onClick={() => setUsuarioAbierto(false)}
               className={[
                 "flex min-h-10 w-full items-center rounded-lg px-3 text-sm",
                 "text-muted-foreground hover:bg-muted hover:text-foreground",
               ].join(" ")}
             >
-              Cambiar contraseña
-            </button>
+              Mi perfil
+            </Link>
             <button
               onClick={async () => {
                 if (identidad) await limpiarCajaLocal(identidad);
