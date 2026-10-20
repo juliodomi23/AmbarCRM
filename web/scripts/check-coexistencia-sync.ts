@@ -1,7 +1,7 @@
 // Uso: node --experimental-strip-types scripts/check-coexistencia-sync.ts
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { avisoSincronizacion, esRespuestaHumanaPorCoexistence, iniciarSincronizacionCoexistencia } from "../src/lib/meta/coexistencia.ts";
+import { avisoSincronizacion, esRespuestaHumanaPorCoexistence, estadoSincronizacion, iniciarSincronizacionCoexistencia, reintentarSincronizacion } from "../src/lib/meta/coexistencia.ts";
 
 const llamadas: { url: string; auth: string | null; body: any }[] = [];
 const fetchOriginal = globalThis.fetch;
@@ -35,6 +35,22 @@ assert.match(avisoSincronizacion(parcial)!, /historial \(ya sincronizado\)/);
 simular([new Error("sin red"), new Error("sin red")]);
 const caida = await iniciarSincronizacionCoexistencia("https://graph.test/v26.0", "123", "tok");
 assert.deepEqual([caida.contactos.error, caida.historial.error], ["sin red", "sin red"]);
+globalThis.fetch = fetchOriginal;
+
+// Reintento: solo lo que Meta rechazó, y solo dentro de las 24 h desde la conexión.
+const conectado = "2026-10-20T18:00:00.000Z";
+const t = (h: number) => Date.parse(conectado) + h * 3600_000;
+const cfg = { onboardingMode: "coexistence", connectedAt: conectado, sincronizacion: parcial };
+assert.deepEqual(estadoSincronizacion(cfg, t(5))!.pendientes, ["historial"]);
+assert.equal(estadoSincronizacion(cfg, t(5))!.vigente, true);
+assert.equal(estadoSincronizacion(cfg, t(25))!.vigente, false);
+assert.deepEqual(estadoSincronizacion({ ...cfg, sincronizacion: ok }, t(1))!.pendientes, []);
+assert.equal(estadoSincronizacion({ onboardingMode: "cloud_api" }), null);
+simular([{ status: 200, json: { request_id: "R3" } }]);
+const reintento = await reintentarSincronizacion("https://graph.test/v26.0", "123", "tok", parcial, ["historial"]);
+assert.deepEqual(llamadas.map((l) => l.body.sync_type), ["history"], "no repite contactos, que Meta ya aceptó");
+assert.equal(reintento.historial.ok, true);
+assert.equal(reintento.contactos.requestId, "R1");
 globalThis.fetch = fetchOriginal;
 
 // La ruta de onboarding lo pide solo en Coexistence y después de guardar el canal.

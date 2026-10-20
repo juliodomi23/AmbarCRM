@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { estadoSincronizacion } from "@/lib/meta/coexistencia";
 
 export function getEmbudosConEtapas() {
   return db.embudo.findMany({
@@ -35,6 +36,7 @@ export async function listarCanales() {
         instagramId: typeof config.instagramId === "string" ? config.instagramId : null,
       appId: typeof config.appId === "string" ? config.appId : null,
       tieneAppSecret: typeof config.appSecretEncrypted === "string",
+      sincronizacion: estadoSincronizacion(config),
       errorAutorizacion: typeof config.errorAutorizacion === "string" ? config.errorAutorizacion : null
     };
   });

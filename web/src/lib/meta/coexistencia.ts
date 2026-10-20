@@ -42,6 +42,36 @@ export async function iniciarSincronizacionCoexistencia(graphUrl: string, phoneN
   return { contactos, historial, solicitadaAt: new Date().toISOString() };
 }
 
+const VENTANA_SINCRONIZACION_MS = 24 * 60 * 60 * 1000;
+type Parte = "contactos" | "historial";
+type Sincronizacion = { contactos: ResultadoSincronizacion; historial: ResultadoSincronizacion; solicitadaAt: string };
+
+/** Qué falta por sincronizar y hasta cuándo se puede pedir (24 h desde que se conectó). null si no es Coexistence. */
+export function estadoSincronizacion(config: unknown, ahora = Date.now()) {
+  const c = config as { onboardingMode?: unknown; connectedAt?: unknown; sincronizacion?: Partial<Sincronizacion> } | null;
+  if (c?.onboardingMode !== "coexistence") return null;
+  const vence = typeof c.connectedAt === "string" ? Date.parse(c.connectedAt) + VENTANA_SINCRONIZACION_MS : NaN;
+  const pendientes = (["contactos", "historial"] as Parte[]).filter((parte) => !c.sincronizacion?.[parte]?.ok);
+  return { vigente: ahora < vence, venceAt: Number.isNaN(vence) ? null : new Date(vence).toISOString(), pendientes };
+}
+
+/** Repite solo las partes que Meta rechazó: las que ya aceptó no se pueden pedir otra vez. */
+export async function reintentarSincronizacion(
+  graphUrl: string,
+  phoneNumberId: string,
+  token: string,
+  previa: Partial<Sincronizacion> | undefined,
+  pendientes: Parte[]
+): Promise<Sincronizacion> {
+  const contactos = pendientes.includes("contactos")
+    ? await pedirSincronizacion(graphUrl, phoneNumberId, token, "smb_app_state_sync")
+    : previa!.contactos!;
+  const historial = pendientes.includes("historial")
+    ? await pedirSincronizacion(graphUrl, phoneNumberId, token, "history")
+    : previa!.historial!;
+  return { contactos, historial, solicitadaAt: new Date().toISOString() };
+}
+
 export function avisoSincronizacion(sync: { contactos: ResultadoSincronizacion; historial: ResultadoSincronizacion }) {
   const fallas = [
     !sync.contactos.ok && `contactos (${sync.contactos.error})`,

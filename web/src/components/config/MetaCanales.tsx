@@ -17,6 +17,7 @@ type Canal = {
   wabaId?: string | null;
   phoneNumberId?: string | null;
   credencialesConfiguradas?: boolean;
+  sincronizacion?: { vigente: boolean; venceAt: string | null; pendientes: string[] } | null;
 };
 
 type PlantillaMeta = {
@@ -92,6 +93,15 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
     const data = await response.json().catch(() => ({}));
     if (!response.ok) return toast(`Meta no activó el número: ${data.error || "error desconocido"}`, "error");
     toast("Número activado en WhatsApp. Ya puede recibir mensajes.", "ok");
+    router.refresh();
+  }
+
+  async function sincronizar() {
+    if (!canal) return;
+    const response = await fetch(`/api/canales/${canal.id}/sincronizar`, { method: "POST" });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return toast(data.error || "No se pudo sincronizar", "error");
+    toast("Meta aceptó la sincronización. Los contactos e historial llegan en unos minutos.", "ok");
     router.refresh();
   }
 
@@ -171,7 +181,18 @@ export function MetaCanales({ canales, vista = "canal" }: { canales: Canal[]; vi
               <button type="button" onClick={activar} className="text-left text-xs font-medium text-primary hover:underline">
                 Activar número (si no recibe mensajes)
               </button>
-              <button type="button" onClick={desconectar} className="text-left text-xs text-destructive hover:underline">
+              {canal.sincronizacion && (
+                canal.sincronizacion.pendientes.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Contactos e historial: solicitados a Meta.</p>
+                ) : canal.sincronizacion.vigente ? (
+                  <button type="button" onClick={sincronizar} className="text-left text-xs font-medium text-primary hover:underline">
+                    Reintentar sincronizar {canal.sincronizacion.pendientes.join(" e ")} (hasta {new Date(canal.sincronizacion.venceAt!).toLocaleString("es-MX")})
+                  </button>
+                ) : (
+                  <p className="text-xs text-warning">Pasaron 24 h: Meta ya no permite sincronizar {canal.sincronizacion.pendientes.join(" ni ")}.</p>
+                )
+              )}
+              <button type="button" onClick={desconectar}className="text-left text-xs text-destructive hover:underline">
                 Desconectar de AmbarCRM
               </button>
             </div>
