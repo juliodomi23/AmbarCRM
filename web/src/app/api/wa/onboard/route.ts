@@ -4,6 +4,7 @@ import { requireSesion } from "@/lib/session";
 import { META_GRAPH_URL, requireMetaAppCredentials } from "@/lib/meta/config";
 import { encryptMetaToken } from "@/lib/meta/credentials";
 import { registrarNumero } from "@/lib/meta/registro";
+import { avisoSincronizacion, iniciarSincronizacionCoexistencia } from "@/lib/meta/coexistencia";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +108,14 @@ export async function POST(req: NextRequest) {
       ? await db.canalWhatsapp.update({ where: { id: existing.id }, data: values })
       : await db.canalWhatsapp.create({ data: values });
 
+    // Después de guardar el canal: los webhooks de historial resuelven la org por el phone_number_id.
+    const sincronizacion = coexistencia
+      ? await iniciarSincronizacionCoexistencia(META_GRAPH_URL, phoneNumberId, token)
+      : undefined;
+    if (sincronizacion) {
+      await db.canalWhatsapp.update({ where: { id: canal.id }, data: { config: { ...config, sincronizacion } } });
+    }
+
     return NextResponse.json({
       ok: true,
       canalId: Number(canal.id),
@@ -115,7 +124,7 @@ export async function POST(req: NextRequest) {
       nombre: canal.nombre,
       aviso: registro.error
         ? `El número quedó conectado, pero Meta no lo activó: ${registro.error}. Usa "Activar número" en Números conectados.`
-        : undefined
+        : sincronizacion && avisoSincronizacion(sincronizacion)
     });
   } catch (error) {
     return NextResponse.json(

@@ -194,6 +194,14 @@ Abrir `/bin/bash` para los bloques de consola del servicio `backup` que usan `re
   `message_echoes` es del producto de páginas/Messenger y Meta lo rechaza con error
   de permisos: no hace falta para coexistencia. Sin los tres no llega el historial
   ni lo que se escribe desde el celular.
+  **Historial y contactos no llegan solos:** al terminar el onboarding de Coexistence el
+  CRM llama dos veces a `POST /{phone_number_id}/smb_app_data` (`smb_app_state_sync` y
+  luego `history`). Meta acepta cada llamada **una sola vez** por conexión y solo en las
+  24 h posteriores; si se pierde hay que desconectar el número y repetir el flujo. El
+  resultado (con `request_id`) queda en `config.sincronizacion` del canal. Requisitos
+  del cliente: app WhatsApp Business 2.24.17 o superior, aceptar compartir el historial
+  en el flujo y dejar la app abierta unos minutos. Verificado el 20-oct-2026: llegan
+  `smb_app_state_sync` e `history` y el historial se guarda (solo 180 días, sin grupos).
 
 - [ ] **10. Humo de un canal Messenger de prueba.** Usar exclusivamente la página
   y organización de pruebas confirmadas para App Review. Abrir
