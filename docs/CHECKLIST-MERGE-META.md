@@ -107,17 +107,24 @@ Abrir `/bin/bash` para los bloques de consola del servicio `backup` que usan `re
 
 - [ ] **4. Merge fast-forward, local, después de las comprobaciones anteriores.**
 
+  La fuente es la punta de la cadena lineal `meta-tech-provider` → `preparar-merge-meta`
+  → `modulos-fase-2` → `codex/revision-integral-citas` (verificado 19-oct-2026: cada
+  rama contiene a la anterior; la punta suma ~281 commits sobre `e1c5e93`). Antes
+  de la ventana, subir `codex/revision-integral-citas` (solo existe local) y, si
+  llegó otro commit, usar el nombre de la última rama de la cadena.
+
   ```powershell
   git status --short
-  git merge-base --is-ancestor meta-tech-provider preparar-merge-meta
+  git merge-base --is-ancestor meta-tech-provider codex/revision-integral-citas
   if ($LASTEXITCODE -ne 0) { throw 'La historia dejó de permitir fast-forward' }
   git switch meta-tech-provider
-  git merge --ff-only preparar-merge-meta
+  git merge --ff-only codex/revision-integral-citas
   git log -1 --oneline
   ```
 
   Esperado: árbol limpio antes del cambio y `Fast-forward`. Esto incluye los
-  módulos y esta preparación. Si hay cambios ajenos o historia divergente,
+  módulos, las citas y esta preparación. `main` es ancestro de `meta-tech-provider`:
+  avanzarla después con otro `--ff-only`, no antes del humo. Si hay cambios ajenos o historia divergente,
   detenerse; no resolver con reset, rebase o push forzado.
 
 - [ ] **5. Push de la rama de despliegue, expresamente autorizado en esa ventana.**
@@ -174,6 +181,19 @@ Abrir `/bin/bash` para los bloques de consola del servicio `backup` que usan `re
   MRR contra la bitácora previa. No volver a sembrar AR para hacer pasar el humo.
   Si faltan módulos/datos, revisar la guía de AR y obtener decisión de Julio;
   no confundir `ambar-rojo` del fixture local con el slug real `inicial`.
+
+- [ ] **9b. Humo de WhatsApp oficial (Embedded Signup).** App de Meta en Live, Tech
+  Provider y webhook `/api/meta/webhook` verificados el 19-oct-2026; `NEXT_PUBLIC_META_APP_ID`
+  = `1611804210387747` y `NEXT_PUBLIC_META_CONFIG_ID` = `2337285350388372` (ajuste
+  «AmbarCRM WhatsApp», Cloud API, token de usuario del sistema). Son variables de
+  *build*: deben estar en EasyPanel antes del Deploy. En `/configuracion` → WhatsApp,
+  conectar un número de prueba con el primer botón; enviar y recibir un mensaje.
+  **Coexistence** (segundo botón, número que sigue en la app del celular): en Meta →
+  Configura un webhook, deben estar suscritos `history`, `smb_message_echoes` y
+  `smb_app_state_sync` (verificado el 20-oct-2026; `history` se activó ese día).
+  `message_echoes` es del producto de páginas/Messenger y Meta lo rechaza con error
+  de permisos: no hace falta para coexistencia. Sin los tres no llega el historial
+  ni lo que se escribe desde el celular.
 
 - [ ] **10. Humo de un canal Messenger de prueba.** Usar exclusivamente la página
   y organización de pruebas confirmadas para App Review. Abrir

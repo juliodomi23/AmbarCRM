@@ -10,7 +10,7 @@ export function Canales({ canales }: { canales: CanalExternoDatos[] }) {
     <label className="block max-w-2xl space-y-1 text-sm font-medium">
       <span>Tipo de canal</span>
       <select className="w-full rounded-lg border border-input bg-background px-3 py-2" value={tipo} onChange={(e) => setTipo(e.target.value)}>
-        <option value="cloud_api">WhatsApp</option><option value="messenger">Messenger</option><option value="instagram">Instagram</option><option value="api">API</option>
+        <option value="cloud_api">WhatsApp</option><option value="messenger" disabled>Messenger (próximamente)</option><option value="instagram" disabled>Instagram (próximamente)</option><option value="api">API</option>
       </select>
     </label>
     {tipo === "cloud_api" ? <MetaCanales canales={canales.filter((c) => c.proveedor === "cloud_api")} />
