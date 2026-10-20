@@ -7,7 +7,7 @@ export type CampoPedido = {
   /** Clave con la que vuelve el valor en el resultado. */
   nombre: string;
   etiqueta: string;
-  tipo?: "texto" | "numero" | "dinero" | "textarea" | "seleccion";
+  tipo?: "texto" | "numero" | "dinero" | "textarea" | "seleccion" | "password";
   /** Valor inicial; el resultado devuelve siempre el texto tal cual lo escribió la persona. */
   valor?: string;
   requerido?: boolean;
@@ -134,7 +134,7 @@ export function PedirDatos() {
                   <input
                     {...comunes}
                     ref={i === 0 ? primero : undefined}
-                    type="text"
+                    type={tipo === "password" ? "password" : "text"}
                     inputMode={tipo === "dinero" ? "decimal" : tipo === "numero" ? "decimal" : undefined}
                     placeholder={c.placeholder}
                     autoComplete="off"
