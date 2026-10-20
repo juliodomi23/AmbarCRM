@@ -719,6 +719,12 @@ export function ChatCliente({
                       </button>
                     ) : m.tipo === "audio" && m.mediaUrl ? (
                       <audio controls src={m.mediaUrl} className="mb-1 h-10 w-56 max-w-full" />
+                    ) : m.tipo === "video" && m.mediaUrl ? (
+                      <video controls src={m.mediaUrl} className="mb-1 max-h-60 rounded-lg" />
+                    ) : m.tipo === "ubicacion" && m.contenido ? (
+                      <a href={`https://www.google.com/maps?q=${encodeURIComponent(m.contenido)}`} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-1 text-xs text-primary underline">
+                        📍 Ver ubicación en el mapa
+                      </a>
                     ) : (
                       m.tipo !== "texto" && m.mediaUrl && (
                         <a href={m.mediaUrl} target="_blank" className="mb-1 flex items-center gap-1 text-xs text-primary underline">

@@ -63,7 +63,7 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
     if (media) {
       mediaUrl = await guardarMediaBase64(media.base64, media.mime);
       mediaMime = media.mime;
-    }
+    } else if (m.raw && mediaUrl === m.raw) mediaUrl = undefined; // Cloud API: sin descarga solo hay un id de Meta, no una URL
   }
   const orgId = await orgActual();
   if (orgId == null) throw new Error("ingesta sin empresa");

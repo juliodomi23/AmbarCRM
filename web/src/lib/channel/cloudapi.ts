@@ -60,7 +60,15 @@ function normalizeMessage(
     tipo = "documento";
     contenido = message.document?.filename;
     mediaId = message.document?.id;
-  } else if (message.type === "location") {
+  } else if (message.type === "sticker") {
+    tipo = "imagen";
+    mediaId = message.sticker?.id;
+  } else if (message.type === "interactive") {
+    const respuesta = message.interactive?.button_reply || message.interactive?.list_reply;
+    contenido = respuesta?.title;
+    if (!contenido) return null;
+  } else if (message.type === "button") contenido = message.button?.text;
+  else if (message.type === "location") {
     tipo = "ubicacion";
     contenido = `${message.location?.latitude},${message.location?.longitude}`;
   } else return null;
