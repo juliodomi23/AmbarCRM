@@ -1,7 +1,7 @@
 // Uso: node --experimental-strip-types scripts/check-coexistencia-sync.ts
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { avisoSincronizacion, iniciarSincronizacionCoexistencia } from "../src/lib/meta/coexistencia.ts";
+import { avisoSincronizacion, esRespuestaHumanaPorCoexistence, iniciarSincronizacionCoexistencia } from "../src/lib/meta/coexistencia.ts";
 
 const llamadas: { url: string; auth: string | null; body: any }[] = [];
 const fetchOriginal = globalThis.fetch;
@@ -41,5 +41,19 @@ globalThis.fetch = fetchOriginal;
 const ruta = await readFile(new URL("../src/app/api/wa/onboard/route.ts", import.meta.url), "utf8");
 assert.match(ruta, /coexistencia\s*\?\s*await iniciarSincronizacionCoexistencia/);
 assert.ok(ruta.indexOf("iniciarSincronizacionCoexistencia(META") > ruta.indexOf("db.canalWhatsapp.create"));
+
+// Respuesta humana desde la app del celular (eco saliente en Coexistence) = apaga el bot de esa conversación.
+const coexistence = { proveedor: "cloud_api", config: { onboardingMode: "coexistence" } };
+assert.equal(esRespuestaHumanaPorCoexistence(coexistence, { direccion: "saliente" }), true);
+assert.equal(esRespuestaHumanaPorCoexistence(coexistence, { direccion: "saliente", historico: true }), false, "el historial no apaga el bot");
+assert.equal(esRespuestaHumanaPorCoexistence(coexistence, { direccion: "entrante" }), false);
+assert.equal(esRespuestaHumanaPorCoexistence({ proveedor: "cloud_api", config: { onboardingMode: "cloud_api" } }, { direccion: "saliente" }), false);
+assert.equal(esRespuestaHumanaPorCoexistence({ proveedor: "cloud_api", config: null }, { direccion: "saliente" }), false);
+assert.equal(esRespuestaHumanaPorCoexistence({ proveedor: "messenger", config: { onboardingMode: "coexistence" } }, { direccion: "saliente" }), false);
+
+const ingest = await readFile(new URL("../src/lib/services/ingest.ts", import.meta.url), "utf8");
+const ramaSaliente = ingest.slice(ingest.indexOf("if (esSaliente) {"));
+assert.ok(ingest.indexOf("if (m.historico) {") < ingest.indexOf("if (esSaliente) {"), "el historial se descarta antes");
+assert.match(ramaSaliente, /esRespuestaHumanaPorCoexistence\(canal, m\)\) await apagarBotPorRespuestaHumana\(orgId, conversacion\.id\)/);
 
 console.log("coexistencia-sync OK");

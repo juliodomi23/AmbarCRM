@@ -195,6 +195,26 @@ export async function escalarAHumano(
   });
 }
 
+/** Coexistence: una persona respondió desde la app del celular; el bot deja esa conversación (no las demás). */
+export async function apagarBotPorRespuestaHumana(orgId: bigint, conversacionId: bigint) {
+  return transaccionTenant(orgId, async (tx) => {
+    const conv = await tx.conversacion.findUnique({ where: { id: conversacionId } });
+    if (!conv?.botActivo) return false;
+    await tx.conversacion.update({ where: { id: conv.id }, data: { botActivo: false } });
+    await tx.mensaje.create({
+      data: {
+        conversacionId: conv.id,
+        direccion: "saliente",
+        tipo: "texto",
+        interna: true,
+        status: "enviado",
+        contenido: "Una persona respondió desde la app de WhatsApp: el bot se apagó en esta conversación."
+      }
+    });
+    return true;
+  });
+}
+
 /** Bot activo aplicable a un canal: prioriza el específico del canal, si no, el global (canalId null). */
 export async function botParaCanal(canalId: bigint | null) {
   const bots = await db.bot.findMany({ where: { activo: true } });
@@ -252,6 +272,7 @@ export async function dispatchABot(bot: { webhookUrl: string; signingSecret?: st
     ambarcrm: {
       conversacionId: d.conversacionId.toString(),
       contactoId: d.contactoId.toString(),
+      tipo: d.mensaje.tipo,
       telefono: d.telefono,
       nombre: d.nombre,
       responder_url: `${BASE}/api/v1/accounts/1/conversations/${d.conversacionId}/messages`,

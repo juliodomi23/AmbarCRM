@@ -2,7 +2,8 @@ import { db, orgActual } from "@/lib/db";
 import { transaccionTenant } from "@/lib/retail-db";
 import { getProvider, destinatarioDelCanal, type MensajeEntranteNormalizado } from "@/lib/channel";
 import { getAjustes } from "@/lib/services/config";
-import { botParaCanal, dispatchABot } from "@/lib/services/bots";
+import { apagarBotPorRespuestaHumana, botParaCanal, dispatchABot } from "@/lib/services/bots";
+import { esRespuestaHumanaPorCoexistence } from "@/lib/meta/coexistencia";
 import { crearLeadSiNoTiene } from "@/lib/services/funnel";
 import { capturarCsat } from "@/lib/services/csat";
 import { estaFueraDeHorario } from "@/lib/horario";
@@ -121,6 +122,7 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
   // Si lo mandó el propio número (desde el celular), no hay nada más que hacer:
   // no es un lead entrante, no notifica al bot, ni CSAT, ni bienvenida.
   if (esSaliente) {
+    if (esRespuestaHumanaPorCoexistence(canal, m)) await apagarBotPorRespuestaHumana(orgId, conversacion.id);
     return { duplicado: false as const, mensajeId: mensaje.id, conversacionId: conversacion.id };
   }
 

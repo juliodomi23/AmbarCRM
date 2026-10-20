@@ -24,6 +24,18 @@ async function pedirSincronizacion(
   }
 }
 
+/**
+ * Un mensaje saliente que llega por eco en un canal Coexistence lo escribió una persona desde la app
+ * del celular (lo que manda el CRM por la API no genera eco). El historial no cuenta: son mensajes viejos.
+ */
+export function esRespuestaHumanaPorCoexistence(
+  canal: { proveedor: string; config: unknown },
+  mensaje: { direccion?: string; historico?: boolean }
+) {
+  const modo = (canal.config as { onboardingMode?: unknown } | null)?.onboardingMode;
+  return canal.proveedor === "cloud_api" && modo === "coexistence" && mensaje.direccion === "saliente" && !mensaje.historico;
+}
+
 export async function iniciarSincronizacionCoexistencia(graphUrl: string, phoneNumberId: string, token: string) {
   const contactos = await pedirSincronizacion(graphUrl, phoneNumberId, token, "smb_app_state_sync");
   const historial = await pedirSincronizacion(graphUrl, phoneNumberId, token, "history");
