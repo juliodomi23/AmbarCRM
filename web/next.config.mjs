@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  logging: { incomingRequests: { ignore: [/^\/restablecer(?:\/|$)/] } },
   // Versiona los cachés del service worker de la caja: cada build invalida los chunks anteriores.
   env: { NEXT_PUBLIC_BUILD_ID: process.env.BUILD_ID || Date.now().toString(36) },
   async headers() {

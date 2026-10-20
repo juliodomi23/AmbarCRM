@@ -27,6 +27,8 @@ export async function solicitarRestablecimiento(slug: string, email: string) {
   if (!org?.activo) return;
 
   const resultado = await transaccionTenant(org.id, async (tx) => {
+    const organizaciones = await tx.$queryRaw<Array<{ id: bigint }>>`SELECT id FROM orgs WHERE id = ${org.id} AND activo FOR SHARE`;
+    if (!organizaciones[0]) return null;
     const usuarios = await tx.$queryRaw<Array<{ id: bigint; email: string }>>`
       SELECT id, email FROM usuarios
       WHERE lower(email) = ${email} AND activo

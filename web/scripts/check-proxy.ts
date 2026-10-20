@@ -9,6 +9,9 @@ assert.ok(patron, "no se encontró el matcher");
 // Next.js interpreta "/((?!...).*)" como una expresión anclada.
 const regla = new RegExp(`^${patron.replace(/^\//, "/")}$`);
 const protegida = (ruta: string) => regla.test(ruta);
+for (const ruta of ["/recuperar", "/recuperar/", "/restablecer/abc123", "/api/auth/recuperar", "/api/auth/restablecer"]) assert.equal(protegida(ruta), false, `${ruta} es pública`);
+for (const ruta of ["/recuperar-privado", "/recuperaciones", "/restablecer", "/restablecer-privado", "/api/auth-privada", "/perfil", "/api/cuenta/password", "/api/usuarios/1"]) assert.equal(protegida(ruta), true, `${ruta} requiere sesión`);
+assert.match(fuente, /!token\.revocado/, "el proxy rechaza JWT revocados");
 for (const ruta of ["/api/servidores", "/api/servidores/1/token", "/api/servidores/heartbeats", "/api/panel-ar/alertas-privadas"]) assert.equal(protegida(ruta), true);
 for (const ruta of ["/api/servidores/heartbeat", "/api/panel-ar/alertas"]) assert.equal(protegida(ruta), false, "la ruta valida el token sin redirigir a login");
 
