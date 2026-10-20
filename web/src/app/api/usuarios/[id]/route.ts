@@ -34,6 +34,7 @@ async function manejarPATCH(req: NextRequest, props: { params: Promise<{ id: str
       return NextResponse.json({ error: "la contraseña debe tener al menos 8 caracteres" }, { status: 400 });
     }
     data.passwordHash = await bcrypt.hash(body.password, 10);
+    data.passwordCambiadaAt = new Date();
   }
 
   await db.usuario.update({ where: { id: BigInt(params.id) }, data });

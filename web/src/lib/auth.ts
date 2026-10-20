@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { db, runWithOrg } from "@/lib/db";
 import { ipCliente, permitido } from "@/lib/rate-limit";
+import { DURACION_SESION, sesionAnteriorAlCambio } from "@/lib/password-sesion";
 
 /**
  * Resuelve el slug de la org del request: subdominio (cliente.tucrm.com),
@@ -18,7 +19,7 @@ function resolverSlug(host?: string, orgSlug?: string): string {
 
 export const authOptions: NextAuthOptions = {
   // 7 días en lugar de los 30 por defecto: el CRM tiene datos de clientes y expedientes.
-  session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60 },
+  session: { strategy: "jwt", maxAge: DURACION_SESION },
   pages: { signIn: "/login" },
   providers: [
     CredentialsProvider({
@@ -60,12 +61,14 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user, trigger }) {
       if (user) {
-        token.id = (user as any).id;
-        token.rol = (user as any).rol;
-        token.orgId = (user as any).orgId;
-        token.puesto = (user as any).puesto;
-        (token as any).checkedAt = Date.now();
+        token.id = user.id;
+        token.rol = user.rol;
+        token.orgId = user.orgId;
+        token.puesto = user.puesto;
+        token.emitidoAt = Date.now();
+        token.checkedAt = Date.now();
       }
+      token.emitidoAt ??= token.iat ? token.iat * 1000 : 0;
       // `update()` desde el cliente (Mi perfil): nombre y correo se releen de la BD, nunca del payload.
       if (trigger === "update" && token.id && token.orgId) {
         const u = await runWithOrg(BigInt(token.orgId), () =>
@@ -78,16 +81,16 @@ export const authOptions: NextAuthOptions = {
       }
       // Revalida contra la BD cada 5 min: desactivar un usuario (o su org) mata su
       // sesión aunque el JWT siga vigente; un cambio de rol también se refleja.
-      const checkedAt = (token as any).checkedAt as number | undefined;
-      if (!user && token.id && token.orgId && (!checkedAt || Date.now() - checkedAt > 5 * 60_000)) {
-        (token as any).checkedAt = Date.now();
+      const checkedAt = token.checkedAt;
+      if (!user && token.id && token.orgId && (trigger === "update" || !checkedAt || Date.now() - checkedAt > 5 * 60_000)) {
+        token.checkedAt = Date.now();
         try {
           const u = await runWithOrg(BigInt(token.orgId), () =>
             db.usuario.findUnique({ where: { id: BigInt(token.id!) } })
           );
-          if (!u || !u.activo) (token as any).revocado = true;
+          const org = await db.org.findUnique({ where: { id: BigInt(token.orgId) } });
+          if (!u || !u.activo || !org?.activo || sesionAnteriorAlCambio(token, u.passwordCambiadaAt)) token.revocado = true;
           else {
-            (token as any).revocado = false;
             token.rol = u.rol as "admin" | "agente";
             token.puesto = u.puesto;
           }
@@ -98,16 +101,16 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      if ((token as any).revocado) {
+      if (token.revocado) {
         // Sin user, todos los guards (middleware, requireSesion) responden 401/redirect.
-        (session as any).user = undefined;
+        (session as { user?: typeof session.user }).user = undefined;
         return session;
       }
       if (session.user) {
-        (session.user as any).id = token.id;
-        (session.user as any).rol = token.rol;
-        (session.user as any).orgId = token.orgId;
-        (session.user as any).puesto = token.puesto;
+        session.user.id = token.id;
+        session.user.rol = token.rol;
+        session.user.orgId = token.orgId;
+        session.user.puesto = token.puesto;
       }
       return session;
     }
