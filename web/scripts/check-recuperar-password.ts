@@ -5,6 +5,8 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { mock } from "node:test";
 import pg from "pg";
 import bcrypt from "bcryptjs";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 const appUrl = process.env.DATABASE_URL;
 const adminUrl = process.env.ADMIN_DATABASE_URL;
@@ -40,6 +42,9 @@ const { PATCH: cambiarAdmin } = cargar("../src/app/api/usuarios/[id]/route.ts");
 const { encode, decode, getToken } = await import("next-auth/jwt");
 const { renovarSesionPassword } = cargar("../src/lib/password-sesion.ts");
 const { NextResponse } = await import("next/server");
+const LoginPage = cargar("../src/app/login/page.tsx").default;
+const nextConfig = (await import("../next.config.mjs")).default;
+const { ignoreLoggingIncomingRequests } = cargar("next/dist/server/dev/log-requests.js");
 const admin = new pg.Pool({ connectionString: adminUrl, max: 1 });
 const sufijo = randomBytes(5).toString("hex");
 const slugA = `recuperar-a-${sufijo}`;
@@ -92,6 +97,10 @@ async function invalido(token: string) {
 try {
   const rol = await admin.query("SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname='crm_app'");
   assert.deepEqual(rol.rows[0], { rolsuper: false, rolbypassrls: false });
+  const funcion = await admin.query("SELECT p.prosecdef,p.proconfig,EXISTS(SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE') AS publica FROM pg_proc p WHERE p.proname='resolve_org_by_password_hash'");
+  assert.equal(funcion.rows[0].prosecdef, true);
+  assert.ok(funcion.rows[0].proconfig.includes("search_path=public"));
+  assert.equal(funcion.rows[0].publica, false, "la función no se puede ejecutar desde PUBLIC");
   const orgs = await admin.query("INSERT INTO orgs(nombre,slug) VALUES ('Org A <segura>',$1),('Org B',$2) RETURNING id", [slugA, slugB]);
   [orgA, orgB] = orgs.rows.map((fila) => BigInt(fila.id));
   const passwordHash = await bcrypt.hash("Anterior123!", 10);
@@ -108,6 +117,8 @@ try {
   smtp.demorar(0);
   assert.equal(respuesta.status, 200);
   const token = ultimoToken();
+  assert.equal(ignoreLoggingIncomingRequests({ url: `/restablecer/${token}` }, nextConfig.logging), true, "Next dev tampoco registra URLs con tokens");
+  assert.ok(renderToStaticMarkup(createElement(LoginPage)).includes("¿Olvidaste tu contraseña?"), "SMTP configurado muestra la liga decidida por servidor");
   const fila = await admin.query("SELECT * FROM restablecimientos_password WHERE token_hash=$1", [hash(token)]);
   assert.equal(fila.rowCount, 1);
   assert.equal(fila.rows[0].usuario_id, String(usuarioA));
@@ -158,6 +169,7 @@ try {
   const antesLimite = smtp.correos.length;
   for (let n = 0; n < 7; n++) await solicitar(slugB);
   assert.equal(smtp.correos.length - antesLimite, 4, "cinco solicitudes por org+correo, incluida la hecha con la org inactiva");
+  const enlaceB = ultimoToken();
   const ipFija = ip();
   const nuevasCuentas = await admin.query("INSERT INTO usuarios(org_id,nombre,email,password_hash) SELECT $1,'Límite','ip-' || n || '-' || $2 || '@example.test',$3 FROM generate_series(1,7) n RETURNING email", [String(orgB), sufijo, passwordHash]);
   const antesIp = smtp.correos.length;
@@ -167,9 +179,27 @@ try {
   const tokenB = await runWithOrg(orgB, () => db.restablecimientoPassword.findFirstOrThrow({ where: { usuarioId: usuarioB, usadoAt: null } }));
   assert.equal(await runWithOrg(orgA, () => db.restablecimientoPassword.findUnique({ where: { id: tokenB.id } })), null);
   assert.equal((await runWithOrg(orgA, () => db.restablecimientoPassword.updateMany({ where: { id: tokenB.id }, data: { usadoAt: new Date() } }))).count, 0);
-  await assert.rejects(runWithOrg(orgA, () => db.restablecimientoPassword.create({ data: { usuarioId: usuarioB, tokenHash: randomBytes(32).toString("hex"), venceAt: new Date(Date.now() + 60_000) } })), "FK compuesta impide asociar un usuario de otra org");
+  const conexionApp = new pg.Client({ connectionString: appUrl });
+  await conexionApp.connect();
+  try {
+    await conexionApp.query("BEGIN");
+    await conexionApp.query("SELECT set_config('app.current_org',$1,true)", [String(orgA)]);
+    await assert.rejects(conexionApp.query("INSERT INTO restablecimientos_password(usuario_id,token_hash,vence_at) VALUES ($1,$2,now()+interval '1 hour')", [String(usuarioB), randomBytes(32).toString("hex")]), { code: "23503" }, "FK compuesta impide asociar un usuario de otra org");
+  } finally {
+    await conexionApp.query("ROLLBACK");
+    await conexionApp.end();
+  }
   const usuarioIntacto = await runWithOrg(orgB, () => db.usuario.findUniqueOrThrow({ where: { id: usuarioB } }));
   assert.equal(usuarioIntacto.passwordHash, passwordHash);
+  const hashAntesDeB = (await runWithOrg(orgA, () => db.usuario.findUniqueOrThrow({ where: { id: usuarioA } }))).passwordHash;
+  await admin.query("UPDATE usuarios SET activo=false WHERE id=$1", [String(usuarioB)]);
+  await invalido(enlaceB);
+  await admin.query("UPDATE usuarios SET activo=true WHERE id=$1", [String(usuarioB)]);
+  await admin.query("UPDATE orgs SET activo=false WHERE id=$1", [String(orgB)]);
+  await invalido(enlaceB);
+  await admin.query("UPDATE orgs SET activo=true WHERE id=$1", [String(orgB)]);
+  assert.equal((await cambiar(enlaceB)).status, 200, "el token de B se resuelve sin sesión y solo cambia B");
+  assert.equal((await runWithOrg(orgA, () => db.usuario.findUniqueOrThrow({ where: { id: usuarioA } }))).passwordHash, hashAntesDeB, "restablecer B no modifica A");
 
   const jwt = authOptions.callbacks!.jwt!;
   const tokenViejo = { id: String(usuarioA), orgId: String(orgA), emitidoAt: Date.now() - 60_000, checkedAt: 0, iat: Math.floor(Date.now() / 1000) - 60 };
@@ -222,13 +252,18 @@ try {
 
   delete process.env.SMTP_HOST;
   assert.equal(correoConfigurado(), false);
+  assert.ok(!renderToStaticMarkup(createElement(LoginPage)).includes("¿Olvidaste tu contraseña?"), "SMTP incompleto oculta la liga en el servidor");
   const sinSmtp = smtp.correos.length;
+  const tokensAntes = await admin.query("SELECT count(*)::int AS n FROM restablecimientos_password WHERE org_id=$1", [String(orgB)]);
   assert.equal(await enviarCorreo({ para: email, asunto: "prueba", texto: "prueba", html: "prueba" }), false);
-  await solicitar(slugA, "sin-smtp@example.test");
+  await solicitar(slugB, nuevasCuentas.rows[6].email);
   assert.equal(smtp.correos.length, sinSmtp);
+  assert.equal((await admin.query("SELECT count(*)::int AS n FROM restablecimientos_password WHERE org_id=$1", [String(orgB)])).rows[0].n, tokensAntes.rows[0].n, "sin SMTP no se crean tokens ni para una cuenta existente");
   process.env.SMTP_HOST = "smtp.invalid";
   smtp.fallar(true);
   assert.equal(await enviarCorreo({ para: email, asunto: "prueba", texto: "prueba", html: "prueba" }), false);
+  await solicitar(slugB, nuevasCuentas.rows[5].email);
+  assert.equal(smtp.correos.length, sinSmtp, "la caída SMTP no cambia la respuesta pública");
   smtp.fallar(false);
   assert.ok(!logs.join("\n").includes(token) && !logs.join("\n").includes(nueva) && !logs.join("\n").includes(email), "logs sin secretos ni datos personales");
   console.log(`OK · flujo completo, hash, bcrypt 10, vencimiento, uso único concurrente, respuesta idéntica, inactivos, límites, RLS, revocación JWT (perfil/admin/legado), cookies y SMTP simulado. Respuesta inicial: ${tiempoRespuesta.toFixed(1)} ms.`);
