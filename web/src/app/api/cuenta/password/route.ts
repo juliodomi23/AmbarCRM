@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { permitido } from "@/lib/rate-limit";
 import { conErrores } from "@/lib/errores-api";
+import { leerTokenSesion, renovarSesionPassword } from "@/lib/password-sesion";
 
 export const dynamic = "force-dynamic";
 
@@ -28,13 +29,21 @@ async function manejarPOST(req: NextRequest) {
     return NextResponse.json({ error: "la contraseña nueva debe ser distinta a la actual" }, { status: 400 });
   }
 
+  const token = await leerTokenSesion(req);
+  if (!token || token.revocado || token.id !== String(s.userId) || token.orgId !== String(s.orgId)) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
+
   const usuario = await db.usuario.findUnique({ where: { id: s.userId } });
   if (!usuario || !(await bcrypt.compare(actual, usuario.passwordHash))) {
     return NextResponse.json({ error: "la contraseña actual no es correcta" }, { status: 400 });
   }
 
-  await db.usuario.update({ where: { id: s.userId }, data: { passwordHash: await bcrypt.hash(nueva, 10) } });
-  return NextResponse.json({ ok: true });
+  const passwordHash = await bcrypt.hash(nueva, 10);
+  const passwordCambiadaAt = new Date();
+  const resultado = await db.usuario.updateMany({ where: { id: s.userId, passwordHash: usuario.passwordHash }, data: { passwordHash, passwordCambiadaAt } });
+  if (!resultado.count) return NextResponse.json({ error: "La contraseña cambió durante la solicitud. Inténtalo de nuevo." }, { status: 409 });
+  const respuesta = NextResponse.json({ ok: true });
+  await renovarSesionPassword(token, respuesta, passwordCambiadaAt, req);
+  return respuesta;
 }
 
 export const POST = conErrores(manejarPOST);

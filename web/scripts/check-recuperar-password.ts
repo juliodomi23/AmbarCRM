@@ -29,11 +29,17 @@ Object.assign(globalThis, { AsyncLocalStorage });
 const { workAsyncStorage } = await import("next/dist/server/app-render/work-async-storage.external.js");
 const { workUnitAsyncStorage } = await import("next/dist/server/app-render/work-unit-async-storage.external.js");
 const { NextRequest } = await import("next/server");
-const { POST: recuperar } = await import("../src/app/api/auth/recuperar/route");
-const { POST: restablecer } = await import("../src/app/api/auth/restablecer/route");
-const { dbRaw, runWithOrg, db } = await import("../src/lib/db");
-const { correoConfigurado, enviarCorreo } = await import("../src/lib/correo");
-const { MENSAJE_RECUPERAR, ERROR_TOKEN } = await import("../src/lib/recuperar-password");
+const { POST: recuperar } = cargar("../src/app/api/auth/recuperar/route.ts");
+const { POST: restablecer } = cargar("../src/app/api/auth/restablecer/route.ts");
+const { dbRaw, runWithOrg, db } = cargar("../src/lib/db.ts");
+const { correoConfigurado, enviarCorreo } = cargar("../src/lib/correo.ts");
+const { MENSAJE_RECUPERAR, ERROR_TOKEN } = cargar("../src/lib/recuperar-password.ts");
+const { authOptions } = cargar("../src/lib/auth.ts");
+const { POST: cambiarPropia } = cargar("../src/app/api/cuenta/password/route.ts");
+const { PATCH: cambiarAdmin } = cargar("../src/app/api/usuarios/[id]/route.ts");
+const { encode, decode, getToken } = await import("next-auth/jwt");
+const { renovarSesionPassword } = cargar("../src/lib/password-sesion.ts");
+const { NextResponse } = await import("next/server");
 const admin = new pg.Pool({ connectionString: adminUrl, max: 1 });
 const sufijo = randomBytes(5).toString("hex");
 const slugA = `recuperar-a-${sufijo}`;
@@ -58,12 +64,12 @@ function ultimoToken() {
   return token;
 }
 
-async function ejecutar(handler: typeof recuperar, body: unknown, direccion = ip()) {
+async function ejecutar(handler: typeof recuperar, body: unknown, direccion = ip(), cookie = "") {
   const tareas: Array<() => Promise<void>> = [];
-  const req = new NextRequest("https://crm.prueba.test/api/auth/prueba", { method: "POST", headers: { "content-type": "application/json", "x-real-ip": direccion }, body: JSON.stringify(body) });
-  const respuesta = await workAsyncStorage.run({ afterContext: { after: (tarea: () => Promise<void>) => tareas.push(tarea) } } as never, () => workUnitAsyncStorage.run({ type: "request", phase: "action" } as never, () => handler(req)));
+  const req = new NextRequest("https://crm.prueba.test/api/auth/prueba", { method: "POST", headers: { "content-type": "application/json", "x-real-ip": direccion, cookie }, body: JSON.stringify(body) });
+  const respuesta = await workAsyncStorage.run({ isStaticGeneration: false, route: "/api/prueba", afterContext: { after: (tarea: () => Promise<void>) => tareas.push(tarea) } } as never, () => workUnitAsyncStorage.run({ type: "request", phase: "action", headers: req.headers, cookies: req.cookies, userspaceMutableCookies: req.cookies } as never, () => handler(req)));
   const contenido = await respuesta.json();
-  return { status: respuesta.status, contenido, terminar: async () => { for (const tarea of tareas) await tarea(); } };
+  return { status: respuesta.status, contenido, respuesta, terminar: async () => { for (const tarea of tareas) await tarea(); } };
 }
 async function solicitar(slug = slugA, correo = email, direccion = ip()) {
   const respuesta = await ejecutar(recuperar, { org: slug, email: correo }, direccion);
@@ -165,6 +171,55 @@ try {
   const usuarioIntacto = await runWithOrg(orgB, () => db.usuario.findUniqueOrThrow({ where: { id: usuarioB } }));
   assert.equal(usuarioIntacto.passwordHash, passwordHash);
 
+  const jwt = authOptions.callbacks!.jwt!;
+  const tokenViejo = { id: String(usuarioA), orgId: String(orgA), emitidoAt: Date.now() - 60_000, checkedAt: 0, iat: Math.floor(Date.now() / 1000) - 60 };
+  const revocado = await jwt({ token: { ...tokenViejo } } as never);
+  assert.equal(revocado.revocado, true, "restablecer revoca sesiones anteriores");
+  const sesionRevocada = await authOptions.callbacks!.session!({ token: revocado, session: { user: { id: String(usuarioA) }, expires: new Date().toISOString() } } as never);
+  assert.equal(sesionRevocada.user, undefined);
+  const legado = await jwt({ token: { ...tokenViejo, emitidoAt: undefined } } as never);
+  assert.equal(legado.revocado, true, "JWT anteriores al despliegue también se revocan");
+  const falsaRenovacion = await jwt({ token: { ...tokenViejo }, trigger: "update", session: { emitidoAt: Date.now() + 99999, revocado: false } } as never);
+  assert.equal(falsaRenovacion.revocado, true, "update no acepta fechas del cliente");
+  await admin.query("UPDATE usuarios SET rol='admin' WHERE id=$1", [String(usuarioA)]);
+  const tokenActual = { ...tokenViejo, name: "Usuario A", email, rol: "admin", emitidoAt: Date.now(), checkedAt: Date.now() };
+  const secret = process.env.NEXTAUTH_SECRET!;
+  const cookieNombre = "__Secure-next-auth.session-token";
+  const cookieActual = `${cookieNombre}=${await encode({ secret, token: tokenActual })}`;
+  const propia = await runWithOrg(orgA, () => ejecutar(cambiarPropia as typeof recuperar, { actual: nueva, nueva: "PropiaNueva123!" }, ip(), cookieActual));
+  assert.equal(propia.status, 200, JSON.stringify(propia.contenido));
+  const cookiesNuevas = propia.respuesta.cookies.getAll().filter((c) => c.value).map((c) => `${c.name}=${c.value}`).join("; ");
+  assert.ok(cookiesNuevas);
+  const reqRenovada = new NextRequest("https://crm.prueba.test", { headers: { cookie: cookiesNuevas } });
+  const sesionPropia = await getToken({ req: reqRenovada });
+  assert.ok(sesionPropia);
+  const vigente = await jwt({ token: { ...sesionPropia, checkedAt: 0 } } as never);
+  assert.ok(!vigente.revocado, "la cookie reemitida mantiene la sesión que cambia su contraseña");
+  const viejaPropia = await jwt({ token: { ...tokenActual, checkedAt: 0 } } as never);
+  assert.equal(viejaPropia.revocado, true, "la cookie anterior a cambiar en perfil se revoca");
+  const fechaPropia = (await runWithOrg(orgA, () => db.usuario.findUniqueOrThrow({ where: { id: usuarioA } }))).passwordCambiadaAt!;
+  assert.equal(sesionPropia.emitidoAt, fechaPropia.getTime());
+  const actualizado = await jwt({ token: { ...sesionPropia }, trigger: "update", session: { emitidoAt: 1 } } as never);
+  assert.equal(actualizado.emitidoAt, sesionPropia.emitidoAt, "renovar NextAuth no altera la emisión original");
+  const reencodificado = await decode({ secret, token: await encode({ secret, token: actualizado }) });
+  assert.equal(reencodificado!.emitidoAt, sesionPropia.emitidoAt);
+
+  const adminCambio = await runWithOrg(orgA, () => ejecutar(((req: InstanceType<typeof NextRequest>) => cambiarAdmin(req, { params: Promise.resolve({ id: String(usuarioA) }) })) as typeof recuperar, { password: "DesdeAdmin123!" }, ip(), cookiesNuevas));
+  assert.equal(adminCambio.status, 200);
+  const trasAdmin = await jwt({ token: { ...sesionPropia, checkedAt: 0 } } as never);
+  assert.equal(trasAdmin.revocado, true, "reinicio por admin revoca las sesiones anteriores");
+  const grande = await encode({ secret, token: { ...tokenActual, name: "a".repeat(12000) } });
+  const reqGrande = new NextRequest("https://crm.prueba.test", { headers: { cookie: `${cookieNombre}.0=${grande.slice(0,3933)}; ${cookieNombre}.1=${grande.slice(3933)}` } });
+  const resGrande = NextResponse.json({ ok: true });
+  await renovarSesionPassword({ ...tokenActual, name: "a".repeat(12000) }, resGrande, new Date(), reqGrande);
+  const cookieGrande = resGrande.cookies.getAll().filter((c) => c.value).map((c) => `${c.name}=${c.value}`).join("; ");
+  assert.ok(resGrande.cookies.getAll().filter((c) => c.value).length > 1);
+  assert.ok(await getToken({ req: new NextRequest("https://crm.prueba.test", { headers: { cookie: cookieGrande } }) }), "NextAuth lee los fragmentos reemitidos");
+
+  const login = authOptions.providers[0];
+  const autorizar = (login as { options: { authorize: (credenciales: unknown, req: unknown) => Promise<unknown> } }).options.authorize;
+  assert.ok(await autorizar({ email, password: "DesdeAdmin123!", orgSlug: slugA }, { headers: { host: "crm.prueba.test", "x-real-ip": ip() } }), "login con contraseña restablecida");
+
   delete process.env.SMTP_HOST;
   assert.equal(correoConfigurado(), false);
   const sinSmtp = smtp.correos.length;
@@ -176,7 +231,7 @@ try {
   assert.equal(await enviarCorreo({ para: email, asunto: "prueba", texto: "prueba", html: "prueba" }), false);
   smtp.fallar(false);
   assert.ok(!logs.join("\n").includes(token) && !logs.join("\n").includes(nueva) && !logs.join("\n").includes(email), "logs sin secretos ni datos personales");
-  console.log(`OK · flujo completo, hash, bcrypt 10, vencimiento, uso único concurrente, respuesta idéntica, inactivos, límites, RLS y SMTP simulado. Respuesta inicial: ${tiempoRespuesta.toFixed(1)} ms.`);
+  console.log(`OK · flujo completo, hash, bcrypt 10, vencimiento, uso único concurrente, respuesta idéntica, inactivos, límites, RLS, revocación JWT (perfil/admin/legado), cookies y SMTP simulado. Respuesta inicial: ${tiempoRespuesta.toFixed(1)} ms.`);
 } finally {
   logInfo.mock.restore();
   logError.mock.restore();
