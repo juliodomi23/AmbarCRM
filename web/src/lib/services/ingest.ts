@@ -12,6 +12,8 @@ import { guardarMediaBase64 } from "@/lib/storage";
 import { enviarPushAOrg } from "@/lib/push";
 import { dispararEvento } from "@/lib/disparar-evento";
 
+const MINUTOS_MENSAJE_VIGENTE = 10;
+
 /** Elige el agente activo con menos conversaciones asignadas (round-robin por carga). */
 async function elegirResponsable(): Promise<bigint | null> {
   const activos = await db.usuario.findMany({ where: { activo: true }, select: { id: true } });
@@ -41,6 +43,9 @@ async function elegirResponsable(): Promise<bigint | null> {
  * El INSERT en `mensajes` dispara el trigger que hace NOTIFY -> el SSE empuja al navegador.
  */
 export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: bigint | null) {
+  // Al conectar por Coexistence, Meta también entrega como eventos normales mensajes de hace horas: son historial.
+  if (!m.historico && Date.now() - m.timestamp.getTime() > MINUTOS_MENSAJE_VIGENTE * 60_000) m = { ...m, historico: true };
+
   // Idempotencia: si ya existe ese wa_message_id, no hacemos nada.
   if (m.waMessageId) {
     const existe = await db.mensaje.findFirst({ where: { canalId, waMessageId: m.waMessageId } });
