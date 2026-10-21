@@ -77,6 +77,7 @@ export default async function ConfiguracionPage() {
       usuarios={serializar(usuariosConAcceso)}
       puestosSugeridos={puestosSugeridos}
       canales={serializar(canales)}
+      metaRevision={process.env.META_CANALES_REVISION === "true"}
       plantillas={serializar(plantillas)}
       ajustes={serializar(ajustes)}
       bots={serializar(bots)}

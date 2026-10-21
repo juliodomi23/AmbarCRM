@@ -23,7 +23,7 @@ const TABS = [
 type Tab = (typeof TABS)[number] | "Clientes Ámbar CRM";
 
 export function ConfiguracionCliente({
-  embudos, usuarios, puestosSugeridos, canales, plantillas, ajustes, bots, orgs = null,
+  embudos, usuarios, puestosSugeridos, canales, metaRevision, plantillas, ajustes, bots, orgs = null,
   modulosPorOrg = null, modulos = [],
   especialistasAgenda = [], citasHabilitadas = false,
 }: {
@@ -31,6 +31,7 @@ export function ConfiguracionCliente({
   usuarios: any[];
   puestosSugeridos: string[];
   canales: any[];
+  metaRevision?: boolean;
   plantillas: any[];
   ajustes: any;
   bots: any[];
@@ -74,7 +75,7 @@ export function ConfiguracionCliente({
       {tab === "Usuarios" && (
         <TabUsuarios usuarios={usuarios} puestosSugeridos={puestosSugeridos} especialistasAgenda={especialistasAgenda} citasHabilitadas={citasHabilitadas} />
       )}
-      {tab === "Canales" && <Canales canales={canales} />}
+      {tab === "Canales" && <Canales canales={canales} metaRevision={metaRevision} />}
       {tab === "Plantillas" && <TabPlantillas plantillas={plantillas} />}
       {tab === "Plantillas de Meta" && <MetaCanales canales={canales.filter((c) => c.proveedor === "cloud_api")} vista="plantillas" />}
       {tab === "Automatizaciones" && <TabAutomatizaciones ajustes={ajustes} />}
