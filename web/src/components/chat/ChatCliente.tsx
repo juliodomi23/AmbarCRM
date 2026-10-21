@@ -638,7 +638,7 @@ export function ChatCliente({
       </div>
 
       {/* Hilo */}
-      <div className={`flex flex-1 flex-col bg-background ${selId ? "" : "hidden md:flex"}`}>
+      <div className={`flex min-w-0 flex-1 flex-col bg-background ${selId ? "" : "hidden md:flex"}`}>
         {!seleccionada ? (
           <div className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground">
             Selecciona una conversación para ver el chat.
@@ -732,7 +732,7 @@ export function ChatCliente({
                         </a>
                       )
                     )}
-                    {m.contenido && <p className="whitespace-pre-wrap">{m.contenido}</p>}
+                    {m.contenido && <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{m.contenido}</p>}
                     <p className="mt-0.5 text-right text-[10px] text-muted-foreground">
                       {hora(m.timestamp)}
                       {m.direccion === "saliente" && !m.interna && ticks(m.status).txt && (
