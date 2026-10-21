@@ -1697,6 +1697,12 @@ CREATE TABLE IF NOT EXISTS messenger_login (
   user_id BIGINT NOT NULL, session_hash TEXT NOT NULL, state_hash TEXT NOT NULL,
   canal_id BIGINT, paginas_encrypted TEXT, vence_at TIMESTAMPTZ NOT NULL
 );
+ALTER TABLE messenger_login ADD COLUMN IF NOT EXISTS proveedor TEXT NOT NULL DEFAULT 'messenger';
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'messenger_login'::regclass AND conname = 'messenger_login_proveedor_check') THEN
+    ALTER TABLE messenger_login ADD CONSTRAINT messenger_login_proveedor_check CHECK (proveedor IN ('messenger', 'instagram'));
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS messenger_login_org_vence_idx ON messenger_login(org_id, vence_at);
 ALTER TABLE messenger_login ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_isolation ON messenger_login;
@@ -1759,6 +1765,19 @@ CREATE OR REPLACE FUNCTION resolve_org_by_instagram(p_cuenta text)
 $$;
 REVOKE ALL ON FUNCTION resolve_org_by_instagram(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION resolve_org_by_instagram(text) TO crm_app;
+
+-- Devuelve solo proveedores, sin exponer empresas ni credenciales entre tenants.
+CREATE OR REPLACE FUNCTION meta_page_other_channels(p_page text, p_app text, p_global_app text, p_exclude bigint)
+  RETURNS text[] LANGUAGE sql SECURITY DEFINER STABLE SET search_path = pg_catalog, public AS $$
+    SELECT COALESCE(array_agg(DISTINCT proveedor::text), ARRAY[]::text[])
+    FROM canales_whatsapp
+    WHERE activo AND proveedor::text IN ('messenger', 'instagram')
+      AND config->>'pageId' = p_page
+      AND (p_exclude IS NULL OR id <> p_exclude)
+      AND (p_app = '' OR COALESCE(config->>'appId', p_global_app) IN (p_app, ''))
+$$;
+REVOKE ALL ON FUNCTION meta_page_other_channels(text, text, text, bigint) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION meta_page_other_channels(text, text, text, bigint) TO crm_app;
 -- Reintentos acotados de recordatorios; heredan RLS y GRANT de citas.
 ALTER TABLE citas ADD COLUMN IF NOT EXISTS recordatorio_intentos INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE citas ADD COLUMN IF NOT EXISTS recordatorio_intentado_at TIMESTAMPTZ;

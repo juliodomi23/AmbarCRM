@@ -14,6 +14,7 @@ import { ErrorRetail } from "../../src/lib/retail-db";
 assert.equal(new URL(process.env.DATABASE_URL!).port, "55450");
 process.env.META_APP_SECRET = "secreto-meta-de-pruebas";
 process.env.META_APP_ID = "123";
+process.env.META_HUMAN_AGENT_APROBADO = "true";
 process.env.MESSENGER_VERIFY_TOKEN = "verify-messenger";
 const fetchOriginal = globalThis.fetch;
 let tokenInvalido = false;
@@ -79,6 +80,7 @@ try {
   await runWithOrg(orgs[0].id, async () => assert.equal(await db.mensaje.count({ where: { waMessageId: "eco-propio" } }), 0));
   const provider = makeMessengerProvider(canal.config);
   const ahora = Date.now();
+  assert.equal(tipoEnvioMessenger({ ultimoEntranteAt: new Date(ahora - 24 * 3600_000), humano: true }, ahora, false), null);
   assert.deepEqual(tipoEnvioMessenger({ ultimoEntranteAt: new Date(ahora - 24 * 3600_000), humano: true }, ahora), { messaging_type: "MESSAGE_TAG", tag: "HUMAN_AGENT" });
   assert.equal(tipoEnvioMessenger({ ultimoEntranteAt: new Date(ahora - 7 * 24 * 3600_000), humano: true }, ahora), null);
   await runWithOrg(orgs[0].id, async () => {

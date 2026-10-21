@@ -3,6 +3,7 @@ import { ErrorRetail } from "@/lib/retail-db";
 
 export type PaginaFacebook = { id: string; nombre: string; foto: string | null; token: string };
 export const PERMISOS_MESSENGER = "pages_show_list,pages_messaging,pages_manage_metadata";
+export const PERMISOS_INSTAGRAM = "pages_show_list,instagram_basic,instagram_manage_messages,pages_manage_metadata";
 export const ERROR_PERMISOS_META = "Tu cuenta no tiene permiso en la app de Meta; usa la conexión manual. En modo desarrollo solo pueden conectarse personas con rol en la app.";
 
 async function graph(path: string, init: RequestInit) {
@@ -60,4 +61,13 @@ export async function paginasDeFacebook(code: string): Promise<PaginaFacebook[]>
 export async function validarPaginaFacebook(pagina: PaginaFacebook) {
   const data = await graph("me?fields=id", { headers: { Authorization: `Bearer ${pagina.token}` } });
   if (data.id !== pagina.id) throw new ErrorRetail("La credencial no corresponde a la página elegida. Vuelve a conectar.", 400);
+}
+
+export async function instagramDePagina(pagina: PaginaFacebook): Promise<string> {
+  const data = await graph(`${pagina.id}?fields=instagram_business_account`, { headers: { Authorization: `Bearer ${pagina.token}` } });
+  const id = data.instagram_business_account?.id;
+  if (typeof id !== "string" || !/^\d{1,40}$/.test(id)) {
+    throw new ErrorRetail("La página elegida no tiene una cuenta profesional de Instagram vinculada. Vincúlala en Meta y vuelve a conectar.", 409);
+  }
+  return id;
 }

@@ -109,7 +109,29 @@ try {
   const concurrentes = await Promise.allSettled([1, 2].map(() => conectarPaginaMessenger(a, carrera.id, carrera.state, lista[1].id)));
   assert.equal(concurrentes.filter((r) => r.status === "fulfilled").length, 1, "un intento solo conecta una vez bajo concurrencia");
   assert.equal(concurrentes.filter((r) => r.status === "rejected").length, 1);
-  console.log("OK · Facebook simulado: intercambio POST sin credenciales en URL, lista pública, cifrado, CSRF, sesión/usuario/empresa, vencimiento, selección, 409, reconexión, app propia, permisos, paginación y consumo concurrente");
+  const inicioMsgSimultaneo = await iniciar();
+  const inicioIgSimultaneo = await iniciarMessengerLogin(a, undefined, "instagram");
+  assert.equal((await filas()).filter((f) => f.id === inicioMsgSimultaneo.id || f.id === inicioIgSimultaneo.id).length, 2,
+    "iniciar Instagram no borra el intento Messenger de la misma sesión");
+  await listarPaginasMessenger(a, inicioMsgSimultaneo.id, inicioMsgSimultaneo.state, codigo);
+  await listarPaginasMessenger(a, inicioIgSimultaneo.id, inicioIgSimultaneo.state, codigo, "instagram");
+  const intentoIg = await iniciarMessengerLogin(a, undefined, "instagram");
+  await assert.rejects(listarPaginasMessenger(a, intentoIg.id, intentoIg.state, codigo), rechaza(403));
+  const paginasIg = await listarPaginasMessenger(a, intentoIg.id, intentoIg.state, codigo, "instagram");
+  const conexionIg = await conectarPaginaMessenger(a, intentoIg.id, intentoIg.state, paginasIg[0].id, undefined, "instagram");
+  await runWithOrg(a.orgId, async () => {
+    const c = await db.canalWhatsapp.findUniqueOrThrow({ where: { id: BigInt(conexionIg.id) } });
+    const config = c.config as Record<string, string>;
+    assert.equal(c.proveedor, "instagram");
+    assert.equal(config.instagramId, `${paginasIg[0].id}8`);
+    assert.equal(config.appId, "123");
+    assert.equal(decryptMetaToken(config.tokenEncrypted), `pagina-privada-${paginasIg[0].id}`);
+    assert.equal(decryptMetaToken(config.appSecretEncrypted), "secreto-meta-simulado");
+  });
+  const sinCuenta = await iniciarMessengerLogin(a, undefined, "instagram");
+  const sinCuentaPaginas = await listarPaginasMessenger(a, sinCuenta.id, sinCuenta.state, "777", "instagram");
+  await assert.rejects(conectarPaginaMessenger(a, sinCuenta.id, sinCuenta.state, sinCuentaPaginas[0].id, undefined, "instagram"), rechaza(409, /no tiene una cuenta profesional/));
+  console.log("OK · Facebook simulado: Messenger e Instagram, cuenta vinculada, intentos aislados, intercambio POST sin credenciales en URL, cifrado, CSRF, sesión/empresa, vencimiento, reconexión y concurrencia");
 } finally {
   globalThis.fetch = original;
   for (const org of orgs) await runWithOrg(org.id, async () => {

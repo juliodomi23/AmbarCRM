@@ -19,6 +19,8 @@ globalThis.fetch = graphSimulado;
 
 const { POST: paginas } = require("../../src/app/api/canales/messenger/facebook/paginas/route.ts");
 const { POST: conectar } = require("../../src/app/api/canales/messenger/facebook/conectar/route.ts");
+const { POST: paginasInstagram } = require("../../src/app/api/canales/instagram/facebook/paginas/route.ts");
+const { POST: conectarInstagram } = require("../../src/app/api/canales/instagram/facebook/conectar/route.ts");
 const origen = "http://127.0.0.1:3118";
 const base = `${origen}/api/canales/messenger/facebook`;
 const cookieSesion = "next-auth.session-token=sesion-rutas-simulada";
@@ -28,6 +30,13 @@ const post = (ruta: "paginas" | "conectar", body: object, extras: { state?: stri
     body: JSON.stringify(body),
   });
   return ruta === "paginas" ? paginas(req) : conectar(req);
+};
+const postInstagram = (ruta: "paginas" | "conectar", body: object, extras: { state?: string; cookie?: string } = {}) => {
+  const req = new NextRequest(`${origen}/api/canales/instagram/facebook/${ruta}`, {
+    method: "POST", headers: { origin: origen, cookie: extras.cookie ?? cookieSesion, "content-type": "application/json", ...(extras.state ? { "x-messenger-state": extras.state } : {}) },
+    body: JSON.stringify(body),
+  });
+  return ruta === "paginas" ? paginasInstagram(req) : conectarInstagram(req);
 };
 
 try {
@@ -66,6 +75,31 @@ try {
   assert.equal(conectado.status, 200);
   assert.match(conectado.headers.get("set-cookie")!, /Max-Age=0/);
   assert.equal((await post("conectar", { page_id: items[0].id }, { cookie, state: datos.state })).status, 403);
+  const inicioInstagram = await postInstagram("paginas", { accion: "iniciar" });
+  assert.equal(inicioInstagram.status, 200);
+  const datosInstagram = await inicioInstagram.json();
+  assert.equal(datosInstagram.scope, "pages_show_list,instagram_basic,instagram_manage_messages,pages_manage_metadata");
+  assert.match(inicioInstagram.headers.get("set-cookie")!, /ambar-instagram-login=/);
+  const cookieInstagram = `${cookieSesion}; ${inicioInstagram.headers.get("set-cookie")!.split(";", 1)[0]}`;
+  assert.equal((await postInstagram("paginas", { code: codigo }, { cookie, state: datos.state })).status, 403, "el intento Messenger no abre Instagram");
+  const listaInstagram = await postInstagram("paginas", { code: `${codigo}4` }, { cookie: cookieInstagram, state: datosInstagram.state });
+  assert.equal(listaInstagram.status, 200);
+  const paginaInstagram = (await listaInstagram.json())[0];
+  const conectadoInstagram = await postInstagram("conectar", { page_id: paginaInstagram.id }, { cookie: cookieInstagram, state: datosInstagram.state });
+  assert.equal(conectadoInstagram.status, 200);
+  assert.match(conectadoInstagram.headers.get("set-cookie")!, /Max-Age=0/);
+  const cuentaInstagram = await conectadoInstagram.json();
+  const canalInstagram = await runWithOrg(org.id, () => db.canalWhatsapp.findUniqueOrThrow({ where: { id: BigInt(cuentaInstagram.id) } }));
+  assert.equal(canalInstagram.proveedor, "instagram");
+  assert.equal((await postInstagram("conectar", { page_id: paginaInstagram.id }, { cookie: cookieInstagram, state: datosInstagram.state })).status, 403);
+  const sinVinculo = await postInstagram("paginas", { accion: "iniciar" });
+  const datosSinVinculo = await sinVinculo.json();
+  const cookieSinVinculo = `${cookieSesion}; ${sinVinculo.headers.get("set-cookie")!.split(";", 1)[0]}`;
+  const paginasSinVinculo = await postInstagram("paginas", { code: "7771" }, { cookie: cookieSinVinculo, state: datosSinVinculo.state });
+  const paginaSinVinculo = (await paginasSinVinculo.json())[0];
+  const rechazoSinVinculo = await postInstagram("conectar", { page_id: paginaSinVinculo.id }, { cookie: cookieSinVinculo, state: datosSinVinculo.state });
+  assert.equal(rechazoSinVinculo.status, 409);
+  assert.match(await rechazoSinVinculo.text(), /no tiene una cuenta profesional de Instagram vinculada/);
   const permiso = await post("paginas", { accion: "iniciar" });
   const estado = await permiso.json();
   const permisoCookie = `${cookieSesion}; ${permiso.headers.get("set-cookie")!.split(";", 1)[0]}`;
@@ -82,7 +116,7 @@ try {
     assert.equal(respuesta?.status, 429);
     assert.equal(respuesta.headers.get("retry-after"), "600");
   }
-  console.log("OK · Rutas Facebook en proceso: 401/403, admin, Origin, cookies, CSRF, respuesta sin tokens, selección, consumo, permisos recortados y rate limit");
+  console.log("OK · Rutas Facebook en proceso: Messenger e Instagram, aislamiento de intentos, cuenta vinculada, 401/403, admin, Origin, cookies, CSRF, selección, consumo y rate limit");
 } finally {
   auth.getServerSession = sesionOriginal;
   globalThis.fetch = fetchOriginal;

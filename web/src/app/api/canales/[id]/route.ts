@@ -53,7 +53,7 @@ async function manejarDELETE(req: NextRequest, props: { params: Promise<{ id: st
   if (canal.proveedor === "messenger" || canal.proveedor === "instagram") {
     try {
       const desuscribir = canal.proveedor === "instagram" ? desuscribirCuenta : desuscribirPagina;
-      desconexionMessenger = await desuscribir((canal.config || {}) as Record<string, unknown>);
+      desconexionMessenger = await desuscribir((canal.config || {}) as Record<string, unknown>, canal.id);
     } catch {
       if (body?.forzar !== true) return NextResponse.json({ error: canal.proveedor === "instagram" ? ERROR_DESCONEXION_INSTAGRAM : ERROR_DESCONEXION_MESSENGER }, { status: 502 });
       desconexionMessenger = {

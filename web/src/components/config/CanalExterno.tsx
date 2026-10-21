@@ -90,7 +90,7 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
   return <section className="surface max-w-2xl space-y-3 p-4">
     <h3 className="font-semibold">{canal ? `${nombreCanal} · ${canal.nombre}` : `Nuevo canal ${nombreCanal}`}</h3>
     {canal?.errorAutorizacion && <p className="text-sm text-destructive" role="alert">{canal.errorAutorizacion}</p>}
-    {esMessenger && <MessengerFacebook canalId={canal?.id} pageId={canal?.pageId} nombre={nombre} appPropia={Boolean(appId || appSecret || canal?.tieneAppSecret)} />}
+    {esMeta && <MessengerFacebook proveedor={esInstagram ? "instagram" : "messenger"} canalId={canal?.id} pageId={canal?.pageId} nombre={nombre} appPropia={esMessenger && Boolean(appId || appSecret || canal?.tieneAppSecret)} />}
     <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void guardar(); }}>
       <Campo label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required maxLength={150} />
       {esMeta ? <>

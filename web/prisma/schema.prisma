@@ -73,6 +73,7 @@ model WebhookSaliente {
 
 model MessengerLogin {
   id String @id
+  proveedor String @default("messenger")
   orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   userId BigInt @map("user_id")
   sessionHash String @map("session_hash")

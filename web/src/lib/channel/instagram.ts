@@ -7,12 +7,12 @@ export { tipoEnvioMeta as tipoEnvioInstagram } from "./meta-mensajeria";
 export const CAMPOS_INSTAGRAM = ["messages"];
 export const ERROR_DESCONEXION_INSTAGRAM = "No se pudo cancelar la suscripción de Instagram en Facebook. El canal se conservó; vuelve a intentarlo.";
 
-export function suscribirCuenta(config: Record<string, unknown>) {
-  return suscribirPaginaMeta(config, CAMPOS_INSTAGRAM);
+export function suscribirCuenta(config: Record<string, unknown>, canalId?: bigint) {
+  return suscribirPaginaMeta(config, CAMPOS_INSTAGRAM, canalId);
 }
 
-export async function desuscribirCuenta(config: Record<string, unknown>) {
-  try { return await desuscribirPaginaMeta(config); }
+export async function desuscribirCuenta(config: Record<string, unknown>, canalId: bigint) {
+  try { return await desuscribirPaginaMeta(config, canalId); }
   catch { throw new Error(ERROR_DESCONEXION_INSTAGRAM); }
 }
 

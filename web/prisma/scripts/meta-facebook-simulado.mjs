@@ -27,6 +27,10 @@ export async function graphSimulado(input, init) {
     return Response.json({ data: [pagina(`${codigo}1`), pagina(`${codigo}2`)] });
   }
   if (url.pathname.endsWith("/me")) return Response.json({ id: token?.replace("pagina-privada-", "") });
+  if (url.searchParams.get("fields") === "instagram_business_account" && /^\/v\d+\.\d+\/\d+$/.test(url.pathname)) {
+    const pageId = url.pathname.split("/").at(-1);
+    return Response.json({ id: pageId, instagram_business_account: pageId.startsWith("777") ? null : { id: `${pageId}8` } });
+  }
   if (url.pathname.endsWith("/subscribed_apps")) return Response.json({ success: true });
   throw new Error("Consulta Graph inesperada en simulación");
 }

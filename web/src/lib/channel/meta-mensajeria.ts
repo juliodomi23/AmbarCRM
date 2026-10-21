@@ -1,8 +1,10 @@
-import { db } from "@/lib/db";
+import { db, dbRaw } from "@/lib/db";
 import { META_GRAPH_URL } from "@/lib/meta/config";
 import { tokenFromChannelConfig } from "@/lib/meta/credentials";
 import { destinoPublico } from "@/lib/webhook-url";
 import type { ChannelProvider, ContextoEnvio, MensajeEntranteNormalizado, TipoMensaje } from "./types";
+
+export const CAMPOS_MESSENGER_META = ["messages", "message_deliveries", "message_echoes", "message_reads", "standby", "messaging_handovers", "messaging_postbacks"];
 
 export async function graphMensajeriaMeta(config: Record<string, unknown>, path: string, init?: RequestInit) {
   const token = tokenFromChannelConfig(config);
@@ -17,10 +19,24 @@ export async function graphMensajeriaMeta(config: Record<string, unknown>, path:
   return data;
 }
 
-export async function suscribirPaginaMeta(config: Record<string, unknown>, campos: string[]) {
+async function otrosCanalesDePagina(config: Record<string, unknown>, canalId?: bigint): Promise<string[]> {
+  const pagina = String(config.pageId ?? "");
+  if (!/^\d{1,40}$/.test(pagina)) throw new Error("ID de página inválido");
+  const globalApp = process.env.META_APP_ID?.trim() ?? "";
+  const app = typeof config.appId === "string" ? config.appId : globalApp;
+  const filas = await dbRaw.$queryRaw<{ proveedores: string[] }[]>`
+    SELECT meta_page_other_channels(${pagina}, ${app}, ${globalApp}, ${canalId ?? null}) AS proveedores`;
+  return filas[0]?.proveedores ?? [];
+}
+
+export async function suscribirPaginaMeta(config: Record<string, unknown>, campos: string[], canalId?: bigint) {
+  const otros = await otrosCanalesDePagina(config, canalId);
+  const union = new Set(campos);
+  if (otros.includes("messenger")) for (const campo of CAMPOS_MESSENGER_META) union.add(campo);
+  if (otros.includes("instagram")) union.add("messages");
   const respuesta = await graphMensajeriaMeta(config, `${config.pageId}/subscribed_apps`, {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ subscribed_fields: campos }),
+    body: JSON.stringify({ subscribed_fields: [...union] }),
   });
   if (respuesta.success !== true) throw new Error("Meta no confirmó la suscripción de la página");
   return respuesta;
@@ -28,8 +44,12 @@ export async function suscribirPaginaMeta(config: Record<string, unknown>, campo
 
 export const ERROR_DESCONEXION_MESSENGER = "No se pudo cancelar la suscripción en Facebook. El canal se conservó; vuelve a intentarlo.";
 
-export async function desuscribirPaginaMeta(config: Record<string, unknown>): Promise<{ desuscrito: boolean; motivo?: string }> {
+export async function desuscribirPaginaMeta(config: Record<string, unknown>, canalId: bigint): Promise<{ desuscrito: boolean; motivo?: string }> {
   if (typeof config.pageId !== "string" || !/^\d{1,40}$/.test(config.pageId)) throw new Error(ERROR_DESCONEXION_MESSENGER);
+  // El DELETE retira la app completa de la página; conservarla evita cortar el otro canal.
+  if ((await otrosCanalesDePagina(config, canalId)).length) {
+    return { desuscrito: false, motivo: "El canal se retiró del CRM; la suscripción en Facebook sigue activa para otro canal de esta página." };
+  }
   try {
     const respuesta = await graphMensajeriaMeta(config, `${config.pageId}/subscribed_apps`, { method: "DELETE" });
     if (respuesta.success !== true) throw new Error(ERROR_DESCONEXION_MESSENGER);
@@ -55,12 +75,12 @@ export async function perfilPaginaMeta(config: Record<string, unknown>, psid: st
   } catch { return {}; }
 }
 
-export function tipoEnvioMeta(contexto?: ContextoEnvio, ahora = Date.now()) {
+export function tipoEnvioMeta(contexto?: ContextoEnvio, ahora = Date.now(), humanAgentAprobado = process.env.META_HUMAN_AGENT_APROBADO === "true") {
   const ultimo = contexto?.ultimoEntranteAt?.getTime();
   if (ultimo == null || !Number.isFinite(ultimo) || ultimo > ahora + 60_000) return null;
   const edad = ahora - ultimo;
   if (edad < 24 * 60 * 60 * 1000) return { messaging_type: "RESPONSE" };
-  if (contexto?.humano && edad < 7 * 24 * 60 * 60 * 1000) return { messaging_type: "MESSAGE_TAG", tag: "HUMAN_AGENT" };
+  if (contexto?.humano && humanAgentAprobado && edad < 7 * 24 * 60 * 60 * 1000) return { messaging_type: "MESSAGE_TAG", tag: "HUMAN_AGENT" };
   return null;
 }
 
@@ -99,7 +119,8 @@ export function makeMensajeriaMetaProvider(config?: unknown, opciones: {
     }
     const tipo = tipoEnvioMeta(contexto);
     if (!tipo) return { ok: false, error: contexto?.humano
-      ? `Ventana de ${nombre} cerrada: el asesor solo puede responder hasta 7 días desde el último mensaje entrante.`
+      ? process.env.META_HUMAN_AGENT_APROBADO !== "true" ? `Ventana de 24 h de ${nombre} cerrada. La capacidad Human Agent aún no está habilitada en este CRM.`
+        : `Ventana de ${nombre} cerrada: el asesor solo puede responder hasta 7 días desde el último mensaje entrante.`
       : `Ventana de 24 h de ${nombre} cerrada: el bot no puede enviar mensajes.` };
     try {
       const data = await graphMensajeriaMeta(datos, "me/messages", { method: "POST", headers: { "Content-Type": "application/json" },

@@ -63,6 +63,7 @@ export default async function ChatPage() {
       etiquetas={etiquetas}
       canales={canales}
       usuarioId={usuarioId}
+      humanAgentHabilitado={process.env.META_HUMAN_AGENT_APROBADO === "true"}
     />
   );
 }

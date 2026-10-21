@@ -4,11 +4,14 @@ import { requireSesion } from "@/lib/session";
 import { ipCliente, permitido } from "@/lib/rate-limit";
 import { ErrorRetail } from "@/lib/retail-db";
 import type { IdentidadLogin } from "@/lib/services/messenger-login";
+import type { ProveedorLogin } from "@/lib/services/messenger-login";
 
 export const COOKIE_MESSENGER = "ambar-messenger-login";
 export const COOKIE_OPCIONES = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict" as const, path: "/api/canales/messenger/facebook" };
+export const cookieCanal = (proveedor: ProveedorLogin) => proveedor === "messenger" ? COOKIE_MESSENGER : "ambar-instagram-login";
+export const opcionesCookieCanal = (proveedor: ProveedorLogin) => proveedor === "messenger" ? COOKIE_OPCIONES : { ...COOKIE_OPCIONES, path: "/api/canales/instagram/facebook" };
 
-export async function conMessengerLogin(req: NextRequest, ruta: string, operacion: (identidad: IdentidadLogin, body: Record<string, unknown>) => Promise<NextResponse>) {
+export async function conMessengerLogin(req: NextRequest, ruta: string, operacion: (identidad: IdentidadLogin, body: Record<string, unknown>) => Promise<NextResponse>, proveedor: ProveedorLogin = "messenger") {
   const sesion = await requireSesion(true);
   if ("error" in sesion) return sesion.error;
   const headers = { "Cache-Control": "no-store" };
@@ -16,8 +19,8 @@ export async function conMessengerLogin(req: NextRequest, ruta: string, operacio
     if (!sesion.orgId || !sesion.userId) throw new ErrorRetail("Sesión sin empresa o usuario.", 403);
     const origen = new URL(process.env.NEXTAUTH_URL || req.url).origin;
     if (req.headers.get("origin") !== origen || req.headers.get("sec-fetch-site") === "cross-site") throw new ErrorRetail("Origen de conexión inválido.", 403);
-    if (!permitido(`messenger-login:${ruta}:${sesion.orgId}:${sesion.userId}`, 20, 600_000) ||
-        !permitido(`messenger-login-ip:${ruta}:${ipCliente(Object.fromEntries(req.headers))}`, 60, 600_000)) {
+    if (!permitido(`${proveedor}-login:${ruta}:${sesion.orgId}:${sesion.userId}`, 20, 600_000) ||
+        !permitido(`${proveedor}-login-ip:${ruta}:${ipCliente(Object.fromEntries(req.headers))}`, 60, 600_000)) {
       return NextResponse.json({ error: "Demasiados intentos. Espera diez minutos antes de reconectar." }, { status: 429, headers: { ...headers, "Retry-After": "600" } });
     }
     if (!req.headers.get("content-type")?.startsWith("application/json")) throw new ErrorRetail("Se requiere JSON.", 415);

@@ -14,7 +14,7 @@ function actualizarSecreto(config: Record<string, unknown>, valor: unknown, camp
   config[destino] = encryptMetaToken(valor.trim());
 }
 
-export async function guardarCanalInstagram(body: Record<string, unknown>, id?: bigint) {
+export async function guardarCanalInstagram(body: Record<string, unknown>, id?: bigint, soloAppGlobal = false) {
   const canal = id == null ? null : await db.canalWhatsapp.findFirst({ where: { id, proveedor: "instagram" } });
   if (id != null && !canal) throw new ErrorRetail("canal inexistente", 404);
   if (body.quitar_app === true) throw new ErrorRetail("Instagram requiere la app propia del canal");
@@ -33,10 +33,15 @@ export async function guardarCanalInstagram(body: Record<string, unknown>, id?: 
   if (!config.tokenEncrypted || !config.appSecretEncrypted) throw new ErrorRetail("faltan el token de página y el App Secret del canal");
   Object.assign(config, { instagramId, pageId, appId });
   delete config.errorAutorizacion;
-  try { await suscribirCuenta(config); }
+  try { await suscribirCuenta(config, canal?.id); }
   catch { throw new ErrorRetail("No se pudo suscribir la cuenta de Instagram en Facebook. Revisa los datos y permisos de la app.", 424); }
   try {
     const data = { nombre, instancia: instagramId, config: config as Record<string, string>, estado: "conectado" as const };
+    if (canal && soloAppGlobal) {
+      const actualizado = await db.canalWhatsapp.updateMany({ where: { id: canal.id, activo: true, config: { equals: canal.config! } }, data });
+      if (actualizado.count !== 1) throw new ErrorRetail("El canal cambió durante la conexión. Revisa su configuración y vuelve a conectar.", 409);
+      return { id: String(canal.id), nombre, ok: true };
+    }
     const guardado = canal ? await db.canalWhatsapp.update({ where: { id: canal.id }, data })
       : await db.canalWhatsapp.create({ data: { ...data, proveedor: "instagram", instancia: instagramId } });
     return { id: String(guardado.id), nombre: guardado.nombre, ok: true };

@@ -25,6 +25,7 @@ const conexion = new URL(process.env.DATABASE_URL!);
 assert.equal(conexion.port, "55450");
 assert.ok(["localhost", "127.0.0.1"].includes(conexion.hostname));
 process.env.META_APP_SECRET = "global-instagram-simulado";
+process.env.META_HUMAN_AGENT_APROBADO = "true";
 process.env.MESSENGER_VERIFY_TOKEN = "verify-instagram-simulado";
 const auth = require("next-auth/next");
 const originalAuth = auth.getServerSession;
@@ -204,6 +205,7 @@ try {
   const edad = (horas: number, humano = false) => ({ ultimoEntranteAt: new Date(ahora - horas * 3600000), humano });
   assert.deepEqual(tipoEnvioInstagram(edad(23), ahora), { messaging_type: "RESPONSE" });
   assert.equal(tipoEnvioInstagram(edad(24), ahora), null);
+  assert.equal(tipoEnvioInstagram(edad(24, true), ahora, false), null);
   assert.deepEqual(tipoEnvioInstagram(edad(24, true), ahora), { messaging_type: "MESSAGE_TAG", tag: "HUMAN_AGENT" });
   assert.equal(tipoEnvioInstagram(edad(168, true), ahora), null);
   assert.equal(tipoEnvioInstagram(), null);
@@ -278,7 +280,8 @@ try {
   assert.ok(carrera.some((r) => r.status === "rejected" && r.reason.status === 409));
 
   const fixtureRetiro = () => runWithOrg(orgs[0].id, async () => {
-    const canal = await db.canalWhatsapp.create({ data: { nombre: "Retiro IG", proveedor: "instagram", config: { ...configA, instagramId: `${marca}88${++secuencia}` } } });
+    const idRetiro = `${marca}88${++secuencia}`;
+    const canal = await db.canalWhatsapp.create({ data: { nombre: "Retiro IG", proveedor: "instagram", config: { ...configA, instagramId: idRetiro, pageId: idRetiro } } });
     const contacto = await db.contacto.create({ data: { nombre: "Historial", canalId: canal.id, identificadorExterno: "historial" } });
     const conversacion = await db.conversacion.create({ data: { contactoId: contacto.id, canalId: canal.id } });
     const mensaje = await db.mensaje.create({ data: { conversacionId: conversacion.id, direccion: "entrante", tipo: "texto", contenido: "Historial" } });
