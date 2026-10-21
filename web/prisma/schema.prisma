@@ -7,6 +7,29 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model CampanaMarketing {
+  id BigInt @id @default(autoincrement())
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  tipo String
+  nombre String
+  objetivo String
+  canal String
+  audiencia String @default("")
+  contenido String @default("")
+  fechaInicio DateTime? @map("fecha_inicio") @db.Date
+  fechaFin DateTime? @map("fecha_fin") @db.Date
+  presupuesto Decimal? @db.Decimal(12, 2)
+  estado String @default("borrador")
+  version Int @default(1)
+  aprobadaPorId BigInt? @map("aprobada_por_id")
+  aprobadaAt DateTime? @map("aprobada_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  @@index([orgId, tipo, estado])
+  @@index([orgId, tipo, updatedAt])
+  @@map("campanas_marketing")
+}
+
 model ReglaAutomatizacion {
   id BigInt @id @default(autoincrement())
   orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")

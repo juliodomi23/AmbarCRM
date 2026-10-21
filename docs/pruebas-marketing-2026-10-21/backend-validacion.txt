@@ -1,0 +1,27 @@
+Validación de backend Marketing y Meta Ads — 2026-10-21
+Base exclusiva de pruebas: PostgreSQL local 127.0.0.1:55451/crm.
+No se utilizaron bases de producción ni llamadas externas a Meta.
+
+check-marketing.ts — exit 0
+Marketing: validaciones, fechas reales, dinero, campos protegidos, acciones/versiones, matriz de estados y permisos por puesto OK
+
+check-meta-ads.ts — exit 0
+Meta Ads: presupuesto para revisión, canal, acceso por puesto, sin llamadas Meta/credenciales ni endpoint DELETE OK
+
+test-marketing.ts — exit 0
+Control negativo CAS: sin predicado de versión 2 escrituras exitosas; servicio protegido 1 éxito y 1 conflicto
+Marketing DB: persistencia, DTO, RLS sin contexto/otro tenant, módulos separados, permiso admin, aprobación/versionado, carreras de edición/estado, archivo sin DELETE, validación Meta y paginación/resumen OK
+
+test-aislamiento.ts — exit 0
+OK · aislamiento de lectura y escritura en 86 tablas
+
+tsc --noEmit --incremental false — exit 0
+Sin errores TypeScript en la ejecución anterior a añadir el arnés HTTP.
+
+eslint (marketing.ts, marketing-db.ts, API Marketing/Meta Ads, checks y pruebas DB/aislamiento) — exit 0
+Sin errores ni advertencias.
+
+Hallazgo corregido y verificado:
+Los DEFAULT PRIVILEGES de multi-tenant concedían DELETE al crear la tabla.
+actualizaciones.sql ahora revoca DELETE y TRUNCATE explícitamente.
+La prueba DB y la auditoría de aislamiento verifican DELETE rechazado con 42501.

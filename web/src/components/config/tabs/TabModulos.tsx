@@ -9,7 +9,7 @@ import { Boton } from "@/components/ui";
 import { api, PUESTOS } from "@/components/config/tabs/shared";
 
 /** Módulos con formulario propio en lugar del JSON libre. */
-const CONFIG_PROPIA = new Set(["citas", "lealtad"]);
+const CONFIG_PROPIA = new Set(["citas", "lealtad", "marketing", "meta_ads"]);
 
 export function TabModulos({ modulos, canales }: { modulos: any[]; canales: any[] }) {
   const router = useRouter();
@@ -133,6 +133,13 @@ export function TabModulos({ modulos, canales }: { modulos: any[]; canales: any[
               )}
               {m.clave === "lealtad" && (
                 <LealtadConfig modulo={m} canales={canales} />
+              )}
+              {(m.clave === "marketing" || m.clave === "meta_ads") && (
+                <div className="mt-3 space-y-2 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+                  <p>El equipo prepara borradores y los administradores aprueban el plan. Puedes ajustar los accesos arriba.</p>
+                  <p>{m.clave === "meta_ads" ? "La conexión publicitaria está pendiente. Aprobar una propuesta no publica anuncios ni genera gasto en Meta." : "Las campañas se organizan dentro del CRM. Guardarlas no publica contenido ni envía mensajes."}</p>
+                  <a className="inline-flex min-h-10 items-center font-medium text-primary underline underline-offset-4" href={m.ruta}>Abrir {m.nombre} →</a>
+                </div>
               )}
               {!CONFIG_PROPIA.has(m.clave) && (
                 <textarea

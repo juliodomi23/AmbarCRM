@@ -17,6 +17,7 @@ const app = new Pool({ connectionString: appUrl, max: 8 });
 const admin = new Pool({ connectionString: adminUrl, max: 1 });
 // Tablas que la app solo puede leer e insertar (sin UPDATE/DELETE para crm_app).
 const SOLO_AGREGAR = new Set(["auditoria_bot"]);
+const SIN_ELIMINAR = new Set(["campanas_marketing"]);
 const sufijo = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const orgA = BigInt(Date.now()) * 1000n + 101n;
 const orgB = orgA + 1n;
@@ -37,6 +38,11 @@ function identificador(valor: string) {
 }
 
 async function valorColumna(columna: Columna, tabla: string, indice: number) {
+  if (tabla === "campanas_marketing") {
+    if (columna.column_name === "tipo") return "marketing";
+    if (columna.column_name === "objetivo") return "mensajes";
+    if (columna.column_name === "canal") return "whatsapp";
+  }
   if (tabla === "servidores" && columna.column_name === "heartbeat_token_hash") return "a".repeat(64);
   if (tabla === "contratos" && columna.column_name === "tipo") return "bot_whatsapp";
   if (tabla === "cobros" && columna.column_name === "concepto") return "extra";
@@ -144,7 +150,7 @@ async function main() {
      ORDER BY c.table_name`,
   );
   assert.ok(tablas.rowCount && tablas.rowCount > 0, "No se encontraron tablas con org_id");
-  for (const tabla of ["contratos", "cobros", "servidores", "heartbeats_servidor"]) {
+  for (const tabla of ["contratos", "cobros", "servidores", "heartbeats_servidor", "campanas_marketing"]) {
     assert.ok(tablas.rows.some((fila) => fila.table_name === tabla), `${tabla} debe estar incluida en la auditoría RLS`);
   }
 
@@ -202,6 +208,13 @@ async function main() {
       [fila],
     );
     assert.equal(escritura.rowCount, 0, `${tabla}: B modificó una fila de A`);
+    if (SIN_ELIMINAR.has(tabla)) {
+      await assert.rejects(
+        () => consultaTenant(orgA, `DELETE FROM ${nombre} WHERE ctid = $1::tid`, [fila]),
+        (error: { code?: string }) => error.code === "42501",
+        `${tabla}: crm_app debe conservar las campañas archivadas`,
+      );
+    }
   }
 
   const cobertura = await admin.query<{ total: string }>(

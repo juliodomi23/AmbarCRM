@@ -13,6 +13,7 @@ for (const ruta of ["/recuperar", "/recuperar/", "/restablecer/abc123", "/api/au
 for (const ruta of ["/recuperar-privado", "/recuperaciones", "/restablecer", "/restablecer-privado", "/api/auth-privada", "/perfil", "/api/cuenta/password", "/api/usuarios/1"]) assert.equal(protegida(ruta), true, `${ruta} requiere sesión`);
 assert.match(fuente, /!token\.revocado/, "el proxy rechaza JWT revocados");
 for (const ruta of ["/api/servidores", "/api/servidores/1/token", "/api/servidores/heartbeats", "/api/panel-ar/alertas-privadas"]) assert.equal(protegida(ruta), true);
+for (const ruta of ["/api/meta-ads/campanas", "/api/meta-ads/campanas/1"]) assert.equal(protegida(ruta), true, "Meta Ads requiere sesión en el proxy");
 for (const ruta of ["/api/servidores/heartbeat", "/api/panel-ar/alertas"]) assert.equal(protegida(ruta), false, "la ruta valida el token sin redirigir a login");
 
 for (const ruta of ["/cotizaciones", "/cotizaciones/nueva", "/reservas-en-linea", "/reservas-tours", "/resenas", "/pedidos-en-linea", "/ventas", "/caja", "/api/cotizaciones", "/api/productos", "/demografia", "/demos", "/demo-privado"]) {

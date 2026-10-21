@@ -1,5 +1,14 @@
 # Plan de cierre · Fase 2 (lo que falta)
 
+> **Revisión 20-oct-2026:** este documento conserva el estado histórico del 11 de
+> octubre. La auditoría actual y la continuación autorizada están en
+> [Plan de módulos · Fase 3](PLAN-MODULOS-FASE-3.md). Los bloques funcionales de fase 2
+> ya tienen implementación y evidencia local posterior; eso no acredita su cierre
+> operativo, despliegue ni aprobación de Meta. No usar los conteos, la pausa ni las
+> referencias de ramas de abajo como estado actual. Para pruebas, usar el
+> [arnés reciente con los SQL del repositorio](docs/pruebas-belleza-2026-10-19/README.md)
+> en lugar de la receta histórica con `prisma db push`.
+
 > Actualizado: 2026-10-11. Sustituye la sección "Orden de trabajo" de `PLAN-MODULOS-FASE-2.md`
 > para lo que queda. Las reglas de la §0 de ese plan siguen vigentes.
 > Escrito para que una sesión nueva (Claude o Codex) pueda ejecutarlo sin contexto previo.

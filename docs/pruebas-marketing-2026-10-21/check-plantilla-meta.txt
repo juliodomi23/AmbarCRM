@@ -1,0 +1,2 @@
+plantillaMeta OK
+botones, ventana y errores OK

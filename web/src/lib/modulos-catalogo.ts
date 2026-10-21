@@ -11,6 +11,18 @@ const ACCESO_LEGAL = {
 
 export const MODULOS = [
   {
+    clave: "marketing", area: "Marketing y crecimiento", nombre: "Marketing",
+    descripcion: "Organiza tus campañas, prepara el contenido y revisa el plan con tu equipo.",
+    acceso: { puestosPorDefecto: ["Administrador", "Mercadotecnia", "Dirección comercial"] },
+    icono: "M3 10v4h4l11 5V5L7 10H3zm4 4 2 7h3l-2-6M21 9v6", ruta: "/marketing",
+  },
+  {
+    clave: "meta_ads", area: "Marketing y crecimiento", nombre: "Meta Ads",
+    descripcion: "Prepara propuestas de anuncios y aprueba su contenido y presupuesto internamente.",
+    acceso: { puestosPorDefecto: ["Administrador", "Mercadotecnia", "Dirección comercial"] },
+    icono: "M12 3a9 9 0 1 0 9 9M12 7a5 5 0 1 0 5 5M12 12l9-9M16 3h5v5", ruta: "/meta-ads",
+  },
+  {
     clave: "servidores", area: "Ámbar Rojo", nombre: "Servidores",
     descripcion: "Salud, vencimientos y cargas de la infraestructura de la plataforma.",
     soloPlataforma: true,

@@ -1,0 +1,2 @@
+check-demo OK · 99 llamadas fetch revisadas en 72 archivos
+check-demo OK · personalización estable al cambiar de giro

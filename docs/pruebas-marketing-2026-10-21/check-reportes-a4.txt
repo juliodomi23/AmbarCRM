@@ -1,0 +1,1 @@
+{"costosEnTodosLosCaminos":["src/lib/caja-db.ts","src/lib/caja-a2-db.ts","src/lib/cotizaciones-db.ts","src/app/api/ventas/route.ts","src/lib/pedidos-db.ts","src/lib/venta-estado-db.ts"],"ingresoProrrateado":true,"devolucionesPorPeriodo":true,"zonaLocal":true,"csvProtegido":true,"permisos":true}

@@ -1,0 +1,1 @@
+caja offline: catálogo por identidad, sin red, 403 apagado, identidad ajena y cálculo local OK

@@ -1,0 +1,1 @@
+{"totalesMasIva":{"subtotal":15.15,"descuento":0.65,"impuestos":2.32,"total":16.82},"preciosConIva":{"total":180,"impuestosIncluidos":24.83},"totalNavegadorIgnorado":true,"vigenciaMexico":{"ultimoDia20h":"vigente","diaSiguiente0001":"vencida"},"whatsapp":{"ventanaAbierta":"texto","ventanaCerradaSinPlantilla":"sin_plantilla","ventanaCerradaConPlantilla":"plantilla"}}

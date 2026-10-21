@@ -1,0 +1,1 @@
+retail: productos, inventario, compras, proveedores, ventas y pedidos OK

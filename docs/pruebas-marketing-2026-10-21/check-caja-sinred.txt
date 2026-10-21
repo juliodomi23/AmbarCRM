@@ -1,0 +1,1 @@
+caja sin red: cola FIFO, retroceso, 4xx visible, 401 conserva, otra identidad intacta, turno requerido, validación y apagado OK

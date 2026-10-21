@@ -1,0 +1,1 @@
+búsqueda: patrón LIKE escapado OK

@@ -27,6 +27,9 @@ Los tokens de Meta se intercambian y almacenan únicamente en el servidor, cifra
 
 | Archivo | Propósito |
 |---|---|
+| [PLAN-MODULOS-FASE-3.md](PLAN-MODULOS-FASE-3.md) | Revisión de fase 2, prioridades de UX y entregas de Marketing y Meta Ads |
+| [MODULOS.md](MODULOS.md) | Capacidades y activación de los módulos por organización |
+| [docs/META-ADS-APP-REVIEW.md](docs/META-ADS-APP-REVIEW.md) | Permisos y revisión para las futuras integraciones de Meta Ads |
 | `DESPLIEGUE.md` | Variables y pasos de instalación |
 | `META-APP-REVIEW.md` | Checklist para revisión de Meta |
 | `INTEGRACION-N8N.md` | Automatizaciones con n8n |
@@ -34,12 +37,25 @@ Los tokens de Meta se intercambian y almacenan únicamente en el servidor, cifra
 | `MULTI-TENANT.md` | Aislamiento entre organizaciones |
 | `modelo-datos.md` | Resumen del modelo relacional |
 
+## Marketing y Meta Ads
+
+La fase 3 incorpora **Marketing** para organizar campañas y **Meta Ads** para preparar
+propuestas de anuncios. La primera entrega guarda borradores, revisión, aprobación
+interna por administrador y archivo, con aislamiento por organización y control de
+versiones. La plataforma activa cada módulo desde Configuración → Clientes Ámbar CRM.
+
+Esta entrega es interna: aprobar no publica anuncios ni genera gasto. Conectar Meta,
+consultar resultados, publicar e incorporar leads son etapas posteriores descritas en
+el [plan de fase 3](PLAN-MODULOS-FASE-3.md). El plan también distingue la evidencia de
+pruebas existente de las verificaciones pendientes; no confirma producción ni App Review.
+
 ## Validación local
 
 Desde `web/`:
 
 ```bash
 npm run lint
+npx tsc --noEmit
 npx prisma validate
 npm run build
 ```

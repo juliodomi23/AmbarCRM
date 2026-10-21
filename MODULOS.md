@@ -1,6 +1,6 @@
 # Módulos personalizables
 
-Un módulo se registra en `web/src/lib/modulos.ts` con una clave estable, nombre,
+Un módulo se registra en `web/src/lib/modulos-catalogo.ts` con una clave estable, nombre,
 descripción, icono SVG y ruta. La plataforma lo activa por organización en
 Configuración → Clientes Ámbar CRM; cada organización solo configura sus
 módulos activos. La ficha de cada organización muestra métricas, equipo,
@@ -9,8 +9,36 @@ módulos y su liga de acceso para soporte sin exponer contraseñas.
 Para agregar un módulo, añade su catálogo y crea sus tablas con `org_id`, DEFAULT
 de `app.current_org`, RLS `org_isolation` y GRANT en
 `web/prisma/sql/actualizaciones.sql`. Refléjalo en Prisma, protege sus APIs con
-`requireModuloActivo("clave")` y añade su página. AppShell y Ctrl+K consumen el
+`conModulo("clave", opciones, handler)` y añade su página, protegida con `moduloActivo`.
+`web/src/lib/modulos.ts` reexporta el catálogo y resuelve los accesos. AppShell y Ctrl+K consumen el
 catálogo activo automáticamente.
+
+## Marketing y Meta Ads · fase 3
+
+La primera entrega de [fase 3](PLAN-MODULOS-FASE-3.md) incorpora dos módulos de
+trabajo interno, activables por separado desde **Configuración → Clientes Ámbar CRM**.
+La administración de plataforma decide en qué organizaciones habilitarlos; no se
+activan automáticamente en clientes existentes.
+
+- **Marketing** (`marketing`, `/marketing`) organiza campañas con objetivo,
+  audiencia, canal, fechas, contenido y presupuesto previsto.
+- **Meta Ads** (`meta_ads`, `/meta-ads`) prepara propuestas para anuncios de Facebook
+  e Instagram y su revisión antes de una futura publicación.
+
+Ambos comparten el recorrido de borrador, revisión, aprobación interna y archivo.
+La aprobación requiere administrador. Los registros se guardan por organización,
+con RLS y control de versión para rechazar una edición basada en datos desactualizados.
+Los accesos del módulo se respetan en sus páginas y APIs.
+
+Esta entrega no conecta cuentas de Meta, publica anuncios, envía mensajes, importa
+leads ni muestra resultados publicitarios sincronizados. **Aprobar una propuesta
+dentro del CRM no la publica, no genera gasto y no significa aprobación por Meta.**
+La consulta de cuentas y resultados, publicación autorizada y atribución de leads
+se desarrollan en las etapas 3B, 3C y 3D.
+
+La [guía de Meta Ads y App Review](docs/META-ADS-APP-REVIEW.md) separa los permisos según
+la capacidad que se integre. Los resultados de validación de esta entrega se registran
+en el plan de fase 3; las pruebas históricas de fase 2 no sustituyen esa validación.
 
 ## Módulo Clientes
 

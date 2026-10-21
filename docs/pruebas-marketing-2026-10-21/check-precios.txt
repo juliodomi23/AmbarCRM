@@ -1,0 +1,1 @@
+{"motorUnico":true,"caminos":["src/lib/caja-db.ts","src/lib/caja-a2-db.ts","src/lib/cotizaciones-db.ts","src/lib/pedidos-db.ts","src/app/api/ventas/route.ts","src/app/api/public/tienda/[slug]/route.ts"],"vigenciaLocal":true}

@@ -1,0 +1,1 @@
+Marketing: validaciones, fechas reales, dinero, campos protegidos, acciones/versiones, matriz de estados y permisos por puesto OK

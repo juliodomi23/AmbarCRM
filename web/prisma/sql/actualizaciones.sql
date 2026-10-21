@@ -1799,3 +1799,36 @@ CREATE OR REPLACE FUNCTION resolve_org_by_password_hash(p_hash text)
 $$;
 REVOKE ALL ON FUNCTION resolve_org_by_password_hash(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION resolve_org_by_password_hash(text) TO crm_app;
+
+-- Fase 3: planificación interna. La aprobación no publica ni envía anuncios.
+CREATE TABLE IF NOT EXISTS campanas_marketing (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  tipo TEXT NOT NULL CHECK (tipo IN ('marketing', 'meta_ads')),
+  nombre TEXT NOT NULL CHECK (length(btrim(nombre)) BETWEEN 1 AND 120),
+  objetivo TEXT NOT NULL CHECK (objetivo IN ('mensajes', 'clientes_potenciales', 'ventas', 'reconocimiento')),
+  canal TEXT NOT NULL,
+  audiencia TEXT NOT NULL DEFAULT '' CHECK (length(audiencia) <= 2000),
+  contenido TEXT NOT NULL DEFAULT '' CHECK (length(contenido) <= 10000),
+  fecha_inicio DATE, fecha_fin DATE,
+  presupuesto NUMERIC(12,2) CHECK (presupuesto >= 0),
+  estado TEXT NOT NULL DEFAULT 'borrador' CHECK (estado IN ('borrador', 'en_revision', 'aprobada', 'archivada')),
+  version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
+  aprobada_por_id BIGINT, aprobada_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK ((tipo = 'meta_ads' AND canal = 'facebook_instagram') OR (tipo = 'marketing' AND canal IN ('whatsapp', 'instagram', 'facebook', 'otro'))),
+  CHECK (fecha_inicio IS NULL OR fecha_fin IS NULL OR fecha_fin >= fecha_inicio),
+  CHECK ((aprobada_por_id IS NULL) = (aprobada_at IS NULL)),
+  CHECK (estado <> 'aprobada' OR aprobada_por_id IS NOT NULL),
+  FOREIGN KEY (aprobada_por_id, org_id) REFERENCES usuarios(id, org_id) ON DELETE RESTRICT
+);
+CREATE INDEX IF NOT EXISTS campanas_marketing_org_tipo_estado_idx ON campanas_marketing(org_id, tipo, estado);
+CREATE INDEX IF NOT EXISTS campanas_marketing_org_tipo_updated_idx ON campanas_marketing(org_id, tipo, updated_at);
+ALTER TABLE campanas_marketing ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_isolation ON campanas_marketing;
+CREATE POLICY org_isolation ON campanas_marketing
+  USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+  WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
+GRANT SELECT, INSERT, UPDATE ON campanas_marketing TO crm_app;
+REVOKE DELETE, TRUNCATE ON campanas_marketing FROM crm_app;
+GRANT USAGE, SELECT ON SEQUENCE campanas_marketing_id_seq TO crm_app;

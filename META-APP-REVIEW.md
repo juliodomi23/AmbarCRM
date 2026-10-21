@@ -21,6 +21,14 @@ Solicitar únicamente los permisos usados por el producto y explicar cada uno co
 
 No describir integraciones ni proveedores que no forman parte del flujo presentado.
 
+### Marketing y Meta Ads — fase 3 (20 de octubre de 2026)
+
+La planificación y los borradores persistentes de fase 3 son operaciones internas del CRM y no requieren permisos nuevos de Meta. No publican anuncios, no activan gasto y no amplían el OAuth existente de WhatsApp o Messenger.
+
+**Al conectar cuentas publicitarias de clientes sí se necesita ampliar el alcance:** evaluar Advanced Access de `ads_read` para lectura y de `ads_management` para gestión, según las funciones implementadas. Importar formularios Lead Ads requiere evaluar `leads_retrieval` y sus dependencias vigentes; no se verificó todavía su combinación final. La aprobación previa de WhatsApp/Messenger no acredita Ads ni la verificación empresarial.
+
+Consultar [Marketing y Meta Ads: alcance y App Review](docs/META-ADS-APP-REVIEW.md) para la matriz, fuentes, límites de comprobación y preparación del video y acceso del revisor. Los permisos realmente aprobados y los requisitos específicos de la app quedan por confirmar en el dashboard. No se envió ninguna solicitud de revisión en esta fase.
+
 ## 3. Webhooks
 
 - [ ] Callback: `https://crm.tudominio.com/api/meta/webhook`.

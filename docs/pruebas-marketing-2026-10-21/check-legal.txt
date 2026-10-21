@@ -1,0 +1,1 @@
+legal: módulos, validadores y SQL OK
