@@ -18,8 +18,8 @@ for (const origen of [pagina, lista]) for (const dato of ["canalProveedor", "ult
 assert.match(chat, /seleccionada && esWhatsapp && \(/, "plantillas oficiales solo en WhatsApp");
 assert.match(chat, /esMensajeriaMeta && mensajes.length > 0 && !cargandoMsgs && !ventana.abierta/);
 for (const tipo of ["cloud_api", "messenger", "instagram", "api"]) assert.ok(config.includes(`value="${tipo}"`));
-assert.match(config, /value="messenger" disabled=\{!metaRevision\}/, "Messenger solo se habilita con META_CANALES_REVISION");
-assert.match(config, /value="instagram" disabled=\{!metaRevision\}/, "Instagram solo se habilita con META_CANALES_REVISION");
+assert.match(config, /value="messenger" disabled=\{!metaRevision\}/, "Messenger solo se habilita con META_CANALES_REVISION_ORGS");
+assert.match(config, /value="instagram" disabled=\{!metaRevision\}/, "Instagram solo se habilita con META_CANALES_REVISION_ORGS");
 const [externo, configuracion] = await Promise.all([
   readFile("src/components/config/CanalExterno.tsx", "utf8"),
   readFile("src/app/(app)/configuracion/page.tsx", "utf8"),
