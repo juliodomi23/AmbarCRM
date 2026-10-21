@@ -9,7 +9,7 @@ Revisión del código en `codex/fase-3-marketing-meta-ads`. No se accedió al pa
 | Messenger | Facebook Login con selección de página y conexión manual; webhooks firmados, envío, reconexión y desconexión. El intento de login está ligado a empresa, usuario y sesión, vence a los diez minutos y se consume una vez. | Confirmar en el panel `pages_show_list`, `pages_messaging`, `pages_manage_metadata`, nivel de acceso y configuración de la app. Ejecutar el humo con una página de prueba. `HUMAN_AGENT` requiere aprobación propia. |
 | Instagram | Alta manual de cuenta profesional vinculada a una página, con ID de cuenta, Page ID, token, App ID y App Secret; recepción y envío de DM, firma por app y retiro del canal. | Confirmar permisos y acceso a mensajes para el flujo **con Facebook Login y token de página**. Probar webhook, respuesta, media y desconexión con una cuenta de prueba antes de clientes. No hay login guiado para Instagram. |
 
-La interfaz impedía crear ambos canales porque el selector los mantenía deshabilitados como «próximamente», aunque las rutas `POST /api/canales` ya aceptaban los dos proveedores. Se habilitaron las opciones, se muestran solo las conexiones del tipo elegido y el formulario manual de Messenger queda oculto mientras se usa Facebook Login. Instagram muestra que la configuración es manual y necesita una comprobación real previa. Estos cambios no modifican OAuth, tokens, webhooks ni permisos.
+**Decisión del 21-oct-2026:** el usuario mantendrá Messenger e Instagram como **«próximamente» en el selector de Configuración hasta tramitar los permisos**. Las rutas y servicios ya implementados permanecen en el repositorio, pero esta revisión no habilita el alta desde la interfaz. Las tarjetas de canales que ya existan siguen visibles. No se modificaron OAuth, tokens, webhooks ni permisos. El intento de habilitar el selector en el commit `c6e4069` se revirtió por esta decisión.
 
 ## Riesgos y comprobaciones pendientes
 
@@ -20,4 +20,4 @@ La interfaz impedía crear ambos canales porque el selector los mantenía deshab
 
 ## Validación local de esta revisión
 
-TypeScript y ESLint de los archivos editados: correctos. `check-canales-ui.ts` se amplió para detectar opciones deshabilitadas y comprobar el formulario manual. Su ejecución quedó pendiente porque el paquete `tsx` no está instalado en esta sesión y `npx` no pudo consultar el registro por falta de red. No se hicieron llamadas a Meta ni cambios de producción.
+La revisión de código identificó los flujos y límites anteriores. TypeScript y ESLint pasaron durante el intento de cambio de interfaz. El selector, el formulario y `check-canales-ui.ts` volvieron a su estado previo; la prueba de interfaz no se volvió a ejecutar porque `tsx` no está instalado en esta sesión y `npx` no pudo consultar el registro por falta de red. No se hicieron llamadas a Meta ni cambios de producción.
