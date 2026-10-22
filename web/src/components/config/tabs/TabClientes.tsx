@@ -8,6 +8,7 @@ import { Boton, Campo } from "@/components/ui";
 import { api, slugificar } from "@/components/config/tabs/shared";
 
 const ORDEN_AREAS = [
+  "Marketing y crecimiento",
   "CRM y agenda",
   "Clínica",
   "Automotriz",
@@ -232,7 +233,7 @@ export function TabClientes({
                       </span>
                     </div>
                     <div className="grid items-start gap-3 lg:grid-cols-2">
-                      {grupos.map(grupo => ({ ...grupo, modulos: grupo.modulos.filter(modulo => !modulo.soloPlataforma || String(o.id) === "1") })).filter(grupo => grupo.modulos.length).map((grupo) => {
+                      {grupos.map(grupo => ({ ...grupo, modulos: grupo.modulos.filter(modulo => (!modulo.soloPlataforma || String(o.id) === "1") && (modulo.soloOrgId === undefined || String(modulo.soloOrgId) === String(o.id))) })).filter(grupo => grupo.modulos.length).map((grupo) => {
                         const claveArea = `${o.id}:${grupo.area}`;
                         const abierto = Boolean(areasAbiertas[claveArea]);
                         const activos = grupo.modulos.filter((modulo) =>

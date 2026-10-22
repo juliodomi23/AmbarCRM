@@ -7,7 +7,7 @@ import { api } from "@/components/config/tabs/shared";
 import { WebhooksSalientes } from "./WebhooksSalientes";
 import { ReglasAutomatizacion } from "./ReglasAutomatizacion";
 
-export function TabAutomatizaciones({ ajustes }: { ajustes: any }) {
+export function TabAutomatizaciones({ ajustes, esExi = false }: { ajustes: any; esExi?: boolean }) {
   const router = useRouter();
   const [f, setF] = useState({
     autoAsignar: !!ajustes?.autoAsignar,
@@ -23,6 +23,7 @@ export function TabAutomatizaciones({ ajustes }: { ajustes: any }) {
     fueraHorarioTexto: ajustes?.fueraHorarioTexto ?? "",
     autoResolverActivo: !!ajustes?.autoResolverActivo,
     autoResolverHoras: ajustes?.autoResolverHoras ?? 24,
+    tarifaMarketingUsd: Number(ajustes?.tarifaMarketingUsd ?? 0.04),
   });
   const [guardando, setGuardando] = useState(false);
 
@@ -31,6 +32,7 @@ export function TabAutomatizaciones({ ajustes }: { ajustes: any }) {
     const ok = await api("/api/ajustes", "PATCH", {
       ...f,
       autoResolverHoras: Number(f.autoResolverHoras) || 24,
+      ...(esExi ? { tarifaMarketingUsd: Number(f.tarifaMarketingUsd) } : {}),
     });
     setGuardando(false);
     if (ok) router.refresh();
@@ -38,6 +40,7 @@ export function TabAutomatizaciones({ ajustes }: { ajustes: any }) {
 
   return (
     <div className="max-w-lg space-y-4">
+      {esExi && <div className="surface p-4"><label className="block text-sm font-medium">Tarifa estimada de marketing (USD por mensaje entregado)<input type="number" min="0" max="10" step="0.0001" value={f.tarifaMarketingUsd} onChange={(e) => setF({ ...f, tarifaMarketingUsd: Number(e.target.value) })} className="mt-2 block w-full rounded border p-2" /></label><p className="mt-2 text-xs text-muted-foreground">Se usa solo para estimar campañas; Meta cobra directamente a EXI.</p></div>}
       <div className="surface p-4">
         <label className="flex items-start gap-3">
           <input

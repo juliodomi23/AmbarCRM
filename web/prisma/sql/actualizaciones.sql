@@ -1851,3 +1851,67 @@ CREATE POLICY org_isolation ON campanas_marketing
 GRANT SELECT, INSERT, UPDATE ON campanas_marketing TO crm_app;
 REVOKE DELETE, TRUNCATE ON campanas_marketing FROM crm_app;
 GRANT USAGE, SELECT ON SEQUENCE campanas_marketing_id_seq TO crm_app;
+-- Campañas de envío para EXI. La bandera del módulo se activa por separado desde el panel.
+ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS tarifa_marketing_usd NUMERIC(8,4) NOT NULL DEFAULT 0.04;
+
+CREATE TABLE IF NOT EXISTS campanas_envio (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  nombre TEXT NOT NULL,
+  canal_id BIGINT NOT NULL REFERENCES canales_whatsapp(id) ON DELETE RESTRICT,
+  plantilla_nombre TEXT NOT NULL,
+  plantilla_idioma TEXT NOT NULL,
+  mapeo_variables JSONB NOT NULL DEFAULT '[]',
+  estado TEXT NOT NULL DEFAULT 'borrador' CHECK (estado IN ('borrador','programada','en_curso','pausada','completada','cancelada')),
+  motivo_pausa TEXT,
+  dias_semana INTEGER[] NOT NULL DEFAULT ARRAY[1,2,3,4,5],
+  hora_inicio TEXT NOT NULL DEFAULT '09:30',
+  hora_fin TEXT NOT NULL DEFAULT '17:30',
+  zona_horaria TEXT NOT NULL DEFAULT 'America/Mexico_City',
+  tanda_tamano INTEGER NOT NULL DEFAULT 5 CHECK (tanda_tamano BETWEEN 1 AND 20),
+  pausa_tanda_min INTEGER NOT NULL DEFAULT 10 CHECK (pausa_tanda_min >= 5),
+  tope_diario INTEGER NOT NULL DEFAULT 50 CHECK (tope_diario BETWEEN 1 AND 150),
+  fecha_inicio TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ultima_tanda_at TIMESTAMPTZ,
+  creado_por BIGINT,
+  confirmo_permiso BOOLEAN NOT NULL DEFAULT false,
+  permiso_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS campanas_envio_org_estado_idx ON campanas_envio(org_id, estado);
+CREATE INDEX IF NOT EXISTS campanas_envio_canal_estado_idx ON campanas_envio(canal_id, estado);
+
+CREATE TABLE IF NOT EXISTS campanas_destinatarios (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  campana_id BIGINT NOT NULL REFERENCES campanas_envio(id) ON DELETE CASCADE,
+  contacto_id BIGINT NOT NULL REFERENCES contactos(id) ON DELETE RESTRICT,
+  telefono TEXT NOT NULL,
+  variables JSONB NOT NULL DEFAULT '{}',
+  estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente','enviando','enviado','entregado','leido','respondio','fallido','omitido')),
+  motivo TEXT,
+  wa_message_id TEXT,
+  enviado_at TIMESTAMPTZ,
+  error_codigo INTEGER,
+  reintentos INTEGER NOT NULL DEFAULT 0,
+  reintentar_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (campana_id, contacto_id)
+);
+CREATE INDEX IF NOT EXISTS campanas_destinatarios_campana_estado_idx ON campanas_destinatarios(campana_id, estado);
+CREATE INDEX IF NOT EXISTS campanas_destinatarios_wa_idx ON campanas_destinatarios(wa_message_id);
+CREATE INDEX IF NOT EXISTS campanas_destinatarios_org_enviado_idx ON campanas_destinatarios(org_id, enviado_at);
+
+ALTER TABLE campanas_envio ENABLE ROW LEVEL SECURITY;
+ALTER TABLE campanas_destinatarios ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_isolation ON campanas_envio;
+CREATE POLICY org_isolation ON campanas_envio
+  USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+  WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
+DROP POLICY IF EXISTS org_isolation ON campanas_destinatarios;
+CREATE POLICY org_isolation ON campanas_destinatarios
+  USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+  WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
+GRANT SELECT, INSERT, UPDATE, DELETE ON campanas_envio, campanas_destinatarios TO crm_app;
+GRANT USAGE, SELECT ON SEQUENCE campanas_envio_id_seq, campanas_destinatarios_id_seq TO crm_app;

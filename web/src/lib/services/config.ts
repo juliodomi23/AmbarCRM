@@ -68,6 +68,7 @@ const AJUSTES_DEFAULT = {
   marcaColorPrimario: null as string | null,
   marcaColorAcento: null as string | null,
   marcaPreset: null as string | null,
+  tarifaMarketingUsd: 0.04,
   updatedAt: new Date()
 };
 
@@ -99,6 +100,7 @@ export async function actualizarAjustes(data: {
   marcaColorPrimario?: string | null;
   marcaColorAcento?: string | null;
   marcaPreset?: string | null;
+  tarifaMarketingUsd?: number;
 }) {
   const a = await db.ajustes.findFirst({ orderBy: { id: "asc" } });
   if (a) return db.ajustes.update({ where: { id: a.id }, data });

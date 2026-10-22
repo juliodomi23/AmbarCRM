@@ -25,7 +25,9 @@ type Tab = (typeof TABS)[number] | "Clientes Ámbar CRM";
 export function ConfiguracionCliente({
   embudos, usuarios, puestosSugeridos, canales, metaRevision, plantillas, ajustes, bots, orgs = null,
   modulosPorOrg = null, modulos = [],
+  modulosClientes = [],
   especialistasAgenda = [], citasHabilitadas = false,
+  esExi = false,
 }: {
   embudos: any[];
   usuarios: any[];
@@ -38,8 +40,10 @@ export function ConfiguracionCliente({
   orgs?: any[] | null;
   modulosPorOrg?: Record<string, any[]> | null;
   modulos?: any[];
+  modulosClientes?: any[];
   especialistasAgenda?: { id: string; nombre: string; activo: boolean }[];
   citasHabilitadas?: boolean;
+  esExi?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("Embudos");
   const tabs: Tab[] = orgs ? [...TABS, "Clientes Ámbar CRM"] : [...TABS];
@@ -78,11 +82,11 @@ export function ConfiguracionCliente({
       {tab === "Canales" && <Canales canales={canales} metaRevision={metaRevision} />}
       {tab === "Plantillas" && <TabPlantillas plantillas={plantillas} />}
       {tab === "Plantillas de Meta" && <MetaCanales canales={canales.filter((c) => c.proveedor === "cloud_api")} vista="plantillas" />}
-      {tab === "Automatizaciones" && <TabAutomatizaciones ajustes={ajustes} />}
+      {tab === "Automatizaciones" && <TabAutomatizaciones ajustes={ajustes} esExi={esExi} />}
       {tab === "Bots" && <TabBots bots={bots} canales={canales} />}
       {tab === "IA" && <TabIA ajustes={ajustes} />}
       {tab === "Clientes Ámbar CRM" && orgs && (
-        <TabClientes orgs={orgs} modulosPorOrg={modulosPorOrg ?? {}} modulos={modulos} />
+        <TabClientes orgs={orgs} modulosPorOrg={modulosPorOrg ?? {}} modulos={modulosClientes} />
       )}
       {tab === "Módulos" && <TabModulos modulos={modulos} canales={canales} />}
       {tab === "Campos personalizados" && <TabCamposPersonalizados />}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, dbRaw, runWithOrg } from "@/lib/db";
 import { getProvider } from "@/lib/channel";
 import { ingestarEntrante } from "@/lib/services/ingest";
+import { clasificar } from "@/lib/campanas-envio-motor";
 import { verifyMetaWebhookSignature } from "@/lib/meta/signature";
 import { decryptMetaToken } from "@/lib/meta/credentials";
 import { normalizarHistorialCoexistence } from "@/lib/channel/cloudapi";
@@ -123,6 +124,15 @@ export async function POST(req: NextRequest) {
         },
         data: { status: status.status, ...(status.error ? { errorDetalle: status.error } : {}) }
       });
+      if (status.status === "entregado" || status.status === "leido" || status.status === "fallido") {
+        const destinatario = await db.campanaDestinatario.findFirst({ where: { waMessageId: status.waMessageId, campana: { canalId: canal.id }, estado: { in: status.status === "fallido" ? ["enviado", "entregado"] : status.status === "leido" ? ["enviado", "entregado"] : ["enviado"] } } });
+        if (destinatario) {
+          const fallo = status.status === "fallido" ? clasificar({ ok: false, error: status.error, errorCodigo: status.errorCodigo }, destinatario.reintentos) : null;
+          await db.campanaDestinatario.update({ where: { id: destinatario.id }, data: { estado: fallo?.estado ?? status.status, motivo: fallo?.motivo ?? null, errorCodigo: status.errorCodigo, reintentarAt: fallo?.reintentarAt ?? null } });
+          if (status.errorCodigo === 131050) await db.contacto.update({ where: { id: destinatario.contactoId }, data: { optOutDifusion: true } });
+          if (fallo?.pausar) await db.campanaEnvio.update({ where: { id: destinatario.campanaId }, data: { estado: "pausada", motivoPausa: fallo.pausar } });
+        }
+      }
     }
 
     const messages = [
