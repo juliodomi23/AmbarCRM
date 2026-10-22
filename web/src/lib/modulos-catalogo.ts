@@ -13,6 +13,7 @@ export const MODULOS = [
   {
     clave: "campanas_envio", area: "Marketing y crecimiento", nombre: "Campañas de envío",
     descripcion: "Importa clientes y programa plantillas aprobadas de WhatsApp.",
+    soloOrgId: 12,
     acceso: { puestosPorDefecto: ["Administrador", "Mercadotecnia"] },
     icono: "M3 5h18v14H3zM3 7l9 7 9-7M7 17h4", ruta: "/campanas-envio",
   },

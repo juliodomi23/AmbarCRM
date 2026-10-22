@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { conModulo } from "@/lib/con-modulo";
 import { getProvider } from "@/lib/channel";
 import { getAjustes } from "@/lib/services/config";
-import { horasDeTanda, validarCalendario } from "@/lib/campanas-envio";
+import { horasDeTanda, reanudarCampana, validarCalendario } from "@/lib/campanas-envio";
 import { transaccionTenant } from "@/lib/retail-db";
 import { comprobarPlantillaParaLanzar } from "@/lib/campanas-envio-plantilla";
 
@@ -62,7 +62,7 @@ export const PATCH = conModulo("campanas_envio", { admin: true }, async (_sesion
   } else if (accion === "pausar" && ["programada", "en_curso"].includes(campana.estado)) {
     await db.campanaEnvio.update({ where: { id }, data: { estado: "pausada", motivoPausa: "Pausada por el equipo" } });
   } else if (accion === "reanudar" && campana.estado === "pausada") {
-    await db.campanaEnvio.update({ where: { id }, data: { estado: "programada", motivoPausa: null } });
+    await reanudarCampana(id);
   } else if (accion === "cancelar" && !["cancelada", "completada"].includes(campana.estado)) {
     await db.campanaEnvio.update({ where: { id }, data: { estado: "cancelada" } });
   } else return Response.json({ error: "Transición inválida" }, { status: 409 });

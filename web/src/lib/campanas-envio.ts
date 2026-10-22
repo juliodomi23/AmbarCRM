@@ -5,6 +5,10 @@ export type MapeoColumnas = { telefono: number; nombre?: number; empresa?: numbe
 export type FilaCampana = { numeroFila: number; telefono: string; nombre: string; empresa: string; giro: string; variables: Record<string, string>; contactoId?: bigint };
 export type FilaRechazada = { numeroFila: number; fila: string[]; motivo: string };
 
+export function reanudarCampana(id: bigint) {
+  return db.campanaEnvio.update({ where: { id }, data: { estado: "programada", motivoPausa: null, fallosConsultaMeta: 0 } });
+}
+
 export function datosParaCompletarContacto(contacto: { nombre: string; empresa: string | null; telefono: string | null }, fila: { nombre: string; empresa: string }) {
   return {
     ...(fila.nombre && (!contacto.nombre.trim() || contacto.nombre === contacto.telefono) ? { nombre: fila.nombre } : {}),

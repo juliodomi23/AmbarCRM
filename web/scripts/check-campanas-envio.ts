@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import pg from "pg";
 import ExcelJS from "exceljs";
 import { parseCSV } from "../src/lib/csv";
-import { datosParaCompletarContacto, esBajaCampana, horarioPermitido, validarCalendario, validarFilasCampana } from "../src/lib/campanas-envio";
+import { datosParaCompletarContacto, esBajaCampana, horarioPermitido, reanudarCampana, validarCalendario, validarFilasCampana } from "../src/lib/campanas-envio";
 import { fechaEnZona } from "../src/lib/campanas-envio-fecha";
 import { guardarFilasCampana } from "../src/lib/campanas-envio-importar";
 import { comprobarPlantillaParaLanzar } from "../src/lib/campanas-envio-plantilla";
@@ -10,7 +10,9 @@ import { clasificar, procesarCampana } from "../src/lib/campanas-envio-motor";
 import { getProvider } from "../src/lib/channel";
 import { db, dbRaw, runWithOrg } from "../src/lib/db";
 import { ingestarEntrante } from "../src/lib/services/ingest";
-import { requireModuloActivo } from "../src/lib/modulos";
+import { moduloHabilitado, requireModuloActivo } from "../src/lib/modulos";
+import { moduloPorClave } from "../src/lib/modulos-catalogo";
+import { moduloVisibleEnOrg } from "../src/lib/modulos-plataforma";
 import { POST as cron } from "../src/app/api/cron/campanas-envio/route";
 import { NextRequest } from "next/server";
 
@@ -159,6 +161,15 @@ async function main() {
     assert.equal(quinta.estado, "pausada");
     assert.equal(quinta.fallosConsultaMeta, 5);
     assert.match(quinta.motivoPausa ?? "", /Meta no responde/);
+    const reanudada = await reanudarCampana(metaCaida.id);
+    assert.equal(reanudada.estado, "programada");
+    assert.equal(reanudada.motivoPausa, null);
+    assert.equal(reanudada.fallosConsultaMeta, 0);
+    await procesarCampana(orgId, metaCaida.id, ahoraPrueba);
+    const unFalloTrasReanudar = await db.campanaEnvio.findUniqueOrThrow({ where: { id: metaCaida.id } });
+    assert.equal(unFalloTrasReanudar.estado, "programada", "un fallo aislado tras reanudar no pausa");
+    assert.equal(unFalloTrasReanudar.fallosConsultaMeta, 1);
+    await db.campanaEnvio.update({ where: { id: metaCaida.id }, data: { estado: "completada" } });
     const proveedor = getProvider("cloud_api", canal.config, canal.instancia);
     assert.equal((await comprobarPlantillaParaLanzar(proveedor, plantilla.name, plantilla.language))?.status, 503);
     const intermitente = await crearCampana("Meta intermitente", canal.id, []);
@@ -261,24 +272,41 @@ async function main() {
 
   const aislado = await runWithOrg(otraOrgId, () => db.campanaEnvio.count());
   assert.equal(aislado, 0, "RLS oculta campañas de EXI a otra org");
+  const moduloCampanas = moduloPorClave("campanas_envio")!;
+  assert.equal(moduloCampanas.soloOrgId, 12);
+  assert.equal(moduloVisibleEnOrg(moduloCampanas, orgId), true);
+  assert.equal(moduloVisibleEnOrg(moduloCampanas, otraOrgId), false);
+  assert.equal(await runWithOrg(orgId, () => requireModuloActivo("campanas_envio", { rol: "admin" })), null);
   const bloqueado = await runWithOrg(otraOrgId, () => requireModuloActivo("campanas_envio", { rol: "admin" }));
   assert.equal(bloqueado?.status, 404);
   await runWithOrg(otraOrgId, async () => {
     await db.moduloOrg.create({ data: { clave: "campanas_envio", activo: true } });
-    assert.equal(await requireModuloActivo("campanas_envio", { rol: "admin" }), null);
+    assert.equal(await moduloHabilitado("campanas_envio"), false, "una bandera forzada en BD no supera la restricción del catálogo");
+    assert.equal((await requireModuloActivo("campanas_envio", { rol: "admin" }))?.status, 404);
     const otroCanal = await db.canalWhatsapp.create({ data: { nombre: "Meta org 13", proveedor: "cloud_api", estado: "conectado", activo: true, config: { token: "solo-prueba", phoneNumberId: "sim-phone-13", wabaId: "sim-waba-13" } } });
     const otroContacto = await db.contacto.create({ data: { nombre: "Otra org", telefono: "529612000001", fuente: "manual" } });
     const otraCampana = await crearCampana("Otra org activa", otroCanal.id, [otroContacto.id], { diasSemana: [0,1,2,3,4,5,6], horaInicio: "00:00", horaFin: "23:59" });
-    const respuesta = await cron(new NextRequest("http://127.0.0.1/api/cron/campanas-envio", { method: "POST", headers: { "x-api-key": "cron-prueba" } }));
-    assert.equal(respuesta.status, 200);
-    assert.equal(await db.campanaDestinatario.count({ where: { campanaId: otraCampana.id, estado: "enviado" } }), 1, "el cron procesa otra org con módulo activo");
+    const llamarCron = () => cron(new NextRequest("http://127.0.0.1/api/cron/campanas-envio", { method: "POST", headers: { "x-api-key": "cron-prueba" } }));
+    assert.equal((await llamarCron()).status, 200);
+    assert.equal(await db.campanaDestinatario.count({ where: { campanaId: otraCampana.id, estado: "pendiente" } }), 1, "el cron no procesa una org restringida aunque la bandera exista");
+    const catalogoDePrueba = moduloCampanas as unknown as { soloOrgId?: number };
+    const restriccionOriginal = catalogoDePrueba.soloOrgId;
+    try {
+      delete catalogoDePrueba.soloOrgId;
+      assert.equal(await requireModuloActivo("campanas_envio", { rol: "admin" }), null);
+      assert.equal((await llamarCron()).status, 200);
+      assert.equal(await db.campanaDestinatario.count({ where: { campanaId: otraCampana.id, estado: "enviado" } }), 1, "el cron no tiene un filtro 12 propio");
+    } finally {
+      catalogoDePrueba.soloOrgId = restriccionOriginal;
+    }
+    assert.equal((await requireModuloActivo("campanas_envio", { rol: "admin" }))?.status, 404);
     await db.moduloOrg.updateMany({ where: { clave: "campanas_envio" }, data: { activo: false } });
     assert.equal((await requireModuloActivo("campanas_envio", { rol: "admin" }))?.status, 404);
   });
   await runWithOrg(orgId, () => db.moduloOrg.updateMany({ where: { clave: "campanas_envio" }, data: { activo: false } }));
   const apagado = await runWithOrg(orgId, () => requireModuloActivo("campanas_envio", { rol: "admin" }));
   assert.equal(apagado?.status, 404);
-  console.log("campanas-envio: CSV/XLSX, variables vacías, conservación de contactos, calendario, Graph temporal, topes, concurrencia, reinicio, códigos Meta, umbral de fallos, bajas, RLS y módulo por org OK");
+  console.log("campanas-envio: CSV/XLSX, variables vacías, conservación de contactos, calendario, Graph temporal, reanudación, topes, concurrencia, reinicio, códigos Meta, umbral de fallos, bajas, RLS y restricción EXI OK");
 }
 
 try { await main(); }

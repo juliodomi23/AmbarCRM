@@ -6,7 +6,7 @@ El estado inicial de esta entrega quedó guardado en `ea9283e` antes de aplicar 
 
 - Bajas: también se detectan tras una respuesta previa (`respondio`) dentro de los 30 días, sin pasar el mensaje de baja al bot.
 - Graph: el cron comprueba horario, pausa y tope antes de consultar plantillas. Una caída temporal queda registrada y solo pausa tras cinco consultas fallidas consecutivas; rechazo de Meta o plantilla retirada sí pausa de inmediato. El lanzamiento devuelve 503 si Meta no está disponible.
-- Organizaciones: no hay ID 12 fijo en el cron ni en `ingestarEntrante`; la activación explícita del módulo decide qué organización puede usarlo. La clave nace apagada.
+- Organizaciones: no hay ID 12 fijo en el cron ni en `ingestarEntrante`; el catálogo restringe `campanas_envio` a la org 12 y la clave nace apagada.
 - Variables: la vista previa y la importación rechazan celdas vacías requeridas; el motor omite una variable vacía sin llamar a Graph.
 - Calidad: `131026` permanece como fallo reportado, pero no cuenta para el umbral de siete fallos de los últimos veinte.
 - Contactos: la importación conserva nombre y empresa reales existentes y solo rellena campos vacíos o el nombre igual al teléfono.
@@ -25,7 +25,7 @@ El estado inicial de esta entrega quedó guardado en `ea9283e` antes de aplicar 
 ## Validación ejecutada
 
 - Prisma: esquema válido; `actualizaciones.sql` pasó dos veces en PostgreSQL 16 aislado. Se aplicó RLS con el rol `crm_app` sin `BYPASSRLS`.
-- La regresión completa `check-campanas-envio.ts` pasó en PostgreSQL 16 aislado con Graph simulado y sin tokens reales. Además de CSV/XLSX, fecha, calendario, tope compartido, concurrencia, recuperación y errores previos, cubrió baja directa y tras `respondio`, cero consultas Graph fuera de ventana y entre tandas, caída temporal de Graph y quinto fallo consecutivo, restablecimiento del contador, plantilla retirada/4xx, respuesta 503 para lanzamiento, variables vacías en vista previa y motor, guardado real de importación sin pisar contactos, exclusión de `131026` del umbral, siete fallos de otro código, RLS y cron de otra organización con módulo activo; apagado da 404.
+- La regresión completa `check-campanas-envio.ts` pasó en PostgreSQL 16 aislado con Graph simulado y sin tokens reales. Además de CSV/XLSX, fecha, calendario, tope compartido, concurrencia, recuperación y errores previos, cubrió baja directa y tras `respondio`, cero consultas Graph fuera de ventana y entre tandas, caída temporal de Graph y quinto fallo consecutivo, restablecimiento del contador, plantilla retirada/4xx, respuesta 503 para lanzamiento, variables vacías en vista previa y motor, guardado real de importación sin pisar contactos, exclusión de `131026` del umbral, siete fallos de otro código y RLS. La revisión final verifica que la org 13 sigue bloqueada aunque tenga una bandera insertada directamente en la BD de prueba y que reanudar tras cinco fallos reinicia el contador. Una sustitución temporal del catálogo solo en memoria del script confirma que el cron no tiene un filtro 12 propio.
 - `npx tsc --noEmit`, `npm run lint`, `npx prisma validate`, `git diff --check`: sin errores tras las correcciones.
 - `npx next build --webpack`: pasó, incluidas las rutas nuevas y el paquete de ExcelJS para navegador, antes de los ajustes finales de importación y fecha. Esos ajustes pasaron TypeScript y ESLint.
 - El contenedor PostgreSQL desechable se retiró después de la prueba.

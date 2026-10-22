@@ -2,8 +2,8 @@
 
 ## Campañas de envío · EXI Chiapas
 
-`campanas_envio` está apagado por defecto en todas las organizaciones.
-La plataforma lo habilita para EXI desde **Configuración → Clientes Ámbar CRM → EXI Chiapas**; otra organización solo puede usarlo si se activa explícitamente para ella.
+`campanas_envio` está apagado por defecto y el catálogo lo restringe a la organización 12.
+La plataforma lo habilita para EXI desde **Configuración → Clientes Ámbar CRM → EXI Chiapas**. Una bandera creada en otra organización no permite acceder al módulo.
 El equipo de EXI crea campañas en `/campanas-envio`: importa CSV o XLSX, revisa
 la vista previa, usa una plantilla `APPROVED` y configura días, horario, tandas,
 pausas y tope diario. La tarifa estimada se cambia en **Configuración → Automatizaciones**.
