@@ -7,7 +7,7 @@ import { Boton } from "@/components/ui";
 import { cargarFacebookSdk } from "@/lib/meta/facebook-sdk";
 
 type Pagina = { id: string; nombre: string; foto: string | null };
-type Inicio = { state: string; appId: string; scope: string };
+type Inicio = { state: string; appId: string; scope: string; configId?: string };
 
 async function solicitar(base: string, ruta: string, body: object, state?: string) {
   const res = await fetch(`${base}/${ruta}`, {
@@ -44,7 +44,8 @@ export function MessengerFacebook({ canalId, pageId, nombre, appPropia, proveedo
     setError(""); setOk(""); setOcupado(true);
     try {
       window.FB.login((resp: any) => { void finalizar(resp); }, {
-        scope: inicio.scope, state: inicio.state, response_type: "code", override_default_response_type: true,
+        ...(inicio.configId ? { config_id: inicio.configId } : { scope: inicio.scope }),
+        state: inicio.state, response_type: "code", override_default_response_type: true,
       });
     } catch { setOcupado(false); setError("No se pudo abrir Facebook. Revisa el bloqueador de ventanas emergentes."); }
   }

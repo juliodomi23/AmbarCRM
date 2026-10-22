@@ -2,8 +2,15 @@ import { META_GRAPH_URL, requireMetaAppCredentials } from "@/lib/meta/config";
 import { ErrorRetail } from "@/lib/retail-db";
 
 export type PaginaFacebook = { id: string; nombre: string; foto: string | null; token: string };
-export const PERMISOS_MESSENGER = "pages_show_list,pages_messaging,pages_manage_metadata";
-export const PERMISOS_INSTAGRAM = "pages_show_list,instagram_basic,instagram_manage_messages,pages_manage_metadata";
+// business_management y pages_read_engagement son dependencias que Meta añade al caso de uso; el diálogo debe pedirlos para poder demostrarlos en la revisión.
+export const PERMISOS_MESSENGER = "pages_show_list,pages_messaging,pages_manage_metadata,business_management";
+export const PERMISOS_INSTAGRAM = "pages_show_list,instagram_basic,instagram_manage_messages,pages_manage_metadata,pages_read_engagement,business_management";
+
+// Con Facebook Login para empresas el diálogo se define por config_id (permisos configurados en el panel); sin él se usa scope.
+export function configIdLogin(proveedor: "messenger" | "instagram") {
+  const id = (proveedor === "instagram" ? process.env.META_INSTAGRAM_CONFIG_ID : process.env.META_MESSENGER_CONFIG_ID)?.trim();
+  return id && /^\d{1,30}$/.test(id) ? id : undefined;
+}
 export const ERROR_PERMISOS_META = "Tu cuenta no tiene permiso en la app de Meta; usa la conexión manual. En modo desarrollo solo pueden conectarse personas con rol en la app.";
 
 async function graph(path: string, init: RequestInit) {

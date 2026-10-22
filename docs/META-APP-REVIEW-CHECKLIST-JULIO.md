@@ -49,3 +49,17 @@ En el despliegue de revisión: `NEXTAUTH_URL`, `META_APP_ID`, `META_APP_SECRET`,
 - [ ] Grabar los diálogos y resultados **reales**, sin mocks, datos de cliente ni secretos visibles.
 - [ ] En la solicitud, explicar por permiso qué acción del video lo usa y el minuto exacto.
 - [ ] Antes de enviar: verificar que el revisor sí puede abrir la función en un entorno de revisión autorizado. El selector público permanece como «próximamente» mientras decides su activación.
+
+## 5. Actualización del 21-oct-2026 · estado real del panel y pendientes
+
+**Hecho en el panel de Meta:** casos de uso de Messenger e Instagram agregados (Instagram con la configuración «Facebook Login», no «Instagram Login»). Borrador sin enviar con `pages_show_list`, `pages_manage_metadata`, `pages_messaging`, `instagram_basic`, `pages_read_engagement` y `business_management`. WhatsApp sigue en «Acceso actual para la renovación».
+
+**Pendiente de añadir a mano:** `instagram_manage_messages` (Casos de uso → Instagram → Permisos y funciones → Acciones → «Añadir a la revisión de la aplicación»). No añadir `instagram_business_*` ni Human Agent ni Ads en esta solicitud.
+
+**Antes de la prueba real:**
+- [ ] Poner `MESSENGER_VERIFY_TOKEN` (valor aleatorio largo) en EasyPanel y redesplegar. Hoy está vacío y los webhooks de Messenger e Instagram responden 403.
+- [ ] En el panel: webhook de Messenger `${CRM}/api/messenger/webhook` y de Instagram `${CRM}/api/instagram/webhook`, con el mismo token.
+- [ ] Si el login de Facebook falla o ignora los permisos (la app usa Facebook Login para empresas): crear una configuración tipo «User access token» con los permisos de cada canal y poner su ID en `META_MESSENGER_CONFIG_ID` / `META_INSTAGRAM_CONFIG_ID`. Vacías, el diálogo usa `scope`.
+- [ ] El diálogo ahora pide también `business_management` (Messenger e Instagram) y `pages_read_engagement` (Instagram): justifícalos en la solicitud (Meta los exige como dependencias; sirven para listar páginas, incluso de portafolios, y leer datos básicos de la página vinculada).
+- [ ] Privacidad, términos y eliminación de datos ya mencionan Messenger e Instagram (revisar el texto con tu razón social real).
+- [ ] La renovación de WhatsApp se revisa en el mismo envío: no cambies política de privacidad, ícono ni URLs mientras esté en revisión.

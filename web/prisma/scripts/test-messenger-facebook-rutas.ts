@@ -57,7 +57,7 @@ try {
   const cookie = `${cookieSesion}; ${atributos.split(";", 1)[0]}`;
   const datos = await inicio.json();
   assert.equal(datos.appId, "123");
-  assert.equal(datos.scope, "pages_show_list,pages_messaging,pages_manage_metadata");
+  assert.equal(datos.scope, "pages_show_list,pages_messaging,pages_manage_metadata,business_management");
   const codigo = String(Date.now());
   for (const state of [undefined, "0".repeat(64)]) {
     assert.equal((await post("paginas", { code: codigo }, { cookie, state })).status, 403);
