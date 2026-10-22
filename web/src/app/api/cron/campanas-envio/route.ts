@@ -3,6 +3,7 @@ import { db, dbRaw, runWithOrg } from "@/lib/db";
 import { requireApiKey } from "@/lib/api-auth";
 import { moduloHabilitado } from "@/lib/modulos";
 import { procesarCampana } from "@/lib/campanas-envio-motor";
+import { getAjustes } from "@/lib/services/config";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export async function POST(req: NextRequest) {
   for (const org of orgs) {
     await runWithOrg(org.id, async () => {
       if (!(await moduloHabilitado("campanas_envio"))) return;
+      if (!(await getAjustes()).campanasEnvioActivas) return;
       await db.campanaDestinatario.updateMany({ where: { estado: "enviando", updatedAt: { lt: new Date(Date.now() - 10 * 60_000) } }, data: { estado: "pendiente", enviadoAt: null } });
       const campanas = await db.campanaEnvio.findMany({ where: { estado: { in: ["programada", "en_curso"] } }, orderBy: { id: "asc" }, select: { id: true } });
       for (const campana of campanas) {

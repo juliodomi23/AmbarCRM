@@ -8,7 +8,11 @@ El equipo de EXI crea campañas en `/campanas-envio`: importa CSV o XLSX, revisa
 la vista previa, usa una plantilla `APPROVED` y configura días, horario, tandas,
 pausas y tope diario. La tarifa estimada se cambia en **Configuración → Automatizaciones**.
 La importación no envía mensajes; el cron empieza después del lanzamiento con
-confirmación explícita del permiso de los contactos.
+confirmación explícita del permiso de los contactos y cuando el interruptor
+**Envíos** de `/campanas-envio` está activo. Nace apagado por organización;
+solo un administrador puede cambiarlo. El workflow de n8n permanece activo
+y el cron omite por completo la organización mientras el interruptor esté apagado.
+Pausar los envíos no cambia los estados de las campañas.
 
 Las tablas `campanas_envio` y `campanas_destinatarios` se crean en
 `web/prisma/sql/actualizaciones.sql` con `org_id`, valor por defecto de

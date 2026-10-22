@@ -5,6 +5,7 @@ import { aplicarVariables } from "@/lib/plantillas";
 import { transaccionTenant } from "@/lib/retail-db";
 import type { ResultadoEnvio } from "@/lib/channel/types";
 import { Prisma } from "@prisma/client";
+import { getAjustes } from "@/lib/services/config";
 
 const espera = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const recientes = ["enviado", "entregado", "leido", "respondio"];
@@ -25,6 +26,8 @@ async function reclamarTanda(orgId: bigint, campanaId: bigint, ahora: Date) {
     const base = await tx.campanaEnvio.findFirst({ where: { id: campanaId }, select: { canalId: true } });
     if (!base) return [];
     await tx.$queryRaw`SELECT id FROM canales_whatsapp WHERE id = ${base.canalId} FOR UPDATE`;
+    const ajustes = await tx.ajustes.findFirst({ select: { campanasEnvioActivas: true } });
+    if (!ajustes?.campanasEnvioActivas) return [];
     const campana = await tx.campanaEnvio.findFirst({ where: { id: campanaId } });
     if (!campana || !["programada", "en_curso"].includes(campana.estado) || !campana.confirmoPermiso || !horarioPermitido(campana, ahora)) return [];
     const hoy = await tx.$queryRaw<{ total: bigint }[]>`
@@ -86,6 +89,7 @@ async function revisarFallos(orgId: bigint, campanaId: bigint) {
 }
 
 export async function procesarCampana(orgId: bigint, campanaId: bigint, ahora = new Date()) {
+  if (!(await getAjustes()).campanasEnvioActivas) return { enviados: 0, fallidos: 0 };
   const campana = await db.campanaEnvio.findFirst({ where: { id: campanaId }, include: { canal: true } });
   if (!campana || !["programada", "en_curso"].includes(campana.estado)) return { enviados: 0, fallidos: 0 };
   if (!campana.confirmoPermiso || !horarioPermitido(campana, ahora) || !(await hayCupoHoy(orgId, campana.canalId, campana.zonaHoraria, campana.topeDiario, ahora))) return { enviados: 0, fallidos: 0 };
@@ -95,6 +99,7 @@ export async function procesarCampana(orgId: bigint, campanaId: bigint, ahora = 
   }
   const provider = getProvider("cloud_api", campana.canal.config, campana.canal.instancia);
   const consulta = await provider.consultarPlantillas!();
+  if (!(await getAjustes()).campanasEnvioActivas) return { enviados: 0, fallidos: 0 };
   if (!consulta.ok) {
     if (consulta.motivo === "no_disponible") {
       const actualizada = await db.campanaEnvio.update({ where: { id: campanaId }, data: { fallosConsultaMeta: { increment: 1 } } });
@@ -112,7 +117,11 @@ export async function procesarCampana(orgId: bigint, campanaId: bigint, ahora = 
   const ids = await reclamarTanda(orgId, campanaId, ahora);
   let enviados = 0;
   let fallidos = 0;
-  for (const id of ids) {
+  for (const [indice, id] of ids.entries()) {
+    if (!(await getAjustes()).campanasEnvioActivas) {
+      await db.campanaDestinatario.updateMany({ where: { id: { in: ids.slice(indice) }, estado: "enviando" }, data: { estado: "pendiente", enviadoAt: null } });
+      return { enviados, fallidos };
+    }
     const vigente = await db.campanaEnvio.findFirst({ where: { id: campanaId }, select: { estado: true } });
     if (vigente?.estado !== "en_curso") {
       await db.campanaDestinatario.update({ where: { id }, data: { estado: "pendiente", enviadoAt: null } });

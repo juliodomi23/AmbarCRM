@@ -1,5 +1,13 @@
 # Entrega · Campañas de envío de EXI Chiapas
 
+## Interruptor general de envíos
+
+En la rama local `campanas-envio`, el CRM incorpora **Envíos: ACTIVOS / PAUSADOS** en `/campanas-envio`. Nace apagado por organización y solo un administrador del módulo puede cambiarlo; activar exige confirmación. La elección y el usuario y fecha del cambio viven en `ajustes`, con su RLS existente. Si el interruptor está apagado al iniciar el cron, omite la organización antes de recuperar reservas o consultar Graph. Si se apaga durante una tanda, el motor se detiene entre mensajes y libera las reservas pendientes. Las campañas mantienen su estado y, al encenderlo, continúan según su calendario, tanda y tope. Bajas y webhook siguen independientes. El workflow `AmbarCRM - Campañas de envío (EXI)` permanece activo; el control está en el CRM.
+
+Archivos de este cambio: `web/prisma/schema.prisma`, `web/prisma/sql/actualizaciones.sql`, `web/src/lib/services/config.ts`, `web/src/lib/campanas-envio-motor.ts`, `web/src/app/api/cron/campanas-envio/route.ts`, `web/src/app/api/campanas-envio/config/route.ts`, `web/src/components/campanas-envio/CampanasEnvioPanel.tsx`, `web/scripts/check-campanas-envio.ts`, `MODULOS.md`, `docs/CAMPANAS-ENVIO-EXI.md` y este documento.
+
+Validación local: migración repetida dos veces en PostgreSQL 16 desechable con RLS; `npx tsc --noEmit`, `npm run lint`, `npx prisma validate` y regresión completa pasaron. El script añadió casos sin valor, apagado, encendido y pausa intermedia sin destinatarios perdidos o duplicados, además de baja con envíos apagados y bloqueo de la org 13. Graph fue simulado y no hubo envíos reales.
+
 Rama local `campanas-envio`, creada desde `meta-tech-provider` (`94495f5`). La copia de trabajo está bajo `Exi Chiapas - prospecto/AmbarCRM-campanas-envio`. No hubo merge, deploy, cambios en producción ni envíos reales. El módulo sigue apagado en todas las organizaciones fuera de la base de pruebas desechable.
 
 El estado inicial de esta entrega quedó guardado en `ea9283e` antes de aplicar las correcciones de revisión. Los cambios de revisión ajustan:
@@ -42,6 +50,6 @@ El estado inicial de esta entrega quedó guardado en `ea9283e` antes de aplicar 
 
 ## Sin verificar con Meta real
 
-No se llamó a Graph real ni se enviaron mensajes. Quedan pendientes la confirmación de la plantilla real de EXI, su tarifa efectiva, respuesta exacta de cada error, eventos de entregado/leído en su WABA y la operación del cron n8n en producción. El workflow está documentado, pero no fue creado ni activado.
+No se llamó a Graph real ni se enviaron mensajes. Quedan pendientes la confirmación de la plantilla real de EXI, su tarifa efectiva, respuesta exacta de cada error y eventos de entregado/leído en su WABA. El workflow existente no se modificó en este cambio.
 
 `npm audit --omit=dev` señaló una advertencia moderada en `uuid`, dependencia transitiva de ExcelJS, y advertencias altas preexistentes en la cadena NextAuth/Nodemailer. No se aplicó `npm audit fix --force` porque propone cambios incompatibles fuera del alcance.

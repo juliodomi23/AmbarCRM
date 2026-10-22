@@ -5,7 +5,7 @@ import { parseCSV, toCSV } from "@/lib/csv";
 import { fechaEnZona } from "@/lib/campanas-envio-fecha";
 
 type Plantilla = { name: string; language: string; status: string; components?: Array<{ type?: string; text?: string }> };
-type Config = { canales: Array<{ id: string; nombre: string }>; plantillas: Plantilla[]; etiquetas: Array<{ id: string; nombre: string }>; tarifaMarketingUsd: number };
+type Config = { canales: Array<{ id: string; nombre: string }>; plantillas: Plantilla[]; etiquetas: Array<{ id: string; nombre: string }>; tarifaMarketingUsd: number; campanasEnvioActivas: boolean };
 type Campana = { id: string; nombre: string; estado: string; motivoPausa: string | null; canalId: string; plantillaNombre: string; plantillaIdioma: string; diasSemana: number[]; horaInicio: string; horaFin: string; zonaHoraria: string; tandaTamano: number; pausaTandaMin: number; topeDiario: number; _count: { destinatarios: number } };
 type Preview = { headers: string[]; conteos: { validos: number; duplicados: number; invalidos: number; existentes: number; optOut: number; recientes: number }; muestra: Array<{ numeroFila: number; fila: string[]; motivo: string | null }>; rechazadas: Array<{ numeroFila: number; fila: string[]; motivo: string }> };
 type Reporte = { campana: Campana; conteos: Record<string, number>; hoy: number; diasEstimados: number; costoEstimadoUsd: number; destinatarios: Array<{ id: string; telefono: string; nombre: string; estado: string; motivo: string | null }> };
@@ -25,7 +25,8 @@ function descargar(csv: string, nombre: string) {
 }
 
 export function CampanasEnvioPanel({ esAdmin }: { esAdmin: boolean }) {
-  const [config, setConfig] = useState<Config>({ canales: [], plantillas: [], etiquetas: [], tarifaMarketingUsd: 0.04 });
+  const [config, setConfig] = useState<Config>({ canales: [], plantillas: [], etiquetas: [], tarifaMarketingUsd: 0.04, campanasEnvioActivas: false });
+  const [configCargada, setConfigCargada] = useState(false);
   const [campanas, setCampanas] = useState<Campana[]>([]);
   const [canalId, setCanalId] = useState("");
   const [plantilla, setPlantilla] = useState("");
@@ -53,7 +54,7 @@ export function CampanasEnvioPanel({ esAdmin }: { esAdmin: boolean }) {
   const [ocupado, setOcupado] = useState(false);
 
   const cargarLista = useCallback(async () => { setCampanas((await json("/api/campanas-envio")).campanas); }, []);
-  const cargarConfig = useCallback(async (id?: string) => { const datos = await json(`/api/campanas-envio/config${id ? `?canalId=${id}` : ""}`); setConfig(datos); if (!id && datos.canales[0]) setCanalId(datos.canales[0].id); }, []);
+  const cargarConfig = useCallback(async (id?: string) => { const datos = await json(`/api/campanas-envio/config${id ? `?canalId=${id}` : ""}`); setConfig(datos); setConfigCargada(true); if (!id && datos.canales[0]) setCanalId(datos.canales[0].id); }, []);
   const cargarReporte = useCallback(async (id: string, estado = "") => { setReporte(await json(`/api/campanas-envio/${id}${estado ? `?estado=${estado}` : ""}`)); }, []);
   useEffect(() => { void Promise.all([cargarConfig(), cargarLista()]).catch((e) => setError(e.message)); }, [cargarConfig, cargarLista]);
 
@@ -97,9 +98,27 @@ export function CampanasEnvioPanel({ esAdmin }: { esAdmin: boolean }) {
   const cuerpo = (extra: Record<string, unknown>) => ({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(extra) });
   const calendario = () => ({ diasSemana: dias, horaInicio, horaFin, zonaHoraria, tandaTamano, pausaTandaMin, topeDiario, ...(fechaInicio ? { fechaInicio: fechaEnZona(fechaInicio, zonaHoraria) } : {}) });
   const plantillaElegida = config.plantillas.find((p) => `${p.name}|${p.language}` === plantilla);
+  const hayCampanasEnMarcha = campanas.some((c) => c.estado === "programada" || c.estado === "en_curso");
+
+  function cambiarEnvios() {
+    const activar = !config.campanasEnvioActivas;
+    if (activar && !window.confirm("Se empezará a enviar según el calendario de cada campaña en curso")) return;
+    void ejecutar(async () => {
+      const actualizado = await json("/api/campanas-envio/config", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ campanasEnvioActivas: activar }) });
+      setConfig((anterior) => ({ ...anterior, campanasEnvioActivas: actualizado.campanasEnvioActivas }));
+      setMensaje(activar ? "Envíos activados." : "Envíos pausados.");
+    });
+  }
 
   return <main className="mx-auto max-w-6xl space-y-7 p-6">
     <header><h1 className="text-2xl font-semibold">Campañas de envío</h1><p className="text-sm text-slate-600">EXI Chiapas · Plantillas aprobadas de Meta · Responde BAJA para no recibir más mensajes.</p></header>
+    <section className="rounded border p-5 space-y-3" aria-label="Control de envíos">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div><h2 className="text-lg font-medium">Envíos: {config.campanasEnvioActivas ? "ACTIVOS" : "PAUSADOS"}</h2><p className="text-sm text-slate-600">Control general de esta organización. Las campañas conservan su estado y calendario.</p></div>
+        {esAdmin && <button type="button" role="switch" aria-checked={config.campanasEnvioActivas} aria-label="Envíos de campañas" disabled={ocupado || !configCargada} onClick={cambiarEnvios} className={`rounded px-4 py-2 text-white disabled:opacity-50 ${config.campanasEnvioActivas ? "bg-slate-700" : "bg-green-700"}`}>{config.campanasEnvioActivas ? "Pausar envíos" : "Activar envíos"}</button>}
+      </div>
+      {!config.campanasEnvioActivas && hayCampanasEnMarcha && <p role="status" className="rounded bg-amber-50 p-3 text-amber-900">Los envíos están pausados; ninguna campaña enviará hasta que lo actives</p>}
+    </section>
     {error && <p role="alert" className="rounded bg-red-50 p-3 text-red-700">{error}</p>}
     {mensaje && <p role="status" className="rounded bg-green-50 p-3 text-green-700">{mensaje}</p>}
     <section className="rounded border p-5 space-y-4">
