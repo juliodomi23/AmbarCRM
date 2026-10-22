@@ -1853,6 +1853,9 @@ REVOKE DELETE, TRUNCATE ON campanas_marketing FROM crm_app;
 GRANT USAGE, SELECT ON SEQUENCE campanas_marketing_id_seq TO crm_app;
 -- Campañas de envío para EXI. La bandera del módulo se activa por separado desde el panel.
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS tarifa_marketing_usd NUMERIC(8,4) NOT NULL DEFAULT 0.04;
+ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS campanas_envio_activas BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS campanas_envio_cambiado_por BIGINT;
+ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS campanas_envio_cambiado_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS campanas_envio (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

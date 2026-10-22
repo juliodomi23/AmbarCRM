@@ -69,6 +69,9 @@ const AJUSTES_DEFAULT = {
   marcaColorAcento: null as string | null,
   marcaPreset: null as string | null,
   tarifaMarketingUsd: 0.04,
+  campanasEnvioActivas: false,
+  campanasEnvioCambiadoPor: null as bigint | null,
+  campanasEnvioCambiadoAt: null as Date | null,
   updatedAt: new Date()
 };
 
@@ -101,8 +104,17 @@ export async function actualizarAjustes(data: {
   marcaColorAcento?: string | null;
   marcaPreset?: string | null;
   tarifaMarketingUsd?: number;
+  campanasEnvioActivas?: boolean;
+  campanasEnvioCambiadoPor?: bigint;
+  campanasEnvioCambiadoAt?: Date;
 }) {
   const a = await db.ajustes.findFirst({ orderBy: { id: "asc" } });
   if (a) return db.ajustes.update({ where: { id: a.id }, data });
   return db.ajustes.create({ data });
+}
+
+export async function cambiarEnviosCampanas(activas: boolean, usuarioId: bigint) {
+  const ajustes = await getAjustes();
+  if (ajustes.campanasEnvioActivas === activas) return ajustes;
+  return actualizarAjustes({ campanasEnvioActivas: activas, campanasEnvioCambiadoPor: usuarioId, campanasEnvioCambiadoAt: new Date() });
 }

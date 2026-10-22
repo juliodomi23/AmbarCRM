@@ -815,6 +815,9 @@ model Ajustes {
   marcaColorAcento   String?  @map("marca_color_acento")
   marcaPreset        String?  @map("marca_preset")
   tarifaMarketingUsd Decimal @default(0.04) @map("tarifa_marketing_usd") @db.Decimal(8, 4)
+  campanasEnvioActivas Boolean @default(false) @map("campanas_envio_activas")
+  campanasEnvioCambiadoPor BigInt? @map("campanas_envio_cambiado_por")
+  campanasEnvioCambiadoAt DateTime? @map("campanas_envio_cambiado_at") @db.Timestamptz(6)
   updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@unique([orgId])

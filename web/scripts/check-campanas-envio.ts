@@ -10,6 +10,7 @@ import { clasificar, procesarCampana } from "../src/lib/campanas-envio-motor";
 import { getProvider } from "../src/lib/channel";
 import { db, dbRaw, runWithOrg } from "../src/lib/db";
 import { ingestarEntrante } from "../src/lib/services/ingest";
+import { actualizarAjustes, cambiarEnviosCampanas, getAjustes } from "../src/lib/services/config";
 import { moduloHabilitado, requireModuloActivo } from "../src/lib/modulos";
 import { moduloPorClave } from "../src/lib/modulos-catalogo";
 import { moduloVisibleEnOrg } from "../src/lib/modulos-plataforma";
@@ -30,6 +31,7 @@ const plantilla = { name: "exi_aviso", language: "es_MX", status: "APPROVED" };
 const respuestas = new Map<string, number>();
 const llamadas: string[] = [];
 let consultasPlantillas = 0;
+let pausarDuranteTanda = false;
 let modoPlantillas: "ok" | "no_disponible" | "rechazado" | "sin_aprobar" = "ok";
 const fetchOriginal = globalThis.fetch;
 globalThis.fetch = async (input, init) => {
@@ -45,6 +47,10 @@ globalThis.fetch = async (input, init) => {
     const body = JSON.parse(String(init?.body ?? "{}"));
     const telefono = String(body.to);
     llamadas.push(telefono);
+    if (pausarDuranteTanda) {
+      pausarDuranteTanda = false;
+      await cambiarEnviosCampanas(false, 999n);
+    }
     const codigo = respuestas.get(telefono);
     if (codigo) return Response.json({ error: { code: codigo, message: `Simulado ${codigo}` } }, { status: 400 });
     return Response.json({ messages: [{ id: `sim-${llamadas.length}` }] });
@@ -138,6 +144,59 @@ async function main() {
   assert.equal(clasificar({ ok: false, errorCodigo: 131049 }, 1).reintentarAt, null);
 
   await runWithOrg(orgId, async () => {
+    process.env.WA_API_KEY = "cron-prueba";
+    const llamarCron = () => cron(new NextRequest("http://127.0.0.1/api/cron/campanas-envio", { method: "POST", headers: { "x-api-key": "cron-prueba" } }));
+    const interruptor = await crearCampana("Interruptor general", canal.id, [contactos[17].id, contactos[18].id, contactos[19].id], { tandaTamano: 1, diasSemana: [0,1,2,3,4,5,6], horaInicio: "00:00", horaFin: "23:59" });
+    const primerDestinatario = await db.campanaDestinatario.findFirstOrThrow({ where: { campanaId: interruptor.id }, orderBy: { id: "asc" } });
+    const haceOnceMinutos = new Date(Date.now() - 11 * 60_000);
+    await db.campanaDestinatario.update({ where: { id: primerDestinatario.id }, data: { estado: "enviando", enviadoAt: haceOnceMinutos, updatedAt: haceOnceMinutos } });
+    assert.equal((await getAjustes()).campanasEnvioActivas, false, "sin fila de ajustes el interruptor está apagado");
+    const grafoAntes = consultasPlantillas, enviosAntes = llamadas.length;
+    assert.equal((await llamarCron()).status, 200);
+    assert.equal(consultasPlantillas, grafoAntes);
+    assert.equal(llamadas.length, enviosAntes);
+    assert.equal((await db.campanaDestinatario.findUniqueOrThrow({ where: { id: primerDestinatario.id } })).estado, "enviando", "apagado no recupera reservas ni cambia destinatarios");
+    assert.equal((await db.campanaEnvio.findUniqueOrThrow({ where: { id: interruptor.id } })).estado, "en_curso");
+    await actualizarAjustes({ campanasEnvioActivas: false });
+    assert.equal((await llamarCron()).status, 200);
+    assert.equal(consultasPlantillas, grafoAntes);
+    assert.equal(llamadas.length, enviosAntes);
+    assert.equal((await db.campanaDestinatario.findUniqueOrThrow({ where: { id: primerDestinatario.id } })).estado, "enviando");
+    const encendidos = await cambiarEnviosCampanas(true, 999n);
+    assert.equal(encendidos.campanasEnvioActivas, true);
+    assert.equal(encendidos.campanasEnvioCambiadoPor, 999n);
+    assert.ok(encendidos.campanasEnvioCambiadoAt);
+    assert.equal((await llamarCron()).status, 200);
+    assert.equal(llamadas.length, enviosAntes + 1, "encendido vuelve a enviar");
+    assert.equal(await db.campanaDestinatario.count({ where: { campanaId: interruptor.id, estado: "enviado" } }), 1);
+    const pausados = await cambiarEnviosCampanas(false, 999n);
+    assert.equal(pausados.campanasEnvioActivas, false);
+    assert.equal((await llamarCron()).status, 200);
+    assert.equal(llamadas.length, enviosAntes + 1, "pausa intermedia no envía");
+    assert.equal((await db.campanaEnvio.findUniqueOrThrow({ where: { id: interruptor.id } })).estado, "en_curso", "el interruptor no pausa la campaña");
+    await cambiarEnviosCampanas(true, 999n);
+    await db.campanaEnvio.update({ where: { id: interruptor.id }, data: { ultimaTandaAt: haceOnceMinutos } });
+    assert.equal((await llamarCron()).status, 200);
+    assert.equal(await db.campanaDestinatario.count({ where: { campanaId: interruptor.id, estado: "enviado" } }), 2);
+    await db.campanaEnvio.update({ where: { id: interruptor.id }, data: { ultimaTandaAt: haceOnceMinutos } });
+    assert.equal((await llamarCron()).status, 200);
+    assert.equal(await db.campanaDestinatario.count({ where: { campanaId: interruptor.id, estado: "enviado" } }), 3);
+    const telefonosInterruptor = [17, 18, 19].map((i) => contactos[i].telefono!);
+    assert.deepEqual(telefonosInterruptor.map((telefono) => llamadas.filter((llamada) => llamada === telefono).length), [1, 1, 1], "reanudar no pierde ni duplica destinatarios");
+
+    const contactosTanda = await Promise.all([1, 2].map((i) => db.contacto.create({ data: { nombre: `Pausa en tanda ${i}`, telefono: `52961300000${i}`, fuente: "manual" } })));
+    const tanda = await crearCampana("Pausa dentro de tanda", canal.id, contactosTanda.map((c) => c.id), { tandaTamano: 2, diasSemana: [0,1,2,3,4,5,6], horaInicio: "00:00", horaFin: "23:59" });
+    pausarDuranteTanda = true;
+    await procesarCampana(orgId, tanda.id);
+    assert.equal((await getAjustes()).campanasEnvioActivas, false);
+    assert.equal(await db.campanaDestinatario.count({ where: { campanaId: tanda.id, estado: "enviado" } }), 1);
+    assert.equal(await db.campanaDestinatario.count({ where: { campanaId: tanda.id, estado: "pendiente" } }), 1, "la reserva sin enviar se libera al apagar");
+    assert.equal((await db.campanaEnvio.findUniqueOrThrow({ where: { id: tanda.id } })).estado, "en_curso");
+    await cambiarEnviosCampanas(true, 999n);
+    await db.campanaEnvio.update({ where: { id: tanda.id }, data: { ultimaTandaAt: haceOnceMinutos } });
+    assert.equal((await llamarCron()).status, 200);
+    assert.deepEqual(contactosTanda.map((contacto) => llamadas.filter((telefono) => telefono === contacto.telefono).length), [1, 1], "la tanda interrumpida continúa sin duplicados");
+
     const fuera = await crearCampana("Fuera de ventana", canal.id, [contactos[13].id]);
     const antesFuera = consultasPlantillas;
     await procesarCampana(orgId, fuera.id, new Date("2026-10-20T02:00:00Z"));
@@ -212,7 +271,6 @@ async function main() {
 
     const recuperada = await crearCampana("Reinicio", canal.id, [contactos[7].id], { diasSemana: [0,1,2,3,4,5,6], horaInicio: "00:00", horaFin: "23:59" });
     await db.campanaDestinatario.updateMany({ where: { campanaId: recuperada.id }, data: { estado: "enviando", enviadoAt: new Date(Date.now() - 11 * 60_000), updatedAt: new Date(Date.now() - 11 * 60_000) } });
-    process.env.WA_API_KEY = "cron-prueba";
     const respuesta = await cron(new NextRequest("http://127.0.0.1/api/cron/campanas-envio", { method: "POST", headers: { "x-api-key": "cron-prueba" } }));
     assert.equal(respuesta.status, 200);
     assert.equal(await db.campanaDestinatario.count({ where: { campanaId: recuperada.id, estado: "enviado" } }), 1);
@@ -250,11 +308,13 @@ async function main() {
     assert.match(pausada.motivoPausa ?? "", /30 %/);
 
     const enviado = await db.campanaDestinatario.findFirstOrThrow({ where: { estado: "enviado", campanaId: { in: [a.id, b.id] } } });
+    await cambiarEnviosCampanas(false, 999n);
     const antesBaja = llamadas.length;
     await ingestarEntrante({ waMessageId: "baja-prueba", telefono: enviado.telefono, tipo: "texto", contenido: "NÓ GRACIAS", direccion: "entrante", timestamp: new Date() }, canal.id);
     assert.equal((await db.contacto.findUniqueOrThrow({ where: { id: enviado.contactoId } })).optOutDifusion, true);
     assert.equal(llamadas.length, antesBaja, "la baja no genera respuesta automática");
     assert.ok(await db.mensaje.findFirst({ where: { conversacion: { contactoId: enviado.contactoId }, interna: true } }));
+    assert.equal((await getAjustes()).campanasEnvioActivas, false, "la baja se procesa con envíos pausados");
 
     const otroEnviado = await db.campanaDestinatario.findFirstOrThrow({ where: { estado: "enviado", campanaId: { in: [a.id, b.id] }, contactoId: { not: enviado.contactoId } } });
     await ingestarEntrante({ waMessageId: "respuesta-previa", telefono: otroEnviado.telefono, tipo: "texto", contenido: "Hola", direccion: "entrante", timestamp: new Date() }, canal.id);
@@ -280,9 +340,11 @@ async function main() {
   const bloqueado = await runWithOrg(otraOrgId, () => requireModuloActivo("campanas_envio", { rol: "admin" }));
   assert.equal(bloqueado?.status, 404);
   await runWithOrg(otraOrgId, async () => {
+    assert.equal((await getAjustes()).campanasEnvioActivas, false, "otra org no hereda el interruptor de EXI");
     await db.moduloOrg.create({ data: { clave: "campanas_envio", activo: true } });
     assert.equal(await moduloHabilitado("campanas_envio"), false, "una bandera forzada en BD no supera la restricción del catálogo");
     assert.equal((await requireModuloActivo("campanas_envio", { rol: "admin" }))?.status, 404);
+    assert.equal((await getAjustes()).campanasEnvioActivas, false, "el acceso denegado no cambia el interruptor");
     const otroCanal = await db.canalWhatsapp.create({ data: { nombre: "Meta org 13", proveedor: "cloud_api", estado: "conectado", activo: true, config: { token: "solo-prueba", phoneNumberId: "sim-phone-13", wabaId: "sim-waba-13" } } });
     const otroContacto = await db.contacto.create({ data: { nombre: "Otra org", telefono: "529612000001", fuente: "manual" } });
     const otraCampana = await crearCampana("Otra org activa", otroCanal.id, [otroContacto.id], { diasSemana: [0,1,2,3,4,5,6], horaInicio: "00:00", horaFin: "23:59" });
@@ -294,6 +356,7 @@ async function main() {
     try {
       delete catalogoDePrueba.soloOrgId;
       assert.equal(await requireModuloActivo("campanas_envio", { rol: "admin" }), null);
+      await cambiarEnviosCampanas(true, 999n);
       assert.equal((await llamarCron()).status, 200);
       assert.equal(await db.campanaDestinatario.count({ where: { campanaId: otraCampana.id, estado: "enviado" } }), 1, "el cron no tiene un filtro 12 propio");
     } finally {
@@ -306,7 +369,7 @@ async function main() {
   await runWithOrg(orgId, () => db.moduloOrg.updateMany({ where: { clave: "campanas_envio" }, data: { activo: false } }));
   const apagado = await runWithOrg(orgId, () => requireModuloActivo("campanas_envio", { rol: "admin" }));
   assert.equal(apagado?.status, 404);
-  console.log("campanas-envio: CSV/XLSX, variables vacías, conservación de contactos, calendario, Graph temporal, reanudación, topes, concurrencia, reinicio, códigos Meta, umbral de fallos, bajas, RLS y restricción EXI OK");
+  console.log("campanas-envio: CSV/XLSX, variables vacías, contactos, calendario, Graph temporal, reanudación, topes, concurrencia, reinicio, códigos Meta, fallos, bajas, RLS, restricción EXI e interruptor general OK");
 }
 
 try { await main(); }
