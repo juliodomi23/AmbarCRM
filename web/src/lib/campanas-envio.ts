@@ -5,6 +5,13 @@ export type MapeoColumnas = { telefono: number; nombre?: number; empresa?: numbe
 export type FilaCampana = { numeroFila: number; telefono: string; nombre: string; empresa: string; giro: string; variables: Record<string, string>; contactoId?: bigint };
 export type FilaRechazada = { numeroFila: number; fila: string[]; motivo: string };
 
+export function datosParaCompletarContacto(contacto: { nombre: string; empresa: string | null; telefono: string | null }, fila: { nombre: string; empresa: string }) {
+  return {
+    ...(fila.nombre && (!contacto.nombre.trim() || contacto.nombre === contacto.telefono) ? { nombre: fila.nombre } : {}),
+    ...(fila.empresa && !contacto.empresa?.trim() ? { empresa: fila.empresa } : {}),
+  };
+}
+
 export function esBajaCampana(tipo: string, contenido?: string) {
   if (tipo !== "texto") return false;
   const texto = (contenido ?? "").trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
@@ -46,12 +53,14 @@ export function horasDeTanda(campana: { horaInicio: string; horaFin: string; pau
   return Math.max(1, Math.min(campana.topeDiario, (Math.floor((b - a) / campana.pausaTandaMin) + 1) * campana.tandaTamano));
 }
 
-export async function validarFilasCampana(filas: unknown, mapeo: MapeoColumnas) {
+export async function validarFilasCampana(filas: unknown, mapeo: MapeoColumnas, mapeoVariables: string[] = []) {
   if (!Array.isArray(filas) || filas.length < 2 || filas.length > 10_001 || filas.some((f) => !Array.isArray(f))) throw new Error("El archivo debe contener entre 1 y 10,000 filas de datos");
   if (Buffer.byteLength(JSON.stringify(filas), "utf8") > 5 * 1024 * 1024) throw new Error("El archivo supera 5 MB");
   const headers = (filas[0] as unknown[]).map((x) => String(x ?? "").trim());
   if (!headers.length || !Number.isInteger(mapeo?.telefono) || mapeo.telefono < 0 || mapeo.telefono >= headers.length) throw new Error("Mapea la columna de teléfono");
   for (const idx of [mapeo.nombre, mapeo.empresa, mapeo.giro]) if (idx !== undefined && (!Number.isInteger(idx) || idx < 0 || idx >= headers.length)) throw new Error("Mapeo de columnas inválido");
+  const columnasVariables = mapeoVariables.filter((v) => !["{{nombre}}", "{{nombre_completo}}", "{{telefono}}"].includes(v));
+  if (columnasVariables.some((v) => !headers.includes(v))) throw new Error("Una variable no corresponde a una columna del archivo");
   const valores = (filas as unknown[][]).slice(1).map((fila) => fila.map((x) => String(x ?? "").trim()));
   const telefonos = valores.map((fila) => telefonoMx(fila[mapeo.telefono]) ? `52${telefonoMx(fila[mapeo.telefono])}` : null);
   const candidatos = [...new Set(telefonos.filter((t): t is string => Boolean(t)))];
@@ -73,6 +82,10 @@ export async function validarFilasCampana(filas: unknown, mapeo: MapeoColumnas) 
     else if (vistas.has(telefono)) { motivo = "Duplicado en el archivo"; conteos.duplicados++; }
     else if (existente?.optOutDifusion) { motivo = "Baja de difusión"; conteos.optOut++; }
     else if (contactados.has(telefono)) { motivo = "Contactado por otra campaña en los últimos 30 días"; conteos.recientes++; }
+    else {
+      const vacia = columnasVariables.find((columna) => !fila[headers.indexOf(columna)]?.trim());
+      if (vacia) motivo = `Variable vacía: ${vacia}`;
+    }
     if (telefono) vistas.add(telefono);
     if (existente) conteos.existentes++;
     if (motivo) { rechazadas.push({ numeroFila: i + 2, fila, motivo }); return; }

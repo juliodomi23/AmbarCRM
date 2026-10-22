@@ -844,6 +844,7 @@ model CampanaEnvio {
   mapeoVariables  Json     @default("[]") @map("mapeo_variables")
   estado          String   @default("borrador")
   motivoPausa     String?  @map("motivo_pausa")
+  fallosConsultaMeta Int   @default(0) @map("fallos_consulta_meta")
   diasSemana      Int[]    @default([1, 2, 3, 4, 5]) @map("dias_semana")
   horaInicio      String   @default("09:30") @map("hora_inicio")
   horaFin         String   @default("17:30") @map("hora_fin")

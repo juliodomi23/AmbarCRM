@@ -5,6 +5,7 @@ import { getProvider } from "@/lib/channel";
 import { getAjustes } from "@/lib/services/config";
 import { horasDeTanda, validarCalendario } from "@/lib/campanas-envio";
 import { transaccionTenant } from "@/lib/retail-db";
+import { comprobarPlantillaParaLanzar } from "@/lib/campanas-envio-plantilla";
 
 type Props = { params: Promise<{ id: string }> };
 const estados = ["pendiente", "enviando", "enviado", "entregado", "leido", "respondio", "fallido", "omitido"];
@@ -55,8 +56,8 @@ export const PATCH = conModulo("campanas_envio", { admin: true }, async (_sesion
     const total = await db.campanaDestinatario.count({ where: { campanaId: id, estado: "pendiente" } });
     if (!total) return Response.json({ error: "No hay destinatarios" }, { status: 400 });
     if (!campana.canal.activo || campana.canal.estado !== "conectado" || campana.canal.proveedor !== "cloud_api") return Response.json({ error: "Canal desconectado" }, { status: 400 });
-    const plantillas = await getProvider("cloud_api", campana.canal.config, campana.canal.instancia).listarPlantillas?.() ?? [];
-    if (!plantillas.some((p) => p.name === campana.plantillaNombre && p.language === campana.plantillaIdioma && p.status === "APPROVED")) return Response.json({ error: "La plantilla ya no está aprobada" }, { status: 400 });
+    const bloqueoPlantilla = await comprobarPlantillaParaLanzar(getProvider("cloud_api", campana.canal.config, campana.canal.instancia), campana.plantillaNombre, campana.plantillaIdioma);
+    if (bloqueoPlantilla) return bloqueoPlantilla;
     await db.campanaEnvio.update({ where: { id }, data: { estado: "programada", confirmoPermiso: true, permisoAt: new Date(), motivoPausa: null } });
   } else if (accion === "pausar" && ["programada", "en_curso"].includes(campana.estado)) {
     await db.campanaEnvio.update({ where: { id }, data: { estado: "pausada", motivoPausa: "Pausada por el equipo" } });

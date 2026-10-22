@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import pg from "pg";
 import ExcelJS from "exceljs";
 import { parseCSV } from "../src/lib/csv";
-import { esBajaCampana, horarioPermitido, validarCalendario, validarFilasCampana } from "../src/lib/campanas-envio";
+import { datosParaCompletarContacto, esBajaCampana, horarioPermitido, validarCalendario, validarFilasCampana } from "../src/lib/campanas-envio";
 import { fechaEnZona } from "../src/lib/campanas-envio-fecha";
+import { guardarFilasCampana } from "../src/lib/campanas-envio-importar";
+import { comprobarPlantillaParaLanzar } from "../src/lib/campanas-envio-plantilla";
 import { clasificar, procesarCampana } from "../src/lib/campanas-envio-motor";
+import { getProvider } from "../src/lib/channel";
 import { db, dbRaw, runWithOrg } from "../src/lib/db";
 import { ingestarEntrante } from "../src/lib/services/ingest";
 import { requireModuloActivo } from "../src/lib/modulos";
@@ -24,11 +27,18 @@ const ahoraPrueba = new Date("2026-10-19T16:00:00Z");
 const plantilla = { name: "exi_aviso", language: "es_MX", status: "APPROVED" };
 const respuestas = new Map<string, number>();
 const llamadas: string[] = [];
+let consultasPlantillas = 0;
+let modoPlantillas: "ok" | "no_disponible" | "rechazado" | "sin_aprobar" = "ok";
 const fetchOriginal = globalThis.fetch;
 globalThis.fetch = async (input, init) => {
   const url = String(input);
   if (!url.startsWith("https://graph.facebook.com/")) throw new Error(`Red externa bloqueada en pruebas: ${url}`);
-  if (url.includes("/message_templates")) return Response.json({ data: [plantilla] });
+  if (url.includes("/message_templates")) {
+    consultasPlantillas++;
+    if (modoPlantillas === "no_disponible") return Response.json({ error: { code: 1, message: "Meta temporalmente caído" } }, { status: 503 });
+    if (modoPlantillas === "rechazado") return Response.json({ error: { code: 190, message: "Credencial rechazada" } }, { status: 401 });
+    return Response.json({ data: [{ ...plantilla, status: modoPlantillas === "sin_aprobar" ? "REJECTED" : "APPROVED" }] });
+  }
   if (url.endsWith("/messages")) {
     const body = JSON.parse(String(init?.body ?? "{}"));
     const telefono = String(body.to);
@@ -83,6 +93,34 @@ async function main() {
     assert.equal(vista.conteos.optOut, 1); assert.equal(vista.conteos.duplicados, 1);
     assert.equal(vista.conteos.invalidos, 1); assert.equal(vista.conteos.validos, 1);
     assert.equal(vista.muestra.length, 4);
+    const vacia = await validarFilasCampana([["telefono", "empresa"], ["9611000099", ""]], { telefono: 0, empresa: 1 }, ["empresa"]);
+    assert.equal(vacia.conteos.validos, 0);
+    assert.equal(vacia.rechazadas[0].motivo, "Variable vacía: empresa");
+    const real = await db.contacto.findUniqueOrThrow({ where: { id: contactos[1].id } });
+    const cambioReal = datosParaCompletarContacto(real, { nombre: "Nombre del Excel", empresa: "Empresa nueva" });
+    await db.contacto.update({ where: { id: real.id }, data: cambioReal });
+    assert.equal((await db.contacto.findUniqueOrThrow({ where: { id: real.id } })).nombre, "Persona 1");
+    const sinNombre = await db.contacto.update({ where: { id: contactos[2].id }, data: { nombre: contactos[2].telefono! } });
+    await db.contacto.update({ where: { id: sinNombre.id }, data: datosParaCompletarContacto(sinNombre, { nombre: "Nombre rellenado", empresa: "" }) });
+    assert.equal((await db.contacto.findUniqueOrThrow({ where: { id: sinNombre.id } })).nombre, "Nombre rellenado");
+    await db.contacto.update({ where: { id: contactos[2].id }, data: { nombre: contactos[2].telefono! } });
+    const borrador = await db.campanaEnvio.create({ data: { nombre: "Prueba importación", canalId: canal.id, plantillaNombre: plantilla.name, plantillaIdioma: plantilla.language, mapeoVariables: ["empresa"] } });
+    const datos = await validarFilasCampana([
+      ["telefono", "nombre", "empresa"],
+      [contactos[1].telefono!, "No reemplazar", "No reemplazar empresa"],
+      [contactos[2].telefono!, "Rellenado desde Excel", "Empresa rellenada"],
+      ["9611000099", "Sin empresa", ""],
+    ], { telefono: 0, nombre: 1, empresa: 2 }, ["empresa"]);
+    assert.equal(datos.rechazadas[0].motivo, "Variable vacía: empresa");
+    assert.equal(await guardarFilasCampana(orgId, borrador.id, datos.aceptadas, "", null), 2);
+    assert.equal(await db.campanaDestinatario.count({ where: { campanaId: borrador.id } }), 2);
+    assert.equal(await db.contacto.count({ where: { telefono: "529611000099" } }), 0, "la fila rechazada no se importa");
+    const conservado = await db.contacto.findUniqueOrThrow({ where: { id: contactos[1].id } });
+    assert.equal(conservado.nombre, "Persona 1");
+    assert.equal(conservado.empresa, "Empresa nueva");
+    const rellenado = await db.contacto.findUniqueOrThrow({ where: { id: contactos[2].id } });
+    assert.equal(rellenado.nombre, "Rellenado desde Excel");
+    assert.equal(rellenado.empresa, "Empresa rellenada");
   });
   assert.equal(horarioPermitido({ diasSemana: [1, 2, 3, 4, 5], horaInicio: "09:30", horaFin: "17:30", zonaHoraria: "America/Mexico_City", fechaInicio: new Date("2026-10-01"), ultimaTandaAt: null, pausaTandaMin: 10 }, ahoraPrueba), true);
   assert.equal(fechaEnZona("2026-10-19T10:00", "America/Mexico_City"), "2026-10-19T16:00:00.000Z");
@@ -98,6 +136,55 @@ async function main() {
   assert.equal(clasificar({ ok: false, errorCodigo: 131049 }, 1).reintentarAt, null);
 
   await runWithOrg(orgId, async () => {
+    const fuera = await crearCampana("Fuera de ventana", canal.id, [contactos[13].id]);
+    const antesFuera = consultasPlantillas;
+    await procesarCampana(orgId, fuera.id, new Date("2026-10-20T02:00:00Z"));
+    assert.equal(consultasPlantillas, antesFuera, "fuera de ventana no consulta Graph");
+    await db.campanaEnvio.update({ where: { id: fuera.id }, data: { estado: "completada" } });
+    const entre = await crearCampana("Entre tandas", canal.id, [contactos[14].id]);
+    await db.campanaEnvio.update({ where: { id: entre.id }, data: { ultimaTandaAt: ahoraPrueba } });
+    await procesarCampana(orgId, entre.id, ahoraPrueba);
+    assert.equal(consultasPlantillas, antesFuera, "entre tandas no consulta Graph");
+    await db.campanaEnvio.update({ where: { id: entre.id }, data: { estado: "completada" } });
+
+    const metaCaida = await crearCampana("Meta temporal", canal.id, [contactos[15].id]);
+    modoPlantillas = "no_disponible";
+    const antesEnvios = llamadas.length;
+    const primerFallo = await procesarCampana(orgId, metaCaida.id, ahoraPrueba);
+    assert.match(primerFallo.error ?? "", /Meta/);
+    assert.equal((await db.campanaEnvio.findUniqueOrThrow({ where: { id: metaCaida.id } })).estado, "en_curso");
+    assert.equal(llamadas.length, antesEnvios, "Meta caído no inicia envíos");
+    for (let intento = 2; intento <= 5; intento++) await procesarCampana(orgId, metaCaida.id, ahoraPrueba);
+    const quinta = await db.campanaEnvio.findUniqueOrThrow({ where: { id: metaCaida.id } });
+    assert.equal(quinta.estado, "pausada");
+    assert.equal(quinta.fallosConsultaMeta, 5);
+    assert.match(quinta.motivoPausa ?? "", /Meta no responde/);
+    const proveedor = getProvider("cloud_api", canal.config, canal.instancia);
+    assert.equal((await comprobarPlantillaParaLanzar(proveedor, plantilla.name, plantilla.language))?.status, 503);
+    const intermitente = await crearCampana("Meta intermitente", canal.id, []);
+    await procesarCampana(orgId, intermitente.id, ahoraPrueba);
+    assert.equal((await db.campanaEnvio.findUniqueOrThrow({ where: { id: intermitente.id } })).fallosConsultaMeta, 1);
+    modoPlantillas = "ok";
+    await procesarCampana(orgId, intermitente.id, ahoraPrueba);
+    assert.equal((await db.campanaEnvio.findUniqueOrThrow({ where: { id: intermitente.id } })).fallosConsultaMeta, 0, "una consulta correcta reinicia la cuenta consecutiva");
+    await db.campanaEnvio.update({ where: { id: intermitente.id }, data: { estado: "completada" } });
+    modoPlantillas = "sin_aprobar";
+    const noAprobada = await crearCampana("Plantilla retirada", canal.id, []);
+    await procesarCampana(orgId, noAprobada.id, ahoraPrueba);
+    assert.match((await db.campanaEnvio.findUniqueOrThrow({ where: { id: noAprobada.id } })).motivoPausa ?? "", /ya no está aprobada/);
+    modoPlantillas = "rechazado";
+    const rechazada = await crearCampana("Meta rechazó", canal.id, []);
+    await procesarCampana(orgId, rechazada.id, ahoraPrueba);
+    assert.equal((await db.campanaEnvio.findUniqueOrThrow({ where: { id: rechazada.id } })).estado, "pausada");
+    modoPlantillas = "ok";
+
+    const variableVacia = await crearCampana("Variable vacía", canal.id, [contactos[16].id]);
+    await db.campanaEnvio.update({ where: { id: variableVacia.id }, data: { mapeoVariables: ["empresa"] } });
+    const antesVariable = llamadas.length;
+    await procesarCampana(orgId, variableVacia.id, ahoraPrueba);
+    assert.equal(llamadas.length, antesVariable, "una variable vacía no llama a Meta para enviar");
+    assert.equal((await db.campanaDestinatario.findFirstOrThrow({ where: { campanaId: variableVacia.id } })).estado, "omitido");
+
     const a = await crearCampana("Tope A", canal.id, [contactos[1].id, contactos[2].id], { topeDiario: 2, tandaTamano: 2 });
     const b = await crearCampana("Tope B", canal.id, [contactos[3].id, contactos[4].id], { topeDiario: 2, tandaTamano: 2 });
     await Promise.all([procesarCampana(orgId, a.id, ahoraPrueba), procesarCampana(orgId, b.id, ahoraPrueba)]);
@@ -138,8 +225,17 @@ async function main() {
     lote.slice(0, 7).forEach((c) => respuestas.set(c.telefono!, 131026));
     const calidad = await crearCampana("Fallas de calidad", canal.id, lote.map((c) => c.id), { topeDiario: 50, tandaTamano: 20 });
     await procesarCampana(orgId, calidad.id, new Date("2026-10-22T16:00:00Z"));
-    const pausada = await db.campanaEnvio.findUniqueOrThrow({ where: { id: calidad.id } });
-    assert.equal(pausada.estado, "pausada", "7 de 20 fallos detienen la campaña");
+    const conNumerosMuertos = await db.campanaEnvio.findUniqueOrThrow({ where: { id: calidad.id } });
+    assert.equal(conNumerosMuertos.estado, "completada", "7 errores 131026 no pausan la campaña");
+    assert.equal(await db.campanaDestinatario.count({ where: { campanaId: calidad.id, estado: "fallido", errorCodigo: 131026 } }), 7);
+
+    const loteOtros = [];
+    for (let i = 40; i < 60; i++) loteOtros.push(await db.contacto.create({ data: { nombre: `Otro ${i}`, telefono: `529611000${String(i).padStart(3, "0")}`, fuente: "manual" } }));
+    loteOtros.slice(0, 7).forEach((c) => respuestas.set(c.telefono!, 131000));
+    const calidadReal = await crearCampana("Fallas generales", canal.id, loteOtros.map((c) => c.id), { topeDiario: 50, tandaTamano: 20 });
+    await procesarCampana(orgId, calidadReal.id, new Date("2026-10-23T16:00:00Z"));
+    const pausada = await db.campanaEnvio.findUniqueOrThrow({ where: { id: calidadReal.id } });
+    assert.equal(pausada.estado, "pausada", "7 fallos distintos de 131026 detienen la campaña");
     assert.match(pausada.motivoPausa ?? "", /30 %/);
 
     const enviado = await db.campanaDestinatario.findFirstOrThrow({ where: { estado: "enviado", campanaId: { in: [a.id, b.id] } } });
@@ -150,18 +246,39 @@ async function main() {
     assert.ok(await db.mensaje.findFirst({ where: { conversacion: { contactoId: enviado.contactoId }, interna: true } }));
 
     const otroEnviado = await db.campanaDestinatario.findFirstOrThrow({ where: { estado: "enviado", campanaId: { in: [a.id, b.id] }, contactoId: { not: enviado.contactoId } } });
+    await ingestarEntrante({ waMessageId: "respuesta-previa", telefono: otroEnviado.telefono, tipo: "texto", contenido: "Hola", direccion: "entrante", timestamp: new Date() }, canal.id);
+    assert.equal((await db.campanaDestinatario.findUniqueOrThrow({ where: { id: otroEnviado.id } })).estado, "respondio");
+    const antesStop = llamadas.length;
+    await ingestarEntrante({ waMessageId: "baja-tras-respuesta", telefono: otroEnviado.telefono, tipo: "texto", contenido: "STOP", direccion: "entrante", timestamp: new Date() }, canal.id);
+    assert.equal((await db.contacto.findUniqueOrThrow({ where: { id: otroEnviado.contactoId } })).optOutDifusion, true);
+    assert.equal(llamadas.length, antesStop, "STOP tras una respuesta no llega a la automatización de envío");
+    assert.ok(await db.mensaje.findFirst({ where: { conversacion: { contactoId: otroEnviado.contactoId }, interna: true } }));
     const reciente = await validarFilasCampana([["telefono"], [otroEnviado.telefono]], { telefono: 0 });
-    assert.equal(reciente.conteos.recientes, 1);
+    assert.equal(reciente.conteos.optOut, 1);
+    const recienteSinBaja = await validarFilasCampana([["telefono"], [lote[10].telefono!]], { telefono: 0 });
+    assert.equal(recienteSinBaja.conteos.recientes, 1);
   });
 
   const aislado = await runWithOrg(otraOrgId, () => db.campanaEnvio.count());
   assert.equal(aislado, 0, "RLS oculta campañas de EXI a otra org");
   const bloqueado = await runWithOrg(otraOrgId, () => requireModuloActivo("campanas_envio", { rol: "admin" }));
   assert.equal(bloqueado?.status, 404);
+  await runWithOrg(otraOrgId, async () => {
+    await db.moduloOrg.create({ data: { clave: "campanas_envio", activo: true } });
+    assert.equal(await requireModuloActivo("campanas_envio", { rol: "admin" }), null);
+    const otroCanal = await db.canalWhatsapp.create({ data: { nombre: "Meta org 13", proveedor: "cloud_api", estado: "conectado", activo: true, config: { token: "solo-prueba", phoneNumberId: "sim-phone-13", wabaId: "sim-waba-13" } } });
+    const otroContacto = await db.contacto.create({ data: { nombre: "Otra org", telefono: "529612000001", fuente: "manual" } });
+    const otraCampana = await crearCampana("Otra org activa", otroCanal.id, [otroContacto.id], { diasSemana: [0,1,2,3,4,5,6], horaInicio: "00:00", horaFin: "23:59" });
+    const respuesta = await cron(new NextRequest("http://127.0.0.1/api/cron/campanas-envio", { method: "POST", headers: { "x-api-key": "cron-prueba" } }));
+    assert.equal(respuesta.status, 200);
+    assert.equal(await db.campanaDestinatario.count({ where: { campanaId: otraCampana.id, estado: "enviado" } }), 1, "el cron procesa otra org con módulo activo");
+    await db.moduloOrg.updateMany({ where: { clave: "campanas_envio" }, data: { activo: false } });
+    assert.equal((await requireModuloActivo("campanas_envio", { rol: "admin" }))?.status, 404);
+  });
   await runWithOrg(orgId, () => db.moduloOrg.updateMany({ where: { clave: "campanas_envio" }, data: { activo: false } }));
   const apagado = await runWithOrg(orgId, () => requireModuloActivo("campanas_envio", { rol: "admin" }));
   assert.equal(apagado?.status, 404);
-  console.log("campanas-envio: CSV/XLSX, vista previa, calendario, topes, concurrencia, reinicio, códigos Meta, umbral de fallos, baja, RLS y módulo apagado OK");
+  console.log("campanas-envio: CSV/XLSX, variables vacías, conservación de contactos, calendario, Graph temporal, topes, concurrencia, reinicio, códigos Meta, umbral de fallos, bajas, RLS y módulo por org OK");
 }
 
 try { await main(); }

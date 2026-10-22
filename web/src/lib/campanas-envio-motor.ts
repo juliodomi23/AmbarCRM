@@ -8,6 +8,17 @@ import { Prisma } from "@prisma/client";
 
 const espera = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const recientes = ["enviado", "entregado", "leido", "respondio"];
+const UMBRAL_FALLOS_ULTIMOS_20 = 7;
+const MAX_FALLOS_CONSULTA_META = 5;
+
+async function hayCupoHoy(orgId: bigint, canalId: bigint, zonaHoraria: string, topeDiario: number, ahora: Date) {
+  const hoy = await transaccionTenant(orgId, (tx) => tx.$queryRaw<{ total: bigint }[]>`
+    SELECT count(*)::bigint AS total FROM campanas_destinatarios d
+    JOIN campanas_envio c ON c.id = d.campana_id
+    WHERE c.canal_id = ${canalId}
+      AND (d.enviado_at AT TIME ZONE ${zonaHoraria})::date = (${ahora}::timestamptz AT TIME ZONE ${zonaHoraria})::date`);
+  return Number(hoy[0]?.total ?? 0) < topeDiario;
+}
 
 async function reclamarTanda(orgId: bigint, campanaId: bigint, ahora: Date) {
   return transaccionTenant(orgId, async (tx) => {
@@ -69,22 +80,33 @@ async function guardarResultado(orgId: bigint, campanaId: bigint, destinatarioId
 
 async function revisarFallos(orgId: bigint, campanaId: bigint) {
   await transaccionTenant(orgId, async (tx) => {
-    const ultimos = await tx.campanaDestinatario.findMany({ where: { campanaId, estado: { in: [...recientes, "fallido", "omitido"] } }, orderBy: { enviadoAt: "desc" }, take: 20, select: { estado: true } });
-    if (ultimos.length === 20 && ultimos.filter((d) => d.estado === "fallido").length > 6) await tx.campanaEnvio.updateMany({ where: { id: campanaId, estado: "en_curso" }, data: { estado: "pausada", motivoPausa: "Más del 30 % de los últimos 20 envíos falló; revisa el canal" } });
+    const ultimos = await tx.campanaDestinatario.findMany({ where: { campanaId, enviadoAt: { not: null }, estado: { in: [...recientes, "fallido", "omitido"] } }, orderBy: { enviadoAt: "desc" }, take: 20, select: { estado: true, errorCodigo: true } });
+    if (ultimos.length === 20 && ultimos.filter((d) => d.estado === "fallido" && d.errorCodigo !== 131026).length >= UMBRAL_FALLOS_ULTIMOS_20) await tx.campanaEnvio.updateMany({ where: { id: campanaId, estado: "en_curso" }, data: { estado: "pausada", motivoPausa: "Más del 30 % de los últimos 20 envíos falló; revisa el canal" } });
   });
 }
 
 export async function procesarCampana(orgId: bigint, campanaId: bigint, ahora = new Date()) {
   const campana = await db.campanaEnvio.findFirst({ where: { id: campanaId }, include: { canal: true } });
   if (!campana || !["programada", "en_curso"].includes(campana.estado)) return { enviados: 0, fallidos: 0 };
+  if (!campana.confirmoPermiso || !horarioPermitido(campana, ahora) || !(await hayCupoHoy(orgId, campana.canalId, campana.zonaHoraria, campana.topeDiario, ahora))) return { enviados: 0, fallidos: 0 };
   if (!campana.canal.activo || campana.canal.estado !== "conectado" || campana.canal.proveedor !== "cloud_api") {
     await db.campanaEnvio.update({ where: { id: campanaId }, data: { estado: "pausada", motivoPausa: "El canal de Meta está desconectado" } });
     return { enviados: 0, fallidos: 0 };
   }
   const provider = getProvider("cloud_api", campana.canal.config, campana.canal.instancia);
-  const plantillas = await provider.listarPlantillas?.() ?? [];
-  if (!plantillas.some((p) => p.name === campana.plantillaNombre && p.language === campana.plantillaIdioma && p.status === "APPROVED")) {
-    await db.campanaEnvio.update({ where: { id: campanaId }, data: { estado: "pausada", motivoPausa: "La plantilla no está aprobada o Meta no permitió verificarla" } });
+  const consulta = await provider.consultarPlantillas!();
+  if (!consulta.ok) {
+    if (consulta.motivo === "no_disponible") {
+      const actualizada = await db.campanaEnvio.update({ where: { id: campanaId }, data: { fallosConsultaMeta: { increment: 1 } } });
+      if (actualizada.fallosConsultaMeta >= MAX_FALLOS_CONSULTA_META) await db.campanaEnvio.updateMany({ where: { id: campanaId, estado: { in: ["programada", "en_curso"] } }, data: { estado: "pausada", motivoPausa: "Meta no responde; revisa el estado del canal" } });
+      return { enviados: 0, fallidos: 0, error: `No se pudo consultar la plantilla en Meta: ${consulta.error}` };
+    }
+    await db.campanaEnvio.update({ where: { id: campanaId }, data: { estado: "pausada", motivoPausa: consulta.motivo === "sin_waba" ? "El canal de Meta no tiene WABA configurado" : "Meta rechazó la consulta de plantillas; revisa la credencial del canal" } });
+    return { enviados: 0, fallidos: 0 };
+  }
+  if (campana.fallosConsultaMeta) await db.campanaEnvio.update({ where: { id: campanaId }, data: { fallosConsultaMeta: 0 } });
+  if (!consulta.plantillas.some((p) => p.name === campana.plantillaNombre && p.language === campana.plantillaIdioma && p.status === "APPROVED")) {
+    await db.campanaEnvio.update({ where: { id: campanaId }, data: { estado: "pausada", motivoPausa: "La plantilla ya no está aprobada" } });
     return { enviados: 0, fallidos: 0 };
   }
   const ids = await reclamarTanda(orgId, campanaId, ahora);
@@ -104,7 +126,11 @@ export async function procesarCampana(orgId: bigint, campanaId: bigint, ahora = 
     }
     const mapa = (d.variables ?? {}) as Record<string, string>;
     const claves = Array.isArray(campana.mapeoVariables) ? campana.mapeoVariables.map(String) : [];
-    const variables = claves.map((clave) => aplicarVariables(mapa[clave] ?? clave, d.contacto));
+    const variables = claves.map((clave) => aplicarVariables(mapa[clave] ?? (["{{nombre}}", "{{nombre_completo}}", "{{telefono}}"].includes(clave) ? clave : ""), d.contacto));
+    if (variables.some((valor) => !valor.trim())) {
+      await db.campanaDestinatario.update({ where: { id }, data: { estado: "omitido", motivo: "Variable vacía", enviadoAt: null } });
+      continue;
+    }
     let envio: ResultadoEnvio;
     try { envio = await provider.enviarPlantilla!(d.telefono, { name: campana.plantillaNombre, language: campana.plantillaIdioma }, variables); }
     catch (e) { envio = { ok: false, error: e instanceof Error ? e.message : "Error de Meta", errorCodigo: (e as { errorCodigo?: number })?.errorCodigo }; }

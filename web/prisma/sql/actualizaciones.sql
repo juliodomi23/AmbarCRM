@@ -1863,6 +1863,7 @@ CREATE TABLE IF NOT EXISTS campanas_envio (
   plantilla_idioma TEXT NOT NULL,
   mapeo_variables JSONB NOT NULL DEFAULT '[]',
   estado TEXT NOT NULL DEFAULT 'borrador' CHECK (estado IN ('borrador','programada','en_curso','pausada','completada','cancelada')),
+  fallos_consulta_meta INTEGER NOT NULL DEFAULT 0,
   motivo_pausa TEXT,
   dias_semana INTEGER[] NOT NULL DEFAULT ARRAY[1,2,3,4,5],
   hora_inicio TEXT NOT NULL DEFAULT '09:30',
@@ -1879,6 +1880,7 @@ CREATE TABLE IF NOT EXISTS campanas_envio (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE campanas_envio ADD COLUMN IF NOT EXISTS fallos_consulta_meta INTEGER NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS campanas_envio_org_estado_idx ON campanas_envio(org_id, estado);
 CREATE INDEX IF NOT EXISTS campanas_envio_canal_estado_idx ON campanas_envio(canal_id, estado);
 
