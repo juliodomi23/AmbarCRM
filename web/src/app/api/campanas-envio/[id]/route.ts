@@ -5,7 +5,7 @@ import { getProvider } from "@/lib/channel";
 import { getAjustes } from "@/lib/services/config";
 import { horasDeTanda, reanudarCampana, validarCalendario } from "@/lib/campanas-envio";
 import { transaccionTenant } from "@/lib/retail-db";
-import { comprobarPlantillaParaLanzar } from "@/lib/campanas-envio-plantilla";
+import { cantidadVariablesPlantilla, evaluarPlantillaParaLanzar } from "@/lib/campanas-envio-plantilla";
 
 type Props = { params: Promise<{ id: string }> };
 const estados = ["pendiente", "enviando", "enviado", "entregado", "leido", "respondio", "fallido", "omitido"];
@@ -44,6 +44,18 @@ export const PATCH = conModulo("campanas_envio", { admin: true }, async (_sesion
   if (!campana) return Response.json({ error: "Campaña inexistente" }, { status: 404 });
   const body = await req.json().catch(() => ({}));
   const accion = String(body.accion ?? "");
+  if (accion === "plantilla") {
+    if (campana.estado !== "borrador") return Response.json({ error: "Solo se cambia la plantilla de un borrador" }, { status: 409 });
+    const nombre = String(body.plantillaNombre ?? "");
+    const idioma = String(body.plantillaIdioma ?? "");
+    if (!nombre || !idioma) return Response.json({ error: "Selecciona una plantilla" }, { status: 400 });
+    const evaluacion = await evaluarPlantillaParaLanzar(getProvider("cloud_api", campana.canal.config, campana.canal.instancia), nombre, idioma);
+    if (evaluacion.bloqueo) return evaluacion.bloqueo;
+    if (cantidadVariablesPlantilla(evaluacion.plantilla!) !== (Array.isArray(campana.mapeoVariables) ? campana.mapeoVariables.length : 0))
+      return Response.json({ error: "El número de variables no coincide con el mapeo del archivo" }, { status: 400 });
+    await db.campanaEnvio.update({ where: { id }, data: { plantillaNombre: nombre, plantillaIdioma: idioma, plantillaEstado: evaluacion.plantilla!.status, plantillaConsultadaAt: new Date() } });
+    return Response.json({ ok: true, plantillaEstado: evaluacion.plantilla!.status });
+  }
   if (accion === "configurar") {
     if (campana.estado !== "borrador") return Response.json({ error: "Solo se configura un borrador" }, { status: 409 });
     let calendario;
@@ -56,9 +68,12 @@ export const PATCH = conModulo("campanas_envio", { admin: true }, async (_sesion
     const total = await db.campanaDestinatario.count({ where: { campanaId: id, estado: "pendiente" } });
     if (!total) return Response.json({ error: "No hay destinatarios" }, { status: 400 });
     if (!campana.canal.activo || campana.canal.estado !== "conectado" || campana.canal.proveedor !== "cloud_api") return Response.json({ error: "Canal desconectado" }, { status: 400 });
-    const bloqueoPlantilla = await comprobarPlantillaParaLanzar(getProvider("cloud_api", campana.canal.config, campana.canal.instancia), campana.plantillaNombre, campana.plantillaIdioma);
-    if (bloqueoPlantilla) return bloqueoPlantilla;
-    await db.campanaEnvio.update({ where: { id }, data: { estado: "programada", confirmoPermiso: true, permisoAt: new Date(), motivoPausa: null } });
+    if (!campana.plantillaNombre || !campana.plantillaIdioma) return Response.json({ error: "Selecciona una plantilla antes de lanzar" }, { status: 400 });
+    const evaluacion = await evaluarPlantillaParaLanzar(getProvider("cloud_api", campana.canal.config, campana.canal.instancia), campana.plantillaNombre, campana.plantillaIdioma);
+    if (evaluacion.bloqueo) return evaluacion.bloqueo;
+    if (cantidadVariablesPlantilla(evaluacion.plantilla!) !== (Array.isArray(campana.mapeoVariables) ? campana.mapeoVariables.length : 0))
+      return Response.json({ error: "El número de variables no coincide con el mapeo del archivo" }, { status: 400 });
+    await db.campanaEnvio.update({ where: { id }, data: { estado: "programada", confirmoPermiso: true, permisoAt: new Date(), motivoPausa: null, plantillaEstado: evaluacion.plantilla!.status, plantillaConsultadaAt: new Date() } });
   } else if (accion === "pausar" && ["programada", "en_curso"].includes(campana.estado)) {
     await db.campanaEnvio.update({ where: { id }, data: { estado: "pausada", motivoPausa: "Pausada por el equipo" } });
   } else if (accion === "reanudar" && campana.estado === "pausada") {

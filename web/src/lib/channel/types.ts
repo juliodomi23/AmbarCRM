@@ -84,6 +84,7 @@ export interface PlantillaOficial {
   status?: string;
   category?: string;
   components?: unknown[];
+  rejectedReason?: string;
 }
 
 export type EstadoConexion = "conectado" | "conectando" | "desconectado";

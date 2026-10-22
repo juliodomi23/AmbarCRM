@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   const noAuth = requireApiKey(req);
   if (noAuth) return noAuth;
   const orgs = await dbRaw.$queryRaw<{ id: bigint }[]>`SELECT id FROM orgs WHERE activo = true`;
-  const resultado = { enviados: 0, fallidos: 0, errores: [] as string[] };
+  const resultado = { enviados: 0, fallidos: 0, errores: [] as string[], esperando: [] as string[] };
   for (const org of orgs) {
     await runWithOrg(org.id, async () => {
       if (!(await moduloHabilitado("campanas_envio"))) return;
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       await db.campanaDestinatario.updateMany({ where: { estado: "enviando", updatedAt: { lt: new Date(Date.now() - 10 * 60_000) } }, data: { estado: "pendiente", enviadoAt: null } });
       const campanas = await db.campanaEnvio.findMany({ where: { estado: { in: ["programada", "en_curso"] } }, orderBy: { id: "asc" }, select: { id: true } });
       for (const campana of campanas) {
-        try { const r = await procesarCampana(org.id, campana.id); resultado.enviados += r.enviados; resultado.fallidos += r.fallidos; if (r.error) resultado.errores.push(`Campaña ${campana.id}: ${r.error}`); }
+        try { const r = await procesarCampana(org.id, campana.id); resultado.enviados += r.enviados; resultado.fallidos += r.fallidos; if (r.error) resultado.errores.push(`Campaña ${campana.id}: ${r.error}`); if (r.esperando) resultado.esperando.push(`Campaña ${campana.id}: ${r.esperando}`); }
         catch (e) { resultado.errores.push(`Campaña ${campana.id}: ${e instanceof Error ? e.message : "error"}`); }
       }
     });

@@ -844,6 +844,8 @@ model CampanaEnvio {
   canalId         BigInt   @map("canal_id")
   plantillaNombre String   @map("plantilla_nombre")
   plantillaIdioma String   @map("plantilla_idioma")
+  plantillaEstado String?  @map("plantilla_estado")
+  plantillaConsultadaAt DateTime? @map("plantilla_consultada_at") @db.Timestamptz(6)
   mapeoVariables  Json     @default("[]") @map("mapeo_variables")
   estado          String   @default("borrador")
   motivoPausa     String?  @map("motivo_pausa")

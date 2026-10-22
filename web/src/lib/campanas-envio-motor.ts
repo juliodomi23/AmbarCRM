@@ -6,11 +6,14 @@ import { transaccionTenant } from "@/lib/retail-db";
 import type { ResultadoEnvio } from "@/lib/channel/types";
 import { Prisma } from "@prisma/client";
 import { getAjustes } from "@/lib/services/config";
+import { estadosPlantillaEnRevision, motivoPlantillaNoDisponible } from "@/lib/campanas-envio-plantilla";
 
 const espera = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const recientes = ["enviado", "entregado", "leido", "respondio"];
 const UMBRAL_FALLOS_ULTIMOS_20 = 7;
 const MAX_FALLOS_CONSULTA_META = 5;
+const INTERVALO_CONSULTA_PLANTILLA_MS = 5 * 60_000;
+const ESPERANDO_PLANTILLA = "Esperando aprobación de la plantilla";
 
 async function hayCupoHoy(orgId: bigint, canalId: bigint, zonaHoraria: string, topeDiario: number, ahora: Date) {
   const hoy = await transaccionTenant(orgId, (tx) => tx.$queryRaw<{ total: bigint }[]>`
@@ -97,10 +100,22 @@ export async function procesarCampana(orgId: bigint, campanaId: bigint, ahora = 
     await db.campanaEnvio.update({ where: { id: campanaId }, data: { estado: "pausada", motivoPausa: "El canal de Meta está desconectado" } });
     return { enviados: 0, fallidos: 0 };
   }
+  const enRevision = campana.plantillaEstado !== null && estadosPlantillaEnRevision.includes(campana.plantillaEstado);
+  if (enRevision) {
+    const limite = new Date(ahora.getTime() - INTERVALO_CONSULTA_PLANTILLA_MS);
+    const reserva = await db.campanaEnvio.updateMany({
+      where: { id: campanaId, estado: { in: ["programada", "en_curso"] }, plantillaEstado: campana.plantillaEstado, OR: [{ plantillaConsultadaAt: null }, { plantillaConsultadaAt: { lte: limite } }] },
+      data: { plantillaConsultadaAt: ahora }
+    });
+    if (!reserva.count) return { enviados: 0, fallidos: 0, esperando: ESPERANDO_PLANTILLA };
+  }
   const provider = getProvider("cloud_api", campana.canal.config, campana.canal.instancia);
   const consulta = await provider.consultarPlantillas!();
   if (!(await getAjustes()).campanasEnvioActivas) return { enviados: 0, fallidos: 0 };
   if (!consulta.ok) {
+    if (enRevision && consulta.motivo === "no_disponible") {
+      return { enviados: 0, fallidos: 0, esperando: ESPERANDO_PLANTILLA };
+    }
     if (consulta.motivo === "no_disponible") {
       const actualizada = await db.campanaEnvio.update({ where: { id: campanaId }, data: { fallosConsultaMeta: { increment: 1 } } });
       if (actualizada.fallosConsultaMeta >= MAX_FALLOS_CONSULTA_META) await db.campanaEnvio.updateMany({ where: { id: campanaId, estado: { in: ["programada", "en_curso"] } }, data: { estado: "pausada", motivoPausa: "Meta no responde; revisa el estado del canal" } });
@@ -109,9 +124,12 @@ export async function procesarCampana(orgId: bigint, campanaId: bigint, ahora = 
     await db.campanaEnvio.update({ where: { id: campanaId }, data: { estado: "pausada", motivoPausa: consulta.motivo === "sin_waba" ? "El canal de Meta no tiene WABA configurado" : "Meta rechazó la consulta de plantillas; revisa la credencial del canal" } });
     return { enviados: 0, fallidos: 0 };
   }
-  if (campana.fallosConsultaMeta) await db.campanaEnvio.update({ where: { id: campanaId }, data: { fallosConsultaMeta: 0 } });
-  if (!consulta.plantillas.some((p) => p.name === campana.plantillaNombre && p.language === campana.plantillaIdioma && p.status === "APPROVED")) {
-    await db.campanaEnvio.update({ where: { id: campanaId }, data: { estado: "pausada", motivoPausa: "La plantilla ya no está aprobada" } });
+  const plantillaActual = consulta.plantillas.find((p) => p.name === campana.plantillaNombre && p.language === campana.plantillaIdioma);
+  await db.campanaEnvio.update({ where: { id: campanaId }, data: { plantillaEstado: plantillaActual?.status ?? "INEXISTENTE", plantillaConsultadaAt: ahora, fallosConsultaMeta: 0 } });
+  if (plantillaActual?.status && estadosPlantillaEnRevision.includes(plantillaActual.status))
+    return { enviados: 0, fallidos: 0, esperando: ESPERANDO_PLANTILLA };
+  if (plantillaActual?.status !== "APPROVED") {
+    await db.campanaEnvio.update({ where: { id: campanaId }, data: { estado: "pausada", motivoPausa: motivoPlantillaNoDisponible(plantillaActual) } });
     return { enviados: 0, fallidos: 0 };
   }
   const ids = await reclamarTanda(orgId, campanaId, ahora);

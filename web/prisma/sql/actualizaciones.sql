@@ -1864,6 +1864,8 @@ CREATE TABLE IF NOT EXISTS campanas_envio (
   canal_id BIGINT NOT NULL REFERENCES canales_whatsapp(id) ON DELETE RESTRICT,
   plantilla_nombre TEXT NOT NULL,
   plantilla_idioma TEXT NOT NULL,
+  plantilla_estado TEXT,
+  plantilla_consultada_at TIMESTAMPTZ,
   mapeo_variables JSONB NOT NULL DEFAULT '[]',
   estado TEXT NOT NULL DEFAULT 'borrador' CHECK (estado IN ('borrador','programada','en_curso','pausada','completada','cancelada')),
   fallos_consulta_meta INTEGER NOT NULL DEFAULT 0,
@@ -1884,6 +1886,8 @@ CREATE TABLE IF NOT EXISTS campanas_envio (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE campanas_envio ADD COLUMN IF NOT EXISTS fallos_consulta_meta INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE campanas_envio ADD COLUMN IF NOT EXISTS plantilla_estado TEXT;
+ALTER TABLE campanas_envio ADD COLUMN IF NOT EXISTS plantilla_consultada_at TIMESTAMPTZ;
 ALTER TABLE campanas_envio ADD COLUMN IF NOT EXISTS lista_aceptada_por_area JSONB;
 ALTER TABLE campanas_envio ADD COLUMN IF NOT EXISTS lista_aceptada_por BIGINT;
 ALTER TABLE campanas_envio ADD COLUMN IF NOT EXISTS lista_aceptada_at TIMESTAMPTZ;

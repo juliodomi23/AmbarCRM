@@ -1,5 +1,11 @@
 # Entrega · Campañas de envío de EXI Chiapas
 
+## Plantilla creada desde la campaña
+
+En **Programar** se puede crear una plantilla `MARKETING` con ejemplos para sus variables o elegir una plantilla `APPROVED`, `PENDING` o `IN_APPEAL`. La creación reutiliza el servicio de Configuración → Meta; ese flujo conserva su respuesta y opciones. El aviso de BAJA propone insertar la frase, sin impedir la creación. La campaña se puede lanzar con la plantilla en revisión y queda `programada` hasta que Meta la apruebe. La casilla de permiso sigue siendo obligatoria.
+
+El motor consulta el estado solo dentro de la ventana elegible. Mientras esté en revisión, registra `esperando` en el cron, no envía ni suma fallos, y limita las consultas a una por cinco minutos por campaña mediante `plantilla_consultada_at`. Si pasa a aprobada, retoma con tanda y tope; si es rechazada, pausada, deshabilitada o desaparece, pausa con motivo. La lista y el reporte muestran el estado y la última consulta. La migración añade `plantilla_estado` y `plantilla_consultada_at` de forma idempotente. El workflow y el interruptor general siguen como estaban.
+
 ## Selección por ciudad / zona
 
 Desde `meta-tech-provider` (`a77e6ca`), el mapeo acepta una columna opcional de ciudad/zona. La revisión cruza áreas y zonas, muestra sus conteos y matriz, permite **Todas** / **Ninguna** y excluir números. El servidor vuelve a validar ambas selecciones; sin columna de zona mantiene el flujo anterior. El desglose por zona se guarda en `lista_aceptada_por_area` y aparece al programar y en el reporte, sin migración nueva. Los filtros de giro, zona y etiqueta solo acotan los números de cada campaña. Cron, motor, interruptor y permiso obligatorio no cambiaron.

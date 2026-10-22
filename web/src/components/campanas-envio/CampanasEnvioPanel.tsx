@@ -4,11 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { detectarFilaEncabezados, mapearColumnas, normalizarTelefonoCampana, prepararArchivoCampana, type MapeoColumnas } from "@/lib/campanas-envio-archivo";
 import { parseCSV } from "@/lib/csv";
 import { fechaEnZona } from "@/lib/campanas-envio-fecha";
+import { incluyeAvisoBaja } from "@/lib/campanas-envio-plantilla";
+import { variablesDePlantilla } from "@/lib/meta/plantillaMeta";
 import { RevisionListaCampana, type AreaResumenVista, type FilaAceptadaVista, type FilaRechazadaVista, type ZonaResumenVista } from "./RevisionListaCampana";
 
-type Plantilla = { name: string; language: string; status: string };
+type Plantilla = { name: string; language: string; status: string; components?: Array<{ type: string; text?: string }> };
 type Config = { canales: Array<{ id: string; nombre: string }>; plantillas: Plantilla[]; etiquetas: Array<{ id: string; nombre: string }>; tarifaMarketingUsd: number; campanasEnvioActivas: boolean };
-type Campana = { id: string; nombre: string; estado: string; motivoPausa: string | null; _count: { destinatarios: number } };
+type Campana = { id: string; canalId: string; nombre: string; estado: string; mapeoVariables: string[]; plantillaNombre: string; plantillaIdioma: string; plantillaEstado: string | null; plantillaConsultadaAt: string | null; motivoPausa: string | null; _count: { destinatarios: number } };
 type Preview = {
   filaEncabezados: number;
   headers: string[];
@@ -36,6 +38,17 @@ async function json(url: string, options?: RequestInit) {
   return cuerpo;
 }
 
+function estadoPlantilla(campana: Campana) {
+  if (!campana.plantillaNombre) return "Sin plantilla";
+  if (["PENDING", "IN_APPEAL"].includes(campana.plantillaEstado ?? "")) return "Esperando aprobación de Meta";
+  if (campana.plantillaEstado === "APPROVED") return "Plantilla aprobada";
+  return `Plantilla: ${campana.plantillaEstado ?? "sin comprobar"}`;
+}
+
+function etiquetaEstadoPlantilla(estado: string) {
+  return estado === "APPROVED" ? "Aprobada" : ["PENDING", "IN_APPEAL"].includes(estado) ? "En revisión de Meta" : estado;
+}
+
 export function CampanasEnvioPanel({ esAdmin }: { esAdmin: boolean }) {
   const [config, setConfig] = useState<Config>({ canales: [], plantillas: [], etiquetas: [], tarifaMarketingUsd: 0.04, campanasEnvioActivas: false });
   const [configCargada, setConfigCargada] = useState(false);
@@ -57,6 +70,11 @@ export function CampanasEnvioPanel({ esAdmin }: { esAdmin: boolean }) {
   const [nombre, setNombre] = useState("");
   const [canalId, setCanalId] = useState("");
   const [plantilla, setPlantilla] = useState("");
+  const [mostrarCrearPlantilla, setMostrarCrearPlantilla] = useState(false);
+  const [nombrePlantillaNueva, setNombrePlantillaNueva] = useState("");
+  const [idiomaPlantillaNueva, setIdiomaPlantillaNueva] = useState("es_MX");
+  const [cuerpoPlantillaNueva, setCuerpoPlantillaNueva] = useState("");
+  const [ejemplosPlantillaNueva, setEjemplosPlantillaNueva] = useState<string[]>([]);
   const [campanaId, setCampanaId] = useState("");
   const [reporte, setReporte] = useState<Reporte | null>(null);
   const [filtroEstado, setFiltroEstado] = useState("");
@@ -80,7 +98,11 @@ export function CampanasEnvioPanel({ esAdmin }: { esAdmin: boolean }) {
     setConfigCargada(true);
     if (!id && datos.canales[0]) setCanalId(datos.canales[0].id);
   }, []);
-  const cargarReporte = useCallback(async (id: string, estado = "") => { setReporte(await json(`/api/campanas-envio/${id}${estado ? `?estado=${estado}` : ""}`)); }, []);
+  const cargarReporte = useCallback(async (id: string, estado = "") => {
+    const datos = await json(`/api/campanas-envio/${id}${estado ? `?estado=${estado}` : ""}`) as Reporte;
+    setReporte(datos);
+    return datos;
+  }, []);
   useEffect(() => { void Promise.all([cargarConfig(), cargarLista()]).catch((e) => setError(e.message)); }, [cargarConfig, cargarLista]);
 
   async function ejecutar(fn: () => Promise<void>) {
@@ -148,6 +170,9 @@ export function CampanasEnvioPanel({ esAdmin }: { esAdmin: boolean }) {
   }
 
   const plantillaElegida = config.plantillas.find((item) => `${item.name}|${item.language}` === plantilla);
+  const textoPlantillaElegida = plantillaElegida?.components?.find((item) => item.type === "BODY")?.text ?? "";
+  const variablesNuevas = variablesDePlantilla(cuerpoPlantillaNueva);
+  const variablesMapeadas = variablesTexto.split(",").map((valor) => valor.trim()).filter(Boolean);
   const areasActivas = new Set(areasSeleccionadas);
   const zonasActivas = new Set(zonasSeleccionadas);
   const excluidas = new Set(filasExcluidas);
@@ -156,10 +181,10 @@ export function CampanasEnvioPanel({ esAdmin }: { esAdmin: boolean }) {
 
   function aceptarLista() {
     void ejecutar(async () => {
-      if (!preview || !plantillaElegida || !seleccionadas.length) throw new Error("Completa la campaña y selecciona al menos un número");
+      if (!preview || !seleccionadas.length) throw new Error("Completa la campaña y selecciona al menos un número");
       let id = campanaId;
       if (!id) {
-        const creada = await json("/api/campanas-envio", cuerpo({ nombre, canalId, plantillaNombre: plantillaElegida.name, plantillaIdioma: plantillaElegida.language, mapeoVariables: variablesTexto.split(",").map((v) => v.trim()).filter(Boolean), ...calendario() }));
+        const creada = await json("/api/campanas-envio", cuerpo({ nombre, canalId, mapeoVariables: variablesMapeadas, ...calendario() }));
         id = creada.id;
         setCampanaId(id);
       }
@@ -168,6 +193,31 @@ export function CampanasEnvioPanel({ esAdmin }: { esAdmin: boolean }) {
       setPaso(4);
       setPermiso(false);
       setMensaje(`${resultado.importados} destinatarios preparados. No se envió ningún mensaje.`);
+    });
+  }
+
+  function seleccionarPlantilla(valor: string) {
+    void ejecutar(async () => {
+      if (!campanaId) throw new Error("Primero acepta una lista");
+      const elegida = config.plantillas.find((item) => `${item.name}|${item.language}` === valor);
+      if (!elegida) throw new Error("Selecciona una plantilla");
+      await json(`/api/campanas-envio/${campanaId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "plantilla", plantillaNombre: elegida.name, plantillaIdioma: elegida.language }) });
+      setPlantilla(valor);
+      await cargarReporte(campanaId);
+      setMensaje(`Plantilla ${elegida.name} seleccionada (${etiquetaEstadoPlantilla(elegida.status)}).`);
+    });
+  }
+
+  function crearPlantilla() {
+    void ejecutar(async () => {
+      if (!campanaId) throw new Error("Primero acepta una lista");
+      const creada = await json(`/api/campanas-envio/${campanaId}/plantilla`, cuerpo({ name: nombrePlantillaNueva, language: idiomaPlantillaNueva, body: cuerpoPlantillaNueva, ejemplos: ejemplosPlantillaNueva }));
+      const nueva = creada.plantilla as Plantilla;
+      setConfig((anterior) => ({ ...anterior, plantillas: [...anterior.plantillas.filter((item) => item.name !== nueva.name || item.language !== nueva.language), nueva] }));
+      setPlantilla(`${nueva.name}|${nueva.language}`);
+      setMostrarCrearPlantilla(false);
+      await cargarReporte(campanaId);
+      setMensaje(`Plantilla enviada a Meta para revisión (${etiquetaEstadoPlantilla(nueva.status)}). Ya puedes programar la campaña.`);
     });
   }
 
@@ -192,17 +242,25 @@ export function CampanasEnvioPanel({ esAdmin }: { esAdmin: boolean }) {
 
   function lanzar() {
     void ejecutar(async () => {
-      if (!campanaId || !permiso) throw new Error("Confirma el permiso de los contactos antes de lanzar");
+      if (!campanaId || !permiso || !reporte?.campana.plantillaNombre) throw new Error("Selecciona una plantilla y confirma el permiso de los contactos antes de lanzar");
       await json(`/api/campanas-envio/${campanaId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "configurar", ...calendario() }) });
       await json(`/api/campanas-envio/${campanaId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "lanzar", confirmoPermiso: true }) });
       await Promise.all([cargarLista(), cargarReporte(campanaId)]);
       setPaso(5);
-      setMensaje("Campaña programada. Los envíos seguirán el calendario si el interruptor general está activo.");
+      setMensaje(["PENDING", "IN_APPEAL"].includes(reporte.campana.plantillaEstado ?? "") ? "Campaña programada. Empezará sola cuando Meta apruebe la plantilla, dentro del calendario y con los envíos activos." : "Campaña programada. Los envíos seguirán el calendario si el interruptor general está activo.");
     });
   }
 
   function mostrarReporte(id: string) {
-    void ejecutar(async () => { setCampanaId(id); await cargarReporte(id); setPaso(5); });
+    void ejecutar(async () => {
+      setCampanaId(id);
+      const datos = await cargarReporte(id);
+      setCanalId(datos.campana.canalId);
+      setVariablesTexto(Array.isArray(datos.campana.mapeoVariables) ? datos.campana.mapeoVariables.join(", ") : "");
+      await cargarConfig(datos.campana.canalId);
+      setPlantilla(datos.campana.plantillaNombre ? `${datos.campana.plantillaNombre}|${datos.campana.plantillaIdioma}` : "");
+      setPaso(5);
+    });
   }
 
   function accion(tipo: "pausar" | "reanudar" | "cancelar", id: string) {
@@ -257,21 +315,32 @@ export function CampanasEnvioPanel({ esAdmin }: { esAdmin: boolean }) {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{[["Válidos", preview.conteos.validos], ["Duplicados", preview.conteos.duplicados], ["Inválidos", preview.conteos.invalidos], ["Ya existentes", preview.conteos.existentes], ["Bajas", preview.conteos.optOut]].map(([titulo, valor]) => <div key={titulo} className="rounded-xl border bg-muted/40 p-4"><p className="text-sm text-muted-foreground">{titulo}</p><strong className="tnum text-2xl">{valor}</strong></div>)}</div>
         <details className="rounded-xl border border-border p-4"><summary className="cursor-pointer font-medium">Ver muestra del archivo y teléfonos normalizados</summary><div className="mt-3 max-h-72 max-w-full overflow-auto"><table className="min-w-[600px] w-full text-left text-sm"><thead className="sticky top-0 bg-muted"><tr><th className="px-3 py-2">Fila</th><th className="px-3 py-2">Teléfono original</th><th className="px-3 py-2">Teléfono normalizado</th><th className="px-3 py-2">Resultado</th></tr></thead><tbody>{preview.muestra.map((fila) => <tr key={fila.numeroFila} className="border-t"><td className="px-3 py-3">{fila.numeroFila}</td><td className="px-3 py-3">{fila.fila[mapeo.telefono] || "—"}</td><td className="px-3 py-3 font-mono">{fila.telefonoNormalizado ?? "—"}</td><td className="px-3 py-3">{fila.motivo ? <span className="rounded bg-destructive/10 px-2 py-1 text-destructive">{fila.motivo}</span> : <span className="rounded bg-success/10 px-2 py-1 text-success">Válida</span>}</td></tr>)}</tbody></table></div></details>
         <RevisionListaCampana areas={preview.resumenAreas} zonas={preview.resumenZonas} tieneZona={preview.tieneZona} matrizAreaZona={preview.matrizAreaZona} filas={preview.aceptadas} rechazadas={preview.rechazadas} headers={preview.headers} areasSeleccionadas={areasSeleccionadas} zonasSeleccionadas={zonasSeleccionadas} filasExcluidas={filasExcluidas} onArea={(clave, activa) => setAreasSeleccionadas((actuales) => activa ? [...actuales, clave] : actuales.filter((item) => item !== clave))} onAreas={setAreasSeleccionadas} onZonas={setZonasSeleccionadas} onFila={(numero, incluida) => setFilasExcluidas((actuales) => incluida ? actuales.filter((item) => item !== numero) : [...actuales, numero])} />
-        <div className="grid gap-3 sm:grid-cols-3"><label className="text-sm font-medium">Nombre de campaña<input className={inputClass} value={nombre} maxLength={120} onChange={(e) => setNombre(e.target.value)} placeholder="Campaña colegios" /></label><label className="text-sm font-medium">Canal conectado<select className={inputClass} value={canalId} onChange={(e) => { setCanalId(e.target.value); setPlantilla(""); void cargarConfig(e.target.value).catch((error) => setError(error.message)); }}>{config.canales.map((canal) => <option key={canal.id} value={canal.id}>{canal.nombre}</option>)}</select></label><label className="text-sm font-medium">Plantilla aprobada<select className={inputClass} value={plantilla} onChange={(e) => setPlantilla(e.target.value)}><option value="">Seleccionar</option>{config.plantillas.map((item) => <option key={`${item.name}|${item.language}`} value={`${item.name}|${item.language}`}>{item.name} · {item.language}</option>)}</select></label></div>
+        <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-medium">Nombre de campaña<input className={inputClass} value={nombre} maxLength={120} onChange={(e) => setNombre(e.target.value)} placeholder="Campaña colegios" /></label><label className="text-sm font-medium">Canal conectado<select className={inputClass} value={canalId} onChange={(e) => { setCanalId(e.target.value); setPlantilla(""); void cargarConfig(e.target.value).catch((error) => setError(error.message)); }}>{config.canales.map((canal) => <option key={canal.id} value={canal.id}>{canal.nombre}</option>)}</select></label></div>
         <p className="text-sm text-muted-foreground">Estimación de la lista elegida: US${(seleccionadas.length * config.tarifaMarketingUsd).toFixed(2)} si todos se entregan. Meta cobra directamente a EXI.</p>
-        <div className="flex flex-wrap items-center gap-3"><button type="button" className={secondaryClass} onClick={() => setPaso(2)}>Cambiar columnas o filtros</button><span className="text-sm text-muted-foreground">{areasSeleccionadas.length} de {preview.resumenAreas.length} áreas{preview.tieneZona ? ` · ${zonasSeleccionadas.length} de ${preview.resumenZonas.length} zonas` : ""}</span>{esAdmin && <button type="button" className={primaryClass} disabled={ocupado || !seleccionadas.length || !nombre.trim() || !canalId || !plantillaElegida} onClick={aceptarLista}>Aceptar lista ({seleccionadas.length} números)</button>}</div>
+        <div className="flex flex-wrap items-center gap-3"><button type="button" className={secondaryClass} onClick={() => setPaso(2)}>Cambiar columnas o filtros</button><span className="text-sm text-muted-foreground">{areasSeleccionadas.length} de {preview.resumenAreas.length} áreas{preview.tieneZona ? ` · ${zonasSeleccionadas.length} de ${preview.resumenZonas.length} zonas` : ""}</span>{esAdmin && <button type="button" className={primaryClass} disabled={ocupado || !seleccionadas.length || !nombre.trim() || !canalId} onClick={aceptarLista}>Aceptar lista ({seleccionadas.length} números)</button>}</div>
       </div>}
 
       {paso === 4 && <div className="mt-6 space-y-5"><div><h2 className="text-xl font-semibold">4. Programar</h2><p className="text-sm text-muted-foreground">La lista ya está preparada. Define cuándo podrá enviarse cada tanda.</p></div>
         <div className="rounded-xl border border-border bg-muted/40 p-4"><p className="font-medium">{reporte?.campana.nombre ?? nombre}</p><p className="mt-1 text-sm text-muted-foreground">{reporte?.conteos.total ?? 0} destinatarios · aproximadamente {reporte?.diasEstimados ?? 0} días · US${(reporte?.costoEstimadoUsd ?? 0).toFixed(2)} estimados.</p></div>
         {reporte?.campana.listaAceptadaPorArea && <div className="rounded-xl border border-border p-4"><h3 className="font-semibold">Lista aceptada · solo lectura</h3><p className="mt-1 text-sm text-muted-foreground">{reporte.campana.listaAceptadaPorArea.totalSeleccionados} números aceptados. Los filtros de giro, zona y etiqueta solo acotan la lista al crear cada campaña; no pueden agregar números fuera de la selección aceptada.</p><div className="mt-3 flex flex-wrap gap-2">{reporte.campana.listaAceptadaPorArea.areas.map((area) => <span key={area.clave} className="rounded-full bg-muted px-3 py-1 text-sm">{area.nombre}: {area.seleccionados}</span>)}</div>{Boolean(reporte.campana.listaAceptadaPorArea.zonas?.length) && <div className="mt-2 flex flex-wrap gap-2">{reporte.campana.listaAceptadaPorArea.zonas!.map((zona) => <span key={zona.clave} className="rounded-full bg-primary/10 px-3 py-1 text-sm">{zona.nombre}: {zona.seleccionados}</span>)}</div>}</div>}
+        <div className="rounded-xl border border-border p-4"><div className="flex flex-wrap items-end gap-3"><label className="min-w-64 flex-1 text-sm font-medium">Plantilla de Meta<select className={inputClass} value={plantilla || (reporte?.campana.plantillaNombre ? `${reporte.campana.plantillaNombre}|${reporte.campana.plantillaIdioma}` : "")} disabled={ocupado || !esAdmin} onChange={(e) => seleccionarPlantilla(e.target.value)}><option value="">Seleccionar plantilla</option>{config.plantillas.map((item) => <option key={`${item.name}|${item.language}`} value={`${item.name}|${item.language}`}>{item.name} · {item.language} · {etiquetaEstadoPlantilla(item.status)}</option>)}</select></label>{esAdmin && <button type="button" className={secondaryClass} disabled={ocupado} onClick={() => setMostrarCrearPlantilla((valor) => !valor)}>Crear plantilla nueva</button>}</div>
+          {reporte?.campana.plantillaNombre && <p className="mt-2 text-sm">{estadoPlantilla(reporte.campana)}{reporte.campana.plantillaConsultadaAt ? ` · última consulta ${new Date(reporte.campana.plantillaConsultadaAt).toLocaleString("es-MX")}` : ""}</p>}
+          {plantillaElegida && <p className="mt-2 text-sm text-muted-foreground">{variablesDePlantilla(textoPlantillaElegida).length} variables en el cuerpo · {variablesMapeadas.length} columnas mapeadas del archivo.</p>}
+          {plantillaElegida && textoPlantillaElegida && !incluyeAvisoBaja(textoPlantillaElegida) && <p className="mt-2 text-sm text-warning">Revisa que la plantilla incluya “Responde BAJA para no recibir más mensajes”.</p>}
+          {["PENDING", "IN_APPEAL"].includes(reporte?.campana.plantillaEstado ?? "") && <p className="mt-2 rounded-lg bg-warning/10 p-3 text-sm">Se programará ahora y empezará sola al aprobarse, dentro de la ventana configurada y si los envíos están activos.</p>}
+        </div>
+        {mostrarCrearPlantilla && esAdmin && <div className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-4"><h3 className="font-semibold">Crear plantilla de marketing</h3><p className="text-sm text-muted-foreground">Se enviará a Meta para revisión. Idioma predeterminado: es_MX. Categoría: MARKETING.</p><div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-medium">Nombre<input className={inputClass} value={nombrePlantillaNueva} onChange={(e) => setNombrePlantillaNueva(e.target.value)} placeholder="campana_colegios" /></label><label className="text-sm font-medium">Idioma<input className={inputClass} value={idiomaPlantillaNueva} onChange={(e) => setIdiomaPlantillaNueva(e.target.value)} /></label></div><label className="block text-sm font-medium">Cuerpo del mensaje<textarea className={inputClass} rows={5} maxLength={1024} value={cuerpoPlantillaNueva} onChange={(e) => setCuerpoPlantillaNueva(e.target.value)} placeholder="Hola {{1}}, te escribimos de EXI. Responde BAJA para no recibir más mensajes." /></label>
+          {variablesNuevas.map((numero, indice) => <label key={numero} className="block text-sm font-medium">Ejemplo de {`{{${numero}}}`}<input className={inputClass} value={ejemplosPlantillaNueva[indice] ?? ""} onChange={(e) => setEjemplosPlantillaNueva((actuales) => { const nuevos = [...actuales]; nuevos[indice] = e.target.value; return nuevos; })} placeholder={variablesMapeadas[indice] || "Ejemplo"} /></label>)}
+          {!incluyeAvisoBaja(cuerpoPlantillaNueva) && <div className="rounded-lg bg-warning/10 p-3 text-sm"><p>Incluye “Responde BAJA para no recibir más mensajes”.</p><button type="button" className={secondaryClass} onClick={() => setCuerpoPlantillaNueva((texto) => `${texto.trim()}${texto.trim() ? "\n\n" : ""}Responde BAJA para no recibir más mensajes.`)}>Agregar aviso de baja</button></div>}
+          <button type="button" className={primaryClass} disabled={ocupado || !nombrePlantillaNueva.trim() || !cuerpoPlantillaNueva.trim() || variablesNuevas.length !== variablesMapeadas.length} onClick={crearPlantilla}>Enviar plantilla a Meta</button></div>}
         <fieldset className="space-y-2"><legend className="font-semibold">Días de envío</legend><div className="flex flex-wrap gap-3">{["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map((dia, i) => <label key={dia} className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"><input type="checkbox" checked={dias.includes(i)} onChange={(e) => setDias(e.target.checked ? [...dias, i].sort() : dias.filter((valor) => valor !== i))} />{dia}</label>)}</div></fieldset>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><label className="text-sm font-medium">Desde<input className={inputClass} type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} /></label><label className="text-sm font-medium">Hasta<input className={inputClass} type="time" value={horaFin} onChange={(e) => setHoraFin(e.target.value)} /></label><label className="text-sm font-medium">Zona horaria<input className={inputClass} value={zonaHoraria} onChange={(e) => setZonaHoraria(e.target.value)} /></label><label className="text-sm font-medium">Tamaño de tanda (1–20)<input className={inputClass} type="number" min={1} max={20} value={tandaTamano} onChange={(e) => setTandaTamano(Number(e.target.value))} /></label><label className="text-sm font-medium">Pausa entre tandas (min, ≥5)<input className={inputClass} type="number" min={5} value={pausaTandaMin} onChange={(e) => setPausaTandaMin(Number(e.target.value))} /></label><label className="text-sm font-medium">Tope diario (máx. 150)<input className={inputClass} type="number" min={1} max={150} value={topeDiario} onChange={(e) => setTopeDiario(Number(e.target.value))} /></label><label className="text-sm font-medium">Fecha de inicio<input className={inputClass} type="datetime-local" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} /></label></div>
         <div className="rounded-xl border border-warning/40 bg-warning/10 p-4"><label className="flex items-start gap-3 font-medium"><input type="checkbox" className="mt-1" checked={permiso} onChange={(e) => setPermiso(e.target.checked)} />Confirmo que estos contactos conocen a EXI y aceptaron recibir mensajes</label><p className="mt-2 text-sm">La plantilla debe incluir “Responde BAJA para no recibir más mensajes”.</p></div>
-        <div className="flex flex-wrap gap-3">{esAdmin && <><button type="button" className={secondaryClass} disabled={ocupado} onClick={guardarCalendario}>Guardar calendario</button><button type="button" className={primaryClass} disabled={ocupado || !permiso || !reporte?.conteos.total} onClick={lanzar}>Lanzar campaña</button></>}</div>
+        <div className="flex flex-wrap gap-3">{esAdmin && <><button type="button" className={secondaryClass} disabled={ocupado} onClick={guardarCalendario}>Guardar calendario</button><button type="button" className={primaryClass} disabled={ocupado || !permiso || !reporte?.conteos.total || !reporte.campana.plantillaNombre} onClick={lanzar}>Lanzar campaña</button></>}</div>
       </div>}
 
       {paso === 5 && <div className="mt-6 space-y-5"><div><h2 className="text-xl font-semibold">5. Reporte</h2><p className="text-sm text-muted-foreground">{reporte ? `Campaña ${reporte.campana.nombre}` : "Selecciona una campaña para ver su reporte."}</p></div>
+        {reporte?.campana.plantillaNombre && <p className="rounded-xl border border-border bg-muted/40 p-4 text-sm">{estadoPlantilla(reporte.campana)} · {reporte.campana.plantillaNombre} ({reporte.campana.plantillaIdioma}){reporte.campana.plantillaConsultadaAt ? ` · última consulta ${new Date(reporte.campana.plantillaConsultadaAt).toLocaleString("es-MX")}` : ""}</p>}
         {reporte && <><div className="grid gap-3 sm:grid-cols-3"><div className="rounded-xl border bg-muted/40 p-4"><p className="text-sm text-muted-foreground">Destinatarios</p><strong className="tnum text-2xl">{reporte.conteos.total}</strong></div><div className="rounded-xl border bg-muted/40 p-4"><p className="text-sm text-muted-foreground">Hoy / tope</p><strong className="tnum text-2xl">{reporte.hoy} / {reporte.campana.topeDiario}</strong></div><div className="rounded-xl border bg-muted/40 p-4"><p className="text-sm text-muted-foreground">Costo estimado</p><strong className="tnum text-2xl">US${reporte.costoEstimadoUsd.toFixed(2)}</strong></div></div>
           {reporte.campana.listaAceptadaPorArea && <div className="rounded-xl border p-4"><h3 className="font-semibold">Lista aceptada</h3><p className="text-sm text-muted-foreground">{reporte.campana.listaAceptadaPorArea.totalSeleccionados} números aceptados; {reporte.campana.listaAceptadaPorArea.importados} preparados · por usuario {reporte.campana.listaAceptadaPor ?? "—"} · {reporte.campana.listaAceptadaAt ? new Date(reporte.campana.listaAceptadaAt).toLocaleString("es-MX") : "—"}</p><div className="mt-2 flex flex-wrap gap-2">{reporte.campana.listaAceptadaPorArea.areas.map((area) => <span key={area.clave} className="rounded-full bg-muted px-3 py-1 text-sm">{area.nombre}: {area.seleccionados}</span>)}</div>{Boolean(reporte.campana.listaAceptadaPorArea.zonas?.length) && <div className="mt-2 flex flex-wrap gap-2">{reporte.campana.listaAceptadaPorArea.zonas!.map((zona) => <span key={zona.clave} className="rounded-full bg-primary/10 px-3 py-1 text-sm">{zona.nombre}: {zona.seleccionados}</span>)}</div>}</div>}
           <p className="text-sm">{Object.entries(reporte.conteos).map(([estado, cantidad]) => `${estado}: ${cantidad}`).join(" · ")}</p>
@@ -283,7 +352,7 @@ export function CampanasEnvioPanel({ esAdmin }: { esAdmin: boolean }) {
     </section>
 
     <section className="surface min-w-0 p-4 sm:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-semibold">Campañas</h2><p className="text-sm text-muted-foreground">Borradores, campañas programadas y resultados.</p></div>{filas.length > 0 && paso >= 4 && <button type="button" className={secondaryClass} onClick={() => { setCampanaId(""); setReporte(null); setPreview(null); setAreasSeleccionadas([]); setFilasExcluidas([]); setNombre(""); setPlantilla(""); setPaso(2); }}>Nueva campaña con este archivo</button>}</div>
-      {campanas.length ? <div className="mt-4 divide-y divide-border">{campanas.map((campana) => <div key={campana.id} className="flex flex-wrap items-center justify-between gap-3 py-4"><div className="min-w-0"><h3 className="break-words font-semibold">{campana.nombre}</h3><p className="text-sm text-muted-foreground"><span className="rounded-full bg-muted px-2 py-1 text-foreground">{campana.estado}</span> · {campana._count.destinatarios} destinatarios</p>{campana.motivoPausa && <p className="mt-2 text-sm text-destructive">{campana.motivoPausa}</p>}</div><div className="flex flex-wrap gap-2"><button type="button" className={secondaryClass} onClick={() => mostrarReporte(campana.id)}>Ver reporte</button>{esAdmin && ["programada", "en_curso"].includes(campana.estado) && <button type="button" className={secondaryClass} onClick={() => accion("pausar", campana.id)}>Pausar</button>}{esAdmin && campana.estado === "pausada" && <button type="button" className={secondaryClass} onClick={() => accion("reanudar", campana.id)}>Reanudar</button>}{esAdmin && !["completada", "cancelada"].includes(campana.estado) && <button type="button" className="rounded-lg border border-destructive/40 px-4 py-2.5 text-destructive" onClick={() => accion("cancelar", campana.id)}>Cancelar</button>}</div></div>)}</div> : <p className="mt-4 rounded-xl bg-muted p-5 text-sm text-muted-foreground">Todavía no hay campañas. Sube un archivo para preparar la primera.</p>}
+      {campanas.length ? <div className="mt-4 divide-y divide-border">{campanas.map((campana) => <div key={campana.id} className="flex flex-wrap items-center justify-between gap-3 py-4"><div className="min-w-0"><h3 className="break-words font-semibold">{campana.nombre}</h3><p className="text-sm text-muted-foreground"><span className="rounded-full bg-muted px-2 py-1 text-foreground">{campana.estado}</span> · {campana._count.destinatarios} destinatarios</p>{campana.plantillaNombre && <p className="mt-2 text-sm">{estadoPlantilla(campana)}{campana.plantillaConsultadaAt ? ` · última consulta ${new Date(campana.plantillaConsultadaAt).toLocaleString("es-MX")}` : ""}</p>}{campana.motivoPausa && <p className="mt-2 text-sm text-destructive">{campana.motivoPausa}</p>}</div><div className="flex flex-wrap gap-2"><button type="button" className={secondaryClass} onClick={() => mostrarReporte(campana.id)}>Ver reporte</button>{esAdmin && ["programada", "en_curso"].includes(campana.estado) && <button type="button" className={secondaryClass} onClick={() => accion("pausar", campana.id)}>Pausar</button>}{esAdmin && campana.estado === "pausada" && <button type="button" className={secondaryClass} onClick={() => accion("reanudar", campana.id)}>Reanudar</button>}{esAdmin && !["completada", "cancelada"].includes(campana.estado) && <button type="button" className="rounded-lg border border-destructive/40 px-4 py-2.5 text-destructive" onClick={() => accion("cancelar", campana.id)}>Cancelar</button>}</div></div>)}</div> : <p className="mt-4 rounded-xl bg-muted p-5 text-sm text-muted-foreground">Todavía no hay campañas. Sube un archivo para preparar la primera.</p>}
     </section>
   </main>;
 }

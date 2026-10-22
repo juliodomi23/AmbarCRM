@@ -9,8 +9,11 @@ los encabezados detectados, teléfonos normalizados y una lista exacta por área
 y ciudad/zona. Ambas selecciones empiezan desmarcadas y se cruzan; **Todas**
 solo marca grupos con números válidos. Solo al aceptar se crean contactos
 y destinatarios.
-Después usa una plantilla `APPROVED` y configura días, horario, tandas,
-pausas y tope diario. La tarifa estimada se cambia en **Configuración → Automatizaciones**.
+En **Programar** elige una plantilla aprobada o en revisión de Meta, o crea
+una plantilla de marketing desde la campaña con cuerpo y ejemplos de variables.
+Puede programarla mientras Meta la revisa; el motor espera y empieza al aprobarse,
+dentro del calendario. Allí configura días, horario, tandas, pausas y tope diario.
+La tarifa estimada se cambia en **Configuración → Automatizaciones**.
 La importación no envía mensajes; el cron empieza después del lanzamiento con
 confirmación explícita del permiso de los contactos y cuando el interruptor
 **Envíos** de `/campanas-envio` está activo. Nace apagado por organización;

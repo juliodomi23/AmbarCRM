@@ -178,7 +178,8 @@ export function makeCloudApiProvider(config?: CloudConfig): ChannelProvider {
         language: item.language,
         status: item.status,
         category: item.category,
-        components: item.components
+        components: item.components,
+        rejectedReason: item.rejected_reason || item.reason
       }));
       return { ok: true as const, plantillas };
     } catch (error) {

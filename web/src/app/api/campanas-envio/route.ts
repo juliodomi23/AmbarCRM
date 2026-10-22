@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { conModulo } from "@/lib/con-modulo";
 import { validarCalendario } from "@/lib/campanas-envio";
 import { getProvider } from "@/lib/channel";
+import { cantidadVariablesPlantilla, evaluarPlantillaParaLanzar } from "@/lib/campanas-envio-plantilla";
 
 export const dynamic = "force-dynamic";
 
@@ -21,14 +22,16 @@ export const POST = conModulo("campanas_envio", { admin: true }, async (sesion, 
   if (!canal) return Response.json({ error: "Selecciona un canal Cloud API conectado" }, { status: 400 });
   const plantillaNombre = String(body.plantillaNombre ?? "");
   const plantillaIdioma = String(body.plantillaIdioma ?? "");
-  const plantillas = await getProvider("cloud_api", canal.config, canal.instancia).listarPlantillas?.() ?? [];
-  if (!plantillas.some((p) => p.name === plantillaNombre && p.language === plantillaIdioma && p.status === "APPROVED"))
-    return Response.json({ error: "La plantilla no está aprobada en Meta" }, { status: 400 });
   const mapeoVariables = body.mapeoVariables;
   if (!Array.isArray(mapeoVariables) || mapeoVariables.length > 20 || mapeoVariables.some((v: unknown) => typeof v !== "string" || v.length > 100))
     return Response.json({ error: "Mapeo de variables inválido" }, { status: 400 });
+  if (Boolean(plantillaNombre) !== Boolean(plantillaIdioma)) return Response.json({ error: "Selecciona nombre e idioma de la plantilla" }, { status: 400 });
+  const evaluacion = plantillaNombre ? await evaluarPlantillaParaLanzar(getProvider("cloud_api", canal.config, canal.instancia), plantillaNombre, plantillaIdioma) : null;
+  if (evaluacion?.bloqueo) return evaluacion.bloqueo;
+  if (evaluacion?.plantilla && cantidadVariablesPlantilla(evaluacion.plantilla) !== mapeoVariables.length)
+    return Response.json({ error: "El número de variables no coincide con el mapeo del archivo" }, { status: 400 });
   let calendario;
   try { calendario = validarCalendario(body); } catch (e) { return Response.json({ error: (e as Error).message }, { status: 400 }); }
-  const campana = await db.campanaEnvio.create({ data: { nombre, canalId, plantillaNombre, plantillaIdioma, mapeoVariables, creadoPor: sesion.userId, ...calendario } });
+  const campana = await db.campanaEnvio.create({ data: { nombre, canalId, plantillaNombre, plantillaIdioma, plantillaEstado: evaluacion?.plantilla?.status ?? null, plantillaConsultadaAt: evaluacion ? new Date() : null, mapeoVariables, creadoPor: sesion.userId, ...calendario } });
   return Response.json({ id: String(campana.id) }, { status: 201 });
 });

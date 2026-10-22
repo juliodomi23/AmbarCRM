@@ -6,7 +6,8 @@ import { datosParaCompletarContacto, esBajaCampana, filtrarFilasCampana, horario
 import { detectarFilaEncabezados, mapearColumnas, normalizarTelefonoCampana, prepararArchivoCampana } from "../src/lib/campanas-envio-archivo";
 import { fechaEnZona } from "../src/lib/campanas-envio-fecha";
 import { aceptarListaCampana, guardarFilasCampana } from "../src/lib/campanas-envio-importar";
-import { comprobarPlantillaParaLanzar } from "../src/lib/campanas-envio-plantilla";
+import { comprobarPlantillaParaLanzar, evaluarPlantillaParaLanzar, incluyeAvisoBaja } from "../src/lib/campanas-envio-plantilla";
+import { crearPlantillaParaCampana } from "../src/lib/campanas-envio-crear-plantilla";
 import { clasificar, procesarCampana } from "../src/lib/campanas-envio-motor";
 import { getProvider } from "../src/lib/channel";
 import { db, dbRaw, runWithOrg } from "../src/lib/db";
@@ -32,17 +33,23 @@ const plantilla = { name: "exi_aviso", language: "es_MX", status: "APPROVED" };
 const respuestas = new Map<string, number>();
 const llamadas: string[] = [];
 let consultasPlantillas = 0;
+const creacionesPlantilla: Array<Record<string, unknown>> = [];
 let pausarDuranteTanda = false;
-let modoPlantillas: "ok" | "no_disponible" | "rechazado" | "sin_aprobar" = "ok";
+let modoPlantillas: "ok" | "pendiente" | "en_apelacion" | "no_disponible" | "rechazado" | "sin_aprobar" = "ok";
 const fetchOriginal = globalThis.fetch;
 globalThis.fetch = async (input, init) => {
   const url = String(input);
   if (!url.startsWith("https://graph.facebook.com/")) throw new Error(`Red externa bloqueada en pruebas: ${url}`);
   if (url.includes("/message_templates")) {
+    if (init?.method === "POST") {
+      creacionesPlantilla.push(JSON.parse(String(init.body)));
+      return Response.json({ id: `sim-plantilla-${creacionesPlantilla.length}`, status: "PENDING" });
+    }
     consultasPlantillas++;
     if (modoPlantillas === "no_disponible") return Response.json({ error: { code: 1, message: "Meta temporalmente caído" } }, { status: 503 });
     if (modoPlantillas === "rechazado") return Response.json({ error: { code: 190, message: "Credencial rechazada" } }, { status: 401 });
-    return Response.json({ data: [{ ...plantilla, status: modoPlantillas === "sin_aprobar" ? "REJECTED" : "APPROVED" }] });
+    const status = modoPlantillas === "sin_aprobar" ? "REJECTED" : modoPlantillas === "pendiente" ? "PENDING" : modoPlantillas === "en_apelacion" ? "IN_APPEAL" : "APPROVED";
+    return Response.json({ data: [{ ...plantilla, status }, ...creacionesPlantilla.map((creada) => ({ ...creada, status }))] });
   }
   if (url.endsWith("/messages")) {
     const body = JSON.parse(String(init?.body ?? "{}"));
@@ -82,6 +89,27 @@ async function main() {
     await db.moduloOrg.create({ data: { clave: "campanas_envio", activo: true } });
   });
   const canal = await runWithOrg(orgId, () => db.canalWhatsapp.create({ data: { nombre: "Meta simulado", proveedor: "cloud_api", estado: "conectado", activo: true, config: { token: "solo-prueba", phoneNumberId: "sim-phone", wabaId: "sim-waba" } } }));
+  await runWithOrg(orgId, async () => {
+    const borrador = await crearCampana("Crear plantilla desde campaña", canal.id, []);
+    await db.campanaEnvio.update({ where: { id: borrador.id }, data: { estado: "borrador", mapeoVariables: ["{{nombre}}"] } });
+    const antes = creacionesPlantilla.length;
+    const desajuste = await crearPlantillaParaCampana(borrador.id, { name: "aviso_nuevo_exi", body: "Hola, te escribimos de EXI." });
+    assert.equal(desajuste.status, 400);
+    assert.equal(creacionesPlantilla.length, antes, "un mapeo incorrecto no llama a Graph");
+    const creada = await crearPlantillaParaCampana(borrador.id, { name: "aviso_nuevo_exi", language: "es_MX", body: "Hola {{1}}, te escribimos de EXI. Responde BAJA para no recibir más mensajes.", ejemplos: ["Ana"] });
+    assert.equal(creada.status, 201);
+    assert.equal(creada.plantilla?.status, "PENDING");
+    assert.equal(creacionesPlantilla.length, antes + 1, "crear plantilla hace un solo POST a Graph");
+    assert.equal(creacionesPlantilla.at(-1)?.name, "aviso_nuevo_exi");
+    assert.equal(creacionesPlantilla.at(-1)?.language, "es_MX");
+    assert.equal(creacionesPlantilla.at(-1)?.category, "MARKETING");
+    assert.deepEqual((creacionesPlantilla.at(-1)?.components as Array<{ example?: { body_text?: string[][] } }>)[0].example?.body_text, [["Ana"]]);
+    const guardada = await db.campanaEnvio.findUniqueOrThrow({ where: { id: borrador.id } });
+    assert.equal(guardada.plantillaNombre, "aviso_nuevo_exi");
+    assert.equal(guardada.plantillaEstado, "PENDING");
+    assert.equal(incluyeAvisoBaja("Responde BAJA para no recibir más mensajes"), true);
+    assert.equal(incluyeAvisoBaja("Hola {{1}}"), false);
+  });
   const contactos = await runWithOrg(orgId, async () => {
     const salida = [];
     for (let i = 0; i < 20; i++) salida.push(await db.contacto.create({ data: { nombre: `Persona ${i}`, telefono: `529611000${String(i).padStart(3, "0")}`, fuente: "manual" } }));
@@ -316,11 +344,66 @@ async function main() {
     modoPlantillas = "sin_aprobar";
     const noAprobada = await crearCampana("Plantilla retirada", canal.id, []);
     await procesarCampana(orgId, noAprobada.id, ahoraPrueba);
-    assert.match((await db.campanaEnvio.findUniqueOrThrow({ where: { id: noAprobada.id } })).motivoPausa ?? "", /ya no está aprobada/);
+    assert.match((await db.campanaEnvio.findUniqueOrThrow({ where: { id: noAprobada.id } })).motivoPausa ?? "", /Meta rechazó la plantilla/);
+    assert.equal((await comprobarPlantillaParaLanzar(proveedor, plantilla.name, plantilla.language))?.status, 400);
+    assert.equal((await comprobarPlantillaParaLanzar(proveedor, "no_existe", plantilla.language))?.status, 400);
     modoPlantillas = "rechazado";
     const rechazada = await crearCampana("Meta rechazó", canal.id, []);
     await procesarCampana(orgId, rechazada.id, ahoraPrueba);
     assert.equal((await db.campanaEnvio.findUniqueOrThrow({ where: { id: rechazada.id } })).estado, "pausada");
+    modoPlantillas = "ok";
+
+    const ahoraRevision = new Date("2026-10-26T16:00:00Z");
+    const nuevos = await Promise.all([0, 1, 2].map((indice) => db.contacto.create({ data: { nombre: `Aprobación ${indice}`, telefono: `52961400000${indice}`, fuente: "manual" } })));
+    const enRevision = await crearCampana("Espera aprobación", canal.id, nuevos.map((contacto) => contacto.id), { tandaTamano: 2, topeDiario: 2 });
+    await db.campanaEnvio.update({ where: { id: enRevision.id }, data: { estado: "borrador", plantillaNombre: "aviso_nuevo_exi", plantillaEstado: "PENDING", plantillaConsultadaAt: new Date("2026-10-26T15:54:00Z"), mapeoVariables: ["{{nombre}}"] } });
+    modoPlantillas = "pendiente";
+    const evaluacionPendiente = await evaluarPlantillaParaLanzar(proveedor, "aviso_nuevo_exi", "es_MX");
+    assert.equal(evaluacionPendiente.bloqueo, null);
+    assert.equal(evaluacionPendiente.plantilla?.status, "PENDING");
+    await db.campanaEnvio.update({ where: { id: enRevision.id }, data: { estado: "programada", confirmoPermiso: true } });
+    const enviadosAntesRevision = llamadas.length;
+    const consultaAntesRevision = consultasPlantillas;
+    const esperando = await procesarCampana(orgId, enRevision.id, ahoraRevision);
+    assert.match(esperando.esperando ?? "", /Esperando aprobación/);
+    assert.equal(consultasPlantillas, consultaAntesRevision + 1);
+    assert.equal(llamadas.length, enviadosAntesRevision);
+    const enEspera = await db.campanaEnvio.findUniqueOrThrow({ where: { id: enRevision.id } });
+    assert.equal(enEspera.estado, "programada");
+    assert.equal(enEspera.fallosConsultaMeta, 0);
+    assert.equal(await db.campanaDestinatario.count({ where: { campanaId: enRevision.id, estado: "pendiente" } }), 3);
+    await procesarCampana(orgId, enRevision.id, new Date("2026-10-26T16:01:00Z"));
+    assert.equal(consultasPlantillas, consultaAntesRevision + 1, "no consulta otra vez antes de cinco minutos");
+    await procesarCampana(orgId, enRevision.id, new Date("2026-10-27T02:00:00Z"));
+    assert.equal(consultasPlantillas, consultaAntesRevision + 1, "fuera de ventana tampoco consulta");
+    modoPlantillas = "en_apelacion";
+    await procesarCampana(orgId, enRevision.id, new Date("2026-10-26T16:06:00Z"));
+    assert.equal(llamadas.length, enviadosAntesRevision, "IN_APPEAL tampoco envía");
+    assert.equal((await db.campanaEnvio.findUniqueOrThrow({ where: { id: enRevision.id } })).plantillaEstado, "IN_APPEAL");
+    modoPlantillas = "ok";
+    await procesarCampana(orgId, enRevision.id, new Date("2026-10-26T16:12:00Z"));
+    assert.equal(await db.campanaDestinatario.count({ where: { campanaId: enRevision.id, estado: "enviado" } }), 2, "tras aprobación respeta la tanda");
+    const antesTope = consultasPlantillas;
+    await procesarCampana(orgId, enRevision.id, new Date("2026-10-26T16:18:00Z"));
+    assert.equal(consultasPlantillas, antesTope, "con tope agotado no consulta Graph");
+    await procesarCampana(orgId, enRevision.id, new Date("2026-10-27T16:00:00Z"));
+    assert.equal(await db.campanaDestinatario.count({ where: { campanaId: enRevision.id, estado: "enviado" } }), 3, "al día siguiente continúa con los pendientes");
+    assert.deepEqual(nuevos.map((contacto) => llamadas.filter((telefono) => telefono === contacto.telefono).length), [1, 1, 1]);
+    assert.equal((await db.campanaEnvio.findUniqueOrThrow({ where: { id: enRevision.id } })).plantillaEstado, "APPROVED");
+    const rechazadaEnRevision = await crearCampana("Rechazada en espera", canal.id, [], { tandaTamano: 1 });
+    await db.campanaEnvio.update({ where: { id: rechazadaEnRevision.id }, data: { plantillaEstado: "PENDING", plantillaConsultadaAt: new Date("2026-10-28T15:54:00Z") } });
+    modoPlantillas = "sin_aprobar";
+    await procesarCampana(orgId, rechazadaEnRevision.id, new Date("2026-10-28T16:00:00Z"));
+    assert.equal((await db.campanaEnvio.findUniqueOrThrow({ where: { id: rechazadaEnRevision.id } })).estado, "pausada");
+    assert.equal(llamadas.length, enviadosAntesRevision + 3, "la plantilla rechazada no envía");
+    const caidaEnRevision = await crearCampana("Meta caída durante revisión", canal.id, []);
+    await db.campanaEnvio.update({ where: { id: caidaEnRevision.id }, data: { plantillaEstado: "PENDING", plantillaConsultadaAt: new Date("2026-10-29T15:54:00Z") } });
+    modoPlantillas = "no_disponible";
+    assert.match((await procesarCampana(orgId, caidaEnRevision.id, new Date("2026-10-29T16:00:00Z"))).esperando ?? "", /Esperando aprobación/);
+    const trasCaida = await db.campanaEnvio.findUniqueOrThrow({ where: { id: caidaEnRevision.id } });
+    assert.equal(trasCaida.estado, "en_curso");
+    assert.equal(trasCaida.fallosConsultaMeta, 0);
+    await db.campanaEnvio.update({ where: { id: caidaEnRevision.id }, data: { estado: "completada" } });
     modoPlantillas = "ok";
 
     const variableVacia = await crearCampana("Variable vacía", canal.id, [contactos[16].id]);
