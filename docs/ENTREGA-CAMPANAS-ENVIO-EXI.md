@@ -1,5 +1,11 @@
 # Entrega · Campañas de envío de EXI Chiapas
 
+## Selección por ciudad / zona
+
+Desde `meta-tech-provider` (`a77e6ca`), el mapeo acepta una columna opcional de ciudad/zona. La revisión cruza áreas y zonas, muestra sus conteos y matriz, permite **Todas** / **Ninguna** y excluir números. El servidor vuelve a validar ambas selecciones; sin columna de zona mantiene el flujo anterior. El desglose por zona se guarda en `lista_aceptada_por_area` y aparece al programar y en el reporte, sin migración nueva. Los filtros de giro, zona y etiqueta solo acotan los números de cada campaña. Cron, motor, interruptor y permiso obligatorio no cambiaron.
+
+La regresión completa pasó en PostgreSQL 16 local desechable con Graph simulado: incluye 3 áreas × 3 ciudades, agrupación por acentos, matriz, selección cruzada, zona vacía y compatibilidad sin columna de zona. La migración existente se aplicó dos veces sin errores.
+
 ## Revisión de lista y pantalla por pasos
 
 La copia `campanas-envio` avanzó hasta `683abf4` antes de este cambio. El archivo conserva sus números de fila originales: detecta encabezados en las primeras 15 filas con contenido o permite elegirlos, normaliza extensiones y números múltiples, agrupa áreas equivalentes y presenta original frente a `52…`. La selección por área comienza vacía; se puede excluir cada número. El servidor recalcula la lista y solo crea contactos y destinatarios tras aceptar, con conteo por área, usuario y fecha registrados en la campaña. La casilla original de permiso sigue siendo obligatoria para lanzar.

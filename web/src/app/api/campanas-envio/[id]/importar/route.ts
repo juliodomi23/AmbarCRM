@@ -18,7 +18,7 @@ export const POST = conModulo("campanas_envio", { admin: true }, async (sesion, 
   }
   if (etiquetaId && !(await db.etiqueta.findFirst({ where: { id: etiquetaId } }))) return Response.json({ error: "Etiqueta inexistente" }, { status: 400 });
   try {
-    const resultado = await aceptarListaCampana(sesion.orgId, id, sesion.userId, { filas: body.filas, filaEncabezados: body.filaEncabezados, mapeo: body.mapeo, mapeoVariables: variables, areasSeleccionadas: body.areasSeleccionadas, filasAceptadas: body.filasAceptadas, filtroGiro: String(body.filtroGiro ?? ""), etiquetaId });
+    const resultado = await aceptarListaCampana(sesion.orgId, id, sesion.userId, { filas: body.filas, filaEncabezados: body.filaEncabezados, mapeo: body.mapeo, mapeoVariables: variables, areasSeleccionadas: body.areasSeleccionadas, zonasSeleccionadas: body.zonasSeleccionadas, filasAceptadas: body.filasAceptadas, filtroGiro: String(body.filtroGiro ?? ""), filtroZona: String(body.filtroZona ?? ""), etiquetaId });
     return Response.json(resultado);
   } catch (e) { return Response.json({ error: (e as Error).message }, { status: 400 }); }
 });

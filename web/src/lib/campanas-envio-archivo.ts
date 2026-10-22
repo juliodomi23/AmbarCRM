@@ -1,12 +1,13 @@
 import { telefonoMx } from "@/lib/reservas/telefono";
 
-export type MapeoColumnas = { telefono: number; nombre?: number; empresa?: number; giro?: number };
+export type MapeoColumnas = { telefono: number; nombre?: number; empresa?: number; giro?: number; zona?: number };
 
 const sinonimos = {
   telefono: ["telefono", "celular", "whatsapp", "phone", "tel", "movil"],
   nombre: ["nombre", "name", "contacto", "contacto publicado"],
   empresa: ["empresa", "company", "negocio", "razon social"],
   giro: ["giro", "sector", "segmento", "area", "rubro"],
+  zona: ["ciudad", "municipio", "zona", "localidad", "region", "plaza"],
 } as const;
 
 export function limpiarTexto(valor: unknown) {
@@ -20,8 +21,8 @@ export function claveTexto(valor: unknown) {
 export function mapearColumnas(headers: string[]): MapeoColumnas {
   const normalizados = headers.map(claveTexto);
   const indice = (campo: keyof typeof sinonimos) => normalizados.findIndex((header) => (sinonimos[campo] as readonly string[]).includes(header));
-  const telefono = indice("telefono"), nombre = indice("nombre"), empresa = indice("empresa"), giro = indice("giro");
-  return { telefono, ...(nombre >= 0 ? { nombre } : {}), ...(empresa >= 0 ? { empresa } : {}), ...(giro >= 0 ? { giro } : {}) };
+  const telefono = indice("telefono"), nombre = indice("nombre"), empresa = indice("empresa"), giro = indice("giro"), zona = indice("zona");
+  return { telefono, ...(nombre >= 0 ? { nombre } : {}), ...(empresa >= 0 ? { empresa } : {}), ...(giro >= 0 ? { giro } : {}), ...(zona >= 0 ? { zona } : {}) };
 }
 
 export function detectarFilaEncabezados(filas: string[][]) {

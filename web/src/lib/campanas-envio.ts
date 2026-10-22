@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { claveTexto, limpiarTexto, normalizarTelefonoCampana, type MapeoColumnas } from "@/lib/campanas-envio-archivo";
 
 export type { MapeoColumnas } from "@/lib/campanas-envio-archivo";
-export type FilaCampana = { numeroFila: number; telefono: string; nombre: string; empresa: string; giro: string; areaClave: string; ciudad: string; variables: Record<string, string>; contactoId?: bigint };
+export type FilaCampana = { numeroFila: number; telefono: string; nombre: string; empresa: string; giro: string; areaClave: string; ciudad: string; zonaClave: string; variables: Record<string, string>; contactoId?: bigint };
 export type FilaRechazada = { numeroFila: number; fila: string[]; telefonoNormalizado: string | null; motivo: string };
 
 export function reanudarCampana(id: bigint) {
@@ -62,7 +62,7 @@ export async function validarFilasCampana(filas: unknown, mapeo: MapeoColumnas, 
   if (Buffer.byteLength(JSON.stringify(filas), "utf8") > 5 * 1024 * 1024) throw new Error("El archivo supera 5 MB");
   const headers = (filas[filaEncabezados - 1] as unknown[]).map(limpiarTexto);
   if (!headers.length || !Number.isInteger(mapeo?.telefono) || mapeo.telefono < 0 || mapeo.telefono >= headers.length) throw new Error("Mapea la columna de teléfono");
-  for (const idx of [mapeo.nombre, mapeo.empresa, mapeo.giro]) if (idx !== undefined && (!Number.isInteger(idx) || idx < 0 || idx >= headers.length)) throw new Error("Mapeo de columnas inválido");
+  for (const idx of [mapeo.nombre, mapeo.empresa, mapeo.giro, mapeo.zona]) if (idx !== undefined && (!Number.isInteger(idx) || idx < 0 || idx >= headers.length)) throw new Error("Mapeo de columnas inválido");
   const columnasVariables = mapeoVariables.filter((v) => !["{{nombre}}", "{{nombre_completo}}", "{{telefono}}"].includes(v));
   if (columnasVariables.some((v) => !headers.includes(v))) throw new Error("Una variable no corresponde a una columna del archivo");
   const valores = (filas as unknown[][]).map((fila, i) => ({ numeroFila: i + 1, fila: fila.map(limpiarTexto) })).slice(filaEncabezados).filter(({ fila }) => fila.some(Boolean));
@@ -81,16 +81,25 @@ export async function validarFilasCampana(filas: unknown, mapeo: MapeoColumnas, 
   const vistas = new Set<string>();
   const conteos = { validos: 0, duplicados: 0, invalidos: 0, existentes: 0, optOut: 0, recientes: 0 };
   const areas = new Map<string, { clave: string; nombre: string; total: number; validos: number; rechazados: number; bajasRecientes: number; formas: Map<string, number> }>();
-  const ciudadIndex = headers.findIndex((header) => claveTexto(header) === "ciudad");
+  const zonas = new Map<string, { clave: string; nombre: string; total: number; validos: number; rechazados: number; bajasRecientes: number; formas: Map<string, number> }>();
+  const tieneZona = mapeo.zona !== undefined;
   valores.forEach(({ fila, numeroFila }, i) => {
     const telefono = telefonos[i];
     const existente = telefono ? porTelefono.get(telefono.slice(-10)) : undefined;
     const giro = mapeo.giro === undefined ? "" : limpiarTexto(fila[mapeo.giro]);
     const areaClave = claveTexto(giro);
+    const ciudad = tieneZona ? limpiarTexto(fila[mapeo.zona!]) : "";
+    const zonaClave = claveTexto(ciudad);
     const area = areas.get(areaClave) ?? { clave: areaClave, nombre: giro || "Sin área", total: 0, validos: 0, rechazados: 0, bajasRecientes: 0, formas: new Map<string, number>() };
     area.total++;
     if (giro) area.formas.set(giro, (area.formas.get(giro) ?? 0) + 1);
     areas.set(areaClave, area);
+    const zona = zonas.get(zonaClave) ?? { clave: zonaClave, nombre: ciudad || "Sin zona", total: 0, validos: 0, rechazados: 0, bajasRecientes: 0, formas: new Map<string, number>() };
+    if (tieneZona) {
+      zona.total++;
+      if (ciudad) zona.formas.set(ciudad, (zona.formas.get(ciudad) ?? 0) + 1);
+      zonas.set(zonaClave, zona);
+    }
     let motivo = "";
     if (!telefono) { motivo = "Teléfono MX inválido"; conteos.invalidos++; }
     else if (vistas.has(telefono)) { motivo = "Duplicado en el archivo"; conteos.duplicados++; }
@@ -106,32 +115,59 @@ export async function validarFilasCampana(filas: unknown, mapeo: MapeoColumnas, 
     if (motivo) {
       area.rechazados++;
       if (existente?.optOutDifusion || (telefono && contactados.has(telefono))) area.bajasRecientes++;
+      if (tieneZona) {
+        zona.rechazados++;
+        if (existente?.optOutDifusion || (telefono && contactados.has(telefono))) zona.bajasRecientes++;
+      }
       rechazadas.push({ numeroFila, fila, telefonoNormalizado: telefono, motivo });
       return;
     }
     conteos.validos++;
     area.validos++;
-    aceptadas.push({ numeroFila, telefono: telefono!, nombre: mapeo.nombre === undefined ? "" : limpiarTexto(fila[mapeo.nombre]), empresa: mapeo.empresa === undefined ? "" : limpiarTexto(fila[mapeo.empresa]), giro, areaClave, ciudad: ciudadIndex < 0 ? "" : limpiarTexto(fila[ciudadIndex]), variables: Object.fromEntries(headers.map((h, j) => [h, fila[j] ?? ""])), contactoId: existente?.id });
+    if (tieneZona) zona.validos++;
+    aceptadas.push({ numeroFila, telefono: telefono!, nombre: mapeo.nombre === undefined ? "" : limpiarTexto(fila[mapeo.nombre]), empresa: mapeo.empresa === undefined ? "" : limpiarTexto(fila[mapeo.empresa]), giro, areaClave, ciudad, zonaClave, variables: Object.fromEntries(headers.map((h, j) => [h, fila[j] ?? ""])), contactoId: existente?.id });
   });
   const resumenAreas = [...areas.values()].map(({ formas, ...area }) => ({ ...area, nombre: [...formas].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "Sin área" }));
+  const resumenZonas = [...zonas.values()].map(({ formas, ...zona }) => ({ ...zona, nombre: [...formas].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "Sin zona" }));
   const nombrePorClave = new Map(resumenAreas.map((area) => [area.clave, area.nombre]));
-  for (const fila of aceptadas) fila.giro = fila.areaClave ? nombrePorClave.get(fila.areaClave)! : "";
-  return { headers, conteos, aceptadas, rechazadas, muestra, resumenAreas };
+  const zonaPorClave = new Map(resumenZonas.map((zona) => [zona.clave, zona.nombre]));
+  for (const fila of aceptadas) {
+    fila.giro = fila.areaClave ? nombrePorClave.get(fila.areaClave)! : "";
+    if (tieneZona) fila.ciudad = zonaPorClave.get(fila.zonaClave)!;
+  }
+  return { headers, conteos, aceptadas, rechazadas, muestra, resumenAreas, resumenZonas, matrizAreaZona: resumirMatrizAreaZona(aceptadas), tieneZona };
 }
 
-export function seleccionarFilasCampana(aceptadas: FilaCampana[], areasSeleccionadas: unknown, filasAceptadas: unknown) {
+export function resumirMatrizAreaZona(filas: FilaCampana[]) {
+  const conteos = new Map<string, { areaClave: string; zonaClave: string; validos: number }>();
+  for (const fila of filas) {
+    const clave = `${fila.areaClave}\u0000${fila.zonaClave}`;
+    const celda = conteos.get(clave) ?? { areaClave: fila.areaClave, zonaClave: fila.zonaClave, validos: 0 };
+    celda.validos++;
+    conteos.set(clave, celda);
+  }
+  return [...conteos.values()];
+}
+
+export function seleccionarFilasCampana(aceptadas: FilaCampana[], areasSeleccionadas: unknown, filasAceptadas: unknown, zonasSeleccionadas: unknown = [], tieneZona = false) {
   if (!Array.isArray(areasSeleccionadas) || areasSeleccionadas.length > 10_000 || areasSeleccionadas.some((clave) => typeof clave !== "string") ||
       !Array.isArray(filasAceptadas) || filasAceptadas.length > 10_000 || filasAceptadas.some((numero) => !Number.isInteger(numero)))
     throw new Error("La selección de áreas y números no es válida");
+  if (tieneZona && (!Array.isArray(zonasSeleccionadas) || zonasSeleccionadas.length > 10_000 || zonasSeleccionadas.some((clave) => typeof clave !== "string")))
+    throw new Error("La selección de zonas no es válida");
   const areas = new Set(areasSeleccionadas as string[]);
+  if (!areas.size) throw new Error("Selecciona al menos un área");
+  const zonas = tieneZona ? new Set(zonasSeleccionadas as string[]) : null;
+  if (zonas && !zonas.size) throw new Error("Selecciona al menos una zona");
   const numeros = new Set(filasAceptadas as number[]);
-  const seleccionadas = aceptadas.filter((fila) => areas.has(fila.areaClave) && numeros.has(fila.numeroFila));
+  const seleccionadas = aceptadas.filter((fila) => areas.has(fila.areaClave) && (!zonas || zonas.has(fila.zonaClave)) && numeros.has(fila.numeroFila));
   if (!seleccionadas.length) throw new Error("Selecciona al menos un número antes de aceptar la lista");
   return seleccionadas;
 }
 
-export async function filtrarFilasCampana(filas: FilaCampana[], filtroGiro: string, etiquetaId: bigint | null) {
+export async function filtrarFilasCampana(filas: FilaCampana[], filtroGiro: string, etiquetaId: bigint | null, filtroZona = "") {
   let filtradas = filtroGiro ? filas.filter((fila) => fila.areaClave === claveTexto(filtroGiro)) : filas;
+  if (filtroZona) filtradas = filtradas.filter((fila) => fila.zonaClave === claveTexto(filtroZona));
   if (etiquetaId) {
     const contactos = await db.contactoEtiqueta.findMany({ where: { etiquetaId, contactoId: { in: filtradas.flatMap((fila) => fila.contactoId ? [fila.contactoId] : []) } }, select: { contactoId: true } });
     const permitidos = new Set(contactos.map((contacto) => String(contacto.contactoId)));

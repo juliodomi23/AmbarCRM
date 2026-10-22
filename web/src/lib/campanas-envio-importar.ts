@@ -57,22 +57,34 @@ export async function aceptarListaCampana(orgId: bigint, campanaId: bigint, usua
   mapeo: MapeoColumnas;
   mapeoVariables: string[];
   areasSeleccionadas: unknown;
+  zonasSeleccionadas: unknown;
   filasAceptadas: unknown;
   filtroGiro: string;
+  filtroZona: string;
   etiquetaId: bigint | null;
 }) {
   const archivo = prepararArchivoCampana(opciones.filas, opciones.filaEncabezados);
   const resultado = await validarFilasCampana(opciones.filas, opciones.mapeo, opciones.mapeoVariables, archivo.filaEncabezados);
-  let seleccionadas = seleccionarFilasCampana(resultado.aceptadas, opciones.areasSeleccionadas, opciones.filasAceptadas);
-  seleccionadas = await filtrarFilasCampana(seleccionadas, opciones.filtroGiro, opciones.etiquetaId);
+  let seleccionadas = seleccionarFilasCampana(resultado.aceptadas, opciones.areasSeleccionadas, opciones.filasAceptadas, opciones.zonasSeleccionadas, resultado.tieneZona);
+  seleccionadas = await filtrarFilasCampana(seleccionadas, opciones.filtroGiro, opciones.etiquetaId, opciones.filtroZona);
   if (!seleccionadas.length) throw new Error("Los filtros dejaron la lista sin números");
   const importados = await guardarFilasCampana(orgId, campanaId, seleccionadas, "", null);
   if (!importados) throw new Error("Ningún número seleccionado pudo prepararse; revisa las bajas, campañas recientes y filtros");
+  const porArea = new Map<string, number>();
+  const porZona = new Map<string, number>();
+  for (const fila of seleccionadas) {
+    porArea.set(fila.areaClave, (porArea.get(fila.areaClave) ?? 0) + 1);
+    if (resultado.tieneZona) porZona.set(fila.zonaClave, (porZona.get(fila.zonaClave) ?? 0) + 1);
+  }
   const areas = resultado.resumenAreas.flatMap((area) => {
-    const total = seleccionadas.filter((fila) => fila.areaClave === area.clave).length;
+    const total = porArea.get(area.clave) ?? 0;
     return total ? [{ clave: area.clave, nombre: area.nombre, seleccionados: total }] : [];
   });
-  const listaAceptadaPorArea = { areas, totalSeleccionados: seleccionadas.length, importados };
+  const zonas = resultado.resumenZonas.flatMap((zona) => {
+    const total = porZona.get(zona.clave) ?? 0;
+    return total ? [{ clave: zona.clave, nombre: zona.nombre, seleccionados: total }] : [];
+  });
+  const listaAceptadaPorArea = { areas, zonas, totalSeleccionados: seleccionadas.length, importados };
   await db.campanaEnvio.update({ where: { id: campanaId }, data: { listaAceptadaPorArea, listaAceptadaPor: usuarioId, listaAceptadaAt: new Date() } });
   return { importados, listaAceptadaPorArea, conteos: resultado.conteos, rechazadas: resultado.rechazadas };
 }
