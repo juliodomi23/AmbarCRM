@@ -11,6 +11,8 @@ import { aplicarVariables } from "@/lib/plantillas";
 import { guardarMediaBase64 } from "@/lib/storage";
 import { enviarPushAOrg } from "@/lib/push";
 import { dispararEvento } from "@/lib/disparar-evento";
+import { moduloHabilitado } from "@/lib/modulos";
+import { esBajaCampana } from "@/lib/campanas-envio";
 
 const MINUTOS_MENSAJE_VIGENTE = 10;
 
@@ -134,6 +136,21 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
   // Contacto personal: guardamos el mensaje pero no procesamos nada más.
   if (esPersonal) {
     return { duplicado: false as const, mensajeId: mensaje.id, conversacionId: conversacion.id };
+  }
+
+  if (await moduloHabilitado("campanas_envio")) {
+    const ultimo = await db.campanaDestinatario.findFirst({
+      where: { contactoId: contacto.id, campana: { canalId: canal.id }, enviadoAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60_000) }, estado: { in: ["enviado", "entregado", "leido", "respondio"] } },
+      orderBy: { enviadoAt: "desc" }
+    });
+    if (ultimo) {
+      if (ultimo.estado !== "respondio") await db.campanaDestinatario.update({ where: { id: ultimo.id }, data: { estado: "respondio" } });
+      if (esBajaCampana(m.tipo, m.contenido)) {
+        await db.contacto.update({ where: { id: contacto.id }, data: { optOutDifusion: true } });
+        await db.mensaje.create({ data: { conversacionId: conversacion.id, canalId: canal.id, direccion: "saliente", tipo: "texto", contenido: "El contacto pidió no recibir más campañas de EXI.", interna: true, status: "enviado" } });
+        return { duplicado: false as const, mensajeId: mensaje.id, conversacionId: conversacion.id };
+      }
+    }
   }
 
   const contextoEvento = { conversacionId: String(conversacion.id), contactoNuevo: guardado.esNuevoContacto,

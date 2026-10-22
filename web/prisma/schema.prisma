@@ -464,6 +464,7 @@ model Contacto {
   cotizaciones       Cotizacion[]
 
   solicitudesResena SolicitudResena[]
+  campanasDestinatario CampanaDestinatario[]
   contratos Contrato[]
   @@unique([orgId, telefono])
   @@index([responsableId])
@@ -550,6 +551,7 @@ model CanalWhatsapp {
   conversaciones Conversacion[]
   bots           Bot[]
   grupos         Grupo[]
+  campanasEnvio  CampanaEnvio[]
 
   @@index([orgId])
   @@map("canales_whatsapp")
@@ -812,6 +814,7 @@ model Ajustes {
   marcaColorPrimario String?  @map("marca_color_primario")
   marcaColorAcento   String?  @map("marca_color_acento")
   marcaPreset        String?  @map("marca_preset")
+  tarifaMarketingUsd Decimal @default(0.04) @map("tarifa_marketing_usd") @db.Decimal(8, 4)
   updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@unique([orgId])
@@ -829,6 +832,66 @@ model ModuloOrg {
   @@unique([orgId, clave])
   @@index([orgId])
   @@map("modulos_org")
+}
+
+model CampanaEnvio {
+  id              BigInt   @id @default(autoincrement())
+  orgId           BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre          String
+  canalId         BigInt   @map("canal_id")
+  plantillaNombre String   @map("plantilla_nombre")
+  plantillaIdioma String   @map("plantilla_idioma")
+  mapeoVariables  Json     @default("[]") @map("mapeo_variables")
+  estado          String   @default("borrador")
+  motivoPausa     String?  @map("motivo_pausa")
+  fallosConsultaMeta Int   @default(0) @map("fallos_consulta_meta")
+  diasSemana      Int[]    @default([1, 2, 3, 4, 5]) @map("dias_semana")
+  horaInicio      String   @default("09:30") @map("hora_inicio")
+  horaFin         String   @default("17:30") @map("hora_fin")
+  zonaHoraria     String   @default("America/Mexico_City") @map("zona_horaria")
+  tandaTamano     Int      @default(5) @map("tanda_tamano")
+  pausaTandaMin   Int      @default(10) @map("pausa_tanda_min")
+  topeDiario      Int      @default(50) @map("tope_diario")
+  fechaInicio     DateTime @default(now()) @map("fecha_inicio") @db.Timestamptz(6)
+  ultimaTandaAt   DateTime? @map("ultima_tanda_at") @db.Timestamptz(6)
+  creadoPor       BigInt? @map("creado_por")
+  confirmoPermiso Boolean @default(false) @map("confirmo_permiso")
+  permisoAt       DateTime? @map("permiso_at") @db.Timestamptz(6)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  canal CanalWhatsapp @relation(fields: [canalId], references: [id], onDelete: Restrict)
+  destinatarios CampanaDestinatario[]
+
+  @@index([orgId, estado])
+  @@index([canalId, estado])
+  @@map("campanas_envio")
+}
+
+model CampanaDestinatario {
+  id BigInt @id @default(autoincrement())
+  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  campanaId BigInt @map("campana_id")
+  contactoId BigInt @map("contacto_id")
+  telefono String
+  variables Json @default("{}")
+  estado String @default("pendiente")
+  motivo String?
+  waMessageId String? @map("wa_message_id")
+  enviadoAt DateTime? @map("enviado_at") @db.Timestamptz(6)
+  errorCodigo Int? @map("error_codigo")
+  reintentos Int @default(0)
+  reintentarAt DateTime? @map("reintentar_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  campana CampanaEnvio @relation(fields: [campanaId], references: [id], onDelete: Cascade)
+  contacto Contacto @relation(fields: [contactoId], references: [id], onDelete: Restrict)
+
+  @@unique([campanaId, contactoId])
+  @@index([campanaId, estado])
+  @@index([waMessageId])
+  @@index([orgId, enviadoAt])
+  @@map("campanas_destinatarios")
 }
 
 model CampoPersonalizado {

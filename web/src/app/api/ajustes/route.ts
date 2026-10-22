@@ -30,6 +30,11 @@ export async function PATCH(req: NextRequest) {
   for (const k of bools) if (typeof body[k] === "boolean") data[k] = body[k];
   for (const k of strs) if (typeof body[k] === "string") data[k] = body[k];
   if (typeof body.autoResolverHoras === "number") data.autoResolverHoras = body.autoResolverHoras;
+  if (body.tarifaMarketingUsd !== undefined) {
+    if (typeof body.tarifaMarketingUsd !== "number" || !Number.isFinite(body.tarifaMarketingUsd) || body.tarifaMarketingUsd < 0 || body.tarifaMarketingUsd > 10)
+      return NextResponse.json({ error: "Tarifa de marketing inválida" }, { status: 400 });
+    data.tarifaMarketingUsd = body.tarifaMarketingUsd;
+  }
 
   await actualizarAjustes(data);
   return NextResponse.json({ ok: true });

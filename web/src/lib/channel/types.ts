@@ -67,6 +67,7 @@ export interface ActualizacionEstado {
   status: EstadoMensaje;
   /** Motivo legible cuando el status es "fallido". */
   error?: string;
+  errorCodigo?: number;
 }
 
 /** Resultado de un envío. */
@@ -74,6 +75,7 @@ export interface ResultadoEnvio {
   ok: boolean;
   waMessageId?: string;
   error?: string;
+  errorCodigo?: number;
 }
 
 export interface PlantillaOficial {

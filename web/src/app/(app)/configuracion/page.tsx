@@ -80,10 +80,12 @@ export default async function ConfiguracionPage() {
       metaRevision={(process.env.META_CANALES_REVISION_ORGS ?? "").split(",").map((id) => id.trim()).includes(String(session.user.orgId))}
       plantillas={serializar(plantillas)}
       ajustes={serializar(ajustes)}
+      esExi={String(session.user.orgId) === "12"}
       bots={serializar(bots)}
       orgs={orgs ? serializar(orgs) : null}
       modulosPorOrg={modulosPorOrg ? serializar(modulosPorOrg) : null}
       modulos={MODULOS.filter(m => moduloVisibleEnOrg(m, session.user.orgId))}
+      modulosClientes={esPlataforma ? [...MODULOS] : []}
     />
   );
 }

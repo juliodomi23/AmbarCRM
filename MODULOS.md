@@ -1,5 +1,23 @@
 # Módulos personalizables
 
+## Campañas de envío · EXI Chiapas
+
+`campanas_envio` está apagado por defecto y el catálogo lo restringe a la organización 12.
+La plataforma lo habilita para EXI desde **Configuración → Clientes Ámbar CRM → EXI Chiapas**. Una bandera creada en otra organización no permite acceder al módulo.
+El equipo de EXI crea campañas en `/campanas-envio`: importa CSV o XLSX, revisa
+la vista previa, usa una plantilla `APPROVED` y configura días, horario, tandas,
+pausas y tope diario. La tarifa estimada se cambia en **Configuración → Automatizaciones**.
+La importación no envía mensajes; el cron empieza después del lanzamiento con
+confirmación explícita del permiso de los contactos.
+
+Las tablas `campanas_envio` y `campanas_destinatarios` se crean en
+`web/prisma/sql/actualizaciones.sql` con `org_id`, valor por defecto de
+`app.current_org`, política RLS `org_isolation` e índices. El cron usa una
+transacción con bloqueo del canal y `FOR UPDATE SKIP LOCKED` para reservar la
+tanda y compartir el tope diario entre campañas del mismo canal.
+La [guía de operación](docs/CAMPANAS-ENVIO-EXI.md) describe el workflow de n8n,
+los estados, los límites y las pruebas.
+
 Un módulo se registra en `web/src/lib/modulos-catalogo.ts` con una clave estable, nombre,
 descripción, icono SVG y ruta. La plataforma lo activa por organización en
 Configuración → Clientes Ámbar CRM; cada organización solo configura sus

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { db, runWithOrg } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { MODULOS, moduloPorClave } from "@/lib/modulos";
+import { moduloVisibleEnOrg } from "@/lib/modulos-plataforma";
 import { getSesion } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -158,7 +159,7 @@ export default async function DetalleOrganizacionPage({
           )}
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Disponibles: {MODULOS.map((modulo) => modulo.nombre).join(", ")}.
+          Disponibles: {MODULOS.filter((modulo) => moduloVisibleEnOrg(modulo, organizacion.id)).map((modulo) => modulo.nombre).join(", ")}.
         </p>
       </section>
 

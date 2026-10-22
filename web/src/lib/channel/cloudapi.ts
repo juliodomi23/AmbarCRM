@@ -133,7 +133,7 @@ export function makeCloudApiProvider(config?: CloudConfig): ChannelProvider {
     if (!response.ok) {
       throw Object.assign(
         new Error(data?.error ? motivoDeErrorMeta(data.error) : `Meta HTTP ${response.status}`),
-        { status: response.status }
+        { status: response.status, errorCodigo: typeof data?.error?.code === "number" ? data.error.code : undefined }
       );
     }
     return data;
@@ -149,7 +149,7 @@ export function makeCloudApiProvider(config?: CloudConfig): ChannelProvider {
       });
       return { ok: true, waMessageId: data?.messages?.[0]?.id };
     } catch (error) {
-      return { ok: false, error: error instanceof Error ? error.message : "error de red" };
+      return { ok: false, error: error instanceof Error ? error.message : "error de red", errorCodigo: (error as { errorCodigo?: number })?.errorCodigo };
     }
   }
 
@@ -303,7 +303,7 @@ export function makeCloudApiProvider(config?: CloudConfig): ChannelProvider {
               output.push({
                 waMessageId: status.id,
                 status: normalized,
-                ...(normalized === "fallido" && status.errors?.[0] ? { error: motivoDeErrorMeta(status.errors[0]) } : {})
+                ...(normalized === "fallido" && status.errors?.[0] ? { error: motivoDeErrorMeta(status.errors[0]), errorCodigo: status.errors[0].code } : {})
               });
             }
           }
