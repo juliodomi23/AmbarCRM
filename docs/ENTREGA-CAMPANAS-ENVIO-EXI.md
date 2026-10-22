@@ -1,5 +1,11 @@
 # Entrega · Campañas de envío de EXI Chiapas
 
+## Revisión de lista y pantalla por pasos
+
+La copia `campanas-envio` avanzó hasta `683abf4` antes de este cambio. El archivo conserva sus números de fila originales: detecta encabezados en las primeras 15 filas con contenido o permite elegirlos, normaliza extensiones y números múltiples, agrupa áreas equivalentes y presenta original frente a `52…`. La selección por área comienza vacía; se puede excluir cada número. El servidor recalcula la lista y solo crea contactos y destinatarios tras aceptar, con conteo por área, usuario y fecha registrados en la campaña. La casilla original de permiso sigue siendo obligatoria para lanzar.
+
+La pantalla usa cinco pasos, superficies y colores del CRM, con tablas de scroll interno y vista móvil. Se mantuvieron el filtro de giro y etiqueta, el cron, el motor y el interruptor. La migración añade tres columnas idempotentes a `campanas_envio`.
+
 ## Interruptor general de envíos
 
 En la rama local `campanas-envio`, el CRM incorpora **Envíos: ACTIVOS / PAUSADOS** en `/campanas-envio`. Nace apagado por organización y solo un administrador del módulo puede cambiarlo; activar exige confirmación. La elección y el usuario y fecha del cambio viven en `ajustes`, con su RLS existente. Si el interruptor está apagado al iniciar el cron, omite la organización antes de recuperar reservas o consultar Graph. Si se apaga durante una tanda, el motor se detiene entre mensajes y libera las reservas pendientes. Las campañas mantienen su estado y, al encenderlo, continúan según su calendario, tanda y tope. Bajas y webhook siguen independientes. El workflow `AmbarCRM - Campañas de envío (EXI)` permanece activo; el control está en el CRM.

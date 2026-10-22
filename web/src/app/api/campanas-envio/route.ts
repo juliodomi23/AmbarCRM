@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export const GET = conModulo("campanas_envio", {}, async () => {
   const campanas = await db.campanaEnvio.findMany({ orderBy: { createdAt: "desc" }, include: { _count: { select: { destinatarios: true } } } });
-  return Response.json({ campanas: campanas.map((c) => ({ ...c, id: String(c.id), orgId: String(c.orgId), canalId: String(c.canalId), creadoPor: c.creadoPor?.toString() ?? null })) });
+  return Response.json({ campanas: campanas.map((c) => ({ ...c, id: String(c.id), orgId: String(c.orgId), canalId: String(c.canalId), creadoPor: c.creadoPor?.toString() ?? null, listaAceptadaPor: c.listaAceptadaPor?.toString() ?? null })) });
 });
 
 export const POST = conModulo("campanas_envio", { admin: true }, async (sesion, req: NextRequest) => {

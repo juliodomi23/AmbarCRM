@@ -1,4 +1,6 @@
-import { datosParaCompletarContacto, type FilaCampana } from "@/lib/campanas-envio";
+import { datosParaCompletarContacto, filtrarFilasCampana, seleccionarFilasCampana, validarFilasCampana, type FilaCampana } from "@/lib/campanas-envio";
+import { claveTexto, prepararArchivoCampana, type MapeoColumnas } from "@/lib/campanas-envio-archivo";
+import { db } from "@/lib/db";
 import { transaccionTenant } from "@/lib/retail-db";
 
 export async function guardarFilasCampana(orgId: bigint, campanaId: bigint, filas: FilaCampana[], filtroGiro: string, etiquetaId: bigint | null) {
@@ -8,7 +10,7 @@ export async function guardarFilasCampana(orgId: bigint, campanaId: bigint, fila
     await transaccionTenant(orgId, async (tx) => {
       const vigente = await tx.campanaEnvio.findFirst({ where: { id: campanaId, estado: "borrador" } });
       if (!vigente) throw new Error("La campaña ya no está en borrador");
-      let seleccionadas = lote.filter((fila) => !filtroGiro || fila.giro.toLocaleLowerCase("es-MX") === filtroGiro);
+      let seleccionadas = lote.filter((fila) => !filtroGiro || claveTexto(fila.giro) === claveTexto(filtroGiro));
       if (etiquetaId) {
         const conEtiqueta = await tx.contactoEtiqueta.findMany({ where: { etiquetaId, contactoId: { in: seleccionadas.flatMap((fila) => fila.contactoId ? [fila.contactoId] : []) } }, select: { contactoId: true } });
         const permitidos = new Set(conEtiqueta.map((c) => String(c.contactoId)));
@@ -47,4 +49,30 @@ export async function guardarFilasCampana(orgId: bigint, campanaId: bigint, fila
     });
   }
   return importados;
+}
+
+export async function aceptarListaCampana(orgId: bigint, campanaId: bigint, usuarioId: bigint, opciones: {
+  filas: string[][];
+  filaEncabezados?: number;
+  mapeo: MapeoColumnas;
+  mapeoVariables: string[];
+  areasSeleccionadas: unknown;
+  filasAceptadas: unknown;
+  filtroGiro: string;
+  etiquetaId: bigint | null;
+}) {
+  const archivo = prepararArchivoCampana(opciones.filas, opciones.filaEncabezados);
+  const resultado = await validarFilasCampana(opciones.filas, opciones.mapeo, opciones.mapeoVariables, archivo.filaEncabezados);
+  let seleccionadas = seleccionarFilasCampana(resultado.aceptadas, opciones.areasSeleccionadas, opciones.filasAceptadas);
+  seleccionadas = await filtrarFilasCampana(seleccionadas, opciones.filtroGiro, opciones.etiquetaId);
+  if (!seleccionadas.length) throw new Error("Los filtros dejaron la lista sin números");
+  const importados = await guardarFilasCampana(orgId, campanaId, seleccionadas, "", null);
+  if (!importados) throw new Error("Ningún número seleccionado pudo prepararse; revisa las bajas, campañas recientes y filtros");
+  const areas = resultado.resumenAreas.flatMap((area) => {
+    const total = seleccionadas.filter((fila) => fila.areaClave === area.clave).length;
+    return total ? [{ clave: area.clave, nombre: area.nombre, seleccionados: total }] : [];
+  });
+  const listaAceptadaPorArea = { areas, totalSeleccionados: seleccionadas.length, importados };
+  await db.campanaEnvio.update({ where: { id: campanaId }, data: { listaAceptadaPorArea, listaAceptadaPor: usuarioId, listaAceptadaAt: new Date() } });
+  return { importados, listaAceptadaPorArea, conteos: resultado.conteos, rechazadas: resultado.rechazadas };
 }

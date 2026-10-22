@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import pg from "pg";
 import ExcelJS from "exceljs";
 import { parseCSV } from "../src/lib/csv";
-import { datosParaCompletarContacto, esBajaCampana, horarioPermitido, reanudarCampana, validarCalendario, validarFilasCampana } from "../src/lib/campanas-envio";
+import { datosParaCompletarContacto, esBajaCampana, horarioPermitido, reanudarCampana, seleccionarFilasCampana, validarCalendario, validarFilasCampana } from "../src/lib/campanas-envio";
+import { detectarFilaEncabezados, mapearColumnas, normalizarTelefonoCampana, prepararArchivoCampana } from "../src/lib/campanas-envio-archivo";
 import { fechaEnZona } from "../src/lib/campanas-envio-fecha";
-import { guardarFilasCampana } from "../src/lib/campanas-envio-importar";
+import { aceptarListaCampana, guardarFilasCampana } from "../src/lib/campanas-envio-importar";
 import { comprobarPlantillaParaLanzar } from "../src/lib/campanas-envio-plantilla";
 import { clasificar, procesarCampana } from "../src/lib/campanas-envio-motor";
 import { getProvider } from "../src/lib/channel";
@@ -95,7 +96,56 @@ async function main() {
   await leido.xlsx.load(await libro.xlsx.writeBuffer());
   assert.equal(leido.worksheets[0].getRow(2).getCell(1).text, "9610000000");
   assert.equal(leido.worksheets.length, 2);
+  const archivoExi = new ExcelJS.Workbook();
+  archivoExi.addWorksheet("Prospectos").addRows([
+    ["Directorio de prueba"], ["Nota de origen"], ["Datos sintéticos"], ["Revisar teléfonos"],
+    ["Tel", "Contacto publicado", "Empresa", "Segmento", "Ciudad"],
+    ["961 614 1943 ext. 102", "  Ana   Torres  ", "  Colegio   Uno ", "Colegio privado", "Tuxtla"],
+    ["961 614 1944 / 961 614 1999", "Beto", "Colegio Dos", "colegio privado", "Comitán"],
+    ["9616141945", "Caro", "Taller Uno", "Artes gráficas", ""],
+    ["9616141946", "Dani", "Taller Dos", "artes graficas", ""],
+    ["", "Sin teléfono", "Colegio Tres", "Colegio privado", ""],
+    ["9616141947", "Eva", "Servicio", "Servicios", ""],
+  ]);
+  const workbookExi = new ExcelJS.Workbook();
+  await workbookExi.xlsx.load(await archivoExi.xlsx.writeBuffer());
+  const hojaExi = workbookExi.worksheets[0];
+  const filasExi = Array.from({ length: hojaExi.rowCount }, (_, i) => Array.from({ length: hojaExi.columnCount }, (_, j) => hojaExi.getRow(i + 1).getCell(j + 1).text));
+  assert.equal(detectarFilaEncabezados(filasExi), 5);
+  const encabezadosExi = prepararArchivoCampana(filasExi);
+  assert.equal(encabezadosExi.filaEncabezados, 5);
+  assert.deepEqual(mapearColumnas(encabezadosExi.headers), { telefono: 0, nombre: 1, empresa: 2, giro: 3 });
+  assert.equal(normalizarTelefonoCampana("961 614 1943 ext. 102"), "529616141943");
+  assert.equal(normalizarTelefonoCampana("961 614 1944 / 961 614 1999"), "529616141944");
+  assert.equal(detectarFilaEncabezados([["Una nota"], ["Sin teléfono"], ["Algo"]]), null);
+  assert.equal(prepararArchivoCampana([["Nota"], ["Celular", "Nombre", "Área"]], 2).filaEncabezados, 2);
   await runWithOrg(orgId, async () => {
+    const grafoAntesLista = consultasPlantillas, enviosAntesLista = llamadas.length;
+    const listaExi = await validarFilasCampana(filasExi, encabezadosExi.mapeo, [], 5);
+    assert.equal(listaExi.aceptadas.length, 5);
+    assert.equal(listaExi.rechazadas.length, 1);
+    assert.equal(listaExi.rechazadas[0].numeroFila, 10);
+    assert.match(listaExi.rechazadas[0].motivo, /Teléfono MX inválido/);
+    assert.equal(listaExi.aceptadas[0].telefono, "529616141943");
+    assert.equal(listaExi.aceptadas[0].nombre, "Ana Torres");
+    assert.equal(listaExi.aceptadas[0].empresa, "Colegio Uno");
+    assert.equal(listaExi.aceptadas[1].telefono, "529616141944");
+    assert.equal(listaExi.resumenAreas.length, 3);
+    assert.deepEqual(listaExi.resumenAreas.find((area) => area.clave === "colegio privado") && (({ total, validos, rechazados }) => ({ total, validos, rechazados }))(listaExi.resumenAreas.find((area) => area.clave === "colegio privado")!), { total: 3, validos: 2, rechazados: 1 });
+    assert.equal(listaExi.resumenAreas.find((area) => area.clave === "artes graficas")?.total, 2);
+    assert.throws(() => seleccionarFilasCampana(listaExi.aceptadas, [], []), /Selecciona al menos/);
+    const campanaLista = await db.campanaEnvio.create({ data: { nombre: "Lista aceptada de prueba", canalId: canal.id, plantillaNombre: plantilla.name, plantillaIdioma: plantilla.language, mapeoVariables: [] } });
+    const aceptacion = await aceptarListaCampana(orgId, campanaLista.id, 999n, { filas: filasExi, filaEncabezados: 5, mapeo: encabezadosExi.mapeo, mapeoVariables: [], areasSeleccionadas: ["colegio privado"], filasAceptadas: [6, 10], filtroGiro: "", etiquetaId: null });
+    assert.equal(aceptacion.importados, 1, "solo se importa la primera fila del área marcada");
+    assert.equal(aceptacion.listaAceptadaPorArea.areas[0].seleccionados, 1);
+    assert.equal(await db.campanaDestinatario.count({ where: { campanaId: campanaLista.id } }), 1);
+    assert.equal(await db.contacto.count({ where: { telefono: { in: ["529616141944", "529616141945", "529616141947"] } } }), 0, "la fila excluida, otras áreas y la rechazada no crean contactos");
+    const registrada = await db.campanaEnvio.findUniqueOrThrow({ where: { id: campanaLista.id } });
+    assert.equal(registrada.listaAceptadaPor, 999n);
+    assert.ok(registrada.listaAceptadaAt);
+    assert.equal(registrada.confirmoPermiso, false, "aceptar la lista no sustituye la casilla de permiso");
+    assert.equal(consultasPlantillas, grafoAntesLista);
+    assert.equal(llamadas.length, enviosAntesLista, "aceptar la lista no llama a Graph");
     await db.contacto.update({ where: { id: contactos[0].id }, data: { optOutDifusion: true } });
     const vista = await validarFilasCampana([["telefono", "nombre"], ["9611000000", "A"], ["9611000000", "B"], ["123", "C"], ["9611000001", "D"]], { telefono: 0, nombre: 1 });
     assert.equal(vista.conteos.optOut, 1); assert.equal(vista.conteos.duplicados, 1);

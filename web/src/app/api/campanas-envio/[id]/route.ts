@@ -27,7 +27,7 @@ export const GET = conModulo("campanas_envio", {}, async (sesion, req: NextReque
   const porDia = horasDeTanda(campana);
   const hoy = await transaccionTenant(sesion.orgId!, (tx) => tx.$queryRaw<{ total: bigint }[]>`SELECT count(*)::bigint AS total FROM campanas_destinatarios d JOIN campanas_envio c ON c.id = d.campana_id WHERE c.canal_id = ${campana.canalId} AND (d.enviado_at AT TIME ZONE ${campana.zonaHoraria})::date = (now() AT TIME ZONE ${campana.zonaHoraria})::date`);
   return Response.json({
-    campana: { ...campana, id: String(campana.id), orgId: String(campana.orgId), canalId: String(campana.canalId), creadoPor: campana.creadoPor?.toString() ?? null },
+    campana: { ...campana, id: String(campana.id), orgId: String(campana.orgId), canalId: String(campana.canalId), creadoPor: campana.creadoPor?.toString() ?? null, listaAceptadaPor: campana.listaAceptadaPor?.toString() ?? null },
     conteos: { ...conteos, bajas, total },
     hoy: Number(hoy[0]?.total ?? 0),
     porDia,
