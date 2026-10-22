@@ -1,14 +1,30 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { parseCSV, toCSV } from "@/lib/csv";
+import { detectarFilaEncabezados, mapearColumnas, normalizarTelefonoCampana, prepararArchivoCampana, type MapeoColumnas } from "@/lib/campanas-envio-archivo";
+import { parseCSV } from "@/lib/csv";
 import { fechaEnZona } from "@/lib/campanas-envio-fecha";
+import { RevisionListaCampana, type AreaResumenVista, type FilaAceptadaVista, type FilaRechazadaVista } from "./RevisionListaCampana";
 
-type Plantilla = { name: string; language: string; status: string; components?: Array<{ type?: string; text?: string }> };
+type Plantilla = { name: string; language: string; status: string };
 type Config = { canales: Array<{ id: string; nombre: string }>; plantillas: Plantilla[]; etiquetas: Array<{ id: string; nombre: string }>; tarifaMarketingUsd: number; campanasEnvioActivas: boolean };
-type Campana = { id: string; nombre: string; estado: string; motivoPausa: string | null; canalId: string; plantillaNombre: string; plantillaIdioma: string; diasSemana: number[]; horaInicio: string; horaFin: string; zonaHoraria: string; tandaTamano: number; pausaTandaMin: number; topeDiario: number; _count: { destinatarios: number } };
-type Preview = { headers: string[]; conteos: { validos: number; duplicados: number; invalidos: number; existentes: number; optOut: number; recientes: number }; muestra: Array<{ numeroFila: number; fila: string[]; motivo: string | null }>; rechazadas: Array<{ numeroFila: number; fila: string[]; motivo: string }> };
-type Reporte = { campana: Campana; conteos: Record<string, number>; hoy: number; diasEstimados: number; costoEstimadoUsd: number; destinatarios: Array<{ id: string; telefono: string; nombre: string; estado: string; motivo: string | null }> };
+type Campana = { id: string; nombre: string; estado: string; motivoPausa: string | null; _count: { destinatarios: number } };
+type Preview = {
+  filaEncabezados: number;
+  headers: string[];
+  conteos: { validos: number; duplicados: number; invalidos: number; existentes: number; optOut: number; recientes: number };
+  muestra: Array<{ numeroFila: number; fila: string[]; telefonoNormalizado: string | null; motivo: string | null }>;
+  rechazadas: FilaRechazadaVista[];
+  resumenAreas: AreaResumenVista[];
+  aceptadas: FilaAceptadaVista[];
+};
+type ListaAceptada = { areas: Array<{ clave: string; nombre: string; seleccionados: number }>; totalSeleccionados: number; importados: number };
+type Reporte = { campana: Campana & { topeDiario: number; listaAceptadaPorArea: ListaAceptada | null; listaAceptadaPor: string | null; listaAceptadaAt: string | null }; conteos: Record<string, number>; hoy: number; diasEstimados: number; costoEstimadoUsd: number; destinatarios: Array<{ id: string; telefono: string; nombre: string; estado: string; motivo: string | null }> };
+
+const pasos = ["Subir archivo", "Revisar columnas", "Revisar y aceptar", "Programar", "Reporte"];
+const inputClass = "mt-1 block min-h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-foreground";
+const primaryClass = "rounded-lg bg-primary px-4 py-2.5 font-semibold text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50";
+const secondaryClass = "rounded-lg border border-border bg-card px-4 py-2.5 font-medium text-foreground hover:bg-muted disabled:opacity-50";
 
 async function json(url: string, options?: RequestInit) {
   const respuesta = await fetch(url, options);
@@ -17,29 +33,28 @@ async function json(url: string, options?: RequestInit) {
   return cuerpo;
 }
 
-function descargar(csv: string, nombre: string) {
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-  const enlace = document.createElement("a");
-  enlace.href = url; enlace.download = nombre; enlace.click();
-  URL.revokeObjectURL(url);
-}
-
 export function CampanasEnvioPanel({ esAdmin }: { esAdmin: boolean }) {
   const [config, setConfig] = useState<Config>({ canales: [], plantillas: [], etiquetas: [], tarifaMarketingUsd: 0.04, campanasEnvioActivas: false });
   const [configCargada, setConfigCargada] = useState(false);
   const [campanas, setCampanas] = useState<Campana[]>([]);
-  const [canalId, setCanalId] = useState("");
-  const [plantilla, setPlantilla] = useState("");
-  const [nombre, setNombre] = useState("");
+  const [paso, setPaso] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [archivoNombre, setArchivoNombre] = useState("");
   const [filas, setFilas] = useState<string[][]>([]);
-  const [mapeo, setMapeo] = useState<{ telefono: number; nombre?: number; empresa?: number; giro?: number }>({ telefono: -1 });
+  const [filaEncabezados, setFilaEncabezados] = useState(0);
+  const [filaDetectada, setFilaDetectada] = useState<number | null>(null);
+  const [mapeo, setMapeo] = useState<MapeoColumnas>({ telefono: -1 });
   const [variablesTexto, setVariablesTexto] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
+  const [areasSeleccionadas, setAreasSeleccionadas] = useState<string[]>([]);
+  const [filasExcluidas, setFilasExcluidas] = useState<number[]>([]);
+  const [filtroGiro, setFiltroGiro] = useState("");
+  const [etiquetaId, setEtiquetaId] = useState("");
+  const [nombre, setNombre] = useState("");
+  const [canalId, setCanalId] = useState("");
+  const [plantilla, setPlantilla] = useState("");
   const [campanaId, setCampanaId] = useState("");
   const [reporte, setReporte] = useState<Reporte | null>(null);
   const [filtroEstado, setFiltroEstado] = useState("");
-  const [filtroGiro, setFiltroGiro] = useState("");
-  const [etiquetaId, setEtiquetaId] = useState("");
   const [permiso, setPermiso] = useState(false);
   const [dias, setDias] = useState([1, 2, 3, 4, 5]);
   const [horaInicio, setHoraInicio] = useState("09:30");
@@ -54,13 +69,32 @@ export function CampanasEnvioPanel({ esAdmin }: { esAdmin: boolean }) {
   const [ocupado, setOcupado] = useState(false);
 
   const cargarLista = useCallback(async () => { setCampanas((await json("/api/campanas-envio")).campanas); }, []);
-  const cargarConfig = useCallback(async (id?: string) => { const datos = await json(`/api/campanas-envio/config${id ? `?canalId=${id}` : ""}`); setConfig(datos); setConfigCargada(true); if (!id && datos.canales[0]) setCanalId(datos.canales[0].id); }, []);
+  const cargarConfig = useCallback(async (id?: string) => {
+    const datos = await json(`/api/campanas-envio/config${id ? `?canalId=${id}` : ""}`);
+    setConfig(datos);
+    setConfigCargada(true);
+    if (!id && datos.canales[0]) setCanalId(datos.canales[0].id);
+  }, []);
   const cargarReporte = useCallback(async (id: string, estado = "") => { setReporte(await json(`/api/campanas-envio/${id}${estado ? `?estado=${estado}` : ""}`)); }, []);
   useEffect(() => { void Promise.all([cargarConfig(), cargarLista()]).catch((e) => setError(e.message)); }, [cargarConfig, cargarLista]);
 
+  async function ejecutar(fn: () => Promise<void>) {
+    setOcupado(true); setError(""); setMensaje("");
+    try { await fn(); } catch (e) { setError(e instanceof Error ? e.message : "Error inesperado"); }
+    finally { setOcupado(false); }
+  }
+
+  function cuerpo(extra: Record<string, unknown>): RequestInit {
+    return { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(extra) };
+  }
+
+  function calendario() {
+    return { diasSemana: dias, horaInicio, horaFin, zonaHoraria, tandaTamano, pausaTandaMin, topeDiario, ...(fechaInicio ? { fechaInicio: fechaEnZona(fechaInicio, zonaHoraria) } : {}) };
+  }
+
   async function archivoSeleccionado(file?: File) {
-    setError(""); setPreview(null); setFilas([]);
-    if (!file) return;
+    setError(""); setMensaje(""); setPreview(null); setCampanaId(""); setReporte(null); setFilas([]);
+    if (!file) { setArchivoNombre(""); setPaso(1); return; }
     if (file.size > 5 * 1024 * 1024) { setError("El archivo supera 5 MB"); return; }
     const extension = file.name.toLowerCase().split(".").pop();
     if (extension !== "csv" && extension !== "xlsx") { setError("Sube un CSV o XLSX"); return; }
@@ -73,32 +107,61 @@ export function CampanasEnvioPanel({ esAdmin }: { esAdmin: boolean }) {
         await libro.xlsx.load(await file.arrayBuffer());
         const hoja = libro.worksheets[0];
         if (!hoja) throw new Error("El Excel no tiene hojas");
-        contenido = [];
-        hoja.eachRow({ includeEmpty: false }, (fila) => {
-          contenido.push(Array.from({ length: hoja.columnCount }, (_, i) => String(fila.getCell(i + 1).text ?? "")));
-        });
+        contenido = Array.from({ length: hoja.rowCount }, (_, i) => Array.from({ length: hoja.columnCount }, (_, j) => String(hoja.getRow(i + 1).getCell(j + 1).text ?? "")));
       }
-      contenido = contenido.filter((fila) => fila.some((valor) => valor.trim()));
-      if (contenido.length < 2 || contenido.length > 10_001) throw new Error("El archivo debe tener de 1 a 10,000 filas de datos");
+      if (contenido.filter((fila) => fila.some((celda) => celda.trim())).length > 10_016) throw new Error("El archivo supera 10,000 filas de datos");
+      const detectada = detectarFilaEncabezados(contenido);
       setFilas(contenido);
-      const headers = contenido[0].map((h) => h.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
-      const buscar = (opciones: string[]) => headers.findIndex((h) => opciones.includes(h));
-      const telefono = buscar(["telefono", "celular", "whatsapp", "phone"]);
-      const nombreCol = buscar(["nombre", "name"]), empresaCol = buscar(["empresa", "company", "negocio"]), giroCol = buscar(["giro", "sector"]);
-      setMapeo({ telefono, ...(nombreCol >= 0 ? { nombre: nombreCol } : {}), ...(empresaCol >= 0 ? { empresa: empresaCol } : {}), ...(giroCol >= 0 ? { giro: giroCol } : {}) });
+      setArchivoNombre(file.name);
+      setFilaDetectada(detectada);
+      setFilaEncabezados(detectada ?? 0);
+      setMapeo(detectada ? mapearColumnas(contenido[detectada - 1]) : { telefono: -1 });
+      setPaso(2);
     } catch (e) { setError(e instanceof Error ? e.message : "No se pudo leer el archivo"); }
   }
 
-  async function ejecutar(fn: () => Promise<void>) {
-    setOcupado(true); setError(""); setMensaje("");
-    try { await fn(); } catch (e) { setError(e instanceof Error ? e.message : "Error inesperado"); }
-    finally { setOcupado(false); }
+  function elegirEncabezados(numero: number) {
+    setFilaEncabezados(numero);
+    setMapeo(numero >= 1 && numero <= filas.length ? mapearColumnas(filas[numero - 1]) : { telefono: -1 });
+    setPreview(null);
   }
 
-  const cuerpo = (extra: Record<string, unknown>) => ({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(extra) });
-  const calendario = () => ({ diasSemana: dias, horaInicio, horaFin, zonaHoraria, tandaTamano, pausaTandaMin, topeDiario, ...(fechaInicio ? { fechaInicio: fechaEnZona(fechaInicio, zonaHoraria) } : {}) });
-  const plantillaElegida = config.plantillas.find((p) => `${p.name}|${p.language}` === plantilla);
-  const hayCampanasEnMarcha = campanas.some((c) => c.estado === "programada" || c.estado === "en_curso");
+  function invalidarPreview() { setPreview(null); setAreasSeleccionadas([]); setFilasExcluidas([]); }
+
+  function revisarColumnas() {
+    void ejecutar(async () => {
+      const archivo = prepararArchivoCampana(filas, filaEncabezados);
+      const datos = await json("/api/campanas-envio/preview", cuerpo({ filas, filaEncabezados: archivo.filaEncabezados, mapeo, mapeoVariables: variablesTexto.split(",").map((v) => v.trim()).filter(Boolean), filtroGiro, etiquetaId }));
+      setPreview(datos);
+      setAreasSeleccionadas([]);
+      setFilasExcluidas([]);
+      setPaso(3);
+      setMensaje("Revisa las áreas y cada número antes de aceptar. Aún no se guardó ningún contacto.");
+    });
+  }
+
+  const plantillaElegida = config.plantillas.find((item) => `${item.name}|${item.language}` === plantilla);
+  const areasActivas = new Set(areasSeleccionadas);
+  const excluidas = new Set(filasExcluidas);
+  const seleccionadas = preview?.aceptadas.filter((fila) => areasActivas.has(fila.areaClave) && !excluidas.has(fila.numeroFila)) ?? [];
+  const hayCampanasEnMarcha = campanas.some((campana) => ["programada", "en_curso"].includes(campana.estado));
+
+  function aceptarLista() {
+    void ejecutar(async () => {
+      if (!preview || !plantillaElegida || !seleccionadas.length) throw new Error("Completa la campaña y selecciona al menos un número");
+      let id = campanaId;
+      if (!id) {
+        const creada = await json("/api/campanas-envio", cuerpo({ nombre, canalId, plantillaNombre: plantillaElegida.name, plantillaIdioma: plantillaElegida.language, mapeoVariables: variablesTexto.split(",").map((v) => v.trim()).filter(Boolean), ...calendario() }));
+        id = creada.id;
+        setCampanaId(id);
+      }
+      const resultado = await json(`/api/campanas-envio/${id}/importar`, cuerpo({ filas, filaEncabezados, mapeo, areasSeleccionadas, filasAceptadas: seleccionadas.map((fila) => fila.numeroFila), filtroGiro, etiquetaId }));
+      await Promise.all([cargarLista(), cargarReporte(id)]);
+      setPaso(4);
+      setPermiso(false);
+      setMensaje(`${resultado.importados} destinatarios preparados. No se envió ningún mensaje.`);
+    });
+  }
 
   function cambiarEnvios() {
     const activar = !config.campanasEnvioActivas;
@@ -110,47 +173,108 @@ export function CampanasEnvioPanel({ esAdmin }: { esAdmin: boolean }) {
     });
   }
 
-  return <main className="mx-auto max-w-6xl space-y-7 p-6">
-    <header><h1 className="text-2xl font-semibold">Campañas de envío</h1><p className="text-sm text-slate-600">EXI Chiapas · Plantillas aprobadas de Meta · Responde BAJA para no recibir más mensajes.</p></header>
-    <section className="rounded border p-5 space-y-3" aria-label="Control de envíos">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h2 className="text-lg font-medium">Envíos: {config.campanasEnvioActivas ? "ACTIVOS" : "PAUSADOS"}</h2><p className="text-sm text-slate-600">Control general de esta organización. Las campañas conservan su estado y calendario.</p></div>
-        {esAdmin && <button type="button" role="switch" aria-checked={config.campanasEnvioActivas} aria-label="Envíos de campañas" disabled={ocupado || !configCargada} onClick={cambiarEnvios} className={`rounded px-4 py-2 text-white disabled:opacity-50 ${config.campanasEnvioActivas ? "bg-slate-700" : "bg-green-700"}`}>{config.campanasEnvioActivas ? "Pausar envíos" : "Activar envíos"}</button>}
-      </div>
-      {!config.campanasEnvioActivas && hayCampanasEnMarcha && <p role="status" className="rounded bg-amber-50 p-3 text-amber-900">Los envíos están pausados; ninguna campaña enviará hasta que lo actives</p>}
-    </section>
-    {error && <p role="alert" className="rounded bg-red-50 p-3 text-red-700">{error}</p>}
-    {mensaje && <p role="status" className="rounded bg-green-50 p-3 text-green-700">{mensaje}</p>}
-    <section className="rounded border p-5 space-y-4">
-      <h2 className="text-lg font-medium">Nueva campaña</h2>
-      <div className="grid gap-3 md:grid-cols-2">
-        <label>Nombre<input className="block w-full rounded border p-2" value={nombre} onChange={(e) => setNombre(e.target.value)} maxLength={120} /></label>
-        <label>Canal conectado<select className="block w-full rounded border p-2" value={canalId} onChange={(e) => { setCanalId(e.target.value); setPlantilla(""); void cargarConfig(e.target.value).catch((error) => setError(error.message)); }}>{config.canales.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select></label>
-        <label>Plantilla APPROVED<select className="block w-full rounded border p-2" value={plantilla} onChange={(e) => setPlantilla(e.target.value)}><option value="">Seleccionar</option>{config.plantillas.map((p) => <option key={`${p.name}|${p.language}`} value={`${p.name}|${p.language}`}>{p.name} · {p.language}</option>)}</select></label>
-        <label>Archivo CSV o XLSX<input className="block w-full rounded border p-2" type="file" accept=".csv,.xlsx" onChange={(e) => void archivoSeleccionado(e.target.files?.[0])} /></label>
-      </div>
-      {filas.length > 0 && <div className="space-y-3"><h3 className="font-medium">Mapeo de columnas</h3><div className="grid gap-3 md:grid-cols-4">{(["telefono", "nombre", "empresa", "giro"] as const).map((campo) => <label key={campo}>{campo}<select className="block w-full rounded border p-2" value={mapeo[campo] ?? -1} onChange={(e) => { const valor = Number(e.target.value); setMapeo({ ...mapeo, [campo]: valor < 0 && campo !== "telefono" ? undefined : valor }); setPreview(null); }}><option value={-1}>Sin mapear</option>{filas[0].map((h, i) => <option key={i} value={i}>{h}</option>)}</select></label>)}</div>
-          <label>Variables de la plantilla (en orden, separadas por coma; usa nombres de columna)<input className="block w-full rounded border p-2" value={variablesTexto} onChange={(e) => { setVariablesTexto(e.target.value); setPreview(null); }} placeholder="nombre, empresa" /></label>
-          <button className="rounded bg-slate-800 px-4 py-2 text-white disabled:opacity-50" disabled={ocupado || mapeo.telefono < 0} onClick={() => void ejecutar(async () => { setPreview(await json("/api/campanas-envio/preview", cuerpo({ filas, mapeo, mapeoVariables: variablesTexto.split(",").map((v) => v.trim()).filter(Boolean) }))); })}>Ver vista previa</button>
-      </div>}
-      {preview && <div className="space-y-3"><p>Válidos: {preview.conteos.validos} · Duplicados: {preview.conteos.duplicados} · Teléfono inválido: {preview.conteos.invalidos} · Ya existentes: {preview.conteos.existentes} · Bajas: {preview.conteos.optOut} · Contactados en 30 días: {preview.conteos.recientes}</p>
-        <button className="underline disabled:opacity-50" disabled={!preview.rechazadas.length} onClick={() => descargar(toCSV([...preview.headers, "motivo"], preview.rechazadas.map((r) => [...r.fila, r.motivo])), "filas-rechazadas.csv")}>Descargar rechazados</button>
-        <div className="max-h-64 overflow-auto rounded border"><table className="w-full text-sm"><thead><tr><th>Fila</th>{preview.headers.map((h, i) => <th key={i}>{h}</th>)}<th>Resultado</th></tr></thead><tbody>{preview.muestra.map((r) => <tr key={r.numeroFila} className="border-t"><td>{r.numeroFila}</td>{r.fila.map((v, i) => <td key={i} className="px-2">{v}</td>)}<td>{r.motivo ?? "Válida"}</td></tr>)}</tbody></table></div>
-      </div>}
-      <div className="space-y-3"><h3 className="font-medium">Calendario</h3><div className="flex flex-wrap gap-3">{["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map((d, i) => <label key={d} className="flex gap-1"><input type="checkbox" checked={dias.includes(i)} onChange={(e) => setDias(e.target.checked ? [...dias, i].sort() : dias.filter((x) => x !== i))} />{d}</label>)}</div>
-        <div className="grid gap-3 md:grid-cols-3"><label>Desde<input className="block w-full rounded border p-2" type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} /></label><label>Hasta<input className="block w-full rounded border p-2" type="time" value={horaFin} onChange={(e) => setHoraFin(e.target.value)} /></label><label>Zona horaria<input className="block w-full rounded border p-2" value={zonaHoraria} onChange={(e) => setZonaHoraria(e.target.value)} /></label><label>Tamaño de tanda (1–20)<input className="block w-full rounded border p-2" type="number" min={1} max={20} value={tandaTamano} onChange={(e) => setTandaTamano(Number(e.target.value))} /></label><label>Pausa entre tandas (min, ≥5)<input className="block w-full rounded border p-2" type="number" min={5} value={pausaTandaMin} onChange={(e) => setPausaTandaMin(Number(e.target.value))} /></label><label>Tope diario (máx. 150)<input className="block w-full rounded border p-2" type="number" min={1} max={150} value={topeDiario} onChange={(e) => setTopeDiario(Number(e.target.value))} /></label><label>Fecha de inicio<input className="block w-full rounded border p-2" type="datetime-local" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} /></label></div>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2"><label>Solo giro (opcional)<input className="block w-full rounded border p-2" value={filtroGiro} onChange={(e) => setFiltroGiro(e.target.value)} /></label><label>Solo contactos con etiqueta existente (opcional)<select className="block w-full rounded border p-2" value={etiquetaId} onChange={(e) => setEtiquetaId(e.target.value)}><option value="">Todos</option>{config.etiquetas.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}</select></label></div>
-      {preview && <p>Estimación previa: hasta {preview.conteos.validos} destinatarios · US${(preview.conteos.validos * config.tarifaMarketingUsd).toFixed(2)} si todos se entregan. Meta cobra directamente a EXI.</p>}
-      {esAdmin && <button disabled={ocupado || !preview || !nombre || !plantillaElegida} className="rounded bg-blue-700 px-4 py-2 text-white disabled:opacity-50" onClick={() => void ejecutar(async () => { const creada = await json("/api/campanas-envio", cuerpo({ nombre, canalId, plantillaNombre: plantillaElegida!.name, plantillaIdioma: plantillaElegida!.language, mapeoVariables: variablesTexto.split(",").map((v) => v.trim()).filter(Boolean), ...calendario() })); setCampanaId(creada.id); await cargarLista(); setMensaje("Borrador creado. Confirma la importación para agregar destinatarios."); })}>Crear borrador</button>}
-      {esAdmin && campanaId && preview && <button disabled={ocupado} className="ml-2 rounded bg-blue-700 px-4 py-2 text-white disabled:opacity-50" onClick={() => void ejecutar(async () => { const r = await json(`/api/campanas-envio/${campanaId}/importar`, cuerpo({ filas, mapeo, filtroGiro, etiquetaId })); await cargarReporte(campanaId); await cargarLista(); setMensaje(`${r.importados} destinatarios preparados. No se envió ningún mensaje.`); })}>Confirmar importación</button>}
-      {reporte?.campana.id === campanaId && reporte.campana.estado === "borrador" && <div className="rounded bg-amber-50 p-4 space-y-2"><p>Resumen antes de lanzar: {reporte.conteos.total} destinatarios · aproximadamente {reporte.diasEstimados} días de envío · US${reporte.costoEstimadoUsd.toFixed(2)} estimados si se entregan todos.</p><label className="flex gap-2"><input type="checkbox" checked={permiso} onChange={(e) => setPermiso(e.target.checked)} />Confirmo que estos contactos conocen a EXI y aceptaron recibir mensajes</label><p className="text-sm">La plantilla debe incluir “Responde BAJA para no recibir más mensajes”.</p>{esAdmin && <button disabled={!permiso || ocupado || !reporte.conteos.total} className="rounded bg-green-700 px-4 py-2 text-white disabled:opacity-50" onClick={() => void accion("lanzar", true)}>Lanzar campaña</button>}</div>}
-    </section>
-    <section className="rounded border p-5 space-y-3"><h2 className="text-lg font-medium">Campañas</h2><div className="space-y-2">{campanas.map((c) => <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 border-b pb-2"><div><strong>{c.nombre}</strong> <span className="text-sm">{c.estado} · {c._count.destinatarios} destinatarios</span>{c.motivoPausa && <p className="text-sm text-red-700">{c.motivoPausa}</p>}</div><div className="flex gap-2"><button className="underline" onClick={() => { setCampanaId(c.id); void cargarReporte(c.id).catch((e) => setError(e.message)); }}>Ver reporte</button>{esAdmin && ["programada", "en_curso"].includes(c.estado) && <button className="underline" onClick={() => void accion("pausar", false, c.id)}>Pausar</button>}{esAdmin && c.estado === "pausada" && <button className="underline" onClick={() => void accion("reanudar", false, c.id)}>Reanudar</button>}{esAdmin && !["completada", "cancelada"].includes(c.estado) && <button className="text-red-700 underline" onClick={() => void accion("cancelar", false, c.id)}>Cancelar</button>}</div></div>)}</div></section>
-    {reporte && <section className="rounded border p-5 space-y-3"><h2 className="text-lg font-medium">Reporte · {reporte.campana.nombre}</h2><p>{Object.entries(reporte.conteos).map(([k, v]) => `${k}: ${v}`).join(" · ")}</p><p>Hoy: {reporte.hoy} / {reporte.campana.topeDiario} · Costo estimado: US${reporte.costoEstimadoUsd.toFixed(2)}</p><div className="flex gap-3"><select className="rounded border p-2" value={filtroEstado} onChange={(e) => { setFiltroEstado(e.target.value); void cargarReporte(reporte.campana.id, e.target.value).catch((error) => setError(error.message)); }}><option value="">Todos los estados</option>{["pendiente", "enviando", "enviado", "entregado", "leido", "respondio", "fallido", "omitido"].map((e) => <option key={e} value={e}>{e}</option>)}</select><a className="underline" href={`/api/campanas-envio/${reporte.campana.id}/exportar`}>Exportar CSV</a></div><p className="text-xs">Se muestran los primeros 200 destinatarios. El CSV incluye todos.</p><div className="max-h-80 overflow-auto"><table className="w-full text-sm"><thead><tr><th>Nombre</th><th>Teléfono</th><th>Estado</th><th>Motivo</th></tr></thead><tbody>{reporte.destinatarios.map((d) => <tr key={d.id} className="border-t"><td>{d.nombre}</td><td>{d.telefono}</td><td>{d.estado}</td><td>{d.motivo ?? ""}</td></tr>)}</tbody></table></div></section>}
-  </main>;
-
-  function accion(tipo: string, confirmoPermiso: boolean, id = campanaId) {
-    void ejecutar(async () => { await json(`/api/campanas-envio/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: tipo, confirmoPermiso }) }); await Promise.all([cargarLista(), cargarReporte(id)]); setMensaje(`Campaña ${tipo === "lanzar" ? "programada" : tipo === "pausar" ? "pausada" : tipo === "reanudar" ? "reanudada" : "cancelada"}.`); });
+  function guardarCalendario() {
+    void ejecutar(async () => {
+      if (!campanaId) throw new Error("Primero acepta una lista");
+      await json(`/api/campanas-envio/${campanaId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "configurar", ...calendario() }) });
+      await cargarReporte(campanaId);
+      setMensaje("Calendario guardado. Revisa el resumen y confirma el permiso antes de lanzar.");
+    });
   }
+
+  function lanzar() {
+    void ejecutar(async () => {
+      if (!campanaId || !permiso) throw new Error("Confirma el permiso de los contactos antes de lanzar");
+      await json(`/api/campanas-envio/${campanaId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "configurar", ...calendario() }) });
+      await json(`/api/campanas-envio/${campanaId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "lanzar", confirmoPermiso: true }) });
+      await Promise.all([cargarLista(), cargarReporte(campanaId)]);
+      setPaso(5);
+      setMensaje("Campaña programada. Los envíos seguirán el calendario si el interruptor general está activo.");
+    });
+  }
+
+  function mostrarReporte(id: string) {
+    void ejecutar(async () => { setCampanaId(id); await cargarReporte(id); setPaso(5); });
+  }
+
+  function accion(tipo: "pausar" | "reanudar" | "cancelar", id: string) {
+    void ejecutar(async () => {
+      await json(`/api/campanas-envio/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: tipo }) });
+      await cargarLista();
+      if (reporte?.campana.id === id) await cargarReporte(id);
+      setMensaje(`Campaña ${tipo === "pausar" ? "pausada" : tipo === "reanudar" ? "reanudada" : "cancelada"}.`);
+    });
+  }
+
+  return <main className="mx-auto max-w-7xl min-w-0 space-y-6 p-4 pb-12 sm:p-6">
+    <header><p className="text-sm font-semibold text-primary">EXI Chiapas</p><h1 className="mt-1 text-2xl font-bold sm:text-3xl">Campañas de envío</h1><p className="mt-1 text-sm text-muted-foreground">Prepara una lista revisada antes de programar mensajes con una plantilla de Meta.</p></header>
+
+    <section className={`surface border-l-4 p-4 sm:p-5 ${config.campanasEnvioActivas ? "border-l-success" : "border-l-warning"}`} aria-label="Control general de envíos">
+      <div className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Control de esta organización</p><h2 className={`mt-1 text-xl font-bold ${config.campanasEnvioActivas ? "text-success" : "text-warning"}`}>Envíos: {config.campanasEnvioActivas ? "ACTIVOS" : "PAUSADOS"}</h2><p className="mt-1 text-sm text-muted-foreground">Las campañas conservan su estado y calendario al pausar.</p></div>
+        {esAdmin && <button type="button" role="switch" aria-label="Envíos de campañas" aria-checked={config.campanasEnvioActivas} disabled={ocupado || !configCargada} onClick={cambiarEnvios} className={primaryClass}>{config.campanasEnvioActivas ? "Pausar envíos" : "Activar envíos"}</button>}
+      </div>
+      {!config.campanasEnvioActivas && hayCampanasEnMarcha && <p role="status" className="mt-4 rounded-lg bg-warning/10 p-3 text-sm font-medium text-foreground">Los envíos están pausados; ninguna campaña enviará hasta que lo actives</p>}
+    </section>
+
+    <section className="surface min-w-0 p-4 sm:p-6" aria-label="Preparar campaña">
+      <div className="max-w-full overflow-x-auto pb-2"><ol className="flex min-w-[620px] items-center gap-2" aria-label="Pasos de la campaña">{pasos.map((etiqueta, i) => <li key={etiqueta} className={`flex flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm ${paso === i + 1 ? "bg-primary text-primary-foreground" : paso > i + 1 ? "bg-success/10 text-foreground" : "bg-muted text-muted-foreground"}`} aria-current={paso === i + 1 ? "step" : undefined}><span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-current text-xs font-bold">{i + 1}</span><span className="font-medium">{etiqueta}</span></li>)}</ol></div>
+      {error && <p role="alert" className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-foreground">{error}</p>}
+      {mensaje && <p role="status" className="mt-4 rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-foreground">{mensaje}</p>}
+
+      {paso === 1 && <div className="mt-6 space-y-4"><div><h2 className="text-xl font-semibold">1. Subir archivo</h2><p className="text-sm text-muted-foreground">CSV o XLSX, primera hoja, máximo 5 MB y 10,000 filas de datos.</p></div><label className="block max-w-xl rounded-xl border border-dashed border-input bg-muted/40 p-6 text-sm font-medium">Selecciona un archivo
+        <input type="file" accept=".csv,.xlsx" className="mt-3 block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-primary-foreground" onChange={(e) => void archivoSeleccionado(e.target.files?.[0])} />
+      </label></div>}
+
+      {paso === 2 && <div className="mt-6 space-y-5"><div><h2 className="text-xl font-semibold">2. Revisar columnas</h2><p className="text-sm text-muted-foreground">{archivoNombre}. {filaDetectada ? `Encabezados detectados en la fila ${filaDetectada}.` : "No encontramos encabezados automáticamente; selecciona su fila."} Las filas anteriores se omitirán.</p></div>
+        <div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-medium">Los encabezados están en la fila N
+          <select value={filaEncabezados || ""} onChange={(e) => elegirEncabezados(Number(e.target.value))} className={inputClass}>
+            <option value="">Selecciona la fila de encabezados</option>
+            {filas.map((fila, indice) => ({ fila, numero: indice + 1 })).filter(({ fila }) => fila.some((celda) => celda.trim())).slice(0, 30).map(({ fila, numero }) => <option key={numero} value={numero}>Fila {numero}: {fila.filter(Boolean).slice(0, 3).join(" · ")}</option>)}
+          </select>
+          <span className="mt-2 block text-xs text-muted-foreground">Si no aparece, indica su número:</span>
+          <input type="number" min={1} max={filas.length} value={filaEncabezados || ""} onChange={(e) => elegirEncabezados(Number(e.target.value))} className={inputClass} />
+        </label><p className="self-end rounded-lg bg-muted p-3 text-sm text-muted-foreground">{filaEncabezados > 0 && filas[filaEncabezados - 1] ? filas[filaEncabezados - 1].filter(Boolean).slice(0, 7).join(" · ") : "Selecciona la fila que contiene teléfono, nombre y las demás columnas."}</p></div>
+        {filaEncabezados > 0 && filas[filaEncabezados - 1] && <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{(["telefono", "nombre", "empresa", "giro"] as const).map((campo) => <label key={campo} className="text-sm font-medium">{campo === "giro" ? "Área / giro" : campo === "telefono" ? "Teléfono" : campo[0].toUpperCase() + campo.slice(1)}
+          <select className={inputClass} value={mapeo[campo] ?? -1} onChange={(e) => { const numero = Number(e.target.value); setMapeo((anterior) => ({ ...anterior, [campo]: numero < 0 && campo !== "telefono" ? undefined : numero })); invalidarPreview(); }}><option value={-1}>Sin mapear</option>{filas[filaEncabezados - 1].map((header, indice) => <option key={indice} value={indice}>{header || `Columna ${indice + 1}`}</option>)}</select>
+        </label>)}</div>}
+        {filaEncabezados > 0 && mapeo.telefono >= 0 && <div className="rounded-xl bg-muted/50 p-4 text-sm"><p className="font-medium">Muestra de teléfonos</p>{filas.slice(filaEncabezados).filter((fila) => fila.some(Boolean)).slice(0, 3).map((fila, indice) => <p key={indice} className="mt-1 break-all font-mono text-muted-foreground">{fila[mapeo.telefono] || "Sin teléfono"} → {normalizarTelefonoCampana(fila[mapeo.telefono]) ?? "Inválido"}</p>)}</div>}
+        <label className="block text-sm font-medium">Variables de la plantilla, en orden, separadas por coma
+          <input className={inputClass} value={variablesTexto} onChange={(e) => { setVariablesTexto(e.target.value); invalidarPreview(); }} placeholder="nombre, ciudad" /><span className="mt-1 block text-xs text-muted-foreground">Cualquier columna del archivo puede usarse como variable, por ejemplo ciudad.</span>
+        </label>
+        <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-medium">Solo área / giro (opcional)<input className={inputClass} value={filtroGiro} onChange={(e) => { setFiltroGiro(e.target.value); invalidarPreview(); }} placeholder="Colegio privado" /></label><label className="text-sm font-medium">Solo contactos con etiqueta existente (opcional)<select className={inputClass} value={etiquetaId} onChange={(e) => { setEtiquetaId(e.target.value); invalidarPreview(); }}><option value="">Todos</option>{config.etiquetas.map((etiqueta) => <option key={etiqueta.id} value={etiqueta.id}>{etiqueta.nombre}</option>)}</select></label></div>
+        <div className="flex flex-wrap gap-3"><button type="button" className={secondaryClass} onClick={() => setPaso(1)}>Cambiar archivo</button><button type="button" className={primaryClass} disabled={ocupado || mapeo.telefono < 0 || !filaEncabezados} onClick={revisarColumnas}>Ver vista previa</button></div>
+      </div>}
+
+      {paso === 3 && preview && <div className="mt-6 space-y-6"><div><h2 className="text-xl font-semibold">3. Revisar y aceptar</h2><p className="text-sm text-muted-foreground">Encabezados en fila {preview.filaEncabezados}. Ningún contacto se guarda hasta que aceptes esta lista.</p></div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{[["Válidos", preview.conteos.validos], ["Duplicados", preview.conteos.duplicados], ["Inválidos", preview.conteos.invalidos], ["Ya existentes", preview.conteos.existentes], ["Bajas", preview.conteos.optOut]].map(([titulo, valor]) => <div key={titulo} className="rounded-xl border bg-muted/40 p-4"><p className="text-sm text-muted-foreground">{titulo}</p><strong className="tnum text-2xl">{valor}</strong></div>)}</div>
+        <details className="rounded-xl border border-border p-4"><summary className="cursor-pointer font-medium">Ver muestra del archivo y teléfonos normalizados</summary><div className="mt-3 max-h-72 max-w-full overflow-auto"><table className="min-w-[600px] w-full text-left text-sm"><thead className="sticky top-0 bg-muted"><tr><th className="px-3 py-2">Fila</th><th className="px-3 py-2">Teléfono original</th><th className="px-3 py-2">Teléfono normalizado</th><th className="px-3 py-2">Resultado</th></tr></thead><tbody>{preview.muestra.map((fila) => <tr key={fila.numeroFila} className="border-t"><td className="px-3 py-3">{fila.numeroFila}</td><td className="px-3 py-3">{fila.fila[mapeo.telefono] || "—"}</td><td className="px-3 py-3 font-mono">{fila.telefonoNormalizado ?? "—"}</td><td className="px-3 py-3">{fila.motivo ? <span className="rounded bg-destructive/10 px-2 py-1 text-destructive">{fila.motivo}</span> : <span className="rounded bg-success/10 px-2 py-1 text-success">Válida</span>}</td></tr>)}</tbody></table></div></details>
+        <RevisionListaCampana areas={preview.resumenAreas} filas={preview.aceptadas} rechazadas={preview.rechazadas} headers={preview.headers} areasSeleccionadas={areasSeleccionadas} filasExcluidas={filasExcluidas} onArea={(clave, activa) => setAreasSeleccionadas((actuales) => activa ? [...actuales, clave] : actuales.filter((item) => item !== clave))} onFila={(numero, incluida) => setFilasExcluidas((actuales) => incluida ? actuales.filter((item) => item !== numero) : [...actuales, numero])} />
+        <div className="grid gap-3 sm:grid-cols-3"><label className="text-sm font-medium">Nombre de campaña<input className={inputClass} value={nombre} maxLength={120} onChange={(e) => setNombre(e.target.value)} placeholder="Campaña colegios" /></label><label className="text-sm font-medium">Canal conectado<select className={inputClass} value={canalId} onChange={(e) => { setCanalId(e.target.value); setPlantilla(""); void cargarConfig(e.target.value).catch((error) => setError(error.message)); }}>{config.canales.map((canal) => <option key={canal.id} value={canal.id}>{canal.nombre}</option>)}</select></label><label className="text-sm font-medium">Plantilla aprobada<select className={inputClass} value={plantilla} onChange={(e) => setPlantilla(e.target.value)}><option value="">Seleccionar</option>{config.plantillas.map((item) => <option key={`${item.name}|${item.language}`} value={`${item.name}|${item.language}`}>{item.name} · {item.language}</option>)}</select></label></div>
+        <p className="text-sm text-muted-foreground">Estimación de la lista elegida: US${(seleccionadas.length * config.tarifaMarketingUsd).toFixed(2)} si todos se entregan. Meta cobra directamente a EXI.</p>
+        <div className="flex flex-wrap gap-3"><button type="button" className={secondaryClass} onClick={() => setPaso(2)}>Cambiar columnas o filtros</button>{esAdmin && <button type="button" className={primaryClass} disabled={ocupado || !seleccionadas.length || !nombre.trim() || !canalId || !plantillaElegida} onClick={aceptarLista}>Aceptar lista ({seleccionadas.length} números)</button>}</div>
+      </div>}
+
+      {paso === 4 && <div className="mt-6 space-y-5"><div><h2 className="text-xl font-semibold">4. Programar</h2><p className="text-sm text-muted-foreground">La lista ya está preparada. Define cuándo podrá enviarse cada tanda.</p></div>
+        <div className="rounded-xl border border-border bg-muted/40 p-4"><p className="font-medium">{reporte?.campana.nombre ?? nombre}</p><p className="mt-1 text-sm text-muted-foreground">{reporte?.conteos.total ?? 0} destinatarios · aproximadamente {reporte?.diasEstimados ?? 0} días · US${(reporte?.costoEstimadoUsd ?? 0).toFixed(2)} estimados.</p></div>
+        <fieldset className="space-y-2"><legend className="font-semibold">Días de envío</legend><div className="flex flex-wrap gap-3">{["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map((dia, i) => <label key={dia} className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"><input type="checkbox" checked={dias.includes(i)} onChange={(e) => setDias(e.target.checked ? [...dias, i].sort() : dias.filter((valor) => valor !== i))} />{dia}</label>)}</div></fieldset>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><label className="text-sm font-medium">Desde<input className={inputClass} type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} /></label><label className="text-sm font-medium">Hasta<input className={inputClass} type="time" value={horaFin} onChange={(e) => setHoraFin(e.target.value)} /></label><label className="text-sm font-medium">Zona horaria<input className={inputClass} value={zonaHoraria} onChange={(e) => setZonaHoraria(e.target.value)} /></label><label className="text-sm font-medium">Tamaño de tanda (1–20)<input className={inputClass} type="number" min={1} max={20} value={tandaTamano} onChange={(e) => setTandaTamano(Number(e.target.value))} /></label><label className="text-sm font-medium">Pausa entre tandas (min, ≥5)<input className={inputClass} type="number" min={5} value={pausaTandaMin} onChange={(e) => setPausaTandaMin(Number(e.target.value))} /></label><label className="text-sm font-medium">Tope diario (máx. 150)<input className={inputClass} type="number" min={1} max={150} value={topeDiario} onChange={(e) => setTopeDiario(Number(e.target.value))} /></label><label className="text-sm font-medium">Fecha de inicio<input className={inputClass} type="datetime-local" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} /></label></div>
+        <div className="rounded-xl border border-warning/40 bg-warning/10 p-4"><label className="flex items-start gap-3 font-medium"><input type="checkbox" className="mt-1" checked={permiso} onChange={(e) => setPermiso(e.target.checked)} />Confirmo que estos contactos conocen a EXI y aceptaron recibir mensajes</label><p className="mt-2 text-sm">La plantilla debe incluir “Responde BAJA para no recibir más mensajes”.</p></div>
+        <div className="flex flex-wrap gap-3">{esAdmin && <><button type="button" className={secondaryClass} disabled={ocupado} onClick={guardarCalendario}>Guardar calendario</button><button type="button" className={primaryClass} disabled={ocupado || !permiso || !reporte?.conteos.total} onClick={lanzar}>Lanzar campaña</button></>}</div>
+      </div>}
+
+      {paso === 5 && <div className="mt-6 space-y-5"><div><h2 className="text-xl font-semibold">5. Reporte</h2><p className="text-sm text-muted-foreground">{reporte ? `Campaña ${reporte.campana.nombre}` : "Selecciona una campaña para ver su reporte."}</p></div>
+        {reporte && <><div className="grid gap-3 sm:grid-cols-3"><div className="rounded-xl border bg-muted/40 p-4"><p className="text-sm text-muted-foreground">Destinatarios</p><strong className="tnum text-2xl">{reporte.conteos.total}</strong></div><div className="rounded-xl border bg-muted/40 p-4"><p className="text-sm text-muted-foreground">Hoy / tope</p><strong className="tnum text-2xl">{reporte.hoy} / {reporte.campana.topeDiario}</strong></div><div className="rounded-xl border bg-muted/40 p-4"><p className="text-sm text-muted-foreground">Costo estimado</p><strong className="tnum text-2xl">US${reporte.costoEstimadoUsd.toFixed(2)}</strong></div></div>
+          {reporte.campana.listaAceptadaPorArea && <div className="rounded-xl border p-4"><h3 className="font-semibold">Lista aceptada</h3><p className="text-sm text-muted-foreground">{reporte.campana.listaAceptadaPorArea.totalSeleccionados} números aceptados; {reporte.campana.listaAceptadaPorArea.importados} preparados · por usuario {reporte.campana.listaAceptadaPor ?? "—"} · {reporte.campana.listaAceptadaAt ? new Date(reporte.campana.listaAceptadaAt).toLocaleString("es-MX") : "—"}</p><div className="mt-2 flex flex-wrap gap-2">{reporte.campana.listaAceptadaPorArea.areas.map((area) => <span key={area.clave} className="rounded-full bg-muted px-3 py-1 text-sm">{area.nombre}: {area.seleccionados}</span>)}</div></div>}
+          <p className="text-sm">{Object.entries(reporte.conteos).map(([estado, cantidad]) => `${estado}: ${cantidad}`).join(" · ")}</p>
+          <div className="flex flex-wrap items-center gap-3"><label className="text-sm font-medium">Estado<select className={inputClass} value={filtroEstado} onChange={(e) => { setFiltroEstado(e.target.value); void cargarReporte(reporte.campana.id, e.target.value).catch((fallo) => setError(fallo.message)); }}><option value="">Todos</option>{["pendiente", "enviando", "enviado", "entregado", "leido", "respondio", "fallido", "omitido"].map((estado) => <option key={estado} value={estado}>{estado}</option>)}</select></label><a className={secondaryClass} href={`/api/campanas-envio/${reporte.campana.id}/exportar`}>Exportar CSV</a></div>
+          <div className="max-h-96 max-w-full overflow-auto rounded-xl border"><table className="min-w-[520px] w-full text-left text-sm"><thead className="sticky top-0 bg-muted"><tr><th className="px-4 py-3">Nombre</th><th className="px-4 py-3">Teléfono</th><th className="px-4 py-3">Estado</th><th className="px-4 py-3">Motivo</th></tr></thead><tbody>{reporte.destinatarios.map((destinatario) => <tr key={destinatario.id} className="border-t"><td className="px-4 py-3">{destinatario.nombre}</td><td className="px-4 py-3 font-mono">{destinatario.telefono}</td><td className="px-4 py-3"><span className="rounded-full bg-muted px-2 py-1">{destinatario.estado}</span></td><td className="px-4 py-3">{destinatario.motivo ?? "—"}</td></tr>)}</tbody></table></div><p className="text-xs text-muted-foreground">Se muestran los primeros 200 destinatarios. El CSV incluye todos.</p>
+          {reporte.campana.estado === "borrador" && esAdmin && <button type="button" className={secondaryClass} onClick={() => setPaso(4)}>Volver a programar</button>}
+        </>}
+      </div>}
+    </section>
+
+    <section className="surface min-w-0 p-4 sm:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-semibold">Campañas</h2><p className="text-sm text-muted-foreground">Borradores, campañas programadas y resultados.</p></div>{filas.length > 0 && paso >= 4 && <button type="button" className={secondaryClass} onClick={() => { setCampanaId(""); setReporte(null); setPreview(null); setAreasSeleccionadas([]); setFilasExcluidas([]); setNombre(""); setPlantilla(""); setPaso(2); }}>Nueva campaña con este archivo</button>}</div>
+      {campanas.length ? <div className="mt-4 divide-y divide-border">{campanas.map((campana) => <div key={campana.id} className="flex flex-wrap items-center justify-between gap-3 py-4"><div className="min-w-0"><h3 className="break-words font-semibold">{campana.nombre}</h3><p className="text-sm text-muted-foreground"><span className="rounded-full bg-muted px-2 py-1 text-foreground">{campana.estado}</span> · {campana._count.destinatarios} destinatarios</p>{campana.motivoPausa && <p className="mt-2 text-sm text-destructive">{campana.motivoPausa}</p>}</div><div className="flex flex-wrap gap-2"><button type="button" className={secondaryClass} onClick={() => mostrarReporte(campana.id)}>Ver reporte</button>{esAdmin && ["programada", "en_curso"].includes(campana.estado) && <button type="button" className={secondaryClass} onClick={() => accion("pausar", campana.id)}>Pausar</button>}{esAdmin && campana.estado === "pausada" && <button type="button" className={secondaryClass} onClick={() => accion("reanudar", campana.id)}>Reanudar</button>}{esAdmin && !["completada", "cancelada"].includes(campana.estado) && <button type="button" className="rounded-lg border border-destructive/40 px-4 py-2.5 text-destructive" onClick={() => accion("cancelar", campana.id)}>Cancelar</button>}</div></div>)}</div> : <p className="mt-4 rounded-xl bg-muted p-5 text-sm text-muted-foreground">Todavía no hay campañas. Sube un archivo para preparar la primera.</p>}
+    </section>
+  </main>;
 }

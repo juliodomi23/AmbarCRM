@@ -1884,6 +1884,9 @@ CREATE TABLE IF NOT EXISTS campanas_envio (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE campanas_envio ADD COLUMN IF NOT EXISTS fallos_consulta_meta INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE campanas_envio ADD COLUMN IF NOT EXISTS lista_aceptada_por_area JSONB;
+ALTER TABLE campanas_envio ADD COLUMN IF NOT EXISTS lista_aceptada_por BIGINT;
+ALTER TABLE campanas_envio ADD COLUMN IF NOT EXISTS lista_aceptada_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS campanas_envio_org_estado_idx ON campanas_envio(org_id, estado);
 CREATE INDEX IF NOT EXISTS campanas_envio_canal_estado_idx ON campanas_envio(canal_id, estado);
 

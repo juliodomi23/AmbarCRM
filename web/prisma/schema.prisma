@@ -860,6 +860,9 @@ model CampanaEnvio {
   creadoPor       BigInt? @map("creado_por")
   confirmoPermiso Boolean @default(false) @map("confirmo_permiso")
   permisoAt       DateTime? @map("permiso_at") @db.Timestamptz(6)
+  listaAceptadaPorArea Json? @map("lista_aceptada_por_area")
+  listaAceptadaPor BigInt? @map("lista_aceptada_por")
+  listaAceptadaAt DateTime? @map("lista_aceptada_at") @db.Timestamptz(6)
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 

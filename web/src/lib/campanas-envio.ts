@@ -1,9 +1,9 @@
 import { db } from "@/lib/db";
-import { telefonoMx } from "@/lib/reservas/telefono";
+import { claveTexto, limpiarTexto, normalizarTelefonoCampana, type MapeoColumnas } from "@/lib/campanas-envio-archivo";
 
-export type MapeoColumnas = { telefono: number; nombre?: number; empresa?: number; giro?: number };
-export type FilaCampana = { numeroFila: number; telefono: string; nombre: string; empresa: string; giro: string; variables: Record<string, string>; contactoId?: bigint };
-export type FilaRechazada = { numeroFila: number; fila: string[]; motivo: string };
+export type { MapeoColumnas } from "@/lib/campanas-envio-archivo";
+export type FilaCampana = { numeroFila: number; telefono: string; nombre: string; empresa: string; giro: string; areaClave: string; ciudad: string; variables: Record<string, string>; contactoId?: bigint };
+export type FilaRechazada = { numeroFila: number; fila: string[]; telefonoNormalizado: string | null; motivo: string };
 
 export function reanudarCampana(id: bigint) {
   return db.campanaEnvio.update({ where: { id }, data: { estado: "programada", motivoPausa: null, fallosConsultaMeta: 0 } });
@@ -57,16 +57,17 @@ export function horasDeTanda(campana: { horaInicio: string; horaFin: string; pau
   return Math.max(1, Math.min(campana.topeDiario, (Math.floor((b - a) / campana.pausaTandaMin) + 1) * campana.tandaTamano));
 }
 
-export async function validarFilasCampana(filas: unknown, mapeo: MapeoColumnas, mapeoVariables: string[] = []) {
-  if (!Array.isArray(filas) || filas.length < 2 || filas.length > 10_001 || filas.some((f) => !Array.isArray(f))) throw new Error("El archivo debe contener entre 1 y 10,000 filas de datos");
+export async function validarFilasCampana(filas: unknown, mapeo: MapeoColumnas, mapeoVariables: string[] = [], filaEncabezados = 1) {
+  if (!Array.isArray(filas) || filas.some((f) => !Array.isArray(f)) || !Number.isInteger(filaEncabezados) || filaEncabezados < 1 || filaEncabezados >= filas.length) throw new Error("Indica una fila de encabezados válida");
   if (Buffer.byteLength(JSON.stringify(filas), "utf8") > 5 * 1024 * 1024) throw new Error("El archivo supera 5 MB");
-  const headers = (filas[0] as unknown[]).map((x) => String(x ?? "").trim());
+  const headers = (filas[filaEncabezados - 1] as unknown[]).map(limpiarTexto);
   if (!headers.length || !Number.isInteger(mapeo?.telefono) || mapeo.telefono < 0 || mapeo.telefono >= headers.length) throw new Error("Mapea la columna de teléfono");
   for (const idx of [mapeo.nombre, mapeo.empresa, mapeo.giro]) if (idx !== undefined && (!Number.isInteger(idx) || idx < 0 || idx >= headers.length)) throw new Error("Mapeo de columnas inválido");
   const columnasVariables = mapeoVariables.filter((v) => !["{{nombre}}", "{{nombre_completo}}", "{{telefono}}"].includes(v));
   if (columnasVariables.some((v) => !headers.includes(v))) throw new Error("Una variable no corresponde a una columna del archivo");
-  const valores = (filas as unknown[][]).slice(1).map((fila) => fila.map((x) => String(x ?? "").trim()));
-  const telefonos = valores.map((fila) => telefonoMx(fila[mapeo.telefono]) ? `52${telefonoMx(fila[mapeo.telefono])}` : null);
+  const valores = (filas as unknown[][]).map((fila, i) => ({ numeroFila: i + 1, fila: fila.map(limpiarTexto) })).slice(filaEncabezados).filter(({ fila }) => fila.some(Boolean));
+  if (!valores.length || valores.length > 10_000) throw new Error("El archivo debe contener entre 1 y 10,000 filas de datos");
+  const telefonos = valores.map(({ fila }) => normalizarTelefonoCampana(fila[mapeo.telefono]));
   const candidatos = [...new Set(telefonos.filter((t): t is string => Boolean(t)))];
   const variantes = candidatos.flatMap((t) => [t, `521${t.slice(2)}`]);
   const contactos = await db.contacto.findMany({ where: { telefono: { in: variantes } }, select: { id: true, telefono: true, optOutDifusion: true } });
@@ -76,11 +77,20 @@ export async function validarFilasCampana(filas: unknown, mapeo: MapeoColumnas, 
   const contactados = new Set(recientes.map((r) => r.telefono));
   const aceptadas: FilaCampana[] = [];
   const rechazadas: FilaRechazada[] = [];
+  const muestra: Array<{ numeroFila: number; fila: string[]; telefonoNormalizado: string | null; motivo: string | null }> = [];
   const vistas = new Set<string>();
   const conteos = { validos: 0, duplicados: 0, invalidos: 0, existentes: 0, optOut: 0, recientes: 0 };
-  valores.forEach((fila, i) => {
+  const areas = new Map<string, { clave: string; nombre: string; total: number; validos: number; rechazados: number; bajasRecientes: number; formas: Map<string, number> }>();
+  const ciudadIndex = headers.findIndex((header) => claveTexto(header) === "ciudad");
+  valores.forEach(({ fila, numeroFila }, i) => {
     const telefono = telefonos[i];
     const existente = telefono ? porTelefono.get(telefono.slice(-10)) : undefined;
+    const giro = mapeo.giro === undefined ? "" : limpiarTexto(fila[mapeo.giro]);
+    const areaClave = claveTexto(giro);
+    const area = areas.get(areaClave) ?? { clave: areaClave, nombre: giro || "Sin área", total: 0, validos: 0, rechazados: 0, bajasRecientes: 0, formas: new Map<string, number>() };
+    area.total++;
+    if (giro) area.formas.set(giro, (area.formas.get(giro) ?? 0) + 1);
+    areas.set(areaClave, area);
     let motivo = "";
     if (!telefono) { motivo = "Teléfono MX inválido"; conteos.invalidos++; }
     else if (vistas.has(telefono)) { motivo = "Duplicado en el archivo"; conteos.duplicados++; }
@@ -92,9 +102,40 @@ export async function validarFilasCampana(filas: unknown, mapeo: MapeoColumnas, 
     }
     if (telefono) vistas.add(telefono);
     if (existente) conteos.existentes++;
-    if (motivo) { rechazadas.push({ numeroFila: i + 2, fila, motivo }); return; }
+    if (muestra.length < 20) muestra.push({ numeroFila, fila, telefonoNormalizado: telefono, motivo: motivo || null });
+    if (motivo) {
+      area.rechazados++;
+      if (existente?.optOutDifusion || (telefono && contactados.has(telefono))) area.bajasRecientes++;
+      rechazadas.push({ numeroFila, fila, telefonoNormalizado: telefono, motivo });
+      return;
+    }
     conteos.validos++;
-    aceptadas.push({ numeroFila: i + 2, telefono: telefono!, nombre: mapeo.nombre === undefined ? "" : fila[mapeo.nombre] ?? "", empresa: mapeo.empresa === undefined ? "" : fila[mapeo.empresa] ?? "", giro: mapeo.giro === undefined ? "" : fila[mapeo.giro] ?? "", variables: Object.fromEntries(headers.map((h, j) => [h, fila[j] ?? ""])), contactoId: existente?.id });
+    area.validos++;
+    aceptadas.push({ numeroFila, telefono: telefono!, nombre: mapeo.nombre === undefined ? "" : limpiarTexto(fila[mapeo.nombre]), empresa: mapeo.empresa === undefined ? "" : limpiarTexto(fila[mapeo.empresa]), giro, areaClave, ciudad: ciudadIndex < 0 ? "" : limpiarTexto(fila[ciudadIndex]), variables: Object.fromEntries(headers.map((h, j) => [h, fila[j] ?? ""])), contactoId: existente?.id });
   });
-  return { headers, conteos, aceptadas, rechazadas, muestra: valores.slice(0, 20).map((fila, i) => ({ numeroFila: i + 2, fila, motivo: rechazadas.find((r) => r.numeroFila === i + 2)?.motivo ?? null })) };
+  const resumenAreas = [...areas.values()].map(({ formas, ...area }) => ({ ...area, nombre: [...formas].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "Sin área" }));
+  const nombrePorClave = new Map(resumenAreas.map((area) => [area.clave, area.nombre]));
+  for (const fila of aceptadas) fila.giro = fila.areaClave ? nombrePorClave.get(fila.areaClave)! : "";
+  return { headers, conteos, aceptadas, rechazadas, muestra, resumenAreas };
+}
+
+export function seleccionarFilasCampana(aceptadas: FilaCampana[], areasSeleccionadas: unknown, filasAceptadas: unknown) {
+  if (!Array.isArray(areasSeleccionadas) || areasSeleccionadas.length > 10_000 || areasSeleccionadas.some((clave) => typeof clave !== "string") ||
+      !Array.isArray(filasAceptadas) || filasAceptadas.length > 10_000 || filasAceptadas.some((numero) => !Number.isInteger(numero)))
+    throw new Error("La selección de áreas y números no es válida");
+  const areas = new Set(areasSeleccionadas as string[]);
+  const numeros = new Set(filasAceptadas as number[]);
+  const seleccionadas = aceptadas.filter((fila) => areas.has(fila.areaClave) && numeros.has(fila.numeroFila));
+  if (!seleccionadas.length) throw new Error("Selecciona al menos un número antes de aceptar la lista");
+  return seleccionadas;
+}
+
+export async function filtrarFilasCampana(filas: FilaCampana[], filtroGiro: string, etiquetaId: bigint | null) {
+  let filtradas = filtroGiro ? filas.filter((fila) => fila.areaClave === claveTexto(filtroGiro)) : filas;
+  if (etiquetaId) {
+    const contactos = await db.contactoEtiqueta.findMany({ where: { etiquetaId, contactoId: { in: filtradas.flatMap((fila) => fila.contactoId ? [fila.contactoId] : []) } }, select: { contactoId: true } });
+    const permitidos = new Set(contactos.map((contacto) => String(contacto.contactoId)));
+    filtradas = filtradas.filter((fila) => fila.contactoId && permitidos.has(String(fila.contactoId)));
+  }
+  return filtradas;
 }
