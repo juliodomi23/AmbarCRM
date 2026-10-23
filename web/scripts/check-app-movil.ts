@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
+import { readFileSync } from "node:fs";
 import bcrypt from "bcryptjs";
 import pg from "pg";
 import { NextRequest } from "next/server";
@@ -50,6 +51,17 @@ const { POST: login } = await import("../src/app/api/movil/login/route");
 const { registrarDispositivo, borrarDispositivo } = await import("../src/lib/dispositivos-push");
 const { enviarPushAOrg } = await import("../src/lib/push");
 const { decode, getToken } = await import("next-auth/jwt");
+const proxy = readFileSync(new URL("../src/proxy.ts", import.meta.url), "utf8");
+const matcherLiteral = /matcher: \[("[^\r\n]+")\]/.exec(proxy)?.[1];
+assert.ok(matcherLiteral);
+const matcher = new RegExp(`^${JSON.parse(matcherLiteral)}$`);
+for (const ruta of ["/api/meta/templates", "/api/movil/contactos", "/api/movil/conversaciones", "/api/media/archivo"]) {
+  assert.ok(matcher.test(ruta), `${ruta} debe pasar por proxy`);
+}
+for (const ruta of ["/api/meta/webhook", "/api/v1/accounts/1", "/api/public/brand", "/api/cron/prueba",
+  "/api/auth/session", "/api/instagram/webhook", "/api/messenger/webhook", "/login", "/privacidad", "/eliminacion-datos"]) {
+  assert.ok(!matcher.test(ruta), `${ruta} debe quedar pública`);
+}
 
 async function main() {
   const sufijo = Date.now().toString(36);
