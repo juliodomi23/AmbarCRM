@@ -715,6 +715,20 @@ model PushSuscripcion {
   @@map("push_suscripciones")
 }
 
+model DispositivoPush {
+  id         BigInt   @id @default(autoincrement())
+  orgId      BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  usuarioId  BigInt   @map("usuario_id")
+  tokenFcm   String   @unique @map("token_fcm")
+  plataforma String
+  ultimaVez  DateTime @default(now()) @map("ultima_vez") @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([orgId])
+  @@index([usuarioId])
+  @@map("dispositivos_push")
+}
+
 model Mensaje {
   id             BigInt       @id @default(autoincrement())
   orgId          BigInt       @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")

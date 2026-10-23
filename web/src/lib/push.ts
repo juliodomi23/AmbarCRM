@@ -4,6 +4,7 @@
 
 import webpush from "web-push";
 import { db } from "@/lib/db";
+import { enviarFcmAOrg, fcmConfigurado } from "@/lib/firebase-fcm";
 
 const PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY ?? "";
 const PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY ?? "";
@@ -17,10 +18,18 @@ if (pushConfigurado) {
 
 /** Manda una notificación push a todos los dispositivos de la org. No lanza: loguea y sigue. */
 export async function enviarPushAOrg(titulo: string, cuerpo: string, url: string) {
-  if (!pushConfigurado) return;
+  const tareas: Promise<unknown>[] = [];
+  if (pushConfigurado) tareas.push(enviarWebPush(titulo, cuerpo, url));
+  if (fcmConfigurado()) tareas.push(enviarFcmAOrg(titulo, cuerpo, url));
+  const resultados = await Promise.allSettled(tareas);
+  for (const resultado of resultados) {
+    if (resultado.status === "rejected") console.warn("push falló:", resultado.reason instanceof Error ? resultado.reason.message : "error");
+  }
+}
+
+async function enviarWebPush(titulo: string, cuerpo: string, url: string) {
   const subs = await db.pushSuscripcion.findMany();
   const payload = JSON.stringify({ titulo, cuerpo, url });
-
   await Promise.allSettled(
     subs.map(async (s) => {
       try {

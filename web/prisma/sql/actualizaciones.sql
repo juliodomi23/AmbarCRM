@@ -1945,3 +1945,39 @@ CREATE INDEX IF NOT EXISTS conversaciones_org_updated_at_id_idx ON conversacione
 CREATE INDEX IF NOT EXISTS conversaciones_org_estado_updated_at_id_idx ON conversaciones(org_id, estado, updated_at, id);
 CREATE INDEX IF NOT EXISTS conversaciones_org_created_at_id_idx ON conversaciones(org_id, created_at, id);
 CREATE INDEX IF NOT EXISTS mensajes_conversacion_id_created_at_id_idx ON mensajes(conversacion_id, created_at, id);
+
+CREATE TABLE IF NOT EXISTS dispositivos_push (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  usuario_id BIGINT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  token_fcm TEXT NOT NULL UNIQUE,
+  plataforma TEXT NOT NULL CHECK (plataforma IN ('ios', 'android')),
+  ultima_vez TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS dispositivos_push_org_idx ON dispositivos_push(org_id);
+CREATE INDEX IF NOT EXISTS dispositivos_push_usuario_idx ON dispositivos_push(usuario_id);
+ALTER TABLE dispositivos_push ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_isolation ON dispositivos_push;
+CREATE POLICY org_isolation ON dispositivos_push
+  USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+  WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
+GRANT SELECT, INSERT, UPDATE, DELETE ON dispositivos_push TO crm_app;
+GRANT USAGE, SELECT ON SEQUENCE dispositivos_push_id_seq TO crm_app;
+
+CREATE OR REPLACE FUNCTION registrar_dispositivo_push(p_usuario_id BIGINT, p_token_fcm TEXT, p_plataforma TEXT)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE tenant BIGINT := NULLIF(current_setting('app.current_org', true), '')::bigint;
+BEGIN
+  IF tenant IS NULL OR p_plataforma NOT IN ('ios', 'android')
+    OR NOT EXISTS (SELECT 1 FROM usuarios WHERE id = p_usuario_id AND org_id = tenant AND activo) THEN
+    RAISE EXCEPTION 'registro de dispositivo no autorizado';
+  END IF;
+  INSERT INTO dispositivos_push (org_id, usuario_id, token_fcm, plataforma)
+  VALUES (tenant, p_usuario_id, p_token_fcm, p_plataforma)
+  ON CONFLICT (token_fcm) DO UPDATE SET org_id = EXCLUDED.org_id,
+    usuario_id = EXCLUDED.usuario_id, plataforma = EXCLUDED.plataforma, ultima_vez = now();
+  RETURN true;
+END $$;
+REVOKE ALL ON FUNCTION registrar_dispositivo_push(BIGINT, TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION registrar_dispositivo_push(BIGINT, TEXT, TEXT) TO crm_app;

@@ -11,6 +11,8 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "check:campanas-envio": "tsx scripts/check-campanas-envio.ts",
+    "check:app-movil": "tsx scripts/check-app-movil.ts",
+    "check:app-movil-http": "tsx scripts/check-app-movil-http.ts",
     "seed:admin": "node scripts/seed-admin.mjs"
   },
   "dependencies": {
