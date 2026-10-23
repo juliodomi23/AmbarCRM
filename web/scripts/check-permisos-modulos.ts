@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { puestosParaModulos, validarPuesto } from "../src/lib/puestos.ts";
 
 const modulos = await Promise.all(["modulos.ts", "modulos-catalogo.ts"].map((archivo) => readFile(new URL(`../src/lib/${archivo}`, import.meta.url), "utf8"))).then((partes) => partes.join("\n"));
-const auth = await readFile(new URL("../src/lib/auth.ts", import.meta.url), "utf8");
+const auth = (await Promise.all(["auth.ts", "auth-credenciales.ts"].map((f) => readFile(new URL(`../src/lib/${f}`, import.meta.url), "utf8")))).join(" ");
 const apiModulos = await readFile(
   new URL("../src/app/api/modulos/route.ts", import.meta.url),
   "utf8",

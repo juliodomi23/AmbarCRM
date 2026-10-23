@@ -39,7 +39,7 @@ assert.equal(ipCliente({ "cf-connecting-ip": "1.2.3.4" }), "desconocida");
 // Piezas que no deben desaparecer.
 const [media, auth, config, importar, enviar] = await Promise.all([
   readFile("src/app/api/media/[archivo]/route.ts", "utf8"),
-  readFile("src/lib/auth.ts", "utf8"),
+  Promise.all(["src/lib/auth.ts", "src/lib/auth-credenciales.ts"].map((f) => readFile(f, "utf8"))).then((p) => p.join(" ")),
   readFile("next.config.mjs", "utf8"),
   readFile("src/app/api/contactos/importar/route.ts", "utf8"),
   readFile("src/app/api/mensajes/enviar/route.ts", "utf8"),
