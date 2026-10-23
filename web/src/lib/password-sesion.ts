@@ -3,6 +3,11 @@ import type { NextRequest, NextResponse } from "next/server";
 
 export const DURACION_SESION = 7 * 24 * 60 * 60;
 
+export function nombreCookieSesion() {
+  const secure = process.env.NEXTAUTH_URL?.startsWith("https://") ?? !!process.env.VERCEL;
+  return `${secure ? "__Secure-" : ""}next-auth.session-token`;
+}
+
 export function sesionAnteriorAlCambio(token: JWT, cambiadaAt: Date | null) {
   const emitidoAt = token.emitidoAt ?? (token.iat ? token.iat * 1000 : 0);
   return !!cambiadaAt && emitidoAt < cambiadaAt.getTime();
@@ -16,7 +21,7 @@ export async function renovarSesionPassword(token: JWT, respuesta: NextResponse,
   const secret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
   if (!secret) throw new Error("Falta el secreto de sesión");
   const secure = process.env.NEXTAUTH_URL?.startsWith("https://") ?? !!process.env.VERCEL;
-  const nombre = `${secure ? "__Secure-" : ""}next-auth.session-token`;
+  const nombre = nombreCookieSesion();
   const opciones = { httpOnly: true, sameSite: "lax" as const, path: "/", secure };
   const valor = await encode({ secret, maxAge: DURACION_SESION, token: { ...token, emitidoAt: cambiadaAt.getTime(), checkedAt: Date.now(), revocado: false } });
   // NextAuth fragmenta cookies mayores de 3933 caracteres; elimina también los fragmentos previos.
