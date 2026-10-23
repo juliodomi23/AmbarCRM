@@ -8,6 +8,9 @@
  */
 import assert from "node:assert/strict";
 import http from "node:http";
+import https from "node:https";
+import { EventEmitter } from "node:events";
+import { syncBuiltinESMExports } from "node:module";
 import type { AddressInfo } from "node:net";
 import { randomBytes } from "node:crypto";
 import pg from "pg";
@@ -15,8 +18,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, dbRaw } from "../../src/lib/db";
 import { requireBot } from "../../src/lib/bot-auth";
 import { decryptMetaToken } from "../../src/lib/meta/credentials";
+import { encryptMetaToken } from "../../src/lib/meta/credentials";
+import { esperarWebhooks } from "../../src/lib/webhooks-salientes";
 import {
   dispatchABot,
+  elegirAsesor,
   escalarAHumano,
   firmarCuerpo,
   firmarCuerpoV2,
@@ -24,6 +30,7 @@ import {
   nuevoSecretoFirma,
 } from "../../src/lib/services/bots";
 import { runWithOrg } from "../../src/lib/db";
+import { transaccionTenant } from "../../src/lib/retail-db";
 import { auditarBot } from "../../src/lib/services/bots";
 import { GET as getConversacion } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/route";
 import { GET as getConversaciones } from "../../src/app/api/v1/accounts/[accountId]/conversations/route";
@@ -31,6 +38,8 @@ import { GET as getMensajes } from "../../src/app/api/v1/accounts/[accountId]/co
 import { POST as postLabels } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/labels/route";
 import { POST as postTasks } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/tasks/route";
 import { POST as postMessages } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/messages/route";
+import { PATCH as patchStatus } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/status/route";
+import { POST as postAssignments } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/assignments/route";
 import { POST as postFunnel } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/funnel/route";
 import {
   GET as getCitas,
@@ -47,6 +56,7 @@ import { GET as getProductos } from "../../src/app/api/v1/accounts/[accountId]/c
 import { PATCH as patchOportunidad } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/opportunity/route";
 import {
   GET as getContactos,
+  PATCH as patchContactos,
   POST as postContactos,
 } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/contacts/route";
 import { PERMISOS_BOT, PERMISOS_MINIMOS, permisosValidos } from "../../src/lib/bot-permisos";
@@ -491,6 +501,7 @@ async function main() {
   await bloque3(o, { canalA, canalB, token, conv, contactoId, botA });
   await bloque4(token, conv, botA);
   await bloque5(o, { canalA, canalB, token, conv, contactoId, botA });
+  await probarParidadBot(orgId + 5n);
   console.log("OK · API del bot");
 }
 
@@ -1089,12 +1100,151 @@ async function limpiar() {
   try {
     await c.query("SET session_replication_role = replica");
     const tablas = await c.query("SELECT table_name FROM information_schema.columns WHERE table_schema='public' AND column_name='org_id'");
-    for (const org of [orgId, orgId + 1n, orgId + 2n, orgId + 3n, orgId + 4n]) {
+    for (const org of [orgId, orgId + 1n, orgId + 2n, orgId + 3n, orgId + 4n, orgId + 5n, orgId + 6n]) {
       for (const { table_name } of tablas.rows) await c.query(`DELETE FROM "${table_name}" WHERE org_id = $1`, [org.toString()]);
       await c.query("DELETE FROM orgs WHERE id = $1", [org.toString()]);
     }
   } finally {
     c.release();
+  }
+}
+
+async function probarParidadBot(org: bigint) {
+  const o = org.toString();
+  const otro = (org + 1n).toString();
+  const marca = `paridad-${sufijo}`;
+  await q("INSERT INTO orgs (id,nombre,slug) VALUES ($1,'Paridad',$2),($3,'Otra paridad',$4)", [o, marca, otro, `${marca}-otro`]);
+  const canal = await uno("INSERT INTO canales_whatsapp (org_id,nombre,proveedor,config) VALUES ($1,'Cloud','cloud_api',$2::jsonb) RETURNING id::text AS id", [o, JSON.stringify({ token: "prueba", phoneNumberId: `9${org}` })]);
+  const canalB = await uno("INSERT INTO canales_whatsapp (org_id,nombre,proveedor) VALUES ($1,'B','cloud_api') RETURNING id::text AS id", [o]);
+  const canalOtro = await uno("INSERT INTO canales_whatsapp (org_id,nombre,proveedor) VALUES ($1,'Otro','cloud_api') RETURNING id::text AS id", [otro]);
+  const token = (n: string) => `${marca}-${n}`;
+  await q("INSERT INTO bots (org_id,nombre,webhook_url,api_token,canal_id,permisos) VALUES ($1,'bot','https://8.8.8.8/h',$2,$3,$4::text[]),($1,'viejo','https://8.8.8.8/h',$5,$3,$6::text[]),($1,'canalB','https://8.8.8.8/h',$7,$8,$4::text[]),($9,'ajeno','https://8.8.8.8/h',$10,$11,$4::text[])",
+    [o, token("full"), canal, PERMISOS_BOT, token("viejo"), PERMISOS_MINIMOS, token("canalB"), canalB, otro, token("ajeno"), canalOtro]);
+  const contacto = await uno("INSERT INTO contactos (org_id,nombre,telefono,campos) VALUES ($1,'Ana','525500001234',$2::jsonb) RETURNING id::text AS id", [o, JSON.stringify({ ciudad: "Tuxtla", antiguo: "preservar" })]);
+  const conv = await uno("INSERT INTO conversaciones (org_id,contacto_id,canal_id) VALUES ($1,$2,$3) RETURNING id::text AS id", [o, contacto, canal]);
+  const contactoOtro = await uno("INSERT INTO contactos (org_id,nombre,telefono) VALUES ($1,'Ajena','525500009999') RETURNING id::text AS id", [otro]);
+  await q("INSERT INTO conversaciones (org_id,contacto_id,canal_id) VALUES ($1,$2,$3)", [otro, contactoOtro, canalOtro]);
+  const usuario = await uno("INSERT INTO usuarios (org_id,nombre,email,password_hash) VALUES ($1,'Asesor',$2,'x') RETURNING id::text AS id", [o, `${marca}@example.com`]);
+  const segundo = await uno("INSERT INTO usuarios (org_id,nombre,email,password_hash) VALUES ($1,'Segundo',$2,'x') RETURNING id::text AS id", [o, `${marca}-segundo@example.com`]);
+  const inactivo = await uno("INSERT INTO usuarios (org_id,nombre,email,password_hash,activo) VALUES ($1,'Inactivo',$2,'x',false) RETURNING id::text AS id", [o, `${marca}-inactivo@example.com`]);
+  const cajero = await uno("INSERT INTO usuarios (org_id,nombre,email,password_hash,puesto) VALUES ($1,'Cajero',$2,'x','Cajero') RETURNING id::text AS id", [o, `${marca}-cajero@example.com`]);
+  const usuarioOtro = await uno("INSERT INTO usuarios (org_id,nombre,email,password_hash) VALUES ($1,'Ajeno',$2,'x') RETURNING id::text AS id", [otro, `${marca}-ajeno@example.com`]);
+  await q("INSERT INTO campos_personalizados (org_id,entidad,clave,etiqueta,tipo,obligatorio) VALUES ($1,'contacto','ciudad','Ciudad','texto',true)", [o]);
+  await q("INSERT INTO ajustes (org_id,csat_activo) VALUES ($1,true)", [o]);
+  await q("INSERT INTO webhook_saliente (org_id,url,secreto,eventos) VALUES ($1,'https://8.8.8.8/evento',$2,ARRAY['conversacion.estado_cambiado'])", [o, encryptMetaToken("prueba")]);
+  await q("INSERT INTO auditoria_bot (org_id,bot_id,conversacion_id,accion,despues) SELECT $1,id,$2,'handoff',$3::jsonb FROM bots WHERE api_token=$4", [o, conv, JSON.stringify({ responsableId: usuario }), token("full")]);
+  const siguiente = () => transaccionTenant(org, (tx) => elegirAsesor(tx, { asesorId: null }));
+  assert.equal((await siguiente())?.id, BigInt(segundo));
+  const llamarNuevo = (handler: Handler, cuerpo?: unknown, opciones: Opciones = {}, tk = "full", id = conv) =>
+    llamar(handler, token(tk), id, cuerpo, opciones);
+
+  for (const [handler, cuerpo, metodo, permiso] of [
+    [patchStatus, { status: "resolved" }, "PATCH", "cambiar_estado"],
+    [postAssignments, { assignee_id: usuario }, "POST", "asignar"],
+    [patchContactos, { nombre: "Nueva Ana" }, "PATCH", "editar_contacto"]
+  ] as const) {
+    const r = await llamarNuevo(handler, cuerpo, { metodo }, "viejo");
+    assert.equal(r.status, 403);
+    assert.equal((await r.json()).motivo, "permiso_faltante");
+    assert.equal((await q<{ n: number }>("SELECT count(*)::int n FROM auditoria_bot WHERE org_id=$1 AND accion='permiso_denegado' AND despues->>'permiso'=$2", [o, permiso]))[0].n, 1);
+  }
+  assert.equal((await llamarNuevo(getConversacion, undefined, {}, "viejo")).status, 200, "el bot viejo conserva lectura");
+  assert.equal((await llamarNuevo(postMessages, { content: "nota", private: true }, {}, "viejo")).status, 200, "el bot viejo conserva notas");
+
+  const enviados: string[] = [];
+  const eventos: Array<{ evento: string; datos: { origen?: string } }> = [];
+  const fetchOriginal = globalThis.fetch;
+  const requestOriginal = https.request;
+  https.request = ((_url: unknown, _options: unknown, callback: (res: unknown) => void) => {
+    const peticion = new EventEmitter() as EventEmitter & { end: (body: string) => void; destroy: (error: Error) => void };
+    peticion.destroy = (error) => peticion.emit("error", error);
+    peticion.end = (body) => {
+      eventos.push(JSON.parse(body));
+      queueMicrotask(() => { callback({ statusCode: 200, resume() {} }); peticion.emit("close"); });
+    };
+    return peticion;
+  }) as typeof https.request;
+  syncBuiltinESMExports();
+  globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
+    enviados.push(String(init?.body ?? ""));
+    return Response.json({ messages: [{ id: `wamid.${enviados.length}` }] });
+  }) as typeof fetch;
+  try {
+    const estado = (status: string) => llamarNuevo(patchStatus, { status }, { metodo: "PATCH" });
+    assert.equal((await estado("mal")).status, 400);
+    assert.deepEqual(await (await estado("open")).json(), { id: Number(conv), status: "open", status_anterior: "open", cambio: false });
+    assert.equal((await estado("resolved")).status, 200);
+    await esperarWebhooks();
+    assert.equal(eventos.at(-1)?.datos.origen, "bot");
+    const totalEventos = eventos.length;
+    const csat = () => q<{ n: number }>("SELECT count(*)::int n FROM mensajes WHERE conversacion_id=$1 AND contenido LIKE '%calificarías%'", [conv]);
+    assert.equal((await csat())[0].n, 1);
+    const marcas = (await q<{ updated_at: Date }>("SELECT updated_at FROM conversaciones WHERE id=$1", [conv]))[0].updated_at;
+    assert.equal((await (await estado("resolved")).json()).cambio, false);
+    await esperarWebhooks();
+    assert.equal(eventos.length, totalEventos, "no-op no emite webhook");
+    assert.equal((await csat())[0].n, 1, "no-op no duplica CSAT");
+    assert.equal((await q<{ updated_at: Date }>("SELECT updated_at FROM conversaciones WHERE id=$1", [conv]))[0].updated_at.getTime(), marcas.getTime(), "no-op no escribe");
+    assert.equal((await estado("open")).status, 200);
+    assert.equal((await q<{ bot_activo: boolean }>("SELECT bot_activo FROM conversaciones WHERE id=$1", [conv]))[0].bot_activo, true);
+    assert.equal((await estado("resolved")).status, 200);
+    assert.equal((await csat())[0].n, 1, "CSAT se envía una sola vez tras reabrir");
+    assert.equal((await (await estado("pending")).json()).status_anterior, "resolved");
+    assert.equal((await q<{ n: number }>("SELECT count(*)::int n FROM auditoria_bot WHERE conversacion_id=$1 AND accion='estado_cambiado'", [conv]))[0].n, 4);
+
+    const asignar = (id: string | null, tk = "full", c = conv) => llamarNuevo(postAssignments, { assignee_id: id }, {}, tk, c);
+    assert.equal((await asignar(usuarioOtro)).status, 400);
+    assert.equal((await asignar(inactivo)).status, 422);
+    assert.equal((await asignar(cajero)).status, 422);
+    assert.equal((await asignar(usuario, "canalB")).status, 403);
+    assert.equal((await asignar(usuario, "ajeno")).status, 404);
+    assert.equal((await (await asignar(usuario)).json()).responsable.id, Number(usuario));
+    assert.equal((await (await asignar(null)).json()).responsable, null);
+    assert.equal((await siguiente())?.id, BigInt(segundo), "asignada no altera la rotación handoff");
+
+    const editar = (body: unknown, tk = "full") => llamarNuevo(patchContactos, body, { metodo: "PATCH" }, tk);
+    assert.equal((await editar({ telefono: "525500001111" })).status, 400);
+    assert.equal((await editar({ campos: { desconocido: "x" } })).status, 400);
+    assert.equal((await editar({ nombre: "Ana Editada", campos: { ciudad: "Comitán" } }, "canalB")).status, 403);
+    assert.equal((await editar({ nombre: "Ana Editada", campos: { ciudad: "Comitán" } }, "ajeno")).status, 404);
+    const editado = await (await editar({ nombre: "Ana Editada", campos: { ciudad: "Comitán" } })).json();
+    assert.deepEqual(editado.contacto.campos, { ciudad: "Comitán", antiguo: "preservar" });
+    assert.deepEqual((await (await editar({ campos: { ciudad: null } })).json()).contacto.campos, { antiguo: "preservar" });
+    const buscar = (query: string, tk = "full") => llamarNuevo(getContactos, undefined, { query }, tk);
+    assert.equal((await buscar("?q=A")).status, 400);
+    assert.equal((await buscar("?q=Ana&phone=525500001234")).status, 400);
+    assert.equal((await buscar("?q=Ana", "canalB")).status, 403);
+    const buscados = await (await buscar("?q=ana")).json();
+    assert.ok(buscados.contactos.some((c: { id: number }) => c.id === Number(contacto)));
+    assert.ok(buscados.contactos.every((c: { nombre: string }) => c.nombre !== "Ajena"));
+    const lista = await (await llamarNuevo(getConversaciones, undefined, { query: `?contact_id=${contacto}` })).json();
+    assert.equal(lista.payload.length, 1);
+    assert.equal((await (await llamarNuevo(getConversaciones, undefined, { query: `?contact_id=${contactoOtro}` })).json()).payload.length, 0);
+    assert.equal((await llamarNuevo(getConversaciones, undefined, { query: "?contact_id=0" })).status, 400);
+
+    const mensaje = (body: unknown) => llamarNuevo(postMessages, body);
+    assert.equal((await mensaje({ content: "a", attachments: [{ file_type: "image", data_url: "http://8.8.8.8/a" }] })).status, 400);
+    assert.equal((await mensaje({ content: "a", attachments: [{ file_type: "otro", data_url: "https://8.8.8.8/a" }] })).status, 400);
+    assert.equal((await mensaje({ content: "a", attachments: [{ file_type: "image", data_url: "https://8.8.8.8/a" }, { file_type: "image", data_url: "https://8.8.8.8/b" }] })).status, 400);
+    assert.equal((await mensaje({ content: "a", attachments: [{ file_type: "image", data_url: "https://u:p@8.8.8.8/a" }] })).status, 400);
+    assert.equal((await mensaje({ content: "a", attachments: [{ file_type: "image", data_url: "https://127.0.0.1/a" }] })).status, 400);
+    assert.equal((await mensaje({ content: "a", private: true, attachments: [{ file_type: "image", data_url: "https://8.8.8.8/a" }] })).status, 400);
+    await q("INSERT INTO mensajes (org_id,conversacion_id,direccion,contenido) VALUES ($1,$2,'entrante','hola')", [o, conv]);
+    const texto = await mensaje({ content: "texto" });
+    assert.equal(texto.status, 200);
+    assert.deepEqual(Object.keys(await texto.json()).sort(), ["content", "conversation_id", "created_at", "id", "message_type"].sort(), "respuesta de texto intacta");
+    const media = await mensaje({ content: "pie", attachments: [{ file_type: "image", data_url: "https://8.8.8.8/imagen.png" }] });
+    assert.equal(media.status, 200);
+    const mediaId = (await media.json()).id;
+    assert.deepEqual((await q<{ tipo: string; media_url: string }>("SELECT tipo,media_url FROM mensajes WHERE id=$1", [mediaId]))[0], { tipo: "imagen", media_url: "https://8.8.8.8/imagen.png" });
+    await q("UPDATE mensajes SET timestamp=now()-interval '48 hours' WHERE conversacion_id=$1 AND direccion='entrante'", [conv]);
+    assert.equal((await mensaje({ content: "fuera", attachments: [{ file_type: "audio", data_url: "https://8.8.8.8/audio.ogg" }] })).status, 400);
+    assert.ok(enviados.some((body) => body.includes('"type":"image"')), "la media entró al provider");
+  } finally {
+    await esperarWebhooks();
+    https.request = requestOriginal;
+    syncBuiltinESMExports();
+    globalThis.fetch = fetchOriginal;
   }
 }
 

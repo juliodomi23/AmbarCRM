@@ -83,6 +83,8 @@ Los bots que ya existían al migrar conservan **solo lo que sus rutas de producc
 existían en producción y el admin las activa por cliente (Configuración → Bots → casillas, o
 `PATCH /api/bots/:id`; ver [despliegue-bot.md](despliegue-bot.md)). Mientras no estén activas responden
 `403 permiso_faltante`.
+Los permisos `cambiar_estado`, `asignar` y `editar_contacto` tampoco se conceden al migrar ni al crear un bot.
+El administrador debe activarlos por cliente en Configuración → Bots.
 
 | Permiso | Rutas |
 |---|---|
@@ -97,6 +99,9 @@ existían en producción y el admin las activa por cliente (Configuración → B
 | `cotizar` | `GET` y `POST …/quotes`, `POST …/quotes/{quoteId}/send` |
 | `ver_productos` | `GET …/products` |
 | `gestionar_contactos` | `GET` y `POST …/contacts` |
+| `cambiar_estado` | `PATCH …/{id}/status` |
+| `asignar` | `POST …/{id}/assignments` |
+| `editar_contacto` | `PATCH …/{id}/contacts` |
 
 Orden de las comprobaciones: token (401/429) → permiso (403 `permiso_faltante`) → módulo (404) → conversación
 (404) → canal (403).
@@ -133,6 +138,25 @@ Respuesta (los campos marcados ★ son nuevos):
 ### `POST …/{id}/messages` — responder
 Body: `{ "content": "…", "private": false }`. `private: true` guarda una nota interna sin enviarla.
 Errores: `400` contenido vacío · `422` contacto sin teléfono · `502` falla de Meta.
+
+Opcionalmente se acepta un adjunto: `{ "content": "Pie", "attachments": [{ "file_type": "image", "data_url": "https://cdn.example.com/foto.jpg" }] }`.
+`file_type` admite `image`, `audio`, `video` o `file`; máximo un adjunto. `content` es el pie y puede estar vacío
+si hay adjunto. La URL debe ser HTTPS, pública, sin credenciales y de hasta 2048 caracteres; notas privadas con
+adjuntos responden 400. En Cloud API, el CRM entrega la URL a Meta para que descargue el archivo; el servidor
+del CRM no la descarga. Se comprueba la ventana de 24 horas antes de enviar media.
+
+### `PATCH …/{id}/status` — cambiar estado
+Body: `{ "status": "open" | "resolved" | "pending" }`; responde `{ "id", "status", "status_anterior" }`.
+Un estado ya aplicado devuelve 200 con `cambio: false`, sin escritura ni CSAT. `resolved` envía CSAT una sola
+vez si está activado. Reabrir no enciende el bot. Un cambio real produce `conversacion.estado_cambiado` con
+`datos.origen: "bot"` en el webhook saliente; la UI conserva el payload anterior. Si n8n escucha ese evento y
+llama a esta ruta, debe ignorar los eventos con origen `bot` o evitar responder al mismo cambio para prevenir bucles.
+
+### `POST …/{id}/assignments` — asignar
+Body: `{ "assignee_id": 3 }` o `{ "assignee_id": null }` para quitarlo.
+Responde `{ "id", "responsable": { "id", "nombre" } | null }`. El usuario debe ser de la empresa, activo y
+poder atender conversaciones; la asignación no cambia estado ni `bot_activo`. Se audita como `asignada`;
+el round robin de handoff solo consulta `handoff`.
 
 ### `POST …/{id}/funnel` — mover etapa
 Body: `{ "etapa": "Contactado" }`. `400` si la etapa no existe (incluye `etapas` con las válidas).
@@ -305,9 +329,21 @@ Edita la oportunidad **abierta** más reciente del contacto. Body (al menos un c
 - Solo ve y crea contactos de la empresa del bot. El contacto nace con fuente `whatsapp`.
 - Contacto devuelto: `{ id, nombre, telefono, email, empresa, creado }`.
 
+`GET …/{id}/contacts?q=Ana` busca por nombre, email, empresa y teléfono, sin distinguir mayúsculas;
+requiere al menos dos caracteres y devuelve hasta 20 contactos ordenados por nombre como
+`{ "contactos": [{ id, nombre, telefono, email, empresa, creado }] }`. `phone` y `q` juntos responden 400.
+`GET …/conversations?contact_id=3` filtra el listado por contacto de la empresa; un ID de otra empresa
+devuelve `payload: []`.
+
+`PATCH …/{id}/contacts` (permiso `editar_contacto`) modifica el contacto de esa conversación.
+Admite `nombre` (máximo 120), `correo`/`email`, `empresa`, `notas` y `campos`; `telefono` responde 400.
+Los `campos` enviados se fusionan con los actuales: los omitidos permanecen, `null` o `""` elimina una clave,
+una clave no definida y activa responde 400 con `claves`. Responde `{ "contacto": { id, nombre, telefono,
+email, empresa, creado, campos } }` y audita solo los valores modificados.
+
 ## Bitácora (ampliada)
 `cita_agendada`, `cita_reprogramada`, `cotizacion_creada`, `cotizacion_enviada`, `oportunidad_editada`,
-`contacto_creado` y `permiso_denegado` (con el permiso y la ruta). Las consultas (`availability`, `GET quotes`,
+`contacto_creado`, `contacto_editado`, `estado_cambiado`, `asignada` y `permiso_denegado` (con el permiso y la ruta). Las consultas (`availability`, `GET quotes`,
 `GET appointments`, `products`, `GET contacts`) no se registran.
 `auditoria_bot` es de solo agregar: el rol de la app (`crm_app`) puede leer e insertar, no editar ni borrar.
 
@@ -416,6 +452,11 @@ curl -s -H "$H" "$CRM/api/v1/accounts/1/conversations/$C/quotes?estado=enviada"
 ```
 
 ## Limitaciones conocidas
+
+- **URL de adjuntos.** El CRM valida que el dominio resuelva a una IP pública antes de entregar la URL a Meta.
+  Un cambio de DNS posterior a esa validación no está bajo control del CRM; el CRM no descarga el archivo.
+- **Lectura de videos.** Los videos se guardan con `tipo: video`, pero el lector de adjuntos existente los
+  serializa como `file` para conservar la respuesta que ya consumen los flujos actuales.
 
 - **Envío aceptado por Meta pero el registro local falla.** Si Meta acepta el mensaje (o la cotización) y
   después falla el insert en `mensajes` (error de base de datos, `wa_message_id` duplicado), la ruta responde

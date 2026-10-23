@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { conBot } from "@/lib/bot-auth";
+import { aBigInt } from "@/lib/ids";
 import { conversacionInclude, serializarConversacion, serializarMensaje, type MensajeBot } from "@/lib/bot-conversations-read";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,9 @@ export async function GET(req: NextRequest) {
   return conBot(req, null, async (bot) => {
     if (!bot.permisos.includes("leer_perfil")) return NextResponse.json({ error: "permiso_faltante" }, { status: 403 });
     const params = req.nextUrl.searchParams;
+    const contactIdTexto = params.get("contact_id");
+    const contactId = contactIdTexto === null ? null : aBigInt(contactIdTexto);
+    if (contactIdTexto !== null && (contactId === null || contactId <= 0n || contactId > 9_223_372_036_854_775_807n)) return error("contact_id");
     const status = params.get("status") ?? "all";
     if (!["all", "open", "resolved"].includes(status)) return error("status");
     const include = params.get("include");
@@ -58,6 +62,7 @@ export async function GET(req: NextRequest) {
     if (etapa) and.push({ contacto: { oportunidades: { some: { estado: "abierto", etapa: { nombre: etapa } } } } });
     const where: Prisma.ConversacionWhereInput = {
       orgId: bot.orgId,
+      ...(contactId === null ? {} : { contactoId: contactId }),
       ...(bot.canalId === null ? {} : { canalId: bot.canalId }),
       ...(status === "open" ? { estado: "abierta" } : status === "resolved" ? { estado: "cerrada" } : {}),
       ...(fechas.updatedAfter || fechas.updatedBefore ? { updatedAt: {

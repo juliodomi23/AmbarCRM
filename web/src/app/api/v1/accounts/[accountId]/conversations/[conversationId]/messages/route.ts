@@ -5,6 +5,10 @@ import { botAutorizado, conBot, denegarSinPermiso } from "@/lib/bot-auth";
 import { auditarBot } from "@/lib/services/bots";
 import { aBigInt } from "@/lib/ids";
 import { serializarMensaje } from "@/lib/bot-conversations-read";
+import { estadoVentana } from "@/lib/meta/ventana";
+import { motivoDeError } from "@/lib/meta/errores";
+import { destinoPublico } from "@/lib/webhook-url";
+import type { TipoMensaje } from "@/lib/channel";
 
 export const dynamic = "force-dynamic";
 
@@ -90,7 +94,24 @@ export async function POST(
     const esPrivado = body.private === true;
     const sinPermiso = await denegarSinPermiso(bot, esPrivado ? "notas_internas" : "enviar_mensaje", convId, req);
     if (sinPermiso) return sinPermiso;
-    if (!content.trim()) return NextResponse.json({ error: "content vacío" }, { status: 400 });
+    const tieneAdjuntos = Object.hasOwn(body, "attachments");
+    let adjunto: { tipo: TipoMensaje; url: string } | null = null;
+    if (tieneAdjuntos) {
+      if (!Array.isArray(body.attachments) || body.attachments.length !== 1) {
+        return NextResponse.json({ error: "attachments requiere un adjunto" }, { status: 400 });
+      }
+      if (esPrivado) return NextResponse.json({ error: "nota privada no admite adjuntos" }, { status: 400 });
+      const archivo = body.attachments[0];
+      const tipos: Record<string, TipoMensaje> = { image: "imagen", audio: "audio", video: "video", file: "documento" };
+      if (!archivo || typeof archivo !== "object" || typeof archivo.file_type !== "string" || !tipos[archivo.file_type]) {
+        return NextResponse.json({ error: "file_type inválido" }, { status: 400 });
+      }
+      if (typeof archivo.data_url !== "string" || archivo.data_url.length > 2048 || !archivo.data_url.startsWith("https://") || !(await destinoPublico(archivo.data_url))) {
+        return NextResponse.json({ error: "data_url debe ser una URL HTTPS pública" }, { status: 400 });
+      }
+      adjunto = { tipo: tipos[archivo.file_type], url: archivo.data_url };
+    }
+    if (!content.trim() && !adjunto) return NextResponse.json({ error: "content vacío" }, { status: 400 });
 
     const conv = await db.conversacion.findUnique({
       where: { id: convId },
@@ -115,14 +136,31 @@ export async function POST(
       return NextResponse.json({ error: "el contacto no tiene destinatario para este canal" }, { status: 422 });
     }
     const provider = getProvider(conv.canal.proveedor, conv.canal.config, conv.canal.instancia);
-    const envio = await responderTexto(provider, conv.contacto, content, { conversacionId: conv.id, ultimoEntranteAt: conv.ultimoEntranteAt, humano: false });
+    let envio;
+    if (adjunto) {
+      if (conv.canal.proveedor === "cloud_api") {
+        const ultimoEntrante = await db.mensaje.findFirst({
+          where: { conversacionId: conv.id, direccion: "entrante" },
+          orderBy: { timestamp: "desc" }, select: { timestamp: true }
+        });
+        if (!estadoVentana(ultimoEntrante?.timestamp).abierta) {
+          return NextResponse.json({ error: motivoDeError(131047), ventanaCerrada: true }, { status: 400 });
+        }
+      }
+      envio = await provider.enviarMedia(destinatarioDelCanal(conv.canal.proveedor, conv.contacto)!,
+        adjunto.url, adjunto.tipo, content.trim() || undefined,
+        undefined, { conversacionId: conv.id, ultimoEntranteAt: conv.ultimoEntranteAt, humano: false });
+    } else {
+      envio = await responderTexto(provider, conv.contacto, content, { conversacionId: conv.id, ultimoEntranteAt: conv.ultimoEntranteAt, humano: false });
+    }
 
     const mensaje = await db.mensaje.create({
       data: {
         conversacionId: conv.id,
         direccion: "saliente",
-        tipo: "texto",
+        tipo: adjunto?.tipo ?? "texto",
         contenido: content,
+        ...(adjunto ? { mediaUrl: adjunto.url } : {}),
         status: envio.ok ? "enviado" : "fallido",
         errorDetalle: envio.ok ? null : envio.error,
         waMessageId: envio.waMessageId
@@ -134,7 +172,7 @@ export async function POST(
     await auditarBot(bot, conv.id, "mensaje_enviado", {
       entidad: "mensaje",
       entidadId: mensaje.id,
-      despues: { contenido: content, status: mensaje.status }
+      despues: { contenido: content, status: mensaje.status, ...(adjunto ? { tipo: adjunto.tipo, mediaUrl: adjunto.url } : {}) }
     });
     if (!envio.ok) return NextResponse.json({ error: envio.error ?? "fallo al enviar" }, { status: 502 });
 
