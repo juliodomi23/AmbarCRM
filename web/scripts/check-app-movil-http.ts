@@ -3,6 +3,7 @@ import pg from "pg";
 import { decode, encode } from "next-auth/jwt";
 import { mkdir, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
+import { createHmac } from "node:crypto";
 
 const base = process.env.APP_URL;
 if (!base) throw new Error("APP_URL es obligatorio");
@@ -67,22 +68,34 @@ async function main() {
   assert.equal(ganaCookie.status, 200);
 
   const archivo = `o${orgId}-${Date.now()}-${"0".repeat(32)}.png`;
+  const orgAjena = await admin.query<{ id: string }>("SELECT id FROM orgs WHERE slug=$1", [slug.replace("movil-a-", "movil-b-")]);
+  const archivoAjeno = `o${orgAjena.rows[0].id}-${Date.now()}-${"1".repeat(32)}.png`;
   const botToken = `bot-http-${Date.now()}`;
   await admin.query("INSERT INTO bots(org_id,nombre,webhook_url,api_token) VALUES($1,'Bot prueba','http://127.0.0.1:9',$2)", [orgId, botToken]);
   const directorio = path.join(process.cwd(), "uploads");
   await mkdir(directorio, { recursive: true });
   await writeFile(path.join(directorio, archivo), Buffer.from([137, 80, 78, 71]));
+  await writeFile(path.join(directorio, archivoAjeno), Buffer.from([137, 80, 78, 71]));
   try {
     const mediaBearer = await fetchLocal(`/api/media/${archivo}`, { headers: bearer });
     const mediaCookie = await fetchLocal(`/api/media/${archivo}`, { headers: { Cookie: cookieWeb } });
     const mediaBot = await fetchLocal(`/api/media/${archivo}`, { headers: { "x-bot-token": botToken } });
     const mediaSin = await fetchLocal(`/api/media/${archivo}`);
+    const mediaAjena = await fetchLocal(`/api/media/${archivoAjeno}`, { headers: bearer });
     assert.equal(mediaBearer.status, 200);
     assert.equal(mediaCookie.status, 200);
     assert.equal(mediaBot.status, 200);
     assert.equal(mediaSin.status, 401);
-    console.log("media", JSON.stringify({ bearer: mediaBearer.status, cookie: mediaCookie.status, bot: mediaBot.status, sinCredenciales: mediaSin.status }));
-  } finally { await unlink(path.join(directorio, archivo)); }
+    assert.equal(mediaAjena.status, 404);
+    if (process.env.META_TOKEN_ENCRYPTION_KEY) {
+      const vence = String(Math.floor(Date.now() / 1000) + 300);
+      const firma = createHmac("sha256", Buffer.from(process.env.META_TOKEN_ENCRYPTION_KEY, "base64"))
+        .update(`media-messenger:${vence}:${archivo}`).digest("hex");
+      const firmada = await fetchLocal(`/api/media/${archivo}?vence=${vence}&firma=${firma}`);
+      assert.equal(firmada.status, 200);
+    }
+    console.log("media", JSON.stringify({ bearer: mediaBearer.status, cookie: mediaCookie.status, bot: mediaBot.status, sinCredenciales: mediaSin.status, otraOrg: mediaAjena.status, firmada: !!process.env.META_TOKEN_ENCRYPTION_KEY }));
+  } finally { await unlink(path.join(directorio, archivo)); await unlink(path.join(directorio, archivoAjeno)); }
   const botEnMovil = await fetchLocal("/api/movil/renovar", { method: "POST", headers: { Authorization: `Bearer ${botToken}` } });
   assert.equal(botEnMovil.status, 401);
   const movilEnBot = await fetchLocal(`/api/v1/accounts/${orgId}/conversations`, { headers: bearer });
