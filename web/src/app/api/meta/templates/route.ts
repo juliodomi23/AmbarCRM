@@ -15,7 +15,7 @@ async function channel(id: string | null) {
 }
 
 async function manejarGET(req: NextRequest) {
-  const session = await requireSesion(true);
+  const session = await requireSesion();
   if ("error" in session) return session.error;
   const canal = await channel(req.nextUrl.searchParams.get("canalId"));
   if (!canal) return NextResponse.json({ error: "canal inexistente" }, { status: 404 });

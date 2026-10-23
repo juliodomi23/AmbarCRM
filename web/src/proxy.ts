@@ -25,5 +25,5 @@ export default async function proxy(req: NextRequest, event: NextFetchEvent) {
 
 // Protege todo menos login, api/auth y las rutas que validan su propio token.
 export const config = {
-  matcher: ["/((?!login|recuperar(?:/|$)|restablecer/|demo(?:/|$)|opinion/|cotizacion/|tienda/|reservar/|privacidad|terminos|eliminacion-datos|api/auth(?:/|$)|api/movil/login(?:/|$)|api/meta(?:/|$)|api/canal-api/|api/messenger/webhook(?:/|$)|api/instagram/webhook(?:/|$)|api/public|api/v1|api/cron|api/servidores/heartbeat(?:/|$)|api/panel-ar/alertas(?:/|$)|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icon.svg|icon-192.png|icon-512.png|apple-touch-icon.png).*)"]
+  matcher: ["/((?!login|recuperar(?:/|$)|restablecer/|demo(?:/|$)|opinion/|cotizacion/|tienda/|reservar/|privacidad|terminos|eliminacion-datos|api/auth(?:/|$)|api/movil/login(?:/|$)|api/meta/webhook(?:/|$)|api/canal-api/|api/messenger/webhook(?:/|$)|api/instagram/webhook(?:/|$)|api/public|api/v1|api/cron|api/servidores/heartbeat(?:/|$)|api/panel-ar/alertas(?:/|$)|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icon.svg|icon-192.png|icon-512.png|apple-touch-icon.png).*)"]
 };
