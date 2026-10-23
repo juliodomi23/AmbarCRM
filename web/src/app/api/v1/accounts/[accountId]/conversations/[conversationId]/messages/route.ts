@@ -4,8 +4,71 @@ import { getProvider, destinatarioDelCanal, responderTexto } from "@/lib/channel
 import { botAutorizado, conBot, denegarSinPermiso } from "@/lib/bot-auth";
 import { auditarBot } from "@/lib/services/bots";
 import { aBigInt } from "@/lib/ids";
+import { serializarMensaje } from "@/lib/bot-conversations-read";
 
 export const dynamic = "force-dynamic";
+
+export async function GET(
+  req: NextRequest,
+  props: { params: Promise<{ accountId: string; conversationId: string }> }
+) {
+  const params = await props.params;
+  return conBot(req, null, async (bot) => {
+    if (!bot.permisos.includes("leer_perfil")) return NextResponse.json({ error: "permiso_faltante" }, { status: 403 });
+    const convId = aBigInt(params.conversationId);
+    if (convId === null) return NextResponse.json({ error: "conversationId inválido" }, { status: 400 });
+    const conv = await db.conversacion.findFirst({
+      where: { id: convId, orgId: bot.orgId, ...(bot.canalId === null ? {} : { canalId: bot.canalId }) },
+      select: { id: true, contacto: { select: { id: true, nombre: true } } }
+    });
+    if (!conv) return NextResponse.json({ error: "conversación inexistente" }, { status: 404 });
+
+    const query = req.nextUrl.searchParams;
+    const beforeTexto = query.get("before");
+    const afterTexto = query.get("after");
+    if (beforeTexto !== null && afterTexto !== null) return NextResponse.json({ error: "before y after son excluyentes" }, { status: 400 });
+    const cursorTexto = beforeTexto ?? afterTexto;
+    const cursorId = cursorTexto === null ? null : aBigInt(cursorTexto);
+    if (cursorTexto !== null && cursorId === null) return NextResponse.json({ error: "cursor inválido" }, { status: 400 });
+    const privateParam = query.get("include_private");
+    if (privateParam !== null && privateParam !== "true" && privateParam !== "false") {
+      return NextResponse.json({ error: "include_private inválido" }, { status: 400 });
+    }
+    const includePrivate = privateParam === "true";
+    if (includePrivate && !bot.permisos.includes("notas_internas")) {
+      return NextResponse.json({ error: "permiso_faltante", permiso: "notas_internas" }, { status: 403 });
+    }
+    const limitTexto = query.get("limit");
+    const limit = limitTexto === null ? 100 : Number(limitTexto);
+    if (limitTexto !== null && (!/^[1-9]\d*$/.test(limitTexto) || !Number.isSafeInteger(limit) || limit > 500)) {
+      return NextResponse.json({ error: "limit inválido" }, { status: 400 });
+    }
+    const cursor = cursorId === null ? null : await db.mensaje.findFirst({
+      where: { id: cursorId, conversacionId: conv.id, ...(includePrivate ? {} : { interna: false }) },
+      select: { id: true }
+    });
+    if (cursorId !== null && !cursor) return NextResponse.json({ error: "cursor inválido" }, { status: 400 });
+    const retroceder = beforeTexto !== null;
+    const mensajes = await db.mensaje.findMany({
+      where: {
+        conversacionId: conv.id,
+        ...(includePrivate ? {} : { interna: false })
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      ...(cursor ? { cursor: { id: cursor.id }, skip: 1 } : {}),
+      take: retroceder ? -(limit + 1) : limit + 1,
+      include: { usuario: { select: { id: true, nombre: true } } }
+    });
+    const hayMas = mensajes.length > limit;
+    const pagina = retroceder ? mensajes.slice(-limit) : mensajes.slice(0, limit);
+    const headers: Record<string, string> = {};
+    if (hayMas && pagina.length) {
+      if (retroceder) headers["X-Next-Before"] = String(pagina[0].id);
+      else headers["X-Next-After"] = String(pagina.at(-1)!.id);
+    }
+    return NextResponse.json(pagina.map((m) => serializarMensaje(m, conv.contacto, bot)), { headers });
+  });
+}
 
 /**
  * Endpoint de AmbarCRM para que los bots de n8n respondan.

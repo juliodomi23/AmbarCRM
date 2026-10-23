@@ -664,6 +664,7 @@ model Conversacion {
   /// Chat fijado (va primero en la bandeja). Null = no fijado.
   fijadoAt        DateTime?  @map("fijado_at")
   createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @default(now()) @updatedAt @map("updated_at")
 
   contacto    Contacto            @relation(fields: [contactoId], references: [id], onDelete: Cascade)
   canal       CanalWhatsapp?      @relation(fields: [canalId], references: [id], onDelete: SetNull)
@@ -676,6 +677,9 @@ model Conversacion {
   @@unique([contactoId, canalId])
   @@index([ultimoMensajeAt])
   @@index([orgId])
+  @@index([orgId, updatedAt, id], map: "conversaciones_org_updated_at_id_idx")
+  @@index([orgId, estado, updatedAt, id], map: "conversaciones_org_estado_updated_at_id_idx")
+  @@index([orgId, createdAt, id], map: "conversaciones_org_created_at_id_idx")
   @@map("conversaciones")
 }
 
@@ -734,6 +738,7 @@ model Mensaje {
   usuario      Usuario?     @relation(fields: [enviadoPor], references: [id], onDelete: SetNull)
 
   @@index([conversacionId, timestamp])
+  @@index([conversacionId, createdAt, id])
   @@unique([canalId, waMessageId])
   @@index([orgId])
   @@map("mensajes")

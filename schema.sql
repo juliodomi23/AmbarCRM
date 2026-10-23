@@ -164,6 +164,7 @@ CREATE INDEX IF NOT EXISTS idx_msg_grupo ON mensajes_grupo(grupo_id, "timestamp"
 -- ---------- conversaciones ----------
 CREATE TABLE IF NOT EXISTS conversaciones (
   id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id           BIGINT, -- multi-tenant.sql completa el backfill, FK, default y RLS
   contacto_id      BIGINT      NOT NULL REFERENCES contactos(id) ON DELETE CASCADE,
   canal_id         BIGINT      REFERENCES canales_whatsapp(id) ON DELETE SET NULL,
   estado           estado_conv NOT NULL DEFAULT 'abierta',
@@ -176,9 +177,13 @@ CREATE TABLE IF NOT EXISTS conversaciones (
   aviso_fuera_at   TIMESTAMPTZ,
   ultimo_mensaje_at TIMESTAMPTZ,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (contacto_id, canal_id)
 );
 CREATE INDEX IF NOT EXISTS idx_conv_orden ON conversaciones(ultimo_mensaje_at DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS conversaciones_org_updated_at_id_idx ON conversaciones(org_id, updated_at, id);
+CREATE INDEX IF NOT EXISTS conversaciones_org_estado_updated_at_id_idx ON conversaciones(org_id, estado, updated_at, id);
+CREATE INDEX IF NOT EXISTS conversaciones_org_created_at_id_idx ON conversaciones(org_id, created_at, id);
 -- Para BD existentes (idempotente):
 ALTER TABLE conversaciones ADD COLUMN IF NOT EXISTS bot_activo BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE conversaciones ADD COLUMN IF NOT EXISTS etiquetas TEXT[] NOT NULL DEFAULT '{}';
@@ -204,6 +209,7 @@ CREATE TABLE IF NOT EXISTS mensajes (
   created_at     TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_msg_conv ON mensajes(conversacion_id, "timestamp");
+CREATE INDEX IF NOT EXISTS mensajes_conversacion_id_created_at_id_idx ON mensajes(conversacion_id, created_at, id);
 CREATE UNIQUE INDEX IF NOT EXISTS mensajes_canal_id_wa_message_id_key ON mensajes(canal_id, wa_message_id);
 CREATE UNIQUE INDEX IF NOT EXISTS contactos_canal_identificador_uq
   ON contactos(canal_id, identificador_externo) WHERE identificador_externo IS NOT NULL;

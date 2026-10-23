@@ -4,7 +4,51 @@ Guía práctica: [bots multicanal](bots-multicanal.md), con el campo aditivo `ca
 
 Base: `https://<tu-crm>/api/v1/accounts/1/conversations/{conversationId}`.
 Todas las rutas usan el header `api_access_token: <token del bot>` (o `x-bot-token`).
-Las respuestas existentes **solo ganan campos**; ninguno se quitó ni cambió de nombre.
+Las respuestas existentes conservan sus claves. En el detalle, `labels` sigue siendo `[]` o
+`["bot_off"]`; las etiquetas del contacto siguen en `perfil.etiquetas`.
+
+## Lectura para n8n
+
+`GET /api/v1/accounts/1/conversations` devuelve `{ meta: { total, page, per_page, total_pages }, payload }`.
+Acepta `status=open|resolved|all` (por defecto `all`), `labels[]` repetido (debe tener todas las etiquetas),
+`etapa`, `updated_after`, `updated_before`, `created_after`, `created_before`, `page` y `per_page`.
+Las fechas aceptan ISO 8601 o segundos Unix. La lista ordena por `updated_at ASC, id ASC`.
+El límite es 100 conversaciones por página, o 50 con `include=messages`. En el listado nuevo,
+`labels` incluye las etiquetas del contacto. `include=messages` trae los últimos 500 mensajes
+visibles de cada conversación y marca `messages_truncated: true` si hay más. Para descargar
+el histórico completo, recorre `/messages` con `after`.
+El token solo ve su organización y, si el bot está ligado a un canal, ese canal.
+
+`GET /api/v1/accounts/1/conversations/{id}/messages` devuelve un array de hasta 100 mensajes
+por `created_at ASC, id ASC` (máximo 500 con `limit`). Si hay más, la cabecera `X-Next-After`
+indica el ID para la siguiente petición `?after=<id>`. `before=<id>` retrocede y responde
+en el mismo orden ascendente; si quedan mensajes anteriores, devuelve `X-Next-Before`.
+`after` y `before` son excluyentes. Las notas internas quedan fuera por defecto.
+Para incluirlas, usa `include_private=true` con un bot que tenga `notas_internas`; entonces
+aparecen con `private: true` y `message_type: 2`. Esto también aplica a `include=messages`.
+`include=messages` usa el mismo formato de mensaje dentro de cada conversación.
+El campo `mensajes` del listado nuevo toma sus recientes por `created_at, id`; el detalle
+existente conserva el orden por `timestamp, id`.
+Los adjuntos solo incluyen `file_type` y `data_url`; no hay columna de transcripción en el CRM.
+
+```bash
+curl -H "api_access_token: $TOKEN" \
+  "$CRM/api/v1/accounts/1/conversations?status=open&updated_after=2026-10-01T00%3A00%3A00Z&labels%5B%5D=interesado&page=1&per_page=25"
+curl -H "api_access_token: $TOKEN" \
+  "$CRM/api/v1/accounts/1/conversations/$C/messages"
+curl -H "api_access_token: $TOKEN" \
+  "$CRM/api/v1/accounts/1/conversations/$C/messages?after=9876&limit=100"
+curl -H "api_access_token: $TOKEN" \
+  "$CRM/api/v1/accounts/1/conversations?created_after=2026-10-01T00%3A00%3A00Z&include=messages&per_page=50&page=1"
+```
+
+La paginación por número de página supone que el conjunto no cambia durante la descarga.
+Si una conversación ya recorrida recibe mensajes, cambia su `updated_at` y puede reaparecer
+en una página posterior. Para un histórico en movimiento, n8n debe deduplicar por `id` y
+hacer un recorrido de reconciliación al terminar.
+`updated_at` también cambia por escrituras internas como marcar el chat como leído: aceptamos
+ese ruido para mantener el modelo simple. Un cambio de etiquetas del contacto no mueve
+`updated_at` de la conversación; n8n debe deduplicar por `id`.
 
 ## Reglas comunes
 
@@ -82,7 +126,7 @@ Respuesta (los campos marcados ★ son nuevos):
   }
 }
 ```
-- `mensajes` (★): últimos 20, en orden cronológico. **No incluye notas internas.** `sender`: `contact`, `bot` o `agent`.
+- `mensajes` (★): últimos 20 por `timestamp` de WhatsApp e `id`, en orden cronológico. **No incluye notas internas.** `sender`: `contact`, `bot` o `agent`. `/messages` usa `created_at` e `id`.
 - `perfil` (★): `responsable` y `oportunidad` pueden ser `null`.
 - `labels` sigue siendo solo `["bot_off"]` cuando el bot está apagado.
 

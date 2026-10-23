@@ -1927,3 +1927,21 @@ CREATE POLICY org_isolation ON campanas_destinatarios
   WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
 GRANT SELECT, INSERT, UPDATE, DELETE ON campanas_envio, campanas_destinatarios TO crm_app;
 GRANT USAGE, SELECT ON SEQUENCE campanas_envio_id_seq, campanas_destinatarios_id_seq TO crm_app;
+
+-- Lectura cronológica de conversaciones y mensajes para la API del bot.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'conversaciones' AND column_name = 'updated_at'
+  ) THEN
+    ALTER TABLE conversaciones ADD COLUMN updated_at TIMESTAMPTZ;
+    UPDATE conversaciones SET updated_at = COALESCE(ultimo_mensaje_at, created_at);
+    ALTER TABLE conversaciones ALTER COLUMN updated_at SET DEFAULT now();
+    ALTER TABLE conversaciones ALTER COLUMN updated_at SET NOT NULL;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS conversaciones_org_updated_at_id_idx ON conversaciones(org_id, updated_at, id);
+CREATE INDEX IF NOT EXISTS conversaciones_org_estado_updated_at_id_idx ON conversaciones(org_id, estado, updated_at, id);
+CREATE INDEX IF NOT EXISTS conversaciones_org_created_at_id_idx ON conversaciones(org_id, created_at, id);
+CREATE INDEX IF NOT EXISTS mensajes_conversacion_id_created_at_id_idx ON mensajes(conversacion_id, created_at, id);

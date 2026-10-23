@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { botAutorizado, conBot } from "@/lib/bot-auth";
 import { aBigInt } from "@/lib/ids";
-import { oportunidadAbierta } from "@/lib/services/funnel";
+import { conversacionInclude, serializarConversacion } from "@/lib/bot-conversations-read";
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +19,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ accountId
 
     const conv = await db.conversacion.findUnique({
       where: { id: convId },
-      include: {
-        contacto: { include: { etiquetas: { include: { etiqueta: true } } } },
-        canal: { select: { proveedor: true } },
-        responsable: { select: { id: true, nombre: true } }
-      }
+      include: conversacionInclude
     });
     if (!conv) return NextResponse.json({ error: "conversación inexistente" }, { status: 404 });
     if (!botAutorizado(bot, conv)) return NextResponse.json({ error: "el bot no opera en este canal" }, { status: 403 });
@@ -32,47 +28,13 @@ export async function GET(req: NextRequest, props: { params: Promise<{ accountId
     const recientes = await db.mensaje.findMany({
       where: { conversacionId: conv.id, interna: false },
       orderBy: [{ timestamp: "desc" }, { id: "desc" }],
-      take: 20
+      take: 20,
+      include: { usuario: { select: { id: true, nombre: true } } }
     });
-    const oportunidad = await oportunidadAbierta(conv.contactoId);
-    const etapa = oportunidad ? await db.etapa.findUnique({ where: { id: oportunidad.etapaId } }) : null;
-
-    const sender = {
-      identifier: conv.canal?.proveedor === "cloud_api" ? conv.contacto.telefono : conv.contacto.identificadorExterno ?? conv.contacto.telefono,
-      name: conv.contacto.nombre,
-      phone_number: conv.contacto.telefono ? `+${conv.contacto.telefono}` : null
-    };
-    return NextResponse.json({
-      id: Number(conv.id),
-      status: conv.estado === "cerrada" ? "resolved" : conv.estado === "pendiente" ? "pending" : "open",
-      bot_activo: conv.botActivo,
-      canal: conv.canal?.proveedor ?? null,
-      labels: conv.botActivo ? [] : ["bot_off"],
-      can_reply: true,
-      meta: { sender },
-      // Campos nuevos (solo se agregan; los de arriba no cambian).
-      mensajes: recientes.reverse().map((m) => ({
-        id: Number(m.id),
-        message_type: m.direccion === "entrante" ? "incoming" : "outgoing",
-        sender: m.direccion === "entrante" ? "contact" : m.enviadoPor == null ? "bot" : "agent",
-        tipo: m.tipo,
-        content: m.contenido ?? "",
-        created_at: m.timestamp.toISOString()
-      })),
-      perfil: {
-        etiquetas: conv.contacto.etiquetas.map((e) => e.etiqueta.nombre),
-        campos: conv.contacto.campos,
-        responsable: conv.responsable ? { id: Number(conv.responsable.id), nombre: conv.responsable.nombre } : null,
-        oportunidad: oportunidad
-          ? {
-              id: Number(oportunidad.id),
-              titulo: oportunidad.titulo,
-              etapa: etapa?.nombre ?? null,
-              valor: Number(oportunidad.valor),
-              moneda: oportunidad.moneda
-            }
-          : null
-      }
-    });
+    const [ultimo, oportunidad] = await Promise.all([
+      db.mensaje.findFirst({ where: { conversacionId: conv.id, interna: false }, orderBy: [{ timestamp: "desc" }, { id: "desc" }], include: { usuario: { select: { id: true, nombre: true } } } }),
+      db.oportunidad.findFirst({ where: { contactoId: conv.contactoId, estado: "abierto" }, orderBy: { createdAt: "desc" }, include: { etapa: { select: { nombre: true } } } })
+    ]);
+    return NextResponse.json(serializarConversacion(conv, recientes.reverse(), oportunidad, ultimo));
   });
 }

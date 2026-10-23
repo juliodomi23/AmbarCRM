@@ -26,6 +26,8 @@ import {
 import { runWithOrg } from "../../src/lib/db";
 import { auditarBot } from "../../src/lib/services/bots";
 import { GET as getConversacion } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/route";
+import { GET as getConversaciones } from "../../src/app/api/v1/accounts/[accountId]/conversations/route";
+import { GET as getMensajes } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/messages/route";
 import { POST as postLabels } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/labels/route";
 import { POST as postTasks } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/tasks/route";
 import { POST as postMessages } from "../../src/app/api/v1/accounts/[accountId]/conversations/[conversationId]/messages/route";
@@ -63,6 +65,32 @@ const orgId = BigInt(Date.now()) * 1000n + 777n;
 
 async function q<T = Record<string, unknown>>(sql: string, valores: unknown[] = []) {
   return (await admin.query(sql, valores)).rows as T[];
+}
+
+async function probarBackfillConversaciones() {
+  const tabla = `conversaciones_backfill_test_${Date.now()}`;
+  const sql = await readFile("prisma/sql/actualizaciones.sql", "utf8");
+  const bloque = sql.slice(sql.indexOf("-- Lectura cronológica de conversaciones"))
+    .match(/DO \$\$[\s\S]*?END \$\$;/)?.[0];
+  assert.ok(bloque, "backfill de updated_at presente");
+  await q(`CREATE TABLE ${tabla} (id BIGINT, org_id BIGINT, estado estado_conv,
+    created_at TIMESTAMPTZ NOT NULL, ultimo_mensaje_at TIMESTAMPTZ)`);
+  try {
+    await q(`INSERT INTO ${tabla} (id, org_id, estado, created_at, ultimo_mensaje_at) VALUES
+      (1, 1, 'abierta', '2020-01-01', '2021-01-01'),
+      (2, 1, 'abierta', '2020-02-01', NULL)`);
+    const migrar = bloque.replaceAll("conversaciones", tabla);
+    await q(migrar);
+    const leer = () => q<{ updated_at: Date }>(`SELECT updated_at FROM ${tabla} ORDER BY id`);
+    const fechas = await leer();
+    assert.equal(fechas[0].updated_at.toISOString(), "2021-01-01T00:00:00.000Z");
+    assert.equal(fechas[1].updated_at.toISOString(), "2020-02-01T00:00:00.000Z");
+    await q(`UPDATE ${tabla} SET updated_at='2022-01-01' WHERE id=1`);
+    await q(migrar);
+    assert.equal((await leer())[0].updated_at.toISOString(), "2022-01-01T00:00:00.000Z", "backfill solo se ejecuta una vez");
+  } finally {
+    await q(`DROP TABLE IF EXISTS ${tabla}`);
+  }
 }
 const uno = async (sql: string, v: unknown[] = []) => (await q<{ id: string }>(sql, v))[0].id;
 
@@ -153,6 +181,7 @@ const notasBot = (conversacionId: string) =>
 const textosNotasBot = async (conversacionId: string) => (await notasBot(conversacionId)).map((n) => n.contenido);
 
 async function main() {
+  await probarBackfillConversaciones();
   await new Promise<void>((ok) => servidor.listen(0, "127.0.0.1", ok));
   // ---------- Datos ----------
   await q("INSERT INTO orgs (id, nombre, slug) VALUES ($1, 'Bot API', $2)", [orgId.toString(), `bot-api-${sufijo}`]);
@@ -609,6 +638,92 @@ async function bloque3(o: string, ctx: Ctx) {
   await modulo("citas", true);
   await modulo("cotizaciones", true);
   await q(`INSERT INTO modulos_org (org_id, clave, activo) VALUES ($1,'citas',true),($1,'cotizaciones',true)`, [org2.toString()]);
+
+  // Lectura de conversaciones: RLS, paginación, histórico y filtros combinados.
+  const conv = ctx.conv;
+  const contactoOrg2 = await uno(`INSERT INTO contactos (org_id, nombre, telefono) VALUES ($1,'AjenO',$2) RETURNING id::text AS id`, [org2.toString(), `52${Date.now()}99`]);
+  const convOrg2 = await uno(`INSERT INTO conversaciones (org_id, contacto_id, canal_id) VALUES ($1,$2,$3) RETURNING id::text AS id`, [org2.toString(), contactoOrg2, canal2]);
+  const mensajeOrg2 = await uno(`INSERT INTO mensajes (org_id, conversacion_id, direccion, contenido) VALUES ($1,$2,'entrante','privado de B') RETURNING id::text AS id`, [org2.toString(), convOrg2]);
+  const corte = new Date(Date.now() + 60_000);
+  const nuevas = [(await nuevaConversacion()).id, (await nuevaConversacion()).id, (await nuevaConversacion()).id];
+  for (const [i, id] of [conv, ...nuevas].entries()) {
+    await q("UPDATE conversaciones SET updated_at=$2 WHERE id=$1", [id, new Date(corte.getTime() + (i + 1) * 1000)]);
+  }
+  const query = `?updated_after=${encodeURIComponent(corte.toISOString())}&per_page=2`;
+  const leerLista = (tk: string, extra = "") => llamar(getConversaciones, token(tk), "0", undefined, { query: `${query}${extra}` });
+  const paginas = [];
+  for (let page = 1; page <= 2; page++) {
+    const res = await leerLista("A", `&page=${page}`);
+    assert.equal(res.status, 200);
+    paginas.push(...(await res.json()).payload.map((c: { id: number }) => c.id));
+  }
+  assert.deepEqual(paginas, [conv, ...nuevas].map(Number), "todas las páginas en updated_at ASC, id ASC, sin duplicados");
+  const filtradas = await leerLista("A", "&labels%5B%5D=interesado");
+  assert.deepEqual((await filtradas.json()).payload.map((c: { id: number }) => c.id), [Number(conv)], "updated_after y labels[] combinados");
+  const ultimaNota = await uno(`INSERT INTO mensajes (org_id, conversacion_id, direccion, contenido, interna, created_at, "timestamp")
+    VALUES ($1,$2,'saliente','nota privada de prueba',true,now() + interval '1 day',now() + interval '1 day') RETURNING id::text AS id`, [o, conv]);
+  const conMensajes = await leerLista("A", "&labels%5B%5D=interesado&include=messages");
+  const [conHistorico] = (await conMensajes.json()).payload;
+  const cuenta = (await q<{ n: number }>("SELECT count(*)::int AS n FROM mensajes WHERE conversacion_id=$1 AND NOT interna", [conv]))[0].n;
+  assert.equal(conHistorico.messages.length, cuenta, "include=messages solo devuelve mensajes públicos");
+  assert.equal(conHistorico.messages_truncated, false);
+  assert.ok(conHistorico.messages.every((m: { private: boolean }) => !m.private));
+  assert.ok(conHistorico.messages.every((m: { created_at: number }, i: number, a: { created_at: number }[]) => i === 0 || a[i - 1].created_at <= m.created_at));
+  const primera = await llamar(getMensajes, token("A"), conv, undefined, { query: "?limit=5" });
+  assert.equal(primera.status, 200);
+  const primeros = await primera.json();
+  assert.equal(primeros.length, 5);
+  assert.equal(primera.headers.get("X-Next-After"), String(primeros.at(-1).id));
+  const segunda = await llamar(getMensajes, token("A"), conv, undefined, { query: `?after=${primera.headers.get("X-Next-After")}&limit=5` });
+  const siguientes = await segunda.json();
+  assert.equal(siguientes.length, 5);
+  const anteriores = await llamar(getMensajes, token("A"), conv, undefined, { query: `?before=${siguientes[0].id}&limit=5` });
+  const previos = await anteriores.json();
+  assert.deepEqual(previos, primeros, "before retrocede y conserva el orden ascendente");
+  assert.equal((await llamar(getMensajes, token("A"), conv, undefined, { query: `?after=${primeros[0].id}&before=${siguientes[0].id}` })).status, 400);
+  assert.equal((await llamar(getMensajes, token("A"), conv, undefined, { query: `?after=${mensajeOrg2}` })).status, 400);
+  assert.equal((await llamar(getMensajes, token("A"), conv, undefined, { query: "?limit=501" })).status, 400);
+  const historial = await (await llamar(getMensajes, token("A"), conv)).json();
+  assert.deepEqual(historial, conHistorico.messages, "GET messages completo coincide con include=messages");
+  const retroceso = await llamar(getMensajes, token("A"), conv, undefined, { query: `?before=${historial.at(-1).id}&limit=5` });
+  const retroPagina = await retroceso.json();
+  assert.equal(retroPagina.length, 5);
+  assert.equal(retroceso.headers.get("X-Next-Before"), String(retroPagina[0].id));
+  assert.ok(historial.every((m: { private: boolean }) => !m.private), "las notas internas no salen por defecto");
+  const privados = await (await llamar(getMensajes, token("A"), conv, undefined, { query: "?include_private=true" })).json();
+  assert.ok(privados.some((m: { private: boolean }) => m.private), "el permiso notas_internas permite incluir notas");
+  await q(`INSERT INTO bots (org_id, nombre, webhook_url, api_token, canal_id, permisos) VALUES ($1,'solo lectura','https://8.8.8.8/h',$2,$3,ARRAY['leer_perfil'])`, [o, token("sololectura"), canalA]);
+  assert.equal((await llamar(getMensajes, token("sololectura"), conv, undefined, { query: "?include_private=true" })).status, 403);
+  assert.equal((await leerLista("sololectura", "&include=messages&include_private=true")).status, 403);
+  const notaIds = (await q<{ id: string }>("SELECT id::text FROM mensajes WHERE conversacion_id=$1 AND interna", [conv])).map((r) => Number(r.id));
+  assert.ok(!notaIds.includes(conHistorico.last_message?.id), "last_message no revela una nota interna");
+  assert.notEqual(conHistorico.last_message?.id, Number(ultimaNota));
+  const listaPrivada = await leerLista("A", "&labels%5B%5D=interesado&include=messages&include_private=true");
+  assert.ok((await listaPrivada.json()).payload[0].messages.some((m: { id: number }) => m.id === Number(ultimaNota)));
+  await q("UPDATE conversaciones SET bot_activo=true WHERE id=$1", [conv]);
+  const detalleActivo = await (await llamar(getConversacion, token("A"), conv)).json();
+  assert.deepEqual(detalleActivo.labels, []);
+  assert.ok(!notaIds.includes(detalleActivo.last_message?.id));
+  await q("UPDATE conversaciones SET bot_activo=false WHERE id=$1", [conv]);
+  assert.deepEqual((await (await llamar(getConversacion, token("A"), conv)).json()).labels, ["bot_off"]);
+  await q("UPDATE conversaciones SET bot_activo=true WHERE id=$1", [conv]);
+  assert.equal((await llamar(getMensajes, token("B"), conv)).status, 404, "otro canal no puede leer mensajes");
+  assert.equal((await llamar(getConversacion, token("B"), conv)).status, 403, "detalle conserva su rechazo de otro canal");
+  assert.equal((await llamar(getConversaciones, token("B"), "0")).status, 200);
+  assert.ok(!(await (await llamar(getConversaciones, token("B"), "0")).json()).payload.some((c: { id: number }) => c.id === Number(conv)));
+  assert.equal((await llamar(getMensajes, token("org2"), conv)).status, 404, "otra org no puede leer mensajes");
+  assert.equal((await llamar(getConversacion, token("org2"), conv)).status, 404, "otra org no puede leer conversación");
+  const listaOrg2 = await llamar(getConversaciones, token("org2"), "0");
+  assert.deepEqual((await listaOrg2.json()).payload.map((c: { id: number }) => c.id), [Number(convOrg2)], "org B solo ve sus conversaciones");
+
+  const convGrande = (await nuevaConversacion()).id;
+  await q(`INSERT INTO mensajes (org_id, conversacion_id, direccion, contenido)
+    SELECT $1, $2, 'entrante', 'historico ' || n FROM generate_series(1, 501) AS n`, [o, convGrande]);
+  await q("UPDATE conversaciones SET updated_at=$2 WHERE id=$1", [convGrande, new Date(corte.getTime() + 10_000)]);
+  const lote = await leerLista("A", "&page=3&include=messages");
+  const recortada = (await lote.json()).payload.find((c: { id: number }) => c.id === Number(convGrande));
+  assert.equal(recortada.messages.length, 500);
+  assert.equal(recortada.messages_truncated, true);
 
   // ---------- Citas: datos ----------
   await modulo("reservas_en_linea", true, { zona: "America/Mexico_City", anticipacionMin: 0, granularidadMin: 30, ventanaDias: 30 });
