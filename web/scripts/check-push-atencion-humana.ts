@@ -38,7 +38,7 @@ async function main() {
   await avisarHandoff(enviarPush, null, { nombre: "Contacto", conversacionId: 13n });
   assert.equal(llamadas.length, 3, "handoff repetido o ausente no vuelve a avisar");
 
-  const servicioBots = await readFile(new URL("../src/lib/services/bots.ts", import.meta.url), "utf8");
+  const servicioBots = await readFile(new URL("../src/lib/services/bots.ts", import.meta.url), "utf8").then((t) => t.replace(/\r\n/g, "\n"));
   const inicioApagado = servicioBots.indexOf("export async function apagarBotPorRespuestaHumana");
   const finApagado = servicioBots.indexOf("\n}\n", inicioApagado);
   assert.ok(inicioApagado >= 0 && finApagado > inicioApagado, "encuentra el apagado por respuesta humana");
