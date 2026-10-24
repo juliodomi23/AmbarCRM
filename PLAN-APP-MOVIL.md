@@ -47,12 +47,12 @@ El backend (Next.js en `web/`) se reutiliza tal cual. Lo que falta para móvil:
 
 Hoy las rutas leen la sesión desde la **cookie** de NextAuth (`getServerSession`, 44 rutas). Para no tocar cada una:
 
-1. **`POST /api/movil/login`** `{ org, email, password }` → valida igual que el login web y devuelve un **token JWT firmado con `NEXTAUTH_SECRET`**, con el mismo contenido que la sesión web (id, rol, orgId). Usar `encode` de `next-auth/jwt`. Duración: 30 días, más **`POST /api/movil/renovar`** para renovarlo.
+1. **`POST /api/movil/login`** `{ org, email, password }` → valida igual que el login web y devuelve un **token JWT firmado con `NEXTAUTH_SECRET`**, con el mismo contenido que la sesión web (id, rol, orgId). Usar `encode` de `next-auth/jwt`. Duración: **7 días, igual que la web** (`DURACION_SESION`; el CRM guarda expedientes y se decidió no alargarla), más **`POST /api/movil/renovar`**, que la app llama cada vez que se abre.
 2. En **`src/proxy.ts`**: si una petición trae `Authorization: Bearer <token>` y no trae cookie, **copiar el token a la cabecera `Cookie`** con el nombre de la cookie de sesión. Así `getServerSession`, `requireSesion` y el contexto multi-tenant (RLS) funcionan sin cambios.
 3. Aplicar el **rate limit** existente (`lib/rate-limit.ts`) al login móvil.
 4. **`POST /api/movil/logout`**: borra el token de push del dispositivo.
 
-> Verificar en Fase 0 que `/api/stream` (SSE) y `/api/media/*` también funcionan con el Bearer.
+> `/api/stream` (SSE) pasa por el proxy y funciona con el Bearer. `/api/media/*` hoy está **fuera** del proxy (también sirve a bots y a URLs firmadas): el prompt de Codex la mete al proxy en modo "nunca bloquear, solo traducir el Bearer" para que las imágenes de la app funcionen sin romper bots ni firmas.
 
 ### 3.2 Notificaciones push nativas (FCM)
 
@@ -140,7 +140,7 @@ Ya tenemos cuenta de desarrollador en **App Store** y **Google Play**.
 
 - **Una sola app para todas las empresas** (marca cargada al iniciar sesión) **vs. una app por cliente** (white label en tiendas). Recomendación: **una sola app** para v1. Apps por cliente multiplican revisiones y mantenimiento.
 - **SSE en segundo plano:** el sistema operativo cierra la conexión con la app en segundo plano. Ahí entran las notificaciones push; al volver, se recarga la bandeja.
-- **Notas de voz:** WhatsApp espera audio OGG/Opus. Grabar en ese formato (o convertir en el backend) y probarlo pronto.
+- **Notas de voz:** el backend ya acepta `audio/mp4` y `audio/aac` (`/api/mensajes/enviar`), así que la app graba en AAC/m4a sin convertir. Verificar pronto que en WhatsApp se reproduzca bien.
 - **Ventana de 24 h:** si Meta cambia la regla, solo se ajusta `HORAS_VENTANA` en web y app.
 - **Seguridad:** token en almacenamiento seguro, nunca en logs; cerrar sesión borra token, caché y dispositivo de push.
 
