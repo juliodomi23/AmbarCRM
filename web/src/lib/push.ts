@@ -16,20 +16,20 @@ if (pushConfigurado) {
   webpush.setVapidDetails("mailto:soporte@ambarrojo.mx", PUBLIC_KEY, PRIVATE_KEY);
 }
 
-/** Manda una notificación push a todos los dispositivos de la org. No lanza: loguea y sigue. */
-export async function enviarPushAOrg(titulo: string, cuerpo: string, url: string) {
+/** Manda una notificación push a la org o al usuario indicado. No lanza: loguea y sigue. */
+export async function enviarPushAOrg(titulo: string, cuerpo: string, url: string, usuarioId?: bigint, tipo: "mensaje" | "atencion_humana" = "mensaje") {
   const tareas: Promise<unknown>[] = [];
-  if (pushConfigurado) tareas.push(enviarWebPush(titulo, cuerpo, url));
-  if (fcmConfigurado()) tareas.push(enviarFcmAOrg(titulo, cuerpo, url));
+  if (pushConfigurado) tareas.push(enviarWebPush(titulo, cuerpo, url, usuarioId, tipo));
+  if (fcmConfigurado()) tareas.push(enviarFcmAOrg(titulo, cuerpo, url, usuarioId, tipo));
   const resultados = await Promise.allSettled(tareas);
   for (const resultado of resultados) {
     if (resultado.status === "rejected") console.warn("push falló:", resultado.reason instanceof Error ? resultado.reason.message : "error");
   }
 }
 
-async function enviarWebPush(titulo: string, cuerpo: string, url: string) {
-  const subs = await db.pushSuscripcion.findMany();
-  const payload = JSON.stringify({ titulo, cuerpo, url });
+async function enviarWebPush(titulo: string, cuerpo: string, url: string, usuarioId?: bigint, tipo: "mensaje" | "atencion_humana" = "mensaje") {
+  const subs = await db.pushSuscripcion.findMany({ where: usuarioId == null ? undefined : { usuarioId } });
+  const payload = JSON.stringify({ titulo, cuerpo: cuerpo.slice(0, 150), url, tipo, ...(url.match(/^\/chat\?conv=(\d+)$/) ? { conversacionId: url.match(/^\/chat\?conv=(\d+)$/)![1] } : {}) });
   await Promise.allSettled(
     subs.map(async (s) => {
       try {

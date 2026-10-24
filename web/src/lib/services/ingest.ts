@@ -10,6 +10,7 @@ import { estaFueraDeHorario } from "@/lib/horario";
 import { aplicarVariables } from "@/lib/plantillas";
 import { guardarMediaBase64 } from "@/lib/storage";
 import { enviarPushAOrg } from "@/lib/push";
+import { avisarMensajeEntrante, debeAvisarMensajeEntrante } from "@/lib/services/push-atencion";
 import { dispararEvento } from "@/lib/disparar-evento";
 import { moduloHabilitado } from "@/lib/modulos";
 import { esBajaCampana } from "@/lib/campanas-envio";
@@ -166,9 +167,14 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
   }, contextoEvento);
   dispararEvento(orgId, "mensaje.recibido", { ...datosEvento, id: String(mensaje.id), tipo: mensaje.tipo }, contextoEvento);
 
-  // Push a los dispositivos del equipo (fire-and-forget: no frena el webhook).
+  const bot = await botParaCanal(canalId);
+  // Si un bot atiende esta conversación, el equipo no necesita notificación.
   const preview = m.contenido?.slice(0, 120) || (m.tipo !== "texto" ? `[${m.tipo}]` : "Mensaje nuevo");
-  void enviarPushAOrg(contacto.nombre, preview, `/chat?conv=${conversacion.id}`).catch(() => {});
+  if (debeAvisarMensajeEntrante(bot != null, conversacion.botActivo)) {
+    void avisarMensajeEntrante(enviarPushAOrg, {
+      nombre: contacto.nombre, cuerpo: preview, conversacionId: conversacion.id, responsableId: conversacion.responsableId
+    });
+  }
 
   // --- CSAT: si la conversación esperaba calificación y llegó un 1-5, lo guardamos y no seguimos ---
   if (await capturarCsat(conversacion, m.contenido)) {
@@ -195,7 +201,6 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
   }
 
   // --- Bot: si hay uno configurado, le pasamos SIEMPRE el mensaje (su "If Bot On" decide con las labels) ---
-  const bot = await botParaCanal(canalId);
   if (bot) {
     await dispatchABot(bot, {
       conversacionId: conversacion.id,

@@ -45,6 +45,10 @@ El archivo viaja como base64 en JSON; el límite implementado es 24 000 000 cara
 
 `Conversacion.updatedAt` cambia con cualquier escritura, incluso marcar como leído. La lista móvil lo incluye para que la app pueda detectar cambios y deduplicar por `id`; `GET /api/conversaciones` conserva su respuesta anterior sin ese campo. El orden replica la consulta web: `fijadoAt desc` con nulos al final, luego `ultimoMensajeAt desc` (PostgreSQL pone nulos primero en `desc`) y `id desc` como desempate móvil. El cursor conserva el orden de IDs del primer pedido: los mensajes nuevos no duplican ni saltan conversaciones durante ese recorrido. Para incluir conversaciones nuevas, reiniciar la paginación. El cursor es opaco y puede ser largo; la búsqueda `q` usa `buscarEnMensajes`, devuelve como máximo 30 resultados y siempre `siguiente:null`.
 
+## Notificaciones
+
+La notificación de un mensaje entrante se omite mientras un bot configurado para el canal esté activo en la conversación. Sin bot activo, se avisa al responsable asignado o, si no existe, a los dispositivos de la organización. Un handoff confirmado envía una sola notificación con `tipo: "atencion_humana"` y el texto “Requiere atención humana”; los avisos de mensajes usan `tipo: "mensaje"`. Ambos incluyen `url` y `conversacionId` cuando la ruta apunta a un chat.
+
 ## Eventos, archivos y búsqueda
 
 | Método y ruta | Entrada | Respuesta real recortada | Errores relevantes |

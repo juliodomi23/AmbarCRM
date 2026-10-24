@@ -6,6 +6,9 @@ import { decryptMetaToken, encryptMetaToken } from "@/lib/meta/credentials";
 import { transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
 import { puestoPuedeAtenderConversaciones } from "@/lib/modulos";
+import { enviarPushAOrg } from "@/lib/push";
+import { avisarHandoff } from "@/lib/services/push-atencion";
+import { runWithOrg } from "@/lib/db";
 
 const BASE = process.env.NEXTAUTH_URL ?? "";
 
@@ -157,10 +160,10 @@ export async function escalarAHumano(
   motivo: string,
   bloquear = true
 ) {
-  return transaccionTenant(bot.orgId, async (tx) => {
-    const conv = await tx.conversacion.findUnique({ where: { id: conversacionId } });
+  const resultado = await transaccionTenant(bot.orgId, async (tx) => {
+    const conv = await tx.conversacion.findUnique({ where: { id: conversacionId }, include: { contacto: { select: { nombre: true } } } });
     if (!conv) return null;
-    if (!conv.botActivo) return { escalada: false as const, responsableId: conv.responsableId };
+    if (!conv.botActivo) return { escalada: false as const, responsableId: conv.responsableId, nombre: conv.contacto.nombre };
 
     const asesor = conv.responsableId != null ? null : await elegirAsesor(tx, bot, bloquear);
     const responsableId = conv.responsableId ?? asesor?.id ?? null;
@@ -191,8 +194,12 @@ export async function escalarAHumano(
       },
       tx
     );
-    return { escalada: true as const, responsableId };
+    return { escalada: true as const, responsableId, nombre: conv.contacto.nombre };
   });
+  if (resultado?.escalada) {
+    void runWithOrg(bot.orgId, () => avisarHandoff(enviarPushAOrg, resultado, { nombre: resultado.nombre, conversacionId })).catch(() => {});
+  }
+  return resultado ? { escalada: resultado.escalada, responsableId: resultado.responsableId } : null;
 }
 
 /** Coexistence: una persona respondió desde la app del celular; el bot deja esa conversación (no las demás). */

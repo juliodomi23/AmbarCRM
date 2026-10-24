@@ -59,18 +59,21 @@ async function tokenAcceso(config: CuentaServicio, limite: number) {
   finally { renovando = null; }
 }
 
-function datosNotificacion(url: string) {
-  const data: Record<string, string> = { url };
+function datosNotificacion(url: string, tipo: "mensaje" | "atencion_humana") {
+  const data: Record<string, string> = { url, tipo };
   const match = /^\/chat\?conv=(\d+)$/.exec(url);
   if (match) data.conversacionId = match[1];
   return data;
 }
 
-export async function enviarFcmAOrg(titulo: string, cuerpo: string, url: string) {
+export async function enviarFcmAOrg(titulo: string, cuerpo: string, url: string, usuarioId?: bigint, tipo: "mensaje" | "atencion_humana" = "mensaje") {
   const config = cuentaServicio();
   if (!config) return;
   const limite = Date.now() + 8000;
-  const dispositivos = await db.dispositivoPush.findMany({ select: { id: true, tokenFcm: true } });
+  const dispositivos = await db.dispositivoPush.findMany({
+    where: usuarioId == null ? undefined : { usuarioId },
+    select: { id: true, tokenFcm: true }
+  });
   if (!dispositivos.length) return;
   const accessToken = await tokenAcceso(config, limite);
   await Promise.allSettled(dispositivos.map(async (dispositivo) => {
@@ -79,7 +82,7 @@ export async function enviarFcmAOrg(titulo: string, cuerpo: string, url: string)
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ message: { token: dispositivo.tokenFcm,
-          notification: { title: titulo, body: cuerpo.slice(0, 150) }, data: datosNotificacion(url),
+          notification: { title: titulo, body: cuerpo.slice(0, 150) }, data: datosNotificacion(url, tipo),
           android: { priority: "high" }, apns: { payload: { aps: { sound: "default" } } } } })
       }, limite);
       if (respuesta.ok) return;
