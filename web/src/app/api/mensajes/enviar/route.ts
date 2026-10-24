@@ -23,7 +23,8 @@ function tipoDesdeMime(mime: string): TipoMensaje {
 function normalizarMimeMedia(valor: unknown): string | null {
   if (typeof valor !== "string") return null;
   const mime = valor.split(";")[0].trim().toLowerCase();
-  return /^(image|video|audio|application)\/[a-z0-9][a-z0-9.+-]*$/.test(mime) ? mime : null;
+  if (!mime) return "application/octet-stream";
+  return /^(image|video|audio|application|text)\/[a-z0-9][a-z0-9.+-]*$/.test(mime) ? mime : null;
 }
 
 function normalizarBase64Media(base64: string, mime: string): string {
