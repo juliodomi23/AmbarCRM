@@ -300,6 +300,14 @@ async function verificarLecturas({ orgId, slug, usuarioId, bearer }: {
   assert.ok(!(await leer("contactos", bearerB)).contactos.some((c: any) => contactos.includes(c.id)));
   assert.equal((await leer(`contactos?q=${encodeURIComponent(marcaContactos)}`)).contactos.length, 5);
   assert.equal((await leer("contactos?q=L")).contactos.length, (await leer("contactos")).contactos.length);
+  const detalleContacto = await leer(`contactos/${contactos[0]}`);
+  assert.equal(detalleContacto.id, contactos[0]);
+  assert.equal(detalleContacto.oportunidades[0].id, oportunidad);
+  assert.equal(detalleContacto.oportunidades[0].embudoId, embudoA);
+  assert.equal(detalleContacto.oportunidades[0].etapaId, etapa1);
+  assert.ok(detalleContacto.etiquetas.some((e: any) => e.id === etiquetaA));
+  assert.equal((await fetchLocal(`/api/movil/contactos/${contactos[0]}`, { headers: bearerB })).status, 404);
+  assert.equal((await fetchLocal("/api/movil/contactos/no", { headers: bearer })).status, 400);
   const embudos = await leer("embudos", bearerB);
   assert.ok(!embudos.embudos.some((e: any) => e.id === embudoA));
   assert.equal((await fetchLocal(`/api/movil/embudos/${embudoA}`, { headers: bearerB })).status, 404);
@@ -309,13 +317,40 @@ async function verificarLecturas({ orgId, slug, usuarioId, bearer }: {
   assert.equal((await leer(`embudos/${embudoA}`)).etapas[0].tarjetas[0].diasEnEtapa, 0);
   assert.ok(!(await leer("tareas", bearerB)).tareas.some((t: any) => t.id === tarea));
   assert.ok((await leer("tareas?completada=false")).tareas.some((t: any) => t.id === tarea));
+  const tareasContacto = await leer(`tareas?contactoId=${contactos[0]}`);
+  assert.deepEqual(tareasContacto.tareas.map((t: any) => t.id), [tarea]);
+  assert.deepEqual((await leer(`tareas?contactoId=${contactoB}`)).tareas, []);
+  assert.equal((await fetchLocal("/api/movil/tareas?contactoId=no", { headers: bearer })).status, 400);
   const completar = await fetchLocal(`/api/tareas/${tarea}`, { method: "PATCH", headers: { ...bearer, "Content-Type": "application/json" }, body: JSON.stringify({ completada: true }) });
   assert.equal(completar.status, 200);
   assert.ok((await leer("tareas?completada=true")).tareas.some((t: any) => t.id === tarea));
-  const mover = await fetchLocal("/api/oportunidades/mover", { method: "POST", headers: { ...bearer, "Content-Type": "application/json" },
-    body: JSON.stringify({ oportunidadId: oportunidad, etapaIdDestino: etapa2, ordenIds: [oportunidad] }) });
+  const destinoPrimero = (await admin.query<{ id: string }>(
+    "INSERT INTO oportunidades(org_id,contacto_id,embudo_id,etapa_id,titulo,orden) VALUES($1,$2,$3,$4,'Destino primero',10) RETURNING id",
+    [orgId, contactos[0], embudoA, etapa2]
+  )).rows[0].id;
+  const destinoSegundo = (await admin.query<{ id: string }>(
+    "INSERT INTO oportunidades(org_id,contacto_id,embudo_id,etapa_id,titulo,orden) VALUES($1,$2,$3,$4,'Destino segundo',20) RETURNING id",
+    [orgId, contactos[0], embudoA, etapa2]
+  )).rows[0].id;
+  const otraEtapa = (await admin.query<{ id: string }>(
+    "INSERT INTO oportunidades(org_id,contacto_id,embudo_id,etapa_id,titulo,orden) VALUES($1,$2,$3,$4,'Otra etapa',30) RETURNING id",
+    [orgId, contactos[0], embudoA, etapa1]
+  )).rows[0].id;
+  const moverCon = (ordenIds: string[]) => fetchLocal("/api/oportunidades/mover", {
+    method: "POST", headers: { ...bearer, "Content-Type": "application/json" },
+    body: JSON.stringify({ oportunidadId: oportunidad, etapaIdDestino: etapa2, ordenIds })
+  });
+  assert.equal((await moverCon([oportunidad, oportunidad])).status, 400);
+  assert.equal((await moverCon([oportunidad, otraEtapa])).status, 400);
+  assert.equal((await moverCon([destinoPrimero])).status, 400);
+  const mover = await moverCon([destinoSegundo, oportunidad]);
   assert.equal(mover.status, 200);
-  assert.equal((await leer(`embudos/${embudoA}`)).etapas[1].total, 1);
+  const embudoMovido = await leer(`embudos/${embudoA}`);
+  assert.equal(embudoMovido.etapas[1].total, 3);
+  assert.deepEqual(
+    embudoMovido.etapas[1].tarjetas.map((tarjeta: any) => tarjeta.id),
+    [destinoSegundo, oportunidad, destinoPrimero]
+  );
   await admin.query("INSERT INTO tareas(org_id,titulo) SELECT $1,'Tarea masiva ' || i FROM generate_series(1,501) i", [orgId]);
   assert.equal((await leer("tareas")).truncado, true);
 
