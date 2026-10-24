@@ -20,6 +20,16 @@ function tipoDesdeMime(mime: string): TipoMensaje {
   return "documento";
 }
 
+function normalizarMimeMedia(valor: unknown): string | null {
+  if (typeof valor !== "string") return null;
+  const mime = valor.split(";")[0].trim().toLowerCase();
+  return /^(image|video|audio|application)\/[a-z0-9][a-z0-9.+-]*$/.test(mime) ? mime : null;
+}
+
+function normalizarBase64Media(base64: string, mime: string): string {
+  return base64.startsWith("data:") ? base64 : `data:${mime};base64,${base64}`;
+}
+
 /**
  * Envía un mensaje saliente (texto o media) por el canal de la conversación y lo registra.
  * Body texto: { conversacionId, texto }
@@ -31,8 +41,8 @@ async function manejarPOST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const { conversacionId, texto, mediaBase64, mediaMime, caption, interna, audioBase64 } = body;
-  const esMedia = !!mediaBase64;
-  const esAudio = !!audioBase64;
+  const esMedia = typeof mediaBase64 === "string" && mediaBase64.length > 0;
+  const esAudio = typeof audioBase64 === "string" && audioBase64.length > 0;
   // Plantilla aprobada: única forma de escribir fuera de la ventana de 24 h.
   const plantilla = typeof body.plantilla?.name === "string" && typeof body.plantilla?.language === "string"
     ? {
@@ -47,6 +57,13 @@ async function manejarPOST(req: NextRequest) {
   const MAX_BASE64 = 24_000_000;
   if (String(mediaBase64 ?? "").length > MAX_BASE64 || String(audioBase64 ?? "").length > MAX_BASE64) {
     return NextResponse.json({ error: "el archivo es demasiado grande (máximo 16 MB)" }, { status: 413 });
+  }
+  const mimeMedia = esMedia ? normalizarMimeMedia(mediaMime) : null;
+  if (esMedia && !mimeMedia) {
+    return NextResponse.json(
+      { error: "mediaMime es obligatorio y debe ser un tipo de imagen, video, audio o documento" },
+      { status: 400 }
+    );
   }
   if (!conversacionId || (!esMedia && !esAudio && !plantilla && !texto?.trim())) {
     return NextResponse.json({ error: "faltan campos" }, { status: 400 });
@@ -121,13 +138,13 @@ async function manejarPOST(req: NextRequest) {
     const urlLocal = publica ?? await guardarMediaBase64(audioBase64, mimeAudio);
     datosMensaje = { tipo: "audio", contenido: null, mediaUrl: urlLocal, mediaMime: mimeAudio };
   } else if (esMedia) {
-    const tipo = tipoDesdeMime(mediaMime ?? "");
-    const publica = conv.canal.proveedor === "messenger" ? await guardarMediaBase64(mediaBase64, mediaMime ?? "application/octet-stream") : null;
-    const mediaEnvio = publica ? urlMediaPublica(publica) : mediaBase64;
+    const tipo = tipoDesdeMime(mimeMedia!);
+    const publica = conv.canal.proveedor === "messenger" ? await guardarMediaBase64(mediaBase64, mimeMedia!) : null;
+    const mediaEnvio = publica ? urlMediaPublica(publica) : normalizarBase64Media(mediaBase64, mimeMedia!);
     // A WhatsApp va el base64; en local guardamos el archivo para verlo en el hilo del CRM.
-    envio = await provider.enviarMedia(destinatario, mediaEnvio, tipo, caption?.trim() || undefined, mediaMime, contexto);
-    const urlLocal = publica ?? await guardarMediaBase64(mediaBase64, mediaMime ?? "application/octet-stream");
-    datosMensaje = { tipo, contenido: caption?.trim() || null, mediaUrl: urlLocal, mediaMime: mediaMime ?? null };
+    envio = await provider.enviarMedia(destinatario, mediaEnvio, tipo, caption?.trim() || undefined, mimeMedia!, contexto);
+    const urlLocal = publica ?? await guardarMediaBase64(mediaBase64, mimeMedia!);
+    datosMensaje = { tipo, contenido: caption?.trim() || null, mediaUrl: urlLocal, mediaMime: mimeMedia! };
   } else {
     envio = await provider.enviarTexto(destinatario, texto, contexto);
     datosMensaje = { tipo: "texto", contenido: texto, mediaUrl: null, mediaMime: null };
