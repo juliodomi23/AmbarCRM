@@ -97,6 +97,13 @@ async function main() {
   assert.equal(primera.factura.receptorRazonSocial, "Cliente CFDI A");
   assert.equal(primera.factura.emisorRfc, "XAXX010101000");
   assert.equal(primera.factura.emisorRazonSocial, "Emisor CFDI A");
+  assert.equal("xml" in primera.factura, false, "crearFactura/timbrarFactura no exponen el XML");
+  assert.equal("pdf" in primera.factura, false, "crearFactura/timbrarFactura no exponen el PDF");
+
+  const sinArchivos = await runWithOrg(orgA, () => obtenerFactura(primera.factura.id));
+  assert.ok(sinArchivos);
+  assert.equal("xml" in sinArchivos, false, "obtenerFactura no expone el XML");
+  assert.equal("pdf" in sinArchivos, false, "obtenerFactura no expone el PDF");
 
   const guardada = await runWithOrg(orgA, () =>
     db.factura.findFirst({
@@ -173,6 +180,90 @@ async function main() {
         }),
       ),
     /folio siguiente debe ser mayor/,
+  );
+
+  const ventaCien = await runWithOrg(orgA, async () => {
+    const contacto = await db.contacto.create({ data: { nombre: "Cliente cien" } });
+    await db.datosFiscales.create({
+      data: {
+        contactoId: contacto.id,
+        rfc: "XAXX010101000",
+        razonSocial: "Cliente cien",
+        regimenFiscal: "601",
+        codigoPostal: "06600",
+        usoCfdi: "G03",
+      },
+    });
+    return db.venta.create({
+      data: {
+        folio: "V-CFDI-100",
+        contactoId: contacto.id,
+        subtotal: "100.00",
+        total: "100.00",
+        moneda: "MXN",
+        estado: "pagada",
+      },
+    });
+  });
+  const facturaCien = await runWithOrg(orgA, () =>
+    crearFactura(orgA, {
+      ventaId: ventaCien.id.toString(),
+      idempotencyKey: "cfdi-e2e-100",
+      timbrar: true,
+    }),
+  );
+  assert.equal(facturaCien.factura.estado, "timbrada");
+  assert.equal(Number(facturaCien.factura.subtotal), 86.21);
+  assert.equal(Number(facturaCien.factura.impuestos), 13.79);
+  assert.equal(Number(facturaCien.factura.total), 100);
+  assert.equal(Number(facturaCien.factura.conceptos[0]?.ivaTasa), 0.16);
+  const xmlCien = await runWithOrg(orgA, () => descargarFactura(orgA, facturaCien.factura.id, "xml"));
+  const xmlCienTexto = String(xmlCien.contenido);
+  assert.equal(
+    [...xmlCienTexto.matchAll(/TasaOCuota="0\.160000"/gu)].length,
+    2,
+    "el concepto y el total conservan la tasa exacta",
+  );
+  assert.doesNotMatch(xmlCienTexto, /0\.159961/u);
+
+  const ventaCasiCien = await runWithOrg(orgA, async () => {
+    const contacto = await db.contacto.create({ data: { nombre: "Cliente casi cien" } });
+    await db.datosFiscales.create({
+      data: {
+        contactoId: contacto.id,
+        rfc: "XAXX010101000",
+        razonSocial: "Cliente casi cien",
+        regimenFiscal: "601",
+        codigoPostal: "06600",
+        usoCfdi: "G03",
+      },
+    });
+    return db.venta.create({
+      data: {
+        folio: "V-CFDI-99-99",
+        contactoId: contacto.id,
+        subtotal: "99.99",
+        total: "99.99",
+        moneda: "MXN",
+        estado: "pagada",
+      },
+    });
+  });
+  const facturaCasiCien = await runWithOrg(orgA, () =>
+    crearFactura(orgA, {
+      ventaId: ventaCasiCien.id.toString(),
+      idempotencyKey: "cfdi-e2e-99-99",
+      timbrar: true,
+    }),
+  );
+  assert.equal(Number(facturaCasiCien.factura.total), 99.99);
+  assert.equal(Number(facturaCasiCien.factura.conceptos[0]?.ivaTasa), 0.16);
+  const xmlCasiCien = await runWithOrg(orgA, () => descargarFactura(orgA, facturaCasiCien.factura.id, "xml"));
+  const xmlCasiCienTexto = String(xmlCasiCien.contenido);
+  assert.equal(
+    [...xmlCasiCienTexto.matchAll(/TasaOCuota="0\.160000"/gu)].length,
+    2,
+    "99.99 también conserva la tasa exacta",
   );
 
   const xml = await runWithOrg(orgA, () => descargarFactura(orgA, primera.factura.id, "xml"));
@@ -303,6 +394,8 @@ async function main() {
   );
   assert.equal(cancelada.estado, "cancelada");
   assert.ok(cancelada.canceladaAt);
+  assert.equal("xml" in cancelada, false, "cancelarFactura no expone el XML");
+  assert.equal("pdf" in cancelada, false, "cancelarFactura no expone el PDF");
   const xmlCancelada = await runWithOrg(orgA, () => descargarFactura(orgA, primera.factura.id, "xml"));
   assert.equal(String(xmlCancelada.contenido), guardada?.xml, "el XML guardado no se regenera");
 

@@ -1,9 +1,11 @@
 # CFDI 4.0 en AmbarCRM
 
-Estado: **Fase 2A.1 (mock, sin PAC real)**. Esta fase no timbra contra el SAT,
+Estado: **Fase 2A.2 (mock, sin PAC real)**. Esta fase no timbra contra el SAT,
 no usa certificados (CSD) reales y no llama a ningún PAC. Deja listos el modelo,
 los contratos, el mock, la API, la UI, las pruebas y las garantías de
-concurrencia para que la Fase 2B conecte un PAC real en sandbox.
+concurrencia para que la Fase 2B conecte un PAC real en sandbox. La Fase 2A.2
+corrige la tasa exacta de IVA persistida por concepto y evita enviar XML/PDF en
+el detalle y en las respuestas de la API.
 
 ## 1. Decisión provisional de PAC (ADR)
 
@@ -65,6 +67,9 @@ Reglas del servidor:
 - El total de la venta/pago se interpreta como importe **con IVA incluido** y se
   desglosa con IVA 16 % exacto. Si el redondeo por concepto desvía el total, se
   separa un concepto de ajuste; la tasa no cambia.
+- Cada concepto persiste `iva_tasa` y `retencion_tasa` como `NUMERIC(7,6)`. El
+  XML usa esa tasa exacta (`TasaOCuota="0.160000"` para IVA 16 %), incluso si el
+  importe redondeado dividido entre el IVA daría `0.159961`.
 - `TOLERANCIA_TOTAL = 0.01`. El total calculado debe coincidir con el origen
   dentro de un centavo.
 - Una venta o un pago solo puede tener **una factura activa** (borrador,
@@ -85,6 +90,9 @@ Reglas del servidor:
 - El XML y el PDF del PAC se guardan en `facturas.xml` y `facturas.pdf`. Las
   descargas leen esos archivos; no se regeneran. Si una factura antigua no los
   tiene, responde `409 archivo_no_disponible`.
+- El detalle y las respuestas de crear/timbrar/cancelar no incluyen `xml` ni
+  `pdf`; solo metadatos y URLs de descarga. Los archivos se obtienen únicamente
+  desde `/api/facturas/[id]/xml` y `/api/facturas/[id]/pdf`.
 - Solo Administrador o Finanzas pueden timbrar o cancelar. Configurar el emisor
   requiere rol administrador.
 
@@ -100,8 +108,10 @@ NULLIF(current_setting('app.current_org', true), '')::bigint` y política RLS
 - `facturas`: origen (`venta_id` o `pago_id`), contacto, proveedor, serie,
   folio, UUID, estado, importes, XML/PDF, error, idempotencia, `timbrando_at`,
   `timbrada_at`, `cancelada_at` y snapshot fiscal del receptor/emisor.
-- `conceptos_factura`: descripción, cantidad, valor unitario, importe, IVA y
-  retenciones.
+- `conceptos_factura`: descripción, cantidad, valor unitario, importe, IVA,
+  retenciones y las tasas exactas `iva_tasa` y `retencion_tasa`. Las tasas se
+  guardan al crear el concepto y el timbrado las usa tal cual; no se reconstruyen
+  dividiendo importes redondeados.
 - `eventos_factura`: bitácora mínima de creación, timbrado, consulta,
   cancelación y errores.
 
@@ -227,7 +237,8 @@ descarga sea idéntica al archivo timbrado y para no regenerarlo después.
   permisos y límite del desglose.
 - `web/prisma/scripts/test-cfdi-e2e.ts`: PostgreSQL desechable, RLS,
   idempotencia, snapshot inmutable, XML/PDF persistidos, folio monotónico,
-  reclamo de timbrado viejo, concurrencia y cancelación.
+  reclamo de timbrado viejo, concurrencia, cancelación, ausencia de XML/PDF en
+  el detalle y tasa exacta `0.160000` para una factura de total `100.00`.
 
 ```bash
 cd web
@@ -266,7 +277,7 @@ XML/PDF descargado es el mismo que se persistió.
 ## 10. API y UI
 
 - `GET/POST /api/facturas`: listado paginado y creación desde venta o pago.
-- `GET /api/facturas/[id]`: detalle.
+- `GET /api/facturas/[id]`: detalle sin XML/PDF; solo metadatos y URLs.
 - `POST /api/facturas/[id]/timbrar`: timbrado; requiere Administrador/Finanzas.
 - `POST /api/facturas/[id]/cancelar`: cancelación con motivo SAT; requiere
   Administrador/Finanzas.
@@ -296,3 +307,5 @@ XML/PDF descargado es el mismo que se persistió.
 6. Conciliación de pagos parciales, notas de crédito y complementos de pago.
 7. Pruebas de contrato contra el sandbox y monitoreo de errores del PAC.
 8. Política de retención y respaldo para XML/PDF almacenados.
+9. Revisar la tolerancia exacta de `totalCoincide`; en 2A.2 se mantiene en un
+   centavo para no cambiar el comportamiento de facturación.

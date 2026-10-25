@@ -2304,11 +2304,21 @@ CREATE TABLE IF NOT EXISTS conceptos_factura (
   importe NUMERIC(12,2) NOT NULL CHECK (importe >= 0),
   iva NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (iva >= 0),
   retenciones NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (retenciones >= 0),
+  iva_tasa NUMERIC(7,6) NOT NULL DEFAULT 0.160000,
+  retencion_tasa NUMERIC(7,6) NOT NULL DEFAULT 0.000000,
   clave_prod_serv TEXT,
   clave_unidad TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (id, org_id)
 );
+ALTER TABLE conceptos_factura ADD COLUMN IF NOT EXISTS iva_tasa NUMERIC(7,6) NOT NULL DEFAULT 0.160000;
+ALTER TABLE conceptos_factura ADD COLUMN IF NOT EXISTS retencion_tasa NUMERIC(7,6) NOT NULL DEFAULT 0.000000;
+UPDATE conceptos_factura
+SET iva_tasa = CASE WHEN iva > 0 THEN 0.160000 ELSE 0 END
+WHERE iva_tasa IN (0, 0.160000);
+UPDATE conceptos_factura
+SET retencion_tasa = 0
+WHERE retenciones = 0;
 ALTER TABLE conceptos_factura DROP CONSTRAINT IF EXISTS conceptos_factura_factura_id_fkey;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'conceptos_factura_factura_org_fkey') THEN

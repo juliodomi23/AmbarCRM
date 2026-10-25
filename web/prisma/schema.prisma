@@ -2412,6 +2412,8 @@ model ConceptoFactura {
   importe        Decimal  @db.Decimal(12, 2)
   iva            Decimal  @default(0) @db.Decimal(12, 2)
   retenciones    Decimal  @default(0) @db.Decimal(12, 2)
+  ivaTasa        Decimal  @default(0.16) @map("iva_tasa") @db.Decimal(7, 6)
+  retencionTasa  Decimal  @default(0) @map("retencion_tasa") @db.Decimal(7, 6)
   claveProdServ  String?  @map("clave_prod_serv")
   claveUnidad    String?  @map("clave_unidad")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
