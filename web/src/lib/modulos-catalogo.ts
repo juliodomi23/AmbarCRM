@@ -169,6 +169,15 @@ export const MODULOS = [
     ruta: "/ventas",
   },
   {
+    clave: "pagos_en_linea",
+    area: "Retail y comercio",
+    nombre: "Pagos en línea",
+    descripcion: "Checkouts, conciliación y reembolsos desde ventas.",
+    acceso: { puestosPorDefecto: ["Administrador", "Cajero", "Ventas"] },
+    icono: "M3 6h18v12H3zM3 10h18M7 14h4m6 0h.01",
+    ruta: "/ventas",
+  },
+  {
     clave: "pedidos_en_linea",
     area: "Retail y comercio",
     nombre: "Pedidos en línea",

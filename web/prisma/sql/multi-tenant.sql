@@ -185,3 +185,58 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
 -- Las actualizaciones que también deben correr en bases con volumen existente
 -- viven en actualizaciones.sql y se aplican automáticamente en cada deploy.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Pagos en línea (Fase P0-1). Nacen multi-tenant; este bloque es idempotente.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS pagos_online (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  origen_tipo TEXT NOT NULL CHECK (origen_tipo IN ('venta','cita','cotizacion','pedido')),
+  origen_id BIGINT NOT NULL,
+  proveedor TEXT NOT NULL CHECK (proveedor IN ('mercado_pago','mock')),
+  estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente','aprobado','rechazado','cancelado','reembolsado')),
+  monto NUMERIC(12,2) NOT NULL CHECK (monto > 0),
+  moneda TEXT NOT NULL DEFAULT 'MXN',
+  referencia_externa TEXT,
+  checkout_referencia TEXT,
+  checkout_url TEXT,
+  idempotency_key TEXT NOT NULL,
+  metadata JSONB NOT NULL DEFAULT '{}',
+  expira_at TIMESTAMPTZ,
+  aprobado_at TIMESTAMPTZ,
+  reembolsado_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, idempotency_key)
+);
+CREATE INDEX IF NOT EXISTS pagos_online_org_estado_created_idx ON pagos_online(org_id, estado, created_at);
+CREATE INDEX IF NOT EXISTS pagos_online_org_origen_idx ON pagos_online(org_id, origen_tipo, origen_id);
+CREATE INDEX IF NOT EXISTS pagos_online_proveedor_referencia_idx ON pagos_online(proveedor, referencia_externa);
+
+CREATE TABLE IF NOT EXISTS eventos_pago (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  pago_id BIGINT NOT NULL REFERENCES pagos_online(id) ON DELETE CASCADE,
+  proveedor TEXT NOT NULL,
+  evento_id TEXT NOT NULL,
+  tipo TEXT NOT NULL,
+  payload JSONB NOT NULL DEFAULT '{}',
+  procesado_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, proveedor, evento_id)
+);
+CREATE INDEX IF NOT EXISTS eventos_pago_org_pago_created_idx ON eventos_pago(org_id, pago_id, created_at);
+
+ALTER TABLE pagos_online ENABLE ROW LEVEL SECURITY;
+ALTER TABLE eventos_pago ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_isolation ON pagos_online;
+CREATE POLICY org_isolation ON pagos_online
+  USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+  WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
+DROP POLICY IF EXISTS org_isolation ON eventos_pago;
+CREATE POLICY org_isolation ON eventos_pago
+  USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+  WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
+GRANT SELECT, INSERT, UPDATE, DELETE ON pagos_online, eventos_pago TO crm_app;
+GRANT USAGE, SELECT ON SEQUENCE pagos_online_id_seq, eventos_pago_id_seq TO crm_app;

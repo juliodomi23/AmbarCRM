@@ -61,8 +61,18 @@ export type VentaRetail = {
     cantidad: DecimalSerializado;
     precioUnitario: DecimalSerializado;
     total: DecimalSerializado;
-    producto: { id: string; nombre: string; sku: string | null; unidad: string };
+    producto: {
+      id: string;
+      nombre: string;
+      sku: string | null;
+      unidad: string;
+    };
   }>;
+  pagoOnline?: {
+    id: string;
+    estado: string;
+    checkoutUrl: string | null;
+  } | null;
 };
 
 export type ProveedorRetail = {
@@ -91,6 +101,11 @@ export type CompraRetail = {
     cantidad: DecimalSerializado;
     costoUnitario: DecimalSerializado;
     total: DecimalSerializado;
-    producto: { id: string; nombre: string; sku: string | null; unidad: string };
+    producto: {
+      id: string;
+      nombre: string;
+      sku: string | null;
+      unidad: string;
+    };
   }>;
 };

@@ -23,12 +23,14 @@ function configObjeto(config: unknown): Record<string, unknown> {
 
 function normalizarPuestos(valor: unknown) {
   if (!Array.isArray(valor)) return null;
-  return [...new Set(
-    valor
-      .filter((puesto): puesto is string => typeof puesto === "string")
-      .map((puesto) => puesto.trim().slice(0, 80))
-      .filter(Boolean),
-  )];
+  return [
+    ...new Set(
+      valor
+        .filter((puesto): puesto is string => typeof puesto === "string")
+        .map((puesto) => puesto.trim().slice(0, 80))
+        .filter(Boolean),
+    ),
+  ];
 }
 
 async function manejarGET() {
@@ -39,7 +41,7 @@ async function manejarGET() {
     select: { clave: true, config: true },
   });
   return NextResponse.json({
-    modulos: MODULOS.filter(m => moduloVisibleEnOrg(m, s.orgId)).map((m) => {
+    modulos: MODULOS.filter((m) => moduloVisibleEnOrg(m, s.orgId)).map((m) => {
       const guardado = activos.find((a) => a.clave === m.clave);
       const config = configSinSecretos(configObjeto(guardado?.config));
       return {
@@ -75,11 +77,71 @@ async function manejarPATCH(req: NextRequest) {
       { status: 400 },
     );
   // La conexión con Aurum (clave cifrada) solo se cambia desde /api/lealtad/conexion.
-  if (clave === "citas" && Object.hasOwn(config, "duracionMin") && (!Number.isInteger(config.duracionMin) || config.duracionMin < 5 || config.duracionMin > 480)) {
-    return NextResponse.json({ error: "La duración por defecto debe ser un entero entre 5 y 480 minutos" }, { status: 400 });
+  if (
+    clave === "citas" &&
+    Object.hasOwn(config, "duracionMin") &&
+    (!Number.isInteger(config.duracionMin) ||
+      config.duracionMin < 5 ||
+      config.duracionMin > 480)
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "La duración por defecto debe ser un entero entre 5 y 480 minutos",
+      },
+      { status: 400 },
+    );
   }
-  if (clave === "citas" && Object.hasOwn(config, "mapeoVariables") && (!Array.isArray(config.mapeoVariables) || config.mapeoVariables.length > 100 || config.mapeoVariables.some((v: unknown) => typeof v !== "string" || !VARIABLES_RECORDATORIO.some((permitida) => permitida === v)))) {
-    return NextResponse.json({ error: "Las variables del recordatorio no son válidas" }, { status: 400 });
+  if (
+    clave === "citas" &&
+    Object.hasOwn(config, "mapeoVariables") &&
+    (!Array.isArray(config.mapeoVariables) ||
+      config.mapeoVariables.length > 100 ||
+      config.mapeoVariables.some(
+        (v: unknown) =>
+          typeof v !== "string" ||
+          !VARIABLES_RECORDATORIO.some((permitida) => permitida === v),
+      ))
+  ) {
+    return NextResponse.json(
+      { error: "Las variables del recordatorio no son válidas" },
+      { status: 400 },
+    );
+  }
+  if (clave === "pagos_en_linea") {
+    const pagos = config as Record<string, unknown>;
+    if (
+      Object.hasOwn(pagos, "proveedor") &&
+      !["mercado_pago", "mock"].includes(String(pagos.proveedor))
+    ) {
+      return NextResponse.json(
+        { error: "Proveedor de pagos inválido" },
+        { status: 400 },
+      );
+    }
+    if (Object.hasOwn(pagos, "moneda") && pagos.moneda !== "MXN") {
+      return NextResponse.json(
+        { error: "Por ahora solo se admite MXN" },
+        { status: 400 },
+      );
+    }
+    if (Object.hasOwn(pagos, "sandbox") && typeof pagos.sandbox !== "boolean") {
+      return NextResponse.json(
+        { error: "El modo sandbox es inválido" },
+        { status: 400 },
+      );
+    }
+    if (
+      Object.hasOwn(pagos, "publicKey") &&
+      (typeof pagos.publicKey !== "string" || pagos.publicKey.length > 180)
+    ) {
+      return NextResponse.json(
+        { error: "La llave pública es inválida" },
+        { status: 400 },
+      );
+    }
+    delete pagos.accessToken;
+    delete pagos.webhookSecret;
   }
   delete (config as Record<string, unknown>).aurum;
   const puestos = normalizarPuestos(
@@ -95,10 +157,14 @@ async function manejarPATCH(req: NextRequest) {
     );
   }
   if (Object.hasOwn(config as object, "canalId")) {
-    const canalId = await referenciaPropia("canal", (config as Record<string, unknown>).canalId);
+    const canalId = await referenciaPropia(
+      "canal",
+      (config as Record<string, unknown>).canalId,
+    );
     if (canalId === false)
       return NextResponse.json({ error: "canal inexistente" }, { status: 400 });
-    (config as Record<string, unknown>).canalId = canalId === null ? null : String(canalId);
+    (config as Record<string, unknown>).canalId =
+      canalId === null ? null : String(canalId);
   }
   const existente = await db.moduloOrg.findFirst({
     where: { clave: String(clave), activo: true },

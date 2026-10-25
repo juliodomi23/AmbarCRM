@@ -28,6 +28,12 @@ META_MESSENGER_CONFIG_ID=
 META_INSTAGRAM_CONFIG_ID=
 META_TOKEN_ENCRYPTION_KEY=<32-bytes-en-base64>
 
+PAGOS_PROVEEDOR=mercado_pago
+MERCADOPAGO_ACCESS_TOKEN=<access-token-del-servidor>
+MERCADOPAGO_WEBHOOK_SECRET=<firma-secreta-del-webhook>
+NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY=<llave-publica>
+PAGOS_BASE_URL=https://crm.tudominio.com
+
 NEXT_PUBLIC_META_APP_ID=<app-id>
 NEXT_PUBLIC_META_CONFIG_ID=<configuration-id-de-embedded-signup>
 NEXT_PUBLIC_META_GRAPH_VERSION=v26.0
@@ -43,19 +49,21 @@ forma parte de este repositorio.
 
 Genera la clave de cifrado una sola vez y consérvala en el gestor de secretos. Si se pierde, no podrán descifrarse los tokens ya guardados.
 
+Para habilitar pagos, aplica `prisma/sql/actualizaciones.sql` como dueño, configura las variables anteriores y activa `pagos_en_linea` solo en las organizaciones autorizadas. Registra el webhook `https://crm.tudominio.com/api/public/pagos/webhook/mercado_pago?org=<id-org>` para eventos de pagos. Consulta `docs/pagos-online.md` para sandbox, firma, cron e idempotencia.
+
 ### Correo para recuperar contraseña (opcional)
 
 Carga estas variables en el servicio `app` de EasyPanel antes de desplegar el flujo:
 
-| Variable | Valor |
-|---|---|
-| `SMTP_HOST` | Servidor de tu proveedor SMTP |
-| `SMTP_PORT` | `587` con STARTTLS o `465` con TLS directo |
-| `SMTP_SECURE` | `false` para 587; `true` para 465 |
-| `SMTP_USER` | Usuario del proveedor |
-| `SMTP_PASSWORD` | Contraseña del proveedor (secreto, sin valor por defecto) |
-| `SMTP_FROM` | Remitente autorizado, por ejemplo `AmbarCRM <no-reply@ambarrojostudios.cloud>` |
-| `NEXTAUTH_URL` | URL pública HTTPS del CRM; es la base del enlace de recuperación |
+| Variable        | Valor                                                                          |
+| --------------- | ------------------------------------------------------------------------------ |
+| `SMTP_HOST`     | Servidor de tu proveedor SMTP                                                  |
+| `SMTP_PORT`     | `587` con STARTTLS o `465` con TLS directo                                     |
+| `SMTP_SECURE`   | `false` para 587; `true` para 465                                              |
+| `SMTP_USER`     | Usuario del proveedor                                                          |
+| `SMTP_PASSWORD` | Contraseña del proveedor (secreto, sin valor por defecto)                      |
+| `SMTP_FROM`     | Remitente autorizado, por ejemplo `AmbarCRM <no-reply@ambarrojostudios.cloud>` |
+| `NEXTAUTH_URL`  | URL pública HTTPS del CRM; es la base del enlace de recuperación               |
 
 Si falta algún campo SMTP o es inválido, el login oculta el enlace y los envíos se omiten
 con un log sin datos personales. Aplica `prisma/sql/actualizaciones.sql` como dueño antes de

@@ -13,6 +13,7 @@ import {
   type VentaFormulario,
 } from "@/components/retail/VentaFormModal";
 import { toast } from "@/components/Toaster";
+import { CobroEnLinea } from "@/components/retail/CobroEnLinea";
 import { Boton, EncabezadoPagina, formatoMoneda } from "@/components/ui";
 import {
   centavos,
@@ -75,10 +76,12 @@ export function VentasCliente({
   ventas,
   productos,
   contactos,
+  pagosActivos = false,
 }: {
   ventas: VentaRetail[];
   productos: ProductoRetail[];
   contactos: ContactoVenta[];
+  pagosActivos?: boolean;
 }) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState("");
@@ -103,17 +106,24 @@ export function VentasCliente({
 
   const hoy = claveMexico(new Date());
   const ventasHoy = ventas.filter(
-    (venta) => claveMexico(new Date(venta.createdAt)) === hoy && venta.estado !== "cancelada",
+    (venta) =>
+      claveMexico(new Date(venta.createdAt)) === hoy &&
+      venta.estado !== "cancelada",
   );
   const cobradasHoy = ventasHoy.filter((venta) =>
     ["pagada", "preparando", "lista", "entregada"].includes(venta.estado),
   );
-  const ingresoHoy = cobradasHoy.reduce((total, venta) => total + (centavos(venta.total) ?? 0n), 0n);
+  const ingresoHoy = cobradasHoy.reduce(
+    (total, venta) => total + (centavos(venta.total) ?? 0n),
+    0n,
+  );
   const pedidosAbiertos = ventas.filter((venta) =>
     ["pendiente", "pagada", "preparando", "lista"].includes(venta.estado),
   ).length;
   const divisorTicket = BigInt(cobradasHoy.length || 1);
-  const ticket = cobradasHoy.length ? (ingresoHoy + divisorTicket / 2n) / divisorTicket : 0n;
+  const ticket = cobradasHoy.length
+    ? (ingresoHoy + divisorTicket / 2n) / divisorTicket
+    : 0n;
 
   async function guardarVenta(formulario: VentaFormulario) {
     setGuardando(true);
@@ -144,7 +154,11 @@ export function VentasCliente({
       toast(errorApi(payload), "error");
       return;
     }
-    toast(nuevoEstado === "cancelada" ? "Venta cancelada; stock devuelto" : "Estado actualizado");
+    toast(
+      nuevoEstado === "cancelada"
+        ? "Venta cancelada; stock devuelto"
+        : "Estado actualizado",
+    );
     router.refresh();
   }
 
@@ -155,18 +169,28 @@ export function VentasCliente({
         descripcion="Mostrador, WhatsApp, pedidos en línea y preparación."
         acciones={
           <>
-          <Link href="/productos" className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">
-            Ver inventario
-          </Link>
-          <Boton onClick={() => setModal(true)}>+ Nueva venta</Boton></>
+            <Link
+              href="/productos"
+              className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium"
+            >
+              Ver inventario
+            </Link>
+            <Boton onClick={() => setModal(true)}>+ Nueva venta</Boton>
+          </>
         }
       />
 
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Kpi etiqueta="Ventas de hoy" valor={String(ventasHoy.length)} />
-        <Kpi etiqueta="Ingreso cobrado hoy" valor={formatoMoneda(numeroMoneda(ingresoHoy))} />
+        <Kpi
+          etiqueta="Ingreso cobrado hoy"
+          valor={formatoMoneda(numeroMoneda(ingresoHoy))}
+        />
         <Kpi etiqueta="Pedidos abiertos" valor={String(pedidosAbiertos)} />
-        <Kpi etiqueta="Ticket promedio hoy" valor={formatoMoneda(numeroMoneda(ticket))} />
+        <Kpi
+          etiqueta="Ticket promedio hoy"
+          valor={formatoMoneda(numeroMoneda(ticket))}
+        />
       </section>
 
       <div className="flex flex-wrap gap-2">
@@ -184,7 +208,9 @@ export function VentasCliente({
         >
           <option value="">Todos los estados</option>
           {ESTADOS.map((item) => (
-            <option key={item} value={item}>{ETIQUETAS[item]}</option>
+            <option key={item} value={item}>
+              {ETIQUETAS[item]}
+            </option>
           ))}
         </select>
       </div>
@@ -196,12 +222,15 @@ export function VentasCliente({
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="font-semibold">{venta.folio}</h2>
-                  <span className={`rounded-full px-2 py-1 text-xs ${COLOR_ESTADO[venta.estado]}`}>
+                  <span
+                    className={`rounded-full px-2 py-1 text-xs ${COLOR_ESTADO[venta.estado]}`}
+                  >
                     {ETIQUETAS[venta.estado]}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {venta.contacto?.nombre ?? "Venta de mostrador"} · {ETIQUETAS[venta.canal]}
+                  {venta.contacto?.nombre ?? "Venta de mostrador"} ·{" "}
+                  {ETIQUETAS[venta.canal]}
                   {venta.creadoPor ? ` · ${venta.creadoPor.nombre}` : ""}
                 </p>
               </div>
@@ -222,12 +251,19 @@ export function VentasCliente({
               <div className="text-sm text-muted-foreground">
                 {venta.partidas.map((partida) => (
                   <span key={partida.id} className="mr-3 inline-block">
-                    {formatearCantidad(partida.cantidad, partida.producto.unidad)} × {partida.producto.nombre}
+                    {formatearCantidad(
+                      partida.cantidad,
+                      partida.producto.unidad,
+                    )}{" "}
+                    × {partida.producto.nombre}
                   </span>
                 ))}
                 {compararCantidades(venta.descuento, 0) > 0 && (
                   <span className="inline-block">
-                    Descuento: {formatoMoneda(numeroMoneda(centavos(venta.descuento) ?? 0n))}
+                    Descuento:{" "}
+                    {formatoMoneda(
+                      numeroMoneda(centavos(venta.descuento) ?? 0n),
+                    )}
                   </span>
                 )}
               </div>
@@ -235,11 +271,15 @@ export function VentasCliente({
                 <span className="block">Cambiar estado</span>
                 <select
                   value={venta.estado}
-                  onChange={(evento) => void cambiarEstado(venta, evento.target.value)}
+                  onChange={(evento) =>
+                    void cambiarEstado(venta, evento.target.value)
+                  }
                   className="rounded-lg border border-input bg-card px-2 py-1.5 text-sm text-foreground"
                 >
                   {ESTADOS.map((item) => (
-                    <option key={item} value={item}>{ETIQUETAS[item]}</option>
+                    <option key={item} value={item}>
+                      {ETIQUETAS[item]}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -252,6 +292,7 @@ export function VentasCliente({
                   Reimprimir ticket
                 </Link>
               )}
+              {pagosActivos && <CobroEnLinea venta={venta} />}
             </div>
           </article>
         ))}
@@ -280,8 +321,13 @@ export function VentasCliente({
 function Kpi({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-soft">
-      <span className="absolute inset-x-0 top-0 h-1 bg-brand-gradient" aria-hidden="true" />
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{etiqueta}</p>
+      <span
+        className="absolute inset-x-0 top-0 h-1 bg-brand-gradient"
+        aria-hidden="true"
+      />
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {etiqueta}
+      </p>
       <p className="mt-1 text-2xl font-bold tnum text-foreground">{valor}</p>
     </div>
   );

@@ -324,7 +324,59 @@ model Org {
   activo    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
 
+  pagosOnline PagoOnline[]
+  eventosPago EventoPago[]
+
   @@map("orgs")
+}
+
+model PagoOnline {
+  id                 BigInt    @id @default(autoincrement())
+  orgId              BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  origenTipo         String    @map("origen_tipo")
+  origenId           BigInt    @map("origen_id")
+  proveedor          String
+  estado             String    @default("pendiente")
+  monto              Decimal   @db.Decimal(12, 2)
+  moneda             String    @default("MXN")
+  referenciaExterna  String?   @map("referencia_externa")
+  checkoutReferencia String?   @map("checkout_referencia")
+  checkoutUrl        String?   @map("checkout_url")
+  idempotencyKey     String    @map("idempotency_key")
+  metadata           Json      @default("{}")
+  expiraAt           DateTime? @map("expira_at") @db.Timestamptz(6)
+  aprobadoAt         DateTime? @map("aprobado_at") @db.Timestamptz(6)
+  reembolsadoAt      DateTime? @map("reembolsado_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  org     Org          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  eventos EventoPago[]
+
+  @@unique([orgId, idempotencyKey])
+  @@index([orgId, estado, createdAt])
+  @@index([orgId, origenTipo, origenId])
+  @@index([proveedor, referenciaExterna])
+  @@map("pagos_online")
+}
+
+model EventoPago {
+  id          BigInt    @id @default(autoincrement())
+  orgId       BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  pagoId      BigInt    @map("pago_id")
+  proveedor   String
+  eventoId    String    @map("evento_id")
+  tipo        String
+  payload     Json      @default("{}")
+  procesadoAt DateTime? @map("procesado_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  org  Org        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  pago PagoOnline @relation(fields: [pagoId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, proveedor, eventoId])
+  @@index([orgId, pagoId, createdAt])
+  @@map("eventos_pago")
 }
 
 model Usuario {

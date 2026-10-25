@@ -4,14 +4,27 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CitasConfig } from "@/components/config/CitasConfig";
 import { LealtadConfig } from "@/components/lealtad/LealtadConfig";
+import { PagosConfig } from "@/components/config/PagosConfig";
 import { toast } from "@/components/Toaster";
 import { Boton } from "@/components/ui";
 import { api, PUESTOS } from "@/components/config/tabs/shared";
 
 /** Módulos con formulario propio en lugar del JSON libre. */
-const CONFIG_PROPIA = new Set(["citas", "lealtad", "marketing", "meta_ads"]);
+const CONFIG_PROPIA = new Set([
+  "citas",
+  "lealtad",
+  "marketing",
+  "meta_ads",
+  "pagos_en_linea",
+]);
 
-export function TabModulos({ modulos, canales }: { modulos: any[]; canales: any[] }) {
+export function TabModulos({
+  modulos,
+  canales,
+}: {
+  modulos: any[];
+  canales: any[];
+}) {
   const router = useRouter();
   const [items, setItems] = useState<any[]>([]);
   const [config, setConfig] = useState<Record<string, string>>({});
@@ -82,10 +95,7 @@ export function TabModulos({ modulos, canales }: { modulos: any[]; canales: any[
   return (
     <div className="max-w-2xl space-y-3">
       {items.map((m) => (
-        <div
-          key={m.clave}
-          className="surface p-4"
-        >
+        <div key={m.clave} className="surface p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">{m.nombre}</p>
@@ -117,7 +127,10 @@ export function TabModulos({ modulos, canales }: { modulos: any[]; canales: any[
                 </div>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {PUESTOS.map((puesto) => (
-                    <label key={puesto} className="flex items-center gap-2 text-sm">
+                    <label
+                      key={puesto}
+                      className="flex items-center gap-2 text-sm"
+                    >
                       <input
                         type="checkbox"
                         checked={(puestos[m.clave] ?? []).includes(puesto)}
@@ -134,11 +147,24 @@ export function TabModulos({ modulos, canales }: { modulos: any[]; canales: any[
               {m.clave === "lealtad" && (
                 <LealtadConfig modulo={m} canales={canales} />
               )}
+              {m.clave === "pagos_en_linea" && <PagosConfig modulo={m} />}
               {(m.clave === "marketing" || m.clave === "meta_ads") && (
                 <div className="mt-3 space-y-2 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
-                  <p>El equipo prepara borradores y los administradores aprueban el plan. Puedes ajustar los accesos arriba.</p>
-                  <p>{m.clave === "meta_ads" ? "La conexión publicitaria está pendiente. Aprobar una propuesta no publica anuncios ni genera gasto en Meta." : "Las campañas se organizan dentro del CRM. Guardarlas no publica contenido ni envía mensajes."}</p>
-                  <a className="inline-flex min-h-10 items-center font-medium text-primary underline underline-offset-4" href={m.ruta}>Abrir {m.nombre} →</a>
+                  <p>
+                    El equipo prepara borradores y los administradores aprueban
+                    el plan. Puedes ajustar los accesos arriba.
+                  </p>
+                  <p>
+                    {m.clave === "meta_ads"
+                      ? "La conexión publicitaria está pendiente. Aprobar una propuesta no publica anuncios ni genera gasto en Meta."
+                      : "Las campañas se organizan dentro del CRM. Guardarlas no publica contenido ni envía mensajes."}
+                  </p>
+                  <a
+                    className="inline-flex min-h-10 items-center font-medium text-primary underline underline-offset-4"
+                    href={m.ruta}
+                  >
+                    Abrir {m.nombre} →
+                  </a>
                 </div>
               )}
               {!CONFIG_PROPIA.has(m.clave) && (

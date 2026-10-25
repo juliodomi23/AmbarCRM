@@ -296,6 +296,8 @@ ALTER TABLE conversaciones ADD COLUMN IF NOT EXISTS fijado_at TIMESTAMPTZ;
 
 -- NOTA: mensajes_programados y push_suscripciones NO están aquí: nacen multi-tenant
 -- y las crea web/prisma/sql/multi-tenant.sql (PARTE E), que corre después de este archivo.
+-- pagos_online y eventos_pago siguen el mismo orden: requieren orgs y se crean de forma
+-- idempotente en multi-tenant.sql; actualizaciones.sql cubre volúmenes existentes.
 
 -- ============================================================
 -- Realtime: NOTIFY al insertar mensaje (lo consume el SSE de Next.js)
