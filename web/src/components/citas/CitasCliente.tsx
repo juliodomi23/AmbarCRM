@@ -304,20 +304,26 @@ export function CitasCliente({
 
       {avisos.length > 0 && <div role="status" className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">{avisos.map((aviso) => <p key={aviso}>{aviso}</p>)}</div>}
       {agendaPropia && <p role="status" className="text-sm text-muted-foreground">{doctorPropio ? "Tu acceso está limitado a la agenda de tu especialista asignado." : "No tienes especialista asignado. Pide al administrador que configure tu acceso a la agenda."}</p>}
-      <div className="flex flex-wrap gap-3">
-        <label className="text-sm">Especialista
-          <select aria-label="Filtrar por especialista" disabled={agendaPropia} value={filtroDoctor} onChange={(e) => setFiltroDoctor(e.target.value)} className="ml-2 rounded-lg border border-input bg-card p-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/70 bg-card p-2 shadow-soft">
+        <span className="px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Filtros
+        </span>
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          Especialista
+          <select aria-label="Filtrar por especialista" disabled={agendaPropia} value={filtroDoctor} onChange={(e) => setFiltroDoctor(e.target.value)} className="rounded-full border border-border bg-background px-3 py-1.5 text-xs text-foreground outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/25 disabled:opacity-60">
             {!agendaPropia && <><option value="">Todos</option><option value="sin_asignar">Sin asignar</option></>}
             {doctores.map((d) => <option key={d.id} value={d.id}>{d.nombre}{d.activo ? "" : " (inactivo)"}</option>)}
           </select>
         </label>
-        <label className="text-sm">Especialidad
-          <select aria-label="Filtrar por especialidad" value={filtroEspecialidad} onChange={(e) => setFiltroEspecialidad(e.target.value)} className="ml-2 rounded-lg border border-input bg-card p-2">
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          Especialidad
+          <select aria-label="Filtrar por especialidad" value={filtroEspecialidad} onChange={(e) => setFiltroEspecialidad(e.target.value)} className="rounded-full border border-border bg-background px-3 py-1.5 text-xs text-foreground outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/25">
             <option value="">Todas</option>{[...new Set(doctores.map((d) => d.especialidad).filter(Boolean))].map((e) => <option key={e} value={e!}>{e}</option>)}
           </select>
         </label>
-        <label className="text-sm">Estado
-          <select aria-label="Filtrar por estado" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} className="ml-2 rounded-lg border border-input bg-card p-2">
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          Estado
+          <select aria-label="Filtrar por estado" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} className="rounded-full border border-border bg-background px-3 py-1.5 text-xs text-foreground outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/25">
             <option value="">Todos</option>{ESTADOS_CITA.map((e) => <option key={e.valor} value={e.valor}>{e.etiqueta}</option>)}
           </select>
         </label>
@@ -325,18 +331,13 @@ export function CitasCliente({
       <CalendarioSemanal
         agenda={filtroDoctor ? doctores.find((doctor) => doctor.id === filtroDoctor) : undefined}
         zona={zona}
-        guardando={guardando}
         citas={citas.filter((c) => (!filtroDoctor || (filtroDoctor === "sin_asignar" ? !c.doctor : c.doctor?.id === filtroDoctor)) && (!filtroEspecialidad || c.doctor?.especialidad === filtroEspecialidad) && (!filtroEstado || c.estado === filtroEstado))}
         cargando={cargando}
         semana={semana}
         hoy={hoy}
         onCambiarSemana={setSemana}
         onNuevoHorario={abrirEnHorario}
-        onCambiarEstado={(cita, estado) =>
-          void cambiarEstado(cita, estado)
-        }
         onSeleccionar={setCitaSeleccionada}
-        onEliminar={(cita) => void eliminar(cita)}
       />
 
       <FormularioCitaModal

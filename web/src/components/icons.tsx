@@ -54,3 +54,9 @@ export const IconoFlecha = (p: SVGProps<SVGSVGElement>) => (
 export const IconoDeshacer = (p: SVGProps<SVGSVGElement>) => (
   <Svg {...p}><path d="M3 7v6h6M3 13a9 9 0 1 0 3-7.7L3 8" /></Svg>
 );
+export const IconoChevronIzquierda = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}><path d="M15 18l-6-6 6-6" /></Svg>
+);
+export const IconoChevronDerecha = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}><path d="M9 18l6-6-6-6" /></Svg>
+);
