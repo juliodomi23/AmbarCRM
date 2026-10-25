@@ -2131,3 +2131,233 @@ CREATE POLICY org_isolation ON reembolsos_pago
 GRANT SELECT, INSERT, UPDATE ON pagos_online, eventos_pago, credenciales_pago, reembolsos_pago TO crm_app;
 REVOKE DELETE ON pagos_online, eventos_pago, credenciales_pago, reembolsos_pago FROM crm_app;
 GRANT USAGE, SELECT ON SEQUENCE pagos_online_id_seq, eventos_pago_id_seq, credenciales_pago_id_seq, reembolsos_pago_id_seq TO crm_app;
+
+-- ============================================================================
+-- CFDI 4.0 (Fase 2A). Nace multi-tenant; este bloque es idempotente.
+-- No guarda CSD, llaves privadas ni credenciales del PAC.
+-- ============================================================================
+CREATE UNIQUE INDEX IF NOT EXISTS contactos_id_org_uq ON contactos(id, org_id);
+CREATE UNIQUE INDEX IF NOT EXISTS ventas_id_org_uq ON ventas(id, org_id);
+
+CREATE TABLE IF NOT EXISTS datos_fiscales (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  contacto_id BIGINT NOT NULL,
+  rfc TEXT NOT NULL,
+  razon_social TEXT NOT NULL,
+  regimen_fiscal TEXT NOT NULL,
+  codigo_postal TEXT NOT NULL,
+  uso_cfdi TEXT NOT NULL DEFAULT 'G03',
+  correo TEXT,
+  activo BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, contacto_id),
+  UNIQUE (id, org_id)
+);
+ALTER TABLE datos_fiscales DROP CONSTRAINT IF EXISTS datos_fiscales_contacto_id_fkey;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'datos_fiscales_contacto_org_fkey') THEN
+    ALTER TABLE datos_fiscales ADD CONSTRAINT datos_fiscales_contacto_org_fkey
+      FOREIGN KEY (contacto_id, org_id) REFERENCES contactos(id, org_id) ON DELETE CASCADE;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS datos_fiscales_org_rfc_idx ON datos_fiscales(org_id, rfc);
+
+CREATE TABLE IF NOT EXISTS datos_emisor (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  rfc TEXT NOT NULL,
+  razon_social TEXT NOT NULL,
+  regimen_fiscal TEXT NOT NULL,
+  codigo_postal TEXT NOT NULL,
+  serie TEXT NOT NULL DEFAULT 'A',
+  folio_siguiente INTEGER NOT NULL DEFAULT 1,
+  ambiente TEXT NOT NULL DEFAULT 'sandbox',
+  proveedor TEXT NOT NULL DEFAULT 'mock' CHECK (proveedor IN ('mock','facturama','sw_sapien')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id),
+  UNIQUE (id, org_id)
+);
+CREATE INDEX IF NOT EXISTS datos_emisor_org_idx ON datos_emisor(org_id);
+
+CREATE TABLE IF NOT EXISTS facturas (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  venta_id BIGINT,
+  pago_id BIGINT,
+  contacto_id BIGINT,
+  proveedor TEXT NOT NULL DEFAULT 'mock' CHECK (proveedor IN ('mock','facturama','sw_sapien')),
+  serie TEXT,
+  folio TEXT,
+  uuid TEXT,
+  estado TEXT NOT NULL DEFAULT 'borrador' CHECK (estado IN ('borrador','timbrando','timbrada','cancelada','error')),
+  subtotal NUMERIC(12,2) NOT NULL DEFAULT 0,
+  impuestos NUMERIC(12,2) NOT NULL DEFAULT 0,
+  retenciones NUMERIC(12,2) NOT NULL DEFAULT 0,
+  total NUMERIC(12,2) NOT NULL DEFAULT 0,
+  moneda TEXT NOT NULL DEFAULT 'MXN',
+  forma_pago TEXT NOT NULL DEFAULT '99',
+  metodo_pago TEXT NOT NULL DEFAULT 'PUE',
+  uso_cfdi TEXT NOT NULL DEFAULT 'G03',
+  xml_url TEXT,
+  pdf_url TEXT,
+  xml TEXT,
+  pdf BYTEA,
+  error TEXT,
+  idempotency_key TEXT NOT NULL,
+  timbrando_at TIMESTAMPTZ,
+  timbrada_at TIMESTAMPTZ,
+  cancelada_at TIMESTAMPTZ,
+  receptor_rfc TEXT,
+  receptor_razon_social TEXT,
+  receptor_regimen_fiscal TEXT,
+  receptor_codigo_postal TEXT,
+  receptor_uso_cfdi TEXT,
+  receptor_correo TEXT,
+  emisor_rfc TEXT,
+  emisor_razon_social TEXT,
+  emisor_regimen_fiscal TEXT,
+  emisor_codigo_postal TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, idempotency_key),
+  UNIQUE (org_id, uuid),
+  UNIQUE (id, org_id)
+);
+ALTER TABLE facturas ADD COLUMN IF NOT EXISTS xml TEXT;
+ALTER TABLE facturas ADD COLUMN IF NOT EXISTS pdf BYTEA;
+ALTER TABLE facturas ADD COLUMN IF NOT EXISTS timbrando_at TIMESTAMPTZ;
+ALTER TABLE facturas ADD COLUMN IF NOT EXISTS receptor_rfc TEXT;
+ALTER TABLE facturas ADD COLUMN IF NOT EXISTS receptor_razon_social TEXT;
+ALTER TABLE facturas ADD COLUMN IF NOT EXISTS receptor_regimen_fiscal TEXT;
+ALTER TABLE facturas ADD COLUMN IF NOT EXISTS receptor_codigo_postal TEXT;
+ALTER TABLE facturas ADD COLUMN IF NOT EXISTS receptor_uso_cfdi TEXT;
+ALTER TABLE facturas ADD COLUMN IF NOT EXISTS receptor_correo TEXT;
+ALTER TABLE facturas ADD COLUMN IF NOT EXISTS emisor_rfc TEXT;
+ALTER TABLE facturas ADD COLUMN IF NOT EXISTS emisor_razon_social TEXT;
+ALTER TABLE facturas ADD COLUMN IF NOT EXISTS emisor_regimen_fiscal TEXT;
+ALTER TABLE facturas ADD COLUMN IF NOT EXISTS emisor_codigo_postal TEXT;
+ALTER TABLE facturas DROP CONSTRAINT IF EXISTS facturas_estado_check;
+ALTER TABLE facturas ADD CONSTRAINT facturas_estado_check
+  CHECK (estado IN ('borrador','timbrando','timbrada','cancelada','error'));
+ALTER TABLE facturas DROP CONSTRAINT IF EXISTS facturas_venta_id_fkey;
+ALTER TABLE facturas DROP CONSTRAINT IF EXISTS facturas_pago_id_fkey;
+ALTER TABLE facturas DROP CONSTRAINT IF EXISTS facturas_contacto_id_fkey;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'facturas_venta_org_fkey') THEN
+    ALTER TABLE facturas ADD CONSTRAINT facturas_venta_org_fkey
+      FOREIGN KEY (venta_id, org_id) REFERENCES ventas(id, org_id) ON DELETE RESTRICT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'facturas_pago_org_fkey') THEN
+    ALTER TABLE facturas ADD CONSTRAINT facturas_pago_org_fkey
+      FOREIGN KEY (pago_id, org_id) REFERENCES pagos_online(id, org_id) ON DELETE RESTRICT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'facturas_contacto_org_fkey') THEN
+    ALTER TABLE facturas ADD CONSTRAINT facturas_contacto_org_fkey
+      FOREIGN KEY (contacto_id, org_id) REFERENCES contactos(id, org_id) ON DELETE RESTRICT;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS facturas_org_estado_created_idx ON facturas(org_id, estado, created_at);
+CREATE INDEX IF NOT EXISTS facturas_org_venta_idx ON facturas(org_id, venta_id);
+CREATE INDEX IF NOT EXISTS facturas_org_pago_idx ON facturas(org_id, pago_id);
+CREATE INDEX IF NOT EXISTS facturas_org_contacto_idx ON facturas(org_id, contacto_id);
+CREATE UNIQUE INDEX IF NOT EXISTS facturas_un_timbrada_venta_idx
+  ON facturas(org_id, venta_id) WHERE estado = 'timbrada' AND venta_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS facturas_un_timbrada_pago_idx
+  ON facturas(org_id, pago_id) WHERE estado = 'timbrada' AND pago_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS facturas_org_serie_folio_uq
+  ON facturas(org_id, serie, folio)
+  WHERE estado IN ('timbrada','cancelada') AND serie IS NOT NULL AND folio IS NOT NULL;
+
+UPDATE facturas f
+SET receptor_rfc = df.rfc,
+    receptor_razon_social = df.razon_social,
+    receptor_regimen_fiscal = df.regimen_fiscal,
+    receptor_codigo_postal = df.codigo_postal,
+    receptor_uso_cfdi = f.uso_cfdi,
+    receptor_correo = df.correo
+FROM datos_fiscales df
+WHERE f.org_id = df.org_id
+  AND f.contacto_id = df.contacto_id
+  AND f.estado IN ('timbrada','cancelada')
+  AND f.receptor_rfc IS NULL;
+
+UPDATE facturas f
+SET emisor_rfc = de.rfc,
+    emisor_razon_social = de.razon_social,
+    emisor_regimen_fiscal = de.regimen_fiscal,
+    emisor_codigo_postal = de.codigo_postal
+FROM datos_emisor de
+WHERE f.org_id = de.org_id
+  AND f.estado IN ('timbrada','cancelada')
+  AND f.emisor_rfc IS NULL;
+
+CREATE TABLE IF NOT EXISTS conceptos_factura (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  factura_id BIGINT NOT NULL,
+  descripcion TEXT NOT NULL,
+  cantidad NUMERIC(12,3) NOT NULL CHECK (cantidad > 0),
+  valor_unitario NUMERIC(12,2) NOT NULL CHECK (valor_unitario >= 0),
+  importe NUMERIC(12,2) NOT NULL CHECK (importe >= 0),
+  iva NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (iva >= 0),
+  retenciones NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (retenciones >= 0),
+  clave_prod_serv TEXT,
+  clave_unidad TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (id, org_id)
+);
+ALTER TABLE conceptos_factura DROP CONSTRAINT IF EXISTS conceptos_factura_factura_id_fkey;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'conceptos_factura_factura_org_fkey') THEN
+    ALTER TABLE conceptos_factura ADD CONSTRAINT conceptos_factura_factura_org_fkey
+      FOREIGN KEY (factura_id, org_id) REFERENCES facturas(id, org_id) ON DELETE CASCADE;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS conceptos_factura_org_factura_idx ON conceptos_factura(org_id, factura_id);
+
+CREATE TABLE IF NOT EXISTS eventos_factura (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  factura_id BIGINT NOT NULL,
+  evento_id TEXT NOT NULL,
+  tipo TEXT NOT NULL,
+  payload JSONB NOT NULL DEFAULT '{}',
+  procesado_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (org_id, evento_id)
+);
+ALTER TABLE eventos_factura DROP CONSTRAINT IF EXISTS eventos_factura_factura_id_fkey;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'eventos_factura_factura_org_fkey') THEN
+    ALTER TABLE eventos_factura ADD CONSTRAINT eventos_factura_factura_org_fkey
+      FOREIGN KEY (factura_id, org_id) REFERENCES facturas(id, org_id) ON DELETE CASCADE;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS eventos_factura_org_factura_created_idx ON eventos_factura(org_id, factura_id, created_at);
+
+DO $$
+DECLARE t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['datos_fiscales','datos_emisor','facturas','conceptos_factura','eventos_factura'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format($p$
+      CREATE POLICY org_isolation ON %I
+      USING      (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+      WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
+    $p$, t);
+  END LOOP;
+END $$;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON datos_fiscales, datos_emisor, facturas, conceptos_factura, eventos_factura TO crm_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
+
+DROP INDEX IF EXISTS facturas_un_activa_venta_idx;
+DROP INDEX IF EXISTS facturas_un_activa_pago_idx;
+CREATE UNIQUE INDEX IF NOT EXISTS facturas_un_activa_venta_idx
+  ON facturas(org_id, venta_id) WHERE estado IN ('borrador','timbrando','timbrada') AND venta_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS facturas_un_activa_pago_idx
+  ON facturas(org_id, pago_id) WHERE estado IN ('borrador','timbrando','timbrada') AND pago_id IS NOT NULL;

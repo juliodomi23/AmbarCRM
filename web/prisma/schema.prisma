@@ -337,6 +337,11 @@ model Org {
   eventosPago      EventoPago[]
   credencialesPago CredencialPago[]
   reembolsosPago   ReembolsoPago[]
+  datosFiscales    DatosFiscales[]
+  datosEmisor      DatosEmisor?
+  facturas         Factura[]
+  conceptosFactura ConceptoFactura[]
+  eventosFactura   EventoFactura[]
 
   @@map("orgs")
 }
@@ -365,6 +370,7 @@ model PagoOnline {
   org        Org             @relation(fields: [orgId], references: [id], onDelete: Cascade)
   eventos    EventoPago[]
   reembolsos ReembolsoPago[]
+  facturas   Factura[]
 
   @@unique([orgId, idempotencyKey])
   @@unique([id, orgId])
@@ -575,12 +581,15 @@ model Contacto {
   apartados          Apartado[]
   notasCredito       NotaCreditoCliente[]
   cotizaciones       Cotizacion[]
+  datosFiscales      DatosFiscales[]
+  facturas           Factura[]
 
   solicitudesResena    SolicitudResena[]
   campanasDestinatario CampanaDestinatario[]
   contratos            Contrato[]
 
   @@unique([orgId, telefono])
+  @@unique([id, orgId])
   @@index([responsableId])
   @@index([listaPrecioId])
   @@index([orgId])
@@ -1299,11 +1308,13 @@ model Venta {
   movimientosCuenta      MovimientoCuentaCliente[]
   cotizacion             Cotizacion?
   reservasPedido         ReservaPedido[]
+  facturas               Factura[]
 
   solicitudesResena SolicitudResena[]
 
   @@unique([orgId, folio])
   @@unique([orgId, uuidCliente])
+  @@unique([id, orgId])
   @@index([orgId, estado, createdAt])
   @@index([contactoId])
   @@index([turnoId])
@@ -2286,4 +2297,146 @@ model ColaCajaRechazo {
   @@unique([orgId, uuidCliente])
   @@index([orgId, createdAt])
   @@map("cola_caja_rechazos")
+}
+
+/// Datos fiscales del receptor. Un registro por contacto y organización.
+model DatosFiscales {
+  id             BigInt   @id @default(autoincrement())
+  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contactoId     BigInt   @map("contacto_id")
+  rfc            String
+  razonSocial    String   @map("razon_social")
+  regimenFiscal  String   @map("regimen_fiscal")
+  codigoPostal   String   @map("codigo_postal")
+  usoCfdi        String   @default("G03") @map("uso_cfdi")
+  correo         String?
+  activo         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  org      Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  contacto Contacto @relation(fields: [contactoId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@unique([orgId, contactoId])
+  @@unique([id, orgId])
+  @@index([orgId, rfc])
+  @@map("datos_fiscales")
+}
+
+/// Configuración del emisor. Nunca guarda CSD, llave privada ni credenciales del PAC.
+model DatosEmisor {
+  id              BigInt   @id @default(autoincrement())
+  orgId           BigInt   @unique @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  rfc             String
+  razonSocial     String   @map("razon_social")
+  regimenFiscal   String   @map("regimen_fiscal")
+  codigoPostal    String   @map("codigo_postal")
+  serie           String   @default("A")
+  folioSiguiente  Int      @default(1) @map("folio_siguiente")
+  ambiente        String   @default("sandbox")
+  proveedor       String   @default("mock")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([id, orgId])
+  @@map("datos_emisor")
+}
+
+model Factura {
+  id             BigInt    @id @default(autoincrement())
+  orgId          BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  ventaId        BigInt?   @map("venta_id")
+  pagoId         BigInt?   @map("pago_id")
+  contactoId     BigInt?   @map("contacto_id")
+  proveedor      String    @default("mock")
+  serie          String?
+  folio          String?
+  uuid           String?
+  estado         String    @default("borrador")
+  subtotal       Decimal   @default(0) @db.Decimal(12, 2)
+  impuestos      Decimal   @default(0) @db.Decimal(12, 2)
+  retenciones    Decimal   @default(0) @db.Decimal(12, 2)
+  total          Decimal   @default(0) @db.Decimal(12, 2)
+  moneda         String    @default("MXN")
+  formaPago      String    @default("99") @map("forma_pago")
+  metodoPago     String    @default("PUE") @map("metodo_pago")
+  usoCfdi        String    @default("G03") @map("uso_cfdi")
+  xmlUrl         String?   @map("xml_url")
+  pdfUrl         String?   @map("pdf_url")
+  xml            String?
+  pdf            Bytes?
+  error          String?
+  idempotencyKey String    @map("idempotency_key")
+  timbrandoAt    DateTime? @map("timbrando_at") @db.Timestamptz(6)
+  timbradaAt     DateTime? @map("timbrada_at") @db.Timestamptz(6)
+  canceladaAt    DateTime? @map("cancelada_at") @db.Timestamptz(6)
+  receptorRfc          String? @map("receptor_rfc")
+  receptorRazonSocial  String? @map("receptor_razon_social")
+  receptorRegimenFiscal String? @map("receptor_regimen_fiscal")
+  receptorCodigoPostal String? @map("receptor_codigo_postal")
+  receptorUsoCfdi      String? @map("receptor_uso_cfdi")
+  receptorCorreo       String? @map("receptor_correo")
+  emisorRfc            String? @map("emisor_rfc")
+  emisorRazonSocial    String? @map("emisor_razon_social")
+  emisorRegimenFiscal  String? @map("emisor_regimen_fiscal")
+  emisorCodigoPostal   String? @map("emisor_codigo_postal")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  org       Org              @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  venta     Venta?           @relation(fields: [ventaId, orgId], references: [id, orgId], onDelete: Restrict)
+  pago      PagoOnline?      @relation(fields: [pagoId, orgId], references: [id, orgId], onDelete: Restrict)
+  contacto  Contacto?        @relation(fields: [contactoId, orgId], references: [id, orgId], onDelete: Restrict)
+  conceptos ConceptoFactura[]
+  eventos   EventoFactura[]
+
+  @@unique([orgId, idempotencyKey])
+  @@unique([orgId, uuid])
+  @@unique([id, orgId])
+  @@index([orgId, estado, createdAt])
+  @@index([orgId, ventaId])
+  @@index([orgId, pagoId])
+  @@index([orgId, contactoId])
+  @@map("facturas")
+}
+
+model ConceptoFactura {
+  id             BigInt   @id @default(autoincrement())
+  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  facturaId      BigInt   @map("factura_id")
+  descripcion    String
+  cantidad       Decimal  @db.Decimal(12, 3)
+  valorUnitario  Decimal  @map("valor_unitario") @db.Decimal(12, 2)
+  importe        Decimal  @db.Decimal(12, 2)
+  iva            Decimal  @default(0) @db.Decimal(12, 2)
+  retenciones    Decimal  @default(0) @db.Decimal(12, 2)
+  claveProdServ  String?  @map("clave_prod_serv")
+  claveUnidad    String?  @map("clave_unidad")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  org     Org     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  factura Factura @relation(fields: [facturaId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@index([orgId, facturaId])
+  @@map("conceptos_factura")
+}
+
+model EventoFactura {
+  id          BigInt    @id @default(autoincrement())
+  orgId       BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  facturaId   BigInt    @map("factura_id")
+  eventoId    String    @map("evento_id")
+  tipo        String
+  payload     Json      @default("{}")
+  procesadoAt DateTime? @map("procesado_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  org     Org     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  factura Factura @relation(fields: [facturaId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@unique([orgId, eventoId])
+  @@index([orgId, facturaId, createdAt])
+  @@map("eventos_factura")
 }

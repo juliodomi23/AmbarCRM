@@ -49,6 +49,12 @@ export const MODULOS = [
     icono: "M12 2v20M17 6H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H6", ruta: "/cobros",
   },
   {
+    clave: "facturacion", area: "Ámbar Rojo", nombre: "Facturación CFDI",
+    descripcion: "Datos fiscales, facturas, XML/PDF y cancelación.",
+    acceso: { puestosPorDefecto: ["Administrador", "Finanzas", "Vendedor de tienda", "Cajero"] },
+    icono: "M6 2h9l5 5v15H6zM14 2v6h6M9 13h6M9 17h6", ruta: "/facturas",
+  },
+  {
     clave: "panel_ar", area: "Ámbar Rojo", nombre: "Panel Ámbar Rojo",
     descripcion: "MRR, cartera, pipeline y reparto informativo de comisiones.",
     acceso: { puestosPorDefecto: ["Administrador"] },

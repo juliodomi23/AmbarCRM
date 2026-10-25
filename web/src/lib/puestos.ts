@@ -11,6 +11,7 @@ const PUESTOS_POR_MODULO: Record<string, readonly string[]> = {
   compras: ["Encargado de inventario"],
   ventas: ["Vendedor de tienda", "Cajero"],
   caja: ["Cajero", "Encargado de tienda"],
+  facturacion: ["Finanzas", "Vendedor de tienda", "Cajero"],
   legal: ["Abogado", "Pasante", "Asistente jurídico", "Coordinador jurídico"],
   asesorias_legales: ["Abogado", "Pasante", "Asistente jurídico", "Coordinador jurídico"],
   finanzas_legales: ["Abogado", "Coordinador jurídico"],

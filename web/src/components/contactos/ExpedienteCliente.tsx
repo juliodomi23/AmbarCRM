@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { DatosPersonalesFicha } from "@/components/clientes/DatosPersonalesFicha";
+import { DatosFiscalesFicha, type DatosFiscalesVista } from "@/components/contactos/DatosFiscalesFicha";
 import { Badge, Boton, CLASE_CAMPO, type TonoBadge } from "@/components/ui";
 import { IconoAlerta, IconoEditar, IconoInfo, IconoNota, IconoReloj } from "@/components/icons";
 import { ZONA_CITAS } from "@/components/citas/fecha";
@@ -272,6 +273,8 @@ export function ExpedienteCliente({
   modo = "clientes",
   zona = ZONA_CITAS,
   soloBasico = false,
+  datosFiscales = null,
+  facturacionActivo = false,
 }: {
   contacto: {
     id: string;
@@ -286,6 +289,8 @@ export function ExpedienteCliente({
   zona?: string;
   modo?: "clientes" | "pacientes";
   soloBasico?: boolean;
+  datosFiscales?: DatosFiscalesVista | null;
+  facturacionActivo?: boolean;
 }) {
   const esClinica = modo === "pacientes";
   const expedienteInicial = contacto.expediente;
@@ -676,6 +681,14 @@ export function ExpedienteCliente({
             </Tarjeta>
           </aside>
         </div>
+      )}
+
+      {facturacionActivo && (
+        <DatosFiscalesFicha
+          key={datosFiscales?.rfc ?? "sin-datos-fiscales"}
+          contactoId={contacto.id}
+          datos={datosFiscales}
+        />
       )}
     </div>
   );

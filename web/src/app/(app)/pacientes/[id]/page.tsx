@@ -18,7 +18,7 @@ export default async function PacientePage({
   const acceso = await accesoAgendaActual();
   const id = aBigInt((await params).id);
   if (id === null) notFound();
-  const [contacto, doctores, citas, citasActivo] = await Promise.all([
+  const [contacto, doctores, citas, citasActivo, datosFiscales, facturacionActivo] = await Promise.all([
     db.contacto.findFirst({
       where: { id, expediente: { isNot: null } },
       include: {
@@ -41,6 +41,8 @@ export default async function PacientePage({
       take: 20,
     }),
     moduloActivo("citas"),
+    db.datosFiscales.findFirst({ where: { contactoId: id } }),
+    moduloActivo("facturacion"),
   ]);
   if (!contacto) notFound();
   return (
@@ -51,6 +53,8 @@ export default async function PacientePage({
       citas={serializar(citas)}
       citasActivo={citasActivo}
       modo="pacientes"
+      datosFiscales={serializar(datosFiscales)}
+      facturacionActivo={facturacionActivo}
     />
   );
 }

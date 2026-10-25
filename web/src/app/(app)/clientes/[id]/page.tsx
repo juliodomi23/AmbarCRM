@@ -23,7 +23,7 @@ export default async function ClientePage({
     moduloActivo("pacientes"),
   ]);
   const soloBasico = pacientesHabilitado && !pacientesAccesible;
-  const [contacto, doctores, citas, citasActivo] = await Promise.all([
+  const [contacto, doctores, citas, citasActivo, datosFiscales, facturacionActivo] = await Promise.all([
     soloBasico
       ? db.contacto.findUnique({ where: { id } })
       : db.contacto.findFirst({
@@ -50,6 +50,8 @@ export default async function ClientePage({
       take: 20,
     }),
     moduloActivo("citas"),
+    db.datosFiscales.findFirst({ where: { contactoId: id } }),
+    moduloActivo("facturacion"),
   ]);
   if (!contacto) notFound();
   return (
@@ -61,6 +63,8 @@ export default async function ClientePage({
       citasActivo={citasActivo}
       modo="clientes"
       soloBasico={soloBasico}
+      datosFiscales={serializar(datosFiscales)}
+      facturacionActivo={facturacionActivo}
     />
   );
 }

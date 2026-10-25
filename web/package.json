@@ -14,6 +14,7 @@
     "check:app-movil": "tsx scripts/check-app-movil.ts",
     "check:app-movil-http": "tsx scripts/check-app-movil-http.ts",
     "check:pagos-online": "tsx scripts/check-pagos-online.ts",
+    "check:cfdi": "tsx scripts/check-cfdi.ts",
     "seed:admin": "node scripts/seed-admin.mjs"
   },
   "dependencies": {

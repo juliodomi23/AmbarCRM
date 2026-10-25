@@ -11,12 +11,28 @@ export const dynamic = "force-dynamic";
 
 export default async function VentasPage() {
   if (!(await moduloActivo("ventas"))) redirect("/");
-  const pagosActivos = await moduloActivo("pagos_en_linea");
+  const [pagosActivos, facturacionActivo] = await Promise.all([
+    moduloActivo("pagos_en_linea"),
+    moduloActivo("facturacion"),
+  ]);
   const [ventasBase, productos, contactos, sesion] = await Promise.all([
     db.venta.findMany({
       include: {
-        contacto: { select: { id: true, nombre: true, telefono: true } },
+        contacto: {
+          select: {
+            id: true,
+            nombre: true,
+            telefono: true,
+            datosFiscales: { select: { rfc: true } },
+          },
+        },
         creadoPor: { select: { id: true, nombre: true } },
+        facturas: {
+          where: { estado: { in: ["borrador", "timbrando", "timbrada"] } },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { id: true, serie: true, folio: true, estado: true },
+        },
         partidas: {
           include: {
             producto: {
@@ -58,8 +74,9 @@ export default async function VentasPage() {
     if (!actual || (pago.estado === "pendiente" && actual.estado !== "pendiente"))
       pagoPorVenta.set(clave, pago);
   }
-  const ventas = ventasBase.map((venta) => ({
+  const ventas = ventasBase.map(({ facturas: facturasActivas, ...venta }) => ({
     ...venta,
+    factura: facturasActivas[0] ?? null,
     pagoOnline: (() => {
       const pago = pagoPorVenta.get(String(venta.id));
       if (!pago) return null;
@@ -88,6 +105,7 @@ export default async function VentasPage() {
       contactos={serializar(contactos)}
       pagosActivos={pagosActivos}
       puedeReembolsar={permisoReembolso}
+      facturacionActivo={facturacionActivo}
     />
   );
 }

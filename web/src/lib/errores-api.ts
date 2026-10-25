@@ -1,7 +1,14 @@
 import { Prisma } from "@prisma/client";
+import { ErrorCfdi } from "@/lib/cfdi/errores";
 
 /** Errores de datos del cliente que no deben verse como 500 (id mal formado, registro inexistente). */
 export function respuestaDeError(error: unknown): Response {
+  if (error instanceof ErrorCfdi) {
+    return Response.json(
+      { error: error.message, ...(error.codigo ? { codigo: error.codigo } : {}) },
+      { status: error.status },
+    );
+  }
   if (error instanceof SyntaxError || error instanceof RangeError) {
     return Response.json({ error: "datos inválidos" }, { status: 400 });
   }

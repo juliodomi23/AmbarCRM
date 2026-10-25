@@ -39,6 +39,7 @@ export type ContactoVenta = {
   id: string;
   nombre: string;
   telefono: string | null;
+  datosFiscales?: { rfc: string } | null;
 };
 
 export type VentaRetail = {
@@ -68,6 +69,12 @@ export type VentaRetail = {
       unidad: string;
     };
   }>;
+  factura?: {
+    id: string;
+    serie: string | null;
+    folio: string | null;
+    estado: string;
+  } | null;
   pagoOnline?: {
     id: string;
     estado: string;

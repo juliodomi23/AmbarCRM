@@ -78,12 +78,14 @@ export function VentasCliente({
   contactos,
   pagosActivos = false,
   puedeReembolsar = false,
+  facturacionActivo = false,
 }: {
   ventas: VentaRetail[];
   productos: ProductoRetail[];
   contactos: ContactoVenta[];
   pagosActivos?: boolean;
   puedeReembolsar?: boolean;
+  facturacionActivo?: boolean;
 }) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState("");
@@ -293,6 +295,30 @@ export function VentasCliente({
                 >
                   Reimprimir ticket
                 </Link>
+              )}
+              {facturacionActivo && venta.estado !== "cancelada" && (
+                venta.factura ? (
+                  <Link
+                    href={`/facturas/${venta.factura.id}`}
+                    className="rounded-lg bg-success/15 px-3 py-2 text-xs font-medium text-success"
+                  >
+                    {venta.factura.estado === "borrador" ? "Factura en borrador" : "Ver factura"}
+                  </Link>
+                ) : venta.contacto?.datosFiscales ? (
+                  <Link
+                    href={`/facturas?ventaId=${venta.id}`}
+                    className="rounded-lg bg-primary/10 px-3 py-2 text-xs font-medium text-primary"
+                  >
+                    Facturar
+                  </Link>
+                ) : (
+                  <span
+                    title="El cliente necesita RFC y régimen fiscal para facturar"
+                    className="cursor-not-allowed rounded-lg bg-muted px-3 py-2 text-xs font-medium text-muted-foreground opacity-70"
+                  >
+                    Facturar
+                  </span>
+                )
               )}
               {pagosActivos && <CobroEnLinea venta={venta} puedeReembolsar={puedeReembolsar} />}
             </div>
