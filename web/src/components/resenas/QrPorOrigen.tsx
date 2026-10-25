@@ -19,7 +19,7 @@ export function QrPorOrigen({ base, origenes }: { base: string; origenes: string
   }
 
   return (
-    <section className="surface p-4">
+    <section className="rounded-2xl border border-border bg-card p-4 shadow-soft">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3 print:hidden">
         <div>
           <h2 className="font-semibold">QR por origen</h2>

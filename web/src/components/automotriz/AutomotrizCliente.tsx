@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton, Campo, Modal, formatoMoneda, EncabezadoPagina } from "@/components/ui";
+import { IconoAuto } from "@/components/icons";
 import { toast } from "@/components/Toaster";
 
 const ESTADOS = ["disponible", "reservado", "vendido", "taller"] as const;
@@ -297,9 +298,10 @@ export function AutomotrizCliente({ vehiculos }: { vehiculos: Vehiculo[] }) {
 
 function Kpi({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
-    <div className="surface p-4 shadow-soft">
-      <p className="text-xs font-medium uppercase text-muted-foreground">{etiqueta}</p>
-      <p className="mt-1 text-2xl font-bold text-foreground">{valor}</p>
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-soft">
+      <span className="absolute inset-x-0 top-0 h-1 bg-brand-gradient" aria-hidden="true" />
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{etiqueta}</p>
+      <p className="mt-1 text-2xl font-bold tnum text-foreground">{valor}</p>
     </div>
   );
 }
@@ -321,8 +323,8 @@ function VehiculoCard({
           className="h-40 w-full object-cover"
         />
       ) : (
-        <div className="grid h-32 place-items-center bg-muted text-4xl" aria-hidden>
-          🚗
+        <div className="grid h-32 place-items-center bg-muted" aria-hidden>
+          <IconoAuto className="h-10 w-10 text-muted-foreground/50" />
         </div>
       )}
       <div className="space-y-3 p-4">

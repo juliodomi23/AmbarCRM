@@ -60,3 +60,12 @@ export const IconoChevronIzquierda = (p: SVGProps<SVGSVGElement>) => (
 export const IconoChevronDerecha = (p: SVGProps<SVGSVGElement>) => (
   <Svg {...p}><path d="M9 18l6-6-6-6" /></Svg>
 );
+export const IconoBuscar = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></Svg>
+);
+export const IconoAuto = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}><path d="M3 17h18M5 17l1-6h12l1 6M8 17v2m8-2v2M7 11l2-4h6l2 4M7 14h.01M17 14h.01" /></Svg>
+);
+export const IconoCasa = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}><path d="M3 11l9-8 9 8M5 10v10h14V10M9 20v-6h6v6" /></Svg>
+);

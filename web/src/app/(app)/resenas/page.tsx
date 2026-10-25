@@ -59,12 +59,13 @@ export default async function ResenasPage() {
         )}
       </section>
       <section className="grid gap-4 md:grid-cols-3 print:hidden">
-        <div className="surface p-4">
-          <p className="text-xs uppercase text-muted-foreground">Promedio</p>
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-soft">
+          <span className="absolute inset-x-0 top-0 h-1 bg-brand-gradient" aria-hidden="true" />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Promedio</p>
           <strong className="tnum text-3xl">{panel.promedio === null ? "—" : panel.promedio.toFixed(2)}</strong>
           <p className="text-xs text-muted-foreground">{panel.total} calificaciones</p>
         </div>
-        <div className="surface p-4 md:col-span-2">
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-soft md:col-span-2">
           <h2 className="mb-2 font-semibold">Distribución</h2>
           {[5, 4, 3, 2, 1].map((estrellas) => (
             <div key={estrellas} className="flex items-center gap-2 text-sm">
@@ -76,7 +77,7 @@ export default async function ResenasPage() {
         </div>
       </section>
       <section className="grid gap-4 lg:grid-cols-2 print:hidden">
-        <div className="surface p-4">
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
           <h2 className="mb-2 font-semibold">Tendencia semanal ({panel.zona})</h2>
           {panel.tendencia.length === 0 ? <EmptyState titulo="Sin opiniones recientes" descripcion="Aún no hay opiniones en las últimas 12 semanas." /> : (
             <table className="tabla"><thead><tr className="text-left"><th>Semana del</th><th className="text-right">Opiniones</th><th className="text-right">Promedio</th></tr></thead>
@@ -84,7 +85,7 @@ export default async function ResenasPage() {
             </table>
           )}
         </div>
-        <div className="surface p-4">
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
           <h2 className="mb-2 font-semibold">Por origen</h2>
           {panel.origenes.length === 0 ? <EmptyState titulo="Sin opiniones" descripcion="Cuando tus clientes califiquen, verás aquí de dónde vienen." /> : (
             <table className="tabla"><thead><tr className="text-left"><th>Origen</th><th className="text-right">Opiniones</th><th className="text-right">Promedio</th></tr></thead>

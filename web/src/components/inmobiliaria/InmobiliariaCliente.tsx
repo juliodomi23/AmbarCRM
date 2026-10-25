@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton, Campo, Modal, formatoMoneda, EncabezadoPagina } from "@/components/ui";
+import { IconoCasa } from "@/components/icons";
 import { toast } from "@/components/Toaster";
 
 const ESTADOS = ["disponible", "reservada", "vendida", "rentada"] as const;
@@ -171,7 +172,9 @@ export function InmobiliariaCliente({ propiedades }: { propiedades: Propiedad[] 
                 className="h-40 w-full object-cover"
               />
             ) : (
-              <div className="grid h-32 place-items-center bg-muted text-4xl">🏠</div>
+              <div className="grid h-32 place-items-center bg-muted" aria-hidden>
+                <IconoCasa className="h-10 w-10 text-muted-foreground/50" />
+              </div>
             )}
             <div className="space-y-3 p-4">
               <div className="flex justify-between gap-3">
@@ -297,9 +300,10 @@ export function InmobiliariaCliente({ propiedades }: { propiedades: Propiedad[] 
 
 function Kpi({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
-    <div className="surface p-4 shadow-soft">
-      <p className="text-xs uppercase text-muted-foreground">{etiqueta}</p>
-      <p className="mt-1 text-2xl font-bold">{valor}</p>
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-soft">
+      <span className="absolute inset-x-0 top-0 h-1 bg-brand-gradient" aria-hidden="true" />
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{etiqueta}</p>
+      <p className="mt-1 text-2xl font-bold tnum text-foreground">{valor}</p>
     </div>
   );
 }
