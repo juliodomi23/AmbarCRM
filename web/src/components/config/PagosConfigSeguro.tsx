@@ -17,14 +17,31 @@ export function PagosConfig({ modulo: _modulo }: { modulo: { config?: unknown } 
   const [credencial, setCredencial] = useState<EstadoCredencial | null>(null);
   const [cargando, setCargando] = useState(true);
   const [desconectando, setDesconectando] = useState(false);
+  const [errorConfiguracion, setErrorConfiguracion] = useState<string | null>(null);
 
   useEffect(() => {
-    void fetch("/api/pagos/credenciales")
-      .then(async (respuesta) => (respuesta.ok ? respuesta.json() : null))
-      .then((datos: { credencial?: EstadoCredencial | null } | null) => {
-        setCredencial(datos?.credencial ?? null);
+    void (async () => {
+      try {
+        const respuesta = await fetch("/api/pagos/credenciales");
+        const datos = (await respuesta.json().catch(() => ({}))) as {
+          credencial?: EstadoCredencial | null;
+          error?: string;
+          errorConfiguracion?: string | null;
+        };
+        if (!respuesta.ok)
+          throw new Error(datos.error ?? "No se pudo consultar Mercado Pago");
+        setCredencial(datos.credencial ?? null);
+        setErrorConfiguracion(datos.errorConfiguracion ?? null);
+      } catch (error) {
+        setErrorConfiguracion(
+          error instanceof Error
+            ? error.message
+            : "No se pudo consultar Mercado Pago",
+        );
+      } finally {
         setCargando(false);
-      });
+      }
+    })();
   }, []);
 
   async function desconectar() {
@@ -34,6 +51,8 @@ export function PagosConfig({ modulo: _modulo }: { modulo: { config?: unknown } 
       if (!respuesta.ok) return toast("No se pudo desconectar Mercado Pago", "error");
       setCredencial(null);
       toast("Mercado Pago fue desconectado");
+    } catch {
+      toast("No se pudo desconectar Mercado Pago. Revisa tu conexión.", "error");
     } finally {
       setDesconectando(false);
     }
@@ -79,6 +98,12 @@ export function PagosConfig({ modulo: _modulo }: { modulo: { config?: unknown } 
       {credencial?.proveedor === "mock" && (
         <p className="rounded-lg border border-warning/40 bg-warning/10 p-2 text-xs text-warning">
           Mock genera cobros simulados y está bloqueado en producción salvo habilitación explícita.
+        </p>
+      )}
+
+      {errorConfiguracion && (
+        <p className="rounded-lg border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+          {errorConfiguracion}
         </p>
       )}
 

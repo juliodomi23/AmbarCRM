@@ -1,5 +1,5 @@
--- Actualizaciones idempotentes para bases nuevas y existentes.
--- Este archivo se ejecuta con el usuario dueño en cada deploy.
+﻿-- Actualizaciones idempotentes para bases nuevas y existentes.
+-- Este archivo se ejecuta con el usuario dueÃ±o en cada deploy.
 
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS marca_nombre TEXT;
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS marca_logo TEXT;
@@ -80,7 +80,7 @@ $$;
 REVOKE ALL ON FUNCTION resolve_org_by_page(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION resolve_org_by_page(text) TO crm_app;
 
--- Un phone_number_id de Meta solo puede estar activo en una organización.
+-- Un phone_number_id de Meta solo puede estar activo en una organizaciÃ³n.
 CREATE UNIQUE INDEX IF NOT EXISTS canales_whatsapp_phone_number_id_activo_uq
   ON canales_whatsapp ((config->>'phoneNumberId'))
   WHERE activo AND config->>'phoneNumberId' IS NOT NULL;
@@ -93,7 +93,7 @@ CREATE OR REPLACE FUNCTION resolve_org_by_phone(p_phone text)
     ORDER BY id DESC LIMIT 1
 $$;
 
--- Módulos configurables, campos personalizados y citas. Idempotente para producción.
+-- MÃ³dulos configurables, campos personalizados y citas. Idempotente para producciÃ³n.
 CREATE TABLE IF NOT EXISTS modulos_org (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
@@ -110,9 +110,9 @@ SET config = jsonb_set(
     WHEN clave IN ('contratos', 'cobros', 'panel_ar') THEN
       '["Administrador"]'::jsonb
     WHEN clave = 'pacientes' THEN
-      '["Administrador", "Doctor", "Coordinador clínico"]'::jsonb
+      '["Administrador", "Doctor", "Coordinador clÃ­nico"]'::jsonb
     WHEN clave IN ('legal', 'asesorias_legales', 'finanzas_legales', 'operacion_legal') THEN
-      '["Administrador", "Abogado", "Coordinador jurídico", "Pasante"]'::jsonb
+      '["Administrador", "Abogado", "Coordinador jurÃ­dico", "Pasante"]'::jsonb
     ELSE '[]'::jsonb
   END,
   true
@@ -913,17 +913,17 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
 TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- multi-tenant.sql crea la organización plataforma con id explícito. Sin sincronizar
--- la secuencia, el primer tenant creado después puede intentar reutilizar ese id.
--- Nunca baja la secuencia: si se borró una org con id mayor, su id no se reutiliza.
+-- multi-tenant.sql crea la organizaciÃ³n plataforma con id explÃ­cito. Sin sincronizar
+-- la secuencia, el primer tenant creado despuÃ©s puede intentar reutilizar ese id.
+-- Nunca baja la secuencia: si se borrÃ³ una org con id mayor, su id no se reutiliza.
 SELECT setval(
   pg_get_serial_sequence('orgs', 'id'),
   GREATEST(COALESCE((SELECT MAX(id) FROM orgs), 0), (SELECT last_value FROM orgs_id_seq), 1),
   true
 );
 
--- Lealtad (Aurum): el webhook de Aurum llega sin sesión; esta función solo enruta el
--- slug del negocio de Aurum a la empresa que lo conectó (como resolve_org_by_phone).
+-- Lealtad (Aurum): el webhook de Aurum llega sin sesiÃ³n; esta funciÃ³n solo enruta el
+-- slug del negocio de Aurum a la empresa que lo conectÃ³ (como resolve_org_by_phone).
 CREATE OR REPLACE FUNCTION resolve_org_by_aurum_slug(p_slug text)
   RETURNS bigint LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
     SELECT org_id FROM modulos_org
@@ -932,17 +932,17 @@ CREATE OR REPLACE FUNCTION resolve_org_by_aurum_slug(p_slug text)
 $$;
 
 -- /api/media verifica que los archivos antiguos (sin prefijo de empresa) pertenezcan a un
--- mensaje de la empresa que los pide; este índice evita recorrer toda la tabla.
+-- mensaje de la empresa que los pide; este Ã­ndice evita recorrer toda la tabla.
 CREATE INDEX IF NOT EXISTS mensajes_media_url_idx ON mensajes(media_url) WHERE media_url IS NOT NULL;
 
--- Búsqueda de contactos sin acentos («monica» encuentra «Mónica»). Extensión confiable
--- desde Postgres 13: la crea el dueño de la base en db-migrate.
+-- BÃºsqueda de contactos sin acentos (Â«monicaÂ» encuentra Â«MÃ³nicaÂ»). ExtensiÃ³n confiable
+-- desde Postgres 13: la crea el dueÃ±o de la base en db-migrate.
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
--- Reservas en línea (motor de Cita en Click): servicios, horarios por especialista y
+-- Reservas en lÃ­nea (motor de Cita en Click): servicios, horarios por especialista y
 -- excepciones. Las horas se guardan como minutos desde la medianoche (9:30 = 570) en la
 -- zona del negocio. La doble reserva se evita bloqueando al especialista (FOR UPDATE),
--- no con EXCLUDE: un EXCLUDE sobre citas ya existentes podría hacer fallar la migración.
+-- no con EXCLUDE: un EXCLUDE sobre citas ya existentes podrÃ­a hacer fallar la migraciÃ³n.
 CREATE TABLE IF NOT EXISTS servicios_reserva (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
@@ -1007,15 +1007,15 @@ END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON servicios_reserva, servicio_reserva_doctores, horarios_doctor, excepciones_horario TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- La página pública de una cita (cancelar sin cuenta) llega sin sesión: esta función solo
--- enruta el token del enlace a la empresa dueña de la cita.
+-- La pÃ¡gina pÃºblica de una cita (cancelar sin cuenta) llega sin sesiÃ³n: esta funciÃ³n solo
+-- enruta el token del enlace a la empresa dueÃ±a de la cita.
 CREATE OR REPLACE FUNCTION resolve_org_by_cita_token(p_token text)
   RETURNS bigint LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
     SELECT org_id FROM citas WHERE token_gestion = p_token LIMIT 1
 $$;
 
 -- Caja de mostrador: turnos, movimientos, pagos desglosados e idempotencia por
--- petición del cliente. Los índices parciales son la última barrera ante dos
+-- peticiÃ³n del cliente. Los Ã­ndices parciales son la Ãºltima barrera ante dos
 -- aperturas concurrentes del mismo usuario o de la misma caja.
 CREATE TABLE IF NOT EXISTS cajas (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -1100,7 +1100,7 @@ END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON cajas, turnos_caja, movimientos_caja, pagos_venta TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- A2 · Devoluciones, apartados y crédito a clientes.
+-- A2 Â· Devoluciones, apartados y crÃ©dito a clientes.
 ALTER TABLE ventas ADD COLUMN IF NOT EXISTS es_credito BOOLEAN NOT NULL DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS devoluciones_venta (
@@ -1220,12 +1220,12 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON devoluciones_venta, devolucion_partidas,
   abonos_apartado, cuentas_cliente, movimientos_cuenta_cliente, notas_credito_cliente TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- Corrección A2 · las notas de crédito pueden pagar ventas de caja.
+-- CorrecciÃ³n A2 Â· las notas de crÃ©dito pueden pagar ventas de caja.
 ALTER TABLE pagos_venta DROP CONSTRAINT IF EXISTS pagos_venta_metodo_check;
 ALTER TABLE pagos_venta ADD CONSTRAINT pagos_venta_metodo_check
-  CHECK (metodo IN ('efectivo', 'tarjeta', 'transferencia', 'nota_credito'));
+  CHECK (metodo IN ('efectivo', 'tarjeta', 'transferencia', 'nota_credito', 'mercado_pago', 'mock'));
 
--- B · Cotizaciones.
+-- B Â· Cotizaciones.
 CREATE TABLE IF NOT EXISTS cotizaciones (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
@@ -1293,7 +1293,7 @@ CREATE OR REPLACE FUNCTION resolve_org_by_cotizacion_token(p_token text)
 REVOKE ALL ON FUNCTION resolve_org_by_cotizacion_token(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION resolve_org_by_cotizacion_token(text) TO crm_app;
 
--- C · Pedidos en línea y catálogo público.
+-- C Â· Pedidos en lÃ­nea y catÃ¡logo pÃºblico.
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS visible_en_linea BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS agotado_manual BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS etiquetas_en_linea TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
@@ -1337,7 +1337,7 @@ CREATE OR REPLACE FUNCTION resolve_org_by_pedido_token(p_token text)
 REVOKE ALL ON FUNCTION resolve_org_by_pedido_token(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION resolve_org_by_pedido_token(text) TO crm_app;
 
--- A3a · Motor único de precios, listas, volumen y promociones.
+-- A3a Â· Motor Ãºnico de precios, listas, volumen y promociones.
 CREATE TABLE IF NOT EXISTS listas_precios (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
@@ -1424,7 +1424,7 @@ END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON listas_precios, precios_volumen, lista_precio_productos, promociones TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- A3b · Variantes como productos independientes.
+-- A3b Â· Variantes como productos independientes.
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS grupo_id BIGINT;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS atributos JSONB NOT NULL DEFAULT '{}'::jsonb;
 DO $$ BEGIN
@@ -1435,10 +1435,10 @@ DO $$ BEGIN
 END $$;
 CREATE INDEX IF NOT EXISTS productos_grupo_id_idx ON productos(grupo_id);
 
--- A4 · Costo histórico al aplicar inventario.
+-- A4 Â· Costo histÃ³rico al aplicar inventario.
 ALTER TABLE venta_partidas ADD COLUMN IF NOT EXISTS costo_unitario NUMERIC(12,2);
 
--- Bot API · firma HMAC hacia n8n, asesor fijo para handoff y bitácora de acciones del bot.
+-- Bot API Â· firma HMAC hacia n8n, asesor fijo para handoff y bitÃ¡cora de acciones del bot.
 ALTER TABLE bots ADD COLUMN IF NOT EXISTS signing_secret TEXT;
 ALTER TABLE bots ADD COLUMN IF NOT EXISTS asesor_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL;
 
@@ -1461,28 +1461,28 @@ DROP POLICY IF EXISTS org_isolation ON auditoria_bot;
 CREATE POLICY org_isolation ON auditoria_bot
   USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
   WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
--- Bitácora de solo agregar: la app lee e inserta, nunca edita ni borra.
--- (Los DEFAULT PRIVILEGES de multi-tenant.sql dan UPDATE/DELETE a las tablas nuevas; se quitan aquí.)
+-- BitÃ¡cora de solo agregar: la app lee e inserta, nunca edita ni borra.
+-- (Los DEFAULT PRIVILEGES de multi-tenant.sql dan UPDATE/DELETE a las tablas nuevas; se quitan aquÃ­.)
 GRANT SELECT, INSERT ON auditoria_bot TO crm_app;
 REVOKE UPDATE, DELETE, TRUNCATE ON auditoria_bot FROM crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- Bot API · permisos por bot.
+-- Bot API Â· permisos por bot.
 ALTER TABLE bots ADD COLUMN IF NOT EXISTS permisos TEXT[];
--- Los bots que ya existen conservan solo lo que sus rutas de producción les permitían: leer la
--- conversación, responder, dejar notas, mover la etapa y handoff/etiquetas. Tareas, citas y
--- cotizaciones no existían en producción y se activan después, por cliente.
+-- Los bots que ya existen conservan solo lo que sus rutas de producciÃ³n les permitÃ­an: leer la
+-- conversaciÃ³n, responder, dejar notas, mover la etapa y handoff/etiquetas. Tareas, citas y
+-- cotizaciones no existÃ­an en producciÃ³n y se activan despuÃ©s, por cliente.
 -- Solo toca filas con permisos NULL: volver a correr el archivo no pisa lo que el admin edite.
 UPDATE bots
    SET permisos = ARRAY['leer_perfil', 'enviar_mensaje', 'notas_internas', 'mover_embudo', 'handoff']
  WHERE permisos IS NULL;
--- Los bots nuevos nacen con el conjunto mínimo.
+-- Los bots nuevos nacen con el conjunto mÃ­nimo.
 ALTER TABLE bots ALTER COLUMN permisos SET DEFAULT ARRAY['leer_perfil', 'enviar_mensaje', 'notas_internas', 'handoff'];
 ALTER TABLE bots ALTER COLUMN permisos SET NOT NULL;
 
--- D · Reseñas de Google.
--- resenas: calificación que deja el cliente en /opinion antes de saltar a Google (no se filtra por estrella).
--- solicitudes_resena: una fila por intento de pedir reseña; sirve de bitácora y de candado de "una cada N días".
+-- D Â· ReseÃ±as de Google.
+-- resenas: calificaciÃ³n que deja el cliente en /opinion antes de saltar a Google (no se filtra por estrella).
+-- solicitudes_resena: una fila por intento de pedir reseÃ±a; sirve de bitÃ¡cora y de candado de "una cada N dÃ­as".
 CREATE TABLE IF NOT EXISTS resenas (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
@@ -1518,10 +1518,10 @@ END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON resenas, solicitudes_resena TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- A5 · Ventas sin internet (opcional por empresa: caja.config.ventasSinRed).
--- sin_red: la venta llegó por la cola local. vendida_at: instante real (reloj de la caja); created_at = vendida_at.
+-- A5 Â· Ventas sin internet (opcional por empresa: caja.config.ventasSinRed).
+-- sin_red: la venta llegÃ³ por la cola local. vendida_at: instante real (reloj de la caja); created_at = vendida_at.
 -- revision_motivos: precio_distinto | tardia | inventario_negativo. turno_original_id: turno de origen cuando
--- la venta entró al turno abierto actual porque el original ya estaba cerrado antes de la venta.
+-- la venta entrÃ³ al turno abierto actual porque el original ya estaba cerrado antes de la venta.
 ALTER TABLE ventas ADD COLUMN IF NOT EXISTS sin_red BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE ventas ADD COLUMN IF NOT EXISTS vendida_at TIMESTAMPTZ;
 ALTER TABLE ventas ADD COLUMN IF NOT EXISTS subida_at TIMESTAMPTZ;
@@ -1535,7 +1535,7 @@ CREATE INDEX IF NOT EXISTS ventas_revision_idx ON ventas(org_id, created_at)
   WHERE sin_red AND revision_resuelta_at IS NULL AND cardinality(revision_motivos) > 0;
 ALTER TABLE movimientos_inventario ADD COLUMN IF NOT EXISTS sin_red BOOLEAN NOT NULL DEFAULT false;
 
--- Ventas sin internet que el servidor rechazó (4xx definitivo): la caja las marca con error y aquí queda el
+-- Ventas sin internet que el servidor rechazÃ³ (4xx definitivo): la caja las marca con error y aquÃ­ queda el
 -- registro completo para que el Encargado decida. UNIQUE por uuid: reenviar no duplica el rechazo.
 CREATE TABLE IF NOT EXISTS cola_caja_rechazos (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -1567,17 +1567,17 @@ END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON cola_caja_rechazos TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- A5 · Las ventas sin internet (cola local) pueden dejar la existencia en negativo a propósito;
+-- A5 Â· Las ventas sin internet (cola local) pueden dejar la existencia en negativo a propÃ³sito;
 -- queda marcada (ventas.revision_motivos, movimientos_inventario.sin_red) y se corrige con una
--- entrada de inventario. Por eso estas tres columnas ya no exigen >= 0. stock_minimo sí.
--- (Las ventas de caja normal y los pedidos en línea siguen rechazando la sobreventa en código.)
+-- entrada de inventario. Por eso estas tres columnas ya no exigen >= 0. stock_minimo sÃ­.
+-- (Las ventas de caja normal y los pedidos en lÃ­nea siguen rechazando la sobreventa en cÃ³digo.)
 ALTER TABLE productos DROP CONSTRAINT IF EXISTS productos_stock_check;
 ALTER TABLE movimientos_inventario
   DROP CONSTRAINT IF EXISTS movimientos_inventario_existencia_antes_check,
   DROP CONSTRAINT IF EXISTS movimientos_inventario_existencia_despues_check;
 
 -- Etiquetas unificadas en el contacto: el chat ya lee y escribe contacto_etiquetas (las mismas de
--- Contactos, Difusión y el bot). Las que estaban solo en conversaciones.etiquetas pasan al contacto.
+-- Contactos, DifusiÃ³n y el bot). Las que estaban solo en conversaciones.etiquetas pasan al contacto.
 INSERT INTO contacto_etiquetas (org_id, contacto_id, etiqueta_id)
 SELECT DISTINCT c.org_id, c.contacto_id, e.id
   FROM conversaciones c
@@ -1585,7 +1585,7 @@ SELECT DISTINCT c.org_id, c.contacto_id, e.id
   JOIN etiquetas e ON e.org_id = c.org_id AND e.nombre = t.nombre
 ON CONFLICT DO NOTHING;
 
--- Ámbar Rojo · contratos y cobros. NULL representa un dato pendiente de confirmar.
+-- Ãmbar Rojo Â· contratos y cobros. NULL representa un dato pendiente de confirmar.
 CREATE TABLE IF NOT EXISTS contratos (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
@@ -1616,7 +1616,7 @@ CREATE TABLE IF NOT EXISTS cobros (
     OR (concepto <> 'mensualidad' AND periodo IS NULL)),
   UNIQUE (contrato_id, concepto, periodo)
 );
--- Un UNIQUE normal permite varios NULL: los cargos de cierre necesitan este índice parcial.
+-- Un UNIQUE normal permite varios NULL: los cargos de cierre necesitan este Ã­ndice parcial.
 CREATE UNIQUE INDEX IF NOT EXISTS cobros_cierre_unico ON cobros(contrato_id, concepto)
   WHERE concepto IN ('anticipo','balance');
 CREATE INDEX IF NOT EXISTS cobros_org_estado_vence_idx ON cobros(org_id, estado, vence);
@@ -1681,7 +1681,7 @@ END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON servidores, heartbeats_servidor TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- Resuelve únicamente la identidad; la lectura/escritura posterior sigue bajo RLS.
+-- Resuelve Ãºnicamente la identidad; la lectura/escritura posterior sigue bajo RLS.
 CREATE OR REPLACE FUNCTION resolve_servidor_by_heartbeat_hash(token_hash TEXT)
 RETURNS TABLE(org_id BIGINT, servidor_id BIGINT)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $$
@@ -1782,11 +1782,11 @@ GRANT EXECUTE ON FUNCTION meta_page_other_channels(text, text, text, bigint) TO 
 ALTER TABLE citas ADD COLUMN IF NOT EXISTS recordatorio_intentos INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE citas ADD COLUMN IF NOT EXISTS recordatorio_intentado_at TIMESTAMPTZ;
 
--- La restricción permanece aunque se elimine el especialista: nunca abre toda la agenda.
+-- La restricciÃ³n permanece aunque se elimine el especialista: nunca abre toda la agenda.
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS agenda_solo_propia BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS agenda_doctor_id BIGINT REFERENCES doctores(id) ON DELETE SET NULL;
 
--- Recuperación de contraseña: el token original nunca se persiste.
+-- RecuperaciÃ³n de contraseÃ±a: el token original nunca se persiste.
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_cambiada_at TIMESTAMPTZ;
 CREATE UNIQUE INDEX IF NOT EXISTS usuarios_id_org_id_key ON usuarios(id, org_id);
 
@@ -1819,7 +1819,7 @@ $$;
 REVOKE ALL ON FUNCTION resolve_org_by_password_hash(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION resolve_org_by_password_hash(text) TO crm_app;
 
--- Fase 3: planificación interna. La aprobación no publica ni envía anuncios.
+-- Fase 3: planificaciÃ³n interna. La aprobaciÃ³n no publica ni envÃ­a anuncios.
 CREATE TABLE IF NOT EXISTS campanas_marketing (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
@@ -1851,7 +1851,7 @@ CREATE POLICY org_isolation ON campanas_marketing
 GRANT SELECT, INSERT, UPDATE ON campanas_marketing TO crm_app;
 REVOKE DELETE, TRUNCATE ON campanas_marketing FROM crm_app;
 GRANT USAGE, SELECT ON SEQUENCE campanas_marketing_id_seq TO crm_app;
--- Campañas de envío para EXI. La bandera del módulo se activa por separado desde el panel.
+-- CampaÃ±as de envÃ­o para EXI. La bandera del mÃ³dulo se activa por separado desde el panel.
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS tarifa_marketing_usd NUMERIC(8,4) NOT NULL DEFAULT 0.04;
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS campanas_envio_activas BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS campanas_envio_cambiado_por BIGINT;
@@ -1928,7 +1928,7 @@ CREATE POLICY org_isolation ON campanas_destinatarios
 GRANT SELECT, INSERT, UPDATE, DELETE ON campanas_envio, campanas_destinatarios TO crm_app;
 GRANT USAGE, SELECT ON SEQUENCE campanas_envio_id_seq, campanas_destinatarios_id_seq TO crm_app;
 
--- Lectura cronológica de conversaciones y mensajes para la API del bot.
+-- Lectura cronolÃ³gica de conversaciones y mensajes para la API del bot.
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -1982,9 +1982,9 @@ END $$;
 REVOKE ALL ON FUNCTION registrar_dispositivo_push(BIGINT, TEXT, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION registrar_dispositivo_push(BIGINT, TEXT, TEXT) TO crm_app;
 
--- ─────────────────────────────────────────────────────────────────────────────
--- Pagos en línea (Fase P0-1). Nacen multi-tenant; este bloque es idempotente.
--- ─────────────────────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- Pagos en lÃ­nea (Fase P0-1). Nacen multi-tenant; este bloque es idempotente.
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 ALTER TABLE pagos_venta DROP CONSTRAINT IF EXISTS pagos_venta_metodo_check;
 ALTER TABLE pagos_venta ADD CONSTRAINT pagos_venta_metodo_check
   CHECK (metodo IN ('efectivo', 'tarjeta', 'transferencia', 'nota_credito', 'mercado_pago', 'mock'));
@@ -2094,12 +2094,19 @@ CREATE TABLE IF NOT EXISTS reembolsos_pago (
   referencia TEXT,
   estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente','aprobado','rechazado')),
   idempotency_key TEXT NOT NULL,
+  ultimo_error TEXT,
+  reintentar_at TIMESTAMPTZ,
+  intentos INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (org_id, idempotency_key),
   FOREIGN KEY (pago_id, org_id) REFERENCES pagos_online(id, org_id) ON DELETE CASCADE
 );
+ALTER TABLE reembolsos_pago ADD COLUMN IF NOT EXISTS ultimo_error TEXT;
+ALTER TABLE reembolsos_pago ADD COLUMN IF NOT EXISTS reintentar_at TIMESTAMPTZ;
+ALTER TABLE reembolsos_pago ADD COLUMN IF NOT EXISTS intentos INTEGER NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS reembolsos_pago_org_pago_created_idx ON reembolsos_pago(org_id, pago_id, created_at);
+CREATE INDEX IF NOT EXISTS reembolsos_pago_org_estado_reintentar_idx ON reembolsos_pago(org_id, estado, reintentar_at);
 
 ALTER TABLE pagos_online ENABLE ROW LEVEL SECURITY;
 ALTER TABLE eventos_pago ENABLE ROW LEVEL SECURITY;

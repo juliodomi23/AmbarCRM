@@ -16,9 +16,14 @@ export const GET = conModulo(
         { status: 400 },
       );
     try {
-      const { state, nonce } = crearStateOAuth(sesion.orgId, sesion.userId);
-      const respuesta = NextResponse.redirect(urlAutorizacionMercadoPago(state));
-      respuesta.cookies.set(COOKIE_OAUTH_PAGOS, nonce, {
+      const { state, cookie, codeChallenge } = crearStateOAuth(
+        sesion.orgId,
+        sesion.userId,
+      );
+      const respuesta = NextResponse.redirect(
+        urlAutorizacionMercadoPago(state, codeChallenge),
+      );
+      respuesta.cookies.set(COOKIE_OAUTH_PAGOS, cookie, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",

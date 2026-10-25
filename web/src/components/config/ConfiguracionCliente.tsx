@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { EncabezadoPagina } from "@/components/ui";
 import { MarcaConfig } from "@/components/config/MarcaConfig";
 import { MetaCanales } from "@/components/config/MetaCanales";
@@ -14,6 +15,7 @@ import { TabIA } from "@/components/config/tabs/TabIA";
 import { TabModulos } from "@/components/config/tabs/TabModulos";
 import { TabPlantillas } from "@/components/config/tabs/TabPlantillas";
 import { TabUsuarios } from "@/components/config/tabs/TabUsuarios";
+import { toast } from "@/components/Toaster";
 
 const TABS = [
   "Marca", "Embudos", "Usuarios", "Canales", "Plantillas",
@@ -45,11 +47,13 @@ export function ConfiguracionCliente({
   citasHabilitadas?: boolean;
   esExi?: boolean;
 }) {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("Embudos");
   const tabs: Tab[] = orgs ? [...TABS, "Clientes Ámbar CRM"] : [...TABS];
 
   useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get("tab");
+    const parametros = new URLSearchParams(window.location.search);
+    const t = parametros.get("tab");
     const mapa: Record<string, Tab> = {
       embudos: "Embudos", marca: "Marca", usuarios: "Usuarios",
       canal: "Canales", plantillas: "Plantillas",
@@ -57,7 +61,21 @@ export function ConfiguracionCliente({
       bots: "Bots", ia: "IA", modulos: "Módulos", clientes: "Clientes Ámbar CRM",
     };
     if (t && mapa[t]) setTab(mapa[t]);
-  }, []);
+    const pagos = parametros.get("pagos");
+    if (pagos === "conectado") toast("Mercado Pago conectado");
+    if (pagos === "error")
+      toast(
+        "No se pudo conectar Mercado Pago; revisa la configuración",
+        "error",
+      );
+    if (pagos) {
+      parametros.delete("pagos");
+      const query = parametros.toString();
+      router.replace(`${window.location.pathname}${query ? `?${query}` : ""}`, {
+        scroll: false,
+      });
+    }
+  }, [router]);
 
   return (
     <div className="space-y-5 p-4 md:p-6">

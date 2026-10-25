@@ -27,6 +27,8 @@ export function CobroEnLinea({
   const [reembolsando, setReembolsando] = useState(false);
   const [mostrandoReembolso, setMostrandoReembolso] = useState(false);
   const [montoReembolso, setMontoReembolso] = useState("");
+  const [idempotencyReembolso, setIdempotencyReembolso] = useState("");
+  const [limiteReembolso, setLimiteReembolso] = useState(0);
   const pago = venta.pagoOnline;
 
   async function cobrar() {
@@ -61,19 +63,37 @@ export function CobroEnLinea({
   async function reembolsar() {
     if (!pago) return;
     const monto = montoReembolso.trim();
-    if (!monto) return toast("Escribe el monto a reembolsar", "error");
+    if (!/^\d+(?:\.\d{1,2})?$/.test(monto) || Number(monto) <= 0)
+      return toast("Escribe un monto positivo con máximo 2 decimales", "error");
+    if (Number(monto) > limiteReembolso)
+      return toast("El monto supera el disponible para reembolso", "error");
+    const clave =
+      idempotencyReembolso || `refund:${pago.id}:${crypto.randomUUID()}`;
+    if (!idempotencyReembolso) setIdempotencyReembolso(clave);
     setReembolsando(true);
     try {
       const respuesta = await fetch(`/api/pagos/${pago.id}/reembolso`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ monto, idempotencyKey: `refund:${pago.id}:${crypto.randomUUID()}` }),
+        body: JSON.stringify({ monto, idempotencyKey: clave }),
       });
       const datos = await respuesta.json().catch(() => ({}));
       if (!respuesta.ok) return toast(datos.error ?? "No se pudo reembolsar", "error");
-      toast("Reembolso registrado");
-      setMostrandoReembolso(false);
-      setMontoReembolso("");
+      const estado = datos.resultado?.estado;
+      if (estado === "aprobado") {
+        toast("Reembolso aprobado");
+        setMostrandoReembolso(false);
+        setMontoReembolso("");
+        setIdempotencyReembolso("");
+        setLimiteReembolso(0);
+      } else if (estado === "pendiente") {
+        toast("Reembolso en proceso");
+      } else if (estado === "rechazado") {
+        toast("El proveedor rechazó el reembolso", "error");
+        setIdempotencyReembolso("");
+      } else {
+        toast("No se pudo confirmar el estado del reembolso", "error");
+      }
       router.refresh();
     } catch {
       toast("No se pudo solicitar el reembolso", "error");
@@ -91,8 +111,9 @@ export function CobroEnLinea({
   if (pago) {
     const expirado = pago.expiraAt ? new Date(pago.expiraAt) <= new Date() : false;
     const reembolsado = numeroMoneda(centavos(pago.montoReembolsado) ?? 0n);
+    const pendiente = numeroMoneda(centavos(pago.montoPendienteReembolso) ?? 0n);
     const total = numeroMoneda(centavos(pago.monto) ?? 0n);
-    const disponible = Math.max(0, total - reembolsado);
+    const disponible = Math.max(0, total - reembolsado - pendiente);
     const metadata =
       pago.metadata && typeof pago.metadata === "object" && !Array.isArray(pago.metadata)
         ? (pago.metadata as Record<string, unknown>)
@@ -113,6 +134,9 @@ export function CobroEnLinea({
                 ? "Enlace expirado"
                 : ETIQUETA[pago.estado] ?? pago.estado}
           </Badge>
+          {enRevision && typeof metadata.motivoConflicto === "string" && (
+            <span className="max-w-sm text-warning">{metadata.motivoConflicto}</span>
+          )}
           {pago.checkoutUrl && pago.estado === "pendiente" && !expirado && (
             <Boton variante="ghost" onClick={copiar}>Copiar enlace</Boton>
           )}
@@ -126,6 +150,8 @@ export function CobroEnLinea({
               variante="ghost"
               onClick={() => {
                 setMontoReembolso(disponible.toFixed(2));
+                setLimiteReembolso(disponible);
+                setIdempotencyReembolso(`refund:${pago.id}:${crypto.randomUUID()}`);
                 setMostrandoReembolso(true);
               }}
             >
@@ -153,7 +179,11 @@ export function CobroEnLinea({
             <Boton
               variante="ghost"
               disabled={reembolsando}
-              onClick={() => setMostrandoReembolso(false)}
+              onClick={() => {
+                setMostrandoReembolso(false);
+                setIdempotencyReembolso("");
+                setLimiteReembolso(0);
+              }}
             >
               Cancelar
             </Boton>

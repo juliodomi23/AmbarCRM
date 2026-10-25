@@ -2,8 +2,14 @@ import { db } from "@/lib/db";
 import { ProveedorMercadoPago } from "@/lib/pagos/mercado-pago";
 import { ProveedorMock } from "@/lib/pagos/mock";
 import type { ProveedorPago } from "@/lib/pagos/tipos";
-import { descifrarCredencialPago } from "@/lib/pagos/credenciales";
-import { renovarCredencialMercadoPago } from "@/lib/pagos/oauth";
+import {
+  descifrarCredencialPago,
+  validarLlaveCifradoPagos,
+} from "@/lib/pagos/credenciales";
+import {
+  configuracionOAuth,
+  renovarCredencialMercadoPago,
+} from "@/lib/pagos/oauth";
 
 export class ErrorConfiguracionPagos extends Error {
   readonly status = 409;
@@ -11,6 +17,26 @@ export class ErrorConfiguracionPagos extends Error {
 
 export function mockPagosPermitido() {
   return process.env.NODE_ENV !== "production" || process.env.PAGOS_PERMITIR_MOCK === "1";
+}
+
+function errorConfiguracion(detalle: string) {
+  const mensaje = detalle.startsWith("Pagos no configurados:")
+    ? detalle
+    : `Pagos no configurados: ${detalle}`;
+  return new ErrorConfiguracionPagos(mensaje);
+}
+
+export function validarConfiguracionPagosAplicacion() {
+  try {
+    validarLlaveCifradoPagos();
+    configuracionOAuth();
+  } catch (error) {
+    throw errorConfiguracion(
+      error instanceof Error ? error.message : "OAuth no disponible",
+    );
+  }
+  if (!process.env.MERCADOPAGO_WEBHOOK_SECRET?.trim())
+    throw errorConfiguracion("MERCADOPAGO_WEBHOOK_SECRET sin configurar");
 }
 
 function baseUrl() {
@@ -36,6 +62,13 @@ export async function obtenerProveedorPago(orgId: bigint): Promise<ProveedorPago
       throw new ErrorConfiguracionPagos(
         "Mercado Pago requiere volver a conectarse",
       );
+    try {
+      validarLlaveCifradoPagos();
+    } catch (error) {
+      throw errorConfiguracion(
+        error instanceof Error ? error.message : "clave de cifrado inválida",
+      );
+    }
     const renovarAntesDe = new Date(Date.now() + 7 * 24 * 60 * 60_000);
     if (credencial.expiresAt && credencial.expiresAt <= renovarAntesDe) {
       try {
@@ -49,11 +82,20 @@ export async function obtenerProveedorPago(orgId: bigint): Promise<ProveedorPago
     const accessTokenEncrypted = credencial.accessTokenEncrypted;
     if (!accessTokenEncrypted)
       throw new ErrorConfiguracionPagos("Mercado Pago requiere volver a conectarse");
-    return new ProveedorMercadoPago({
-      accessToken: descifrarCredencialPago(accessTokenEncrypted),
-      webhookSecret: process.env.MERCADOPAGO_WEBHOOK_SECRET ?? "",
-      sandbox: credencial.sandbox,
-    });
+    const webhookSecret = process.env.MERCADOPAGO_WEBHOOK_SECRET?.trim();
+    if (!webhookSecret)
+      throw errorConfiguracion("MERCADOPAGO_WEBHOOK_SECRET sin configurar");
+    try {
+      return new ProveedorMercadoPago({
+        accessToken: descifrarCredencialPago(accessTokenEncrypted),
+        webhookSecret,
+        sandbox: credencial.sandbox,
+      });
+    } catch (error) {
+      throw errorConfiguracion(
+        error instanceof Error ? error.message : "credenciales inválidas",
+      );
+    }
   }
 
   if (String(orgId) !== process.env.PAGOS_ORG_PILOTO?.trim())

@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { transaccionTenant } from "@/lib/retail-db";
@@ -25,13 +25,26 @@ export type TokensMercadoPago = {
   live_mode?: boolean;
 };
 
-function configuracionOAuth() {
+export function configuracionOAuth() {
   const clientId = process.env.MERCADOPAGO_CLIENT_ID?.trim();
   const clientSecret = process.env.MERCADOPAGO_CLIENT_SECRET?.trim();
   const redirectUri = process.env.MERCADOPAGO_REDIRECT_URI?.trim();
   if (!clientId || !clientSecret || !redirectUri)
-    throw new Error("OAuth de Mercado Pago no está configurado");
+    throw new Error(
+      "Pagos no configurados: faltan MERCADOPAGO_CLIENT_ID, MERCADOPAGO_CLIENT_SECRET o MERCADOPAGO_REDIRECT_URI",
+    );
   return { clientId, clientSecret, redirectUri };
+}
+
+function pkceActivo() {
+  return process.env.MERCADOPAGO_PKCE === "1";
+}
+
+function testTokenActivo() {
+  const valor = process.env.MERCADOPAGO_TEST_TOKEN;
+  return valor === undefined
+    ? process.env.MERCADOPAGO_SANDBOX === "1"
+    : valor === "1";
 }
 
 function firma(valor: string) {
@@ -48,7 +61,42 @@ export function crearStateOAuth(orgId: bigint, userId: bigint) {
     exp: Date.now() + DURACION_STATE_MS,
   };
   const codificado = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  return { state: `${codificado}.${firma(codificado)}`, nonce: payload.nonce };
+  const codeVerifier = pkceActivo()
+    ? randomBytes(48).toString("base64url")
+    : undefined;
+  const codeChallenge = codeVerifier
+    ? createHash("sha256").update(codeVerifier).digest("base64url")
+    : undefined;
+  const cookie = Buffer.from(
+    JSON.stringify({ nonce: payload.nonce, codeVerifier }),
+  ).toString("base64url");
+  return {
+    state: `${codificado}.${firma(codificado)}`,
+    nonce: payload.nonce,
+    cookie,
+    codeVerifier,
+    codeChallenge,
+  };
+}
+
+export function leerCookieOAuth(valor: string) {
+  try {
+    const datos = JSON.parse(
+      Buffer.from(valor, "base64url").toString("utf8"),
+    ) as { nonce?: unknown; codeVerifier?: unknown };
+    if (typeof datos.nonce !== "string") return null;
+    if (
+      datos.codeVerifier !== undefined &&
+      typeof datos.codeVerifier !== "string"
+    )
+      return null;
+    return {
+      nonce: datos.nonce,
+      codeVerifier: datos.codeVerifier as string | undefined,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function validarStateOAuth(
@@ -79,20 +127,34 @@ export function validarStateOAuth(
   }
 }
 
-export function urlAutorizacionMercadoPago(state: string) {
+export function urlAutorizacionMercadoPago(
+  state: string,
+  codeChallenge?: string,
+) {
   const { clientId, redirectUri } = configuracionOAuth();
   const url = new URL("https://auth.mercadopago.com/authorization");
   url.searchParams.set("client_id", clientId);
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("response_type", "code");
+  url.searchParams.set("platform_id", "mp");
   url.searchParams.set("scope", "offline_access");
   url.searchParams.set("state", state);
+  if (codeChallenge) {
+    url.searchParams.set("code_challenge", codeChallenge);
+    url.searchParams.set("code_challenge_method", "S256");
+  }
   return url;
 }
 
 async function solicitarTokens(
   datos:
-    | { grant_type: "authorization_code"; code: string; redirect_uri: string }
+    | {
+        grant_type: "authorization_code";
+        code: string;
+        redirect_uri: string;
+        code_verifier?: string;
+        test_token: "true" | "false";
+      }
     | { grant_type: "refresh_token"; refresh_token: string },
 ) {
   const { clientId, clientSecret } = configuracionOAuth();
@@ -111,11 +173,13 @@ async function solicitarTokens(
   return cuerpo as TokensMercadoPago;
 }
 
-export function intercambiarCodigoOAuth(code: string) {
+export function intercambiarCodigoOAuth(code: string, codeVerifier?: string) {
   return solicitarTokens({
     grant_type: "authorization_code",
     code,
     redirect_uri: configuracionOAuth().redirectUri,
+    code_verifier: codeVerifier,
+    test_token: testTokenActivo() ? "true" : "false",
   });
 }
 

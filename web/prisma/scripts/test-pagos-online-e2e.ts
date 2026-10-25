@@ -6,6 +6,7 @@ import { firmaHmac } from "../../src/lib/pagos/firmas";
 import { cifrarCredencialPago } from "../../src/lib/pagos/credenciales";
 import { guardarTokensOAuth } from "../../src/lib/pagos/oauth";
 import { obtenerProveedorPago } from "../../src/lib/pagos/proveedor";
+import { ProveedorMock } from "../../src/lib/pagos/mock";
 import { POST as webhookPOST } from "../../src/app/api/public/pagos/webhook/[proveedor]/[org]/route";
 import {
   conciliarPendientes,
@@ -251,7 +252,19 @@ async function main() {
     assert.equal((await db.venta.findUniqueOrThrow({ where: { id: ventaCancelada.id } })).estado, "cancelada");
     const tardioGuardado = await db.pagoOnline.findUniqueOrThrow({ where: { id: tardio.id } });
     assert.equal(tardioGuardado.estado, "reembolsado", "el pago tardío se reembolsa automáticamente");
-    assert.equal((tardioGuardado.metadata as { conflicto?: string }).conflicto, "venta_no_acreditable");
+    assert.equal(
+      (tardioGuardado.metadata as { conflicto?: unknown }).conflicto,
+      null,
+      "el conflicto queda resuelto al completar el reembolso",
+    );
+    assert.equal(
+      (tardioGuardado.metadata as { conflictoResuelto?: string }).conflictoResuelto,
+      "venta_no_acreditable",
+    );
+    assert.equal(
+      (tardioGuardado.metadata as { requiereReembolso?: boolean }).requiereReembolso,
+      false,
+    );
 
     const ventaEntregada = await db.venta.create({
       data: { folio: "V-ENTREGADA", total: "55.00", subtotal: "55.00", moneda: "MXN", estado: "pendiente" },
@@ -304,6 +317,77 @@ async function main() {
       "monto_o_moneda_no_coinciden",
     );
 
+    const ventaErrorRed = await db.venta.create({
+      data: { folio: "V-REFUND-RED", total: "32.00", subtotal: "32.00", moneda: "MXN", estado: "pendiente" },
+    });
+    const pagoErrorRed = await crearCheckoutVenta(sesion, {
+      origenTipo: "venta", origenId: String(ventaErrorRed.id), idempotencyKey: "venta:e2e:refund-red",
+    });
+    await procesarEventoPago(orgA, "mock", evento(pagoErrorRed.id, "refund-red-base", "32.00"));
+    const reembolsarMockOriginal = ProveedorMock.prototype.reembolsar;
+    const clavesRecibidas: string[] = [];
+    let primeraRespuestaPerdida = true;
+    ProveedorMock.prototype.reembolsar = async function (
+      _referencia,
+      _monto,
+      clave,
+    ) {
+      clavesRecibidas.push(clave ?? "");
+      if (primeraRespuestaPerdida) {
+        primeraRespuestaPerdida = false;
+        throw new Error("timeout después de procesar");
+      }
+      return { referencia: "mock-refund-red-unico", estado: "aprobado" };
+    };
+    const pendientePorRed = await reembolsarPago(
+      sesion,
+      pagoErrorRed.id,
+      "32.00",
+      "refund:e2e:error-red",
+    );
+    assert.equal(pendientePorRed.estado, "pendiente");
+    assert.match(pendientePorRed.ultimoError ?? "", /timeout/);
+    const recuperado = await reembolsarPago(
+      sesion,
+      pagoErrorRed.id,
+      "32.00",
+      "refund:e2e:error-red",
+    );
+    assert.equal(recuperado.estado, "aprobado");
+    assert.deepEqual(
+      clavesRecibidas,
+      ["refund:e2e:error-red", "refund:e2e:error-red"],
+      "el reintento conserva la misma clave de idempotencia",
+    );
+    assert.equal(
+      (await db.pagoOnline.findUniqueOrThrow({ where: { id: pagoErrorRed.id } })).montoReembolsado.toFixed(2),
+      "32.00",
+    );
+
+    const ventaRechazoRefund = await db.venta.create({
+      data: { folio: "V-REFUND-RECHAZADO", total: "18.00", subtotal: "18.00", moneda: "MXN", estado: "pendiente" },
+    });
+    const pagoRechazoRefund = await crearCheckoutVenta(sesion, {
+      origenTipo: "venta", origenId: String(ventaRechazoRefund.id), idempotencyKey: "venta:e2e:refund-rechazado",
+    });
+    await procesarEventoPago(orgA, "mock", evento(pagoRechazoRefund.id, "refund-rechazado-base", "18.00"));
+    ProveedorMock.prototype.reembolsar = async () => ({
+      referencia: "mock-refund-rechazado",
+      estado: "rechazado",
+    });
+    const rechazadoProveedor = await reembolsarPago(
+      sesion,
+      pagoRechazoRefund.id,
+      "18.00",
+      "refund:e2e:rechazo-explicito",
+    );
+    assert.equal(rechazadoProveedor.estado, "rechazado");
+    assert.equal(
+      (await db.pagoOnline.findUniqueOrThrow({ where: { id: pagoRechazoRefund.id } })).montoReembolsado.toFixed(2),
+      "0.00",
+    );
+    ProveedorMock.prototype.reembolsar = reembolsarMockOriginal;
+
     const ventaRefund = await db.venta.create({
       data: { folio: "V-WEBHOOK-REFUND", total: "90.00", subtotal: "90.00", moneda: "MXN", estado: "pendiente" },
     });
@@ -316,8 +400,41 @@ async function main() {
       (await db.pagoOnline.findUniqueOrThrow({ where: { id: pagoRefund.id } })).montoReembolsado.toFixed(2),
       "30.00",
     );
+    await db.pagoOnline.update({
+      where: { id: pagoRefund.id },
+      data: {
+        metadata: {
+          conflicto: "venta_no_acreditable",
+          requiereReembolso: true,
+          motivoConflicto: "Conflicto de prueba",
+        },
+      },
+    });
     await procesarEventoPago(orgA, "mock", evento(pagoRefund.id, "refund-total", "90.00", "MXN", { montoReembolsado: "90.00" }));
-    assert.equal((await db.pagoOnline.findUniqueOrThrow({ where: { id: pagoRefund.id } })).estado, "reembolsado");
+    const refundTotal = await db.pagoOnline.findUniqueOrThrow({ where: { id: pagoRefund.id } });
+    assert.equal(refundTotal.estado, "reembolsado");
+    assert.equal((refundTotal.metadata as { conflicto?: unknown }).conflicto, null);
+    assert.equal((refundTotal.metadata as { requiereReembolso?: boolean }).requiereReembolso, false);
+
+    const ventaRefundSinMonto = await db.venta.create({
+      data: { folio: "V-REFUND-SIN-MONTO", total: "26.00", subtotal: "26.00", moneda: "MXN", estado: "pendiente" },
+    });
+    const pagoRefundSinMonto = await crearCheckoutVenta(sesion, {
+      origenTipo: "venta", origenId: String(ventaRefundSinMonto.id), idempotencyKey: "venta:e2e:refund-sin-monto",
+    });
+    await procesarEventoPago(orgA, "mock", evento(pagoRefundSinMonto.id, "refund-sin-monto-base", "26.00"));
+    await procesarEventoPago(orgA, "mock", {
+      ...evento(pagoRefundSinMonto.id, "refund-sin-monto", "26.00"),
+      estado: "reembolsado",
+      montoReembolsado: "0.00",
+    });
+    const sinMonto = await db.pagoOnline.findUniqueOrThrow({ where: { id: pagoRefundSinMonto.id } });
+    assert.equal(sinMonto.estado, "aprobado");
+    assert.equal((sinMonto.metadata as { conflicto?: string }).conflicto, "reembolso_sin_monto");
+    assert.equal(
+      await db.tarea.count({ where: { titulo: { startsWith: `[Pago ${pagoRefundSinMonto.id}]` } } }),
+      1,
+    );
 
     const ventaContracargo = await db.venta.create({
       data: { folio: "V-CONTRACARGO", total: "25.00", subtotal: "25.00", moneda: "MXN", estado: "pendiente" },

@@ -23,6 +23,27 @@ function metadataCon(metadata: Prisma.JsonValue, datos: Record<string, unknown>)
   return { ...actual, ...datos } as Prisma.InputJsonObject;
 }
 
+function metadataConflictoResuelto(metadata: Prisma.JsonValue) {
+  const actual =
+    metadata && typeof metadata === "object" && !Array.isArray(metadata)
+      ? metadata
+      : {};
+  const conflicto =
+    typeof actual.conflicto === "string" ? actual.conflicto : undefined;
+  return {
+    ...actual,
+    conflicto: null,
+    requiereReembolso: false,
+    motivoConflicto: null,
+    ...(conflicto
+      ? {
+          conflictoResuelto: conflicto,
+          conflictoResueltoAt: new Date().toISOString(),
+        }
+      : {}),
+  } as Prisma.InputJsonObject;
+}
+
 async function proveedorPara(orgId: bigint) {
   try { return await obtenerProveedorPago(orgId); }
   catch (error) {
@@ -146,7 +167,12 @@ async function aplicarReembolsoAprobado(
     const total = acumulado.equals(pago.monto);
     const reembolso = await tx.reembolsoPago.update({
       where: { id: actual.id },
-      data: { estado: "aprobado", referencia },
+      data: {
+        estado: "aprobado",
+        referencia,
+        ultimoError: null,
+        reintentarAt: null,
+      },
     });
     await tx.pagoOnline.update({
       where: { id: pago.id },
@@ -154,12 +180,7 @@ async function aplicarReembolsoAprobado(
         montoReembolsado: acumulado,
         estado: total ? "reembolsado" : "aprobado",
         reembolsadoAt: total ? new Date() : null,
-        metadata: total
-          ? metadataCon(pago.metadata, {
-              requiereReembolso: false,
-              reembolsoAutomaticoCompletado: true,
-            })
-          : undefined,
+        metadata: total ? metadataConflictoResuelto(pago.metadata) : undefined,
       },
     });
     try {
@@ -309,6 +330,9 @@ export async function procesarEventoPago(
           montoReembolsado: acumulado,
           estado: total ? "reembolsado" : "aprobado",
           reembolsadoAt: total ? (pago.reembolsadoAt ?? new Date()) : null,
+          metadata: total
+            ? metadataConflictoResuelto(pago.metadata)
+            : undefined,
         },
       });
       await finalizarEvento();
@@ -440,26 +464,42 @@ async function conciliarReembolsosPendientes(
   errores: Array<{ orgId: string; pagoId?: string; motivo: string }>,
 ) {
   const pendientes = await db.reembolsoPago.findMany({
-    where: { estado: "pendiente" },
+    where: {
+      estado: "pendiente",
+      OR: [{ reintentarAt: null }, { reintentarAt: { lte: new Date() } }],
+    },
     include: { pago: { select: { referenciaExterna: true } } },
     take: 50,
   });
   let procesados = 0;
   for (const reembolso of pendientes) {
     try {
-      if (!reembolso.referencia || !reembolso.pago.referenciaExterna) {
-        if (reembolso.createdAt < new Date(Date.now() - 24 * 60 * 60_000)) {
-          await db.reembolsoPago.update({
-            where: { id: reembolso.id },
-            data: { estado: "rechazado" },
-          });
-        }
+      if (!reembolso.pago.referenciaExterna) {
+        await registrarErrorReembolso(
+          orgId,
+          reembolso.pagoId,
+          reembolso.id,
+          "El pago no tiene referencia externa para conciliar el reembolso",
+        );
         continue;
       }
-      const consulta = await proveedor.consultarReembolso(
-        reembolso.pago.referenciaExterna,
-        reembolso.referencia,
-      );
+      let consulta;
+      if (reembolso.referencia) {
+        consulta = await proveedor.consultarReembolso(
+          reembolso.pago.referenciaExterna,
+          reembolso.referencia,
+        );
+      } else {
+        await db.reembolsoPago.update({
+          where: { id: reembolso.id },
+          data: { intentos: { increment: 1 } },
+        });
+        consulta = await proveedor.reembolsar(
+          reembolso.pago.referenciaExterna,
+          reembolso.monto.toFixed(2),
+          reembolso.idempotencyKey,
+        );
+      }
       if (consulta.estado === "aprobado") {
         await aplicarReembolsoAprobado(
           orgId,
@@ -471,20 +511,64 @@ async function conciliarReembolsosPendientes(
       } else if (consulta.estado === "rechazado") {
         await db.reembolsoPago.update({
           where: { id: reembolso.id },
-          data: { estado: "rechazado", referencia: consulta.referencia },
+          data: {
+            estado: "rechazado",
+            referencia: consulta.referencia,
+            ultimoError: "El proveedor rechazó el reembolso",
+            reintentarAt: null,
+          },
         });
         procesados++;
+      } else {
+        await db.reembolsoPago.update({
+          where: { id: reembolso.id },
+          data: {
+            referencia: consulta.referencia,
+            ultimoError: null,
+            reintentarAt: new Date(Date.now() + 5 * 60_000),
+          },
+        });
       }
     } catch (error) {
+      const motivo =
+        error instanceof Error ? error.message.slice(0, 180) : "error desconocido";
+      await registrarErrorReembolso(
+        orgId,
+        reembolso.pagoId,
+        reembolso.id,
+        motivo,
+      );
       errores.push({
         orgId: String(orgId),
         pagoId: String(reembolso.pagoId),
-        motivo:
-          error instanceof Error ? error.message.slice(0, 180) : "error desconocido",
+        motivo,
       });
     }
   }
   return procesados;
+}
+
+async function registrarErrorReembolso(
+  orgId: bigint,
+  pagoId: bigint,
+  reembolsoId: bigint,
+  motivo: string,
+) {
+  const actualizado = await db.reembolsoPago.update({
+    where: { id: reembolsoId },
+    data: {
+      ultimoError: motivo.slice(0, 500),
+      reintentarAt: new Date(Date.now() + 5 * 60_000),
+    },
+  });
+  await transaccionTenant(orgId, (tx) =>
+    crearTareaRevision(
+      tx,
+      pagoId,
+      `No se pudo confirmar el reembolso: ${motivo.slice(0, 180)}. Se reintentará con la misma clave de idempotencia.`,
+    ),
+  );
+  return actualizado;
 }
 
 export async function conciliarPendientes() {
@@ -565,6 +649,8 @@ export async function reembolsarPago(
     throw new ErrorPago("No tienes permiso para reembolsar", 403);
   if (!/^[A-Za-z0-9._:-]{12,120}$/.test(idempotencyKey))
     throw new ErrorPago("Clave de idempotencia inválida");
+  if (monto !== undefined && !/^\d+(?:\.\d{1,2})?$/.test(monto.trim()))
+    throw new ErrorPago("El monto debe ser positivo y tener máximo 2 decimales");
 
   const reservado = await transaccionTenant(sesion.orgId, async (tx) => {
     await tx.$queryRaw`SELECT id FROM pagos_online WHERE id = ${pagoId} FOR UPDATE`;
@@ -586,6 +672,14 @@ export async function reembolsarPago(
           "La clave de idempotencia pertenece a otro reembolso",
           409,
         );
+      if (
+        monto !== undefined &&
+        !existente.monto.equals(new Prisma.Decimal(monto.trim()))
+      )
+        throw new ErrorPago(
+          "La clave de idempotencia pertenece a otro monto de reembolso",
+          409,
+        );
       return { pago, reembolso: existente };
     }
     const pendientes = await tx.reembolsoPago.aggregate({
@@ -595,7 +689,7 @@ export async function reembolsarPago(
     const disponible = pago.monto
       .minus(pago.montoReembolsado)
       .minus(pendientes._sum.monto ?? new Prisma.Decimal(0));
-    const solicitado = monto ? new Prisma.Decimal(monto) : disponible;
+    const solicitado = monto ? new Prisma.Decimal(monto.trim()) : disponible;
     if (solicitado.lte(0) || solicitado.gt(disponible))
       throw new ErrorPago("El reembolso supera el monto disponible", 409);
     const reembolso = await tx.reembolsoPago.create({
@@ -608,7 +702,26 @@ export async function reembolsarPago(
   if (reservado.reembolso.estado === "rechazado")
     throw new ErrorPago("El reembolso fue rechazado", 409);
 
-  const proveedor = await proveedorPara(sesion.orgId);
+  let proveedor;
+  try {
+    proveedor = await proveedorPara(sesion.orgId);
+  } catch (error) {
+    await registrarErrorReembolso(
+      sesion.orgId,
+      pagoId,
+      reservado.reembolso.id,
+      error instanceof Error ? error.message : "Pagos no configurados",
+    );
+    throw error;
+  }
+  await db.reembolsoPago.update({
+    where: { id: reservado.reembolso.id },
+    data: {
+      intentos: { increment: 1 },
+      ultimoError: null,
+      reintentarAt: null,
+    },
+  });
   let resultado;
   try {
     resultado = await proveedor.reembolsar(
@@ -617,23 +730,33 @@ export async function reembolsarPago(
       idempotencyKey,
     );
   } catch (error) {
-    await db.reembolsoPago.updateMany({
-      where: { id: reservado.reembolso.id, estado: "pendiente" },
-      data: { estado: "rechazado" },
-    });
-    throw error;
+    return registrarErrorReembolso(
+      sesion.orgId,
+      pagoId,
+      reservado.reembolso.id,
+      error instanceof Error ? error.message : "Error de red del proveedor",
+    );
   }
 
   if (resultado.estado === "rechazado") {
     return db.reembolsoPago.update({
       where: { id: reservado.reembolso.id },
-      data: { estado: "rechazado", referencia: resultado.referencia },
+      data: {
+        estado: "rechazado",
+        referencia: resultado.referencia,
+        ultimoError: "El proveedor rechazó el reembolso",
+        reintentarAt: null,
+      },
     });
   }
   if (resultado.estado === "pendiente") {
     return db.reembolsoPago.update({
       where: { id: reservado.reembolso.id },
-      data: { referencia: resultado.referencia },
+      data: {
+        referencia: resultado.referencia,
+        ultimoError: null,
+        reintentarAt: new Date(Date.now() + 5 * 60_000),
+      },
     });
   }
   return aplicarReembolsoAprobado(

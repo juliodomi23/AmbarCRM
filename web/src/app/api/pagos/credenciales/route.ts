@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { conModulo } from "@/lib/con-modulo";
 import { db } from "@/lib/db";
 import { cifrarCredencialPago } from "@/lib/pagos/credenciales";
-import { mockPagosPermitido } from "@/lib/pagos/proveedor";
+import {
+  ErrorConfiguracionPagos,
+  mockPagosPermitido,
+  validarConfiguracionPagosAplicacion,
+} from "@/lib/pagos/proveedor";
 import { transaccionTenant } from "@/lib/retail-db";
 
 function dto(credencial: {
@@ -32,7 +36,19 @@ export const GET = conModulo("pagos_en_linea", { admin: true }, async () => {
     where: { activo: true },
     orderBy: { updatedAt: "desc" },
   });
-  return NextResponse.json({ credencial: credencial ? dto(credencial) : null });
+  let errorConfiguracion: string | null = null;
+  try {
+    validarConfiguracionPagosAplicacion();
+  } catch (error) {
+    errorConfiguracion =
+      error instanceof ErrorConfiguracionPagos
+        ? error.message
+        : "Pagos no configurados";
+  }
+  return NextResponse.json({
+    credencial: credencial ? dto(credencial) : null,
+    errorConfiguracion,
+  });
 });
 
 export const PUT = conModulo(

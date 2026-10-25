@@ -10,10 +10,14 @@ process.env.MERCADOPAGO_CLIENT_ID = "cliente-prueba";
 process.env.MERCADOPAGO_CLIENT_SECRET = "secreto-oauth-prueba";
 process.env.MERCADOPAGO_REDIRECT_URI =
   "http://localhost:3000/api/pagos/oauth/callback";
+process.env.MERCADOPAGO_SANDBOX = "1";
+process.env.MERCADOPAGO_TEST_TOKEN = "1";
+process.env.MERCADOPAGO_PKCE = "0";
 
 const {
   crearStateOAuth,
   intercambiarCodigoOAuth,
+  leerCookieOAuth,
   refrescarTokensOAuth,
   urlAutorizacionMercadoPago,
   validarStateOAuth,
@@ -141,10 +145,13 @@ assert.equal(
 const autorizacion = urlAutorizacionMercadoPago(estadoOAuth.state);
 assert.equal(autorizacion.searchParams.get("scope"), "offline_access");
 assert.equal(autorizacion.searchParams.get("response_type"), "code");
+assert.equal(autorizacion.searchParams.get("platform_id"), "mp");
 
 const fetchReal = globalThis.fetch;
+const solicitudesOAuth: Array<Record<string, string>> = [];
 globalThis.fetch = async (_input, init) => {
   const solicitud = JSON.parse(String(init?.body ?? "{}")) as Record<string, string>;
+  solicitudesOAuth.push(solicitud);
   if (solicitud.code === "invalido")
     return new Response(JSON.stringify({ message: "invalid_grant" }), { status: 400 });
   return new Response(
@@ -160,7 +167,25 @@ globalThis.fetch = async (_input, init) => {
 };
 await assert.rejects(intercambiarCodigoOAuth("invalido"), /rechazó la autorización/);
 assert.equal((await intercambiarCodigoOAuth("valido")).access_token, "access-inicial");
+assert.equal(solicitudesOAuth.at(-1)?.test_token, "true");
 assert.equal((await refrescarTokensOAuth("refresh-anterior")).access_token, "access-renovado");
+
+process.env.MERCADOPAGO_PKCE = "1";
+const estadoPkce = crearStateOAuth(91n, 7n);
+const cookiePkce = leerCookieOAuth(estadoPkce.cookie);
+assert.ok(cookiePkce?.codeVerifier);
+const autorizacionPkce = urlAutorizacionMercadoPago(
+  estadoPkce.state,
+  estadoPkce.codeChallenge,
+);
+assert.equal(autorizacionPkce.searchParams.get("code_challenge_method"), "S256");
+assert.equal(
+  autorizacionPkce.searchParams.get("code_challenge"),
+  estadoPkce.codeChallenge,
+);
+await intercambiarCodigoOAuth("valido-pkce", cookiePkce?.codeVerifier);
+assert.equal(solicitudesOAuth.at(-1)?.code_verifier, cookiePkce?.codeVerifier);
+process.env.MERCADOPAGO_PKCE = "0";
 
 async function eventoMercadoPago(status: string, reembolsado: number) {
   const dataIdMp = `mp-${status}-${reembolsado}`;
@@ -201,11 +226,13 @@ assert.equal(parcialMp?.estado, "aprobado");
 assert.equal(parcialMp?.montoReembolsado, "40.00");
 const totalMp = await eventoMercadoPago("refunded", 100);
 assert.equal(totalMp?.estado, "reembolsado");
+const sinMontoMp = await eventoMercadoPago("refunded", 0);
+assert.equal(sinMontoMp?.estado, "reembolsado");
 const contracargoMp = await eventoMercadoPago("charged_back", 0);
 assert.equal(contracargoMp?.contracargo, true);
 assert.equal(contracargoMp?.estado, "aprobado");
 globalThis.fetch = fetchReal;
 
 console.log(
-  "pagos-online: firmas, OAuth/CSRF/refresh, mock y reembolsos MP parcial/total/contracargo OK",
+  "pagos-online: firmas, OAuth platform/test_token/PKCE, refresh y reembolsos MP OK",
 );

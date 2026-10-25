@@ -4,6 +4,7 @@ import {
   COOKIE_OAUTH_PAGOS,
   guardarTokensOAuth,
   intercambiarCodigoOAuth,
+  leerCookieOAuth,
   validarStateOAuth,
 } from "@/lib/pagos/oauth";
 
@@ -24,22 +25,43 @@ function borrarCookieOAuth(respuesta: NextResponse) {
 
 export async function GET(req: NextRequest) {
   const sesion = await requireSesion(true);
-  if ("error" in sesion) return sesion.error;
+  const errorSesion = "error" in sesion ? sesion.error : undefined;
+  if (errorSesion) {
+    if (errorSesion.status === 401) {
+      const login = new URL("/login", req.url);
+      login.searchParams.set(
+        "callbackUrl",
+        "/configuracion?tab=modulos&pagos=error",
+      );
+      return NextResponse.redirect(login);
+    }
+    return errorSesion;
+  }
+  const orgId = sesion.orgId ?? null;
+  const userId = sesion.userId ?? null;
   const state = req.nextUrl.searchParams.get("state") ?? "";
   const code = req.nextUrl.searchParams.get("code") ?? "";
-  const nonce = req.cookies.get(COOKIE_OAUTH_PAGOS)?.value ?? "";
-  const valido =
-    sesion.orgId !== null &&
-    sesion.userId !== null &&
-    validarStateOAuth(state, nonce, sesion.orgId, sesion.userId);
+  const cookie = leerCookieOAuth(
+    req.cookies.get(COOKIE_OAUTH_PAGOS)?.value ?? "",
+  );
+  let valido = false;
+  try {
+    valido =
+      orgId !== null &&
+      userId !== null &&
+      cookie !== null &&
+      validarStateOAuth(state, cookie.nonce, orgId, userId);
+  } catch {
+    valido = false;
+  }
   if (!valido || !code) {
     const respuesta = NextResponse.redirect(volver("error"));
     borrarCookieOAuth(respuesta);
     return respuesta;
   }
   try {
-    const tokens = await intercambiarCodigoOAuth(code);
-    await guardarTokensOAuth(sesion.orgId!, tokens);
+    const tokens = await intercambiarCodigoOAuth(code, cookie?.codeVerifier);
+    await guardarTokensOAuth(orgId!, tokens);
     const respuesta = NextResponse.redirect(volver("conectado"));
     borrarCookieOAuth(respuesta);
     return respuesta;

@@ -43,6 +43,12 @@ export default async function VentasPage() {
     ? await db.pagoOnline.findMany({
         where: { origenTipo: "venta", origenId: { in: ventasBase.map((venta) => venta.id) } },
         orderBy: { createdAt: "desc" },
+        include: {
+          reembolsos: {
+            where: { estado: "pendiente" },
+            select: { monto: true },
+          },
+        },
       })
     : [];
   const pagoPorVenta = new Map<string, (typeof pagos)[number]>();
@@ -54,7 +60,18 @@ export default async function VentasPage() {
   }
   const ventas = ventasBase.map((venta) => ({
     ...venta,
-    pagoOnline: pagoPorVenta.get(String(venta.id)) ?? null,
+    pagoOnline: (() => {
+      const pago = pagoPorVenta.get(String(venta.id));
+      if (!pago) return null;
+      return {
+        ...pago,
+        montoPendienteReembolso: pago.reembolsos.reduce(
+          (total, reembolso) => total.plus(reembolso.monto),
+          pago.montoReembolsado.minus(pago.montoReembolsado),
+        ),
+        reembolsos: undefined,
+      };
+    })(),
   }));
   const permisoReembolso = sesion?.user?.orgId
     ? puedeReembolsar({

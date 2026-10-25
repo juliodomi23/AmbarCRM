@@ -75,6 +75,7 @@ export type VentaRetail = {
     proveedor: string;
     monto: DecimalSerializado;
     montoReembolsado: DecimalSerializado;
+    montoPendienteReembolso: DecimalSerializado;
     moneda: string;
     expiraAt: string | null;
     metadata: unknown;

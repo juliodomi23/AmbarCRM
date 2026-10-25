@@ -14,6 +14,10 @@ function llaveCifrado() {
   return llave;
 }
 
+export function validarLlaveCifradoPagos() {
+  llaveCifrado();
+}
+
 export function cifrarCredencialPago(valor: string) {
   const iv = randomBytes(12);
   const cifrador = createCipheriv("aes-256-gcm", llaveCifrado(), iv);

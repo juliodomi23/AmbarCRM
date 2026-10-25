@@ -33,7 +33,7 @@ function normalizarPago(pago: PagoMp) {
   const contracargo = pago.status === "charged_back";
   const estado = contracargo
     ? "aprobado"
-    : pago.status === "refunded" && montoReembolsado < monto
+    : pago.status === "refunded" && montoReembolsado > 0 && montoReembolsado < monto
       ? "aprobado"
       : estadoMercadoPago(pago.status);
   return {

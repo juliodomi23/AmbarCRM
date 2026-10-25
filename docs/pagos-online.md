@@ -51,13 +51,17 @@ MERCADOPAGO_CLIENT_SECRET=<secreto-de-la-aplicacion>
 MERCADOPAGO_REDIRECT_URI=https://crm.ejemplo.com/api/pagos/oauth/callback
 MERCADOPAGO_WEBHOOK_SECRET=<firma-global-de-la-aplicacion>
 MERCADOPAGO_SANDBOX=1
+MERCADOPAGO_TEST_TOKEN=1
+MERCADOPAGO_PKCE=0
 # Obsoleto; solo fallback transitorio para PAGOS_ORG_PILOTO:
 MERCADOPAGO_ACCESS_TOKEN=
 ```
 
 ## Conexión OAuth por organización
 
-El administrador usa **Conectar Mercado Pago**. AmbarCRM crea un `state` firmado ligado a su organización, usuario y cookie HttpOnly, y Mercado Pago devuelve el `authorization_code` exclusivamente a `MERCADOPAGO_REDIRECT_URI`. El callback valida el estado, intercambia el código y cifra access/refresh token. Se solicita `offline_access`; cuando el token está a siete días de vencer se renueva antes de crear el checkout. Un refresh rechazado marca la conexión para reconectar y bloquea nuevos enlaces.
+El administrador usa **Conectar Mercado Pago**. AmbarCRM crea un `state` firmado ligado a su organización, usuario y cookie HttpOnly, añade `platform_id=mp`, y Mercado Pago devuelve el `authorization_code` exclusivamente a `MERCADOPAGO_REDIRECT_URI`. El callback valida el estado, intercambia el código y cifra access/refresh token. Se solicita `offline_access`; cuando el token está a siete días de vencer se renueva antes de crear el checkout. Un refresh rechazado marca la conexión para reconectar y bloquea nuevos enlaces.
+
+`MERCADOPAGO_TEST_TOKEN=1` envía `test_token: "true"` al crear la credencial OAuth; si la variable se omite, hereda `MERCADOPAGO_SANDBOX`. No uses un test token para cobros productivos. PKCE es opcional pero debe coincidir con el panel de Mercado Pago: con `MERCADOPAGO_PKCE=1`, AmbarCRM genera `code_verifier`, envía `code_challenge` S256 y conserva el verificador en la cookie HttpOnly hasta el callback. Con `MERCADOPAGO_PKCE=0`, PKCE debe quedar desactivado en la aplicación de Mercado Pago.
 
 La configuración normal se guarda en `credenciales_pago`. El pegado manual solo existe en desarrollo/piloto con `PAGOS_PERMITIR_CREDENCIALES_MANUALES=1` y siempre se rechaza en producción. `MERCADOPAGO_ACCESS_TOKEN` y `PAGOS_PROVEEDOR` son un fallback de transición que solo funciona si `org_id` coincide exactamente con `PAGOS_ORG_PILOTO`; no existe fallback global multiempresa. El módulo no se activa por defecto.
 
@@ -73,7 +77,7 @@ Para pruebas locales usa una credencial `mock` o el fallback acotado con `PAGOS_
 
 ## Reembolsos y migración
 
-El disponible se calcula como `monto - montoReembolsado - reservas pendientes`. Un parcial conserva el pago `aprobado`; al llegar al total cambia a `reembolsado`. Los webhooks usan `transaction_amount_refunded`; un contracargo es una incidencia separada y crea revisión. El cron confirma o rechaza reservas pendientes y libera las que el proveedor rechaza.
+El disponible se calcula como `monto - montoReembolsado - reservas pendientes`. Un parcial conserva el pago `aprobado`; al llegar al total cambia a `reembolsado`. Los webhooks usan `transaction_amount_refunded`; un contracargo es una incidencia separada y crea revisión. Si una llamada de reembolso pierde la respuesta por red, la reserva permanece pendiente con error, intentos y fecha de reintento: el cron repite con la misma clave de idempotencia. Solo una respuesta explícita `rejected`/`cancelled` libera la reserva como rechazada.
 
 Los SQL de instalación pueden repetirse. Antes de crear el índice de un checkout pendiente por origen, conservan el más reciente y cancelan duplicados con motivo de migración. También agregan el total reembolsado con su límite, vuelven nullable el secreto legado del webhook y añaden las columnas OAuth sin borrar credenciales existentes. Ejecuta `schema.sql`, `multi-tenant.sql` y `actualizaciones.sql` dos veces en una copia o base desechable antes de producción.
 
@@ -86,6 +90,8 @@ npm run lint
 npx tsx scripts/check-pagos-online.ts
 npm run build
 ```
+
+El build conserva `next build --webpack` porque la configuración y el conjunto actual de dependencias del proyecto están validados con Webpack; esta fase no cambia el empaquetador.
 
 El check puro valida firmas, replay y reglas del adaptador. El E2E requiere `DATABASE_URL` y `ADMIN_DATABASE_URL` apuntando exclusivamente a `localhost/pagos_test`; valida la ruta HTTP, dos eventos concurrentes distintos, checkout concurrente, pagos tardíos, reembolsos parciales acumulativos, cron tolerante a fallos y RLS con dos empresas.
 

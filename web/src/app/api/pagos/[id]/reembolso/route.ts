@@ -25,7 +25,18 @@ export const POST = conModulo(
         typeof body.monto === "string" ? body.monto : undefined,
         typeof body.idempotencyKey === "string" ? body.idempotencyKey : "",
       );
-      return NextResponse.json({ resultado });
+      return NextResponse.json({
+        resultado: {
+          id: String(resultado.id),
+          pagoId: String(resultado.pagoId),
+          monto: resultado.monto.toFixed(2),
+          referencia: resultado.referencia,
+          estado: resultado.estado,
+          ultimoError: resultado.ultimoError,
+          reintentarAt: resultado.reintentarAt,
+          intentos: resultado.intentos,
+        },
+      });
     } catch (error) {
       if (error instanceof ErrorPago)
         return NextResponse.json(

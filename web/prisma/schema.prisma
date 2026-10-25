@@ -418,15 +418,18 @@ model CredencialPago {
 }
 
 model ReembolsoPago {
-  id             BigInt   @id @default(autoincrement())
-  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  pagoId         BigInt   @map("pago_id")
-  monto          Decimal  @db.Decimal(12, 2)
+  id             BigInt    @id @default(autoincrement())
+  orgId          BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  pagoId         BigInt    @map("pago_id")
+  monto          Decimal   @db.Decimal(12, 2)
   referencia     String?
-  estado         String   @default("pendiente")
-  idempotencyKey String   @map("idempotency_key")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  estado         String    @default("pendiente")
+  idempotencyKey String    @map("idempotency_key")
+  ultimoError    String?   @map("ultimo_error")
+  reintentarAt   DateTime? @map("reintentar_at") @db.Timestamptz(6)
+  intentos       Int       @default(0)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   org  Org        @relation(fields: [orgId], references: [id], onDelete: Cascade)
   pago PagoOnline @relation(fields: [pagoId, orgId], references: [id, orgId], onDelete: Cascade)

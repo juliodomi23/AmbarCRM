@@ -308,12 +308,19 @@ CREATE TABLE IF NOT EXISTS reembolsos_pago (
   referencia TEXT,
   estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente','aprobado','rechazado')),
   idempotency_key TEXT NOT NULL,
+  ultimo_error TEXT,
+  reintentar_at TIMESTAMPTZ,
+  intentos INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (org_id, idempotency_key),
   FOREIGN KEY (pago_id, org_id) REFERENCES pagos_online(id, org_id) ON DELETE CASCADE
 );
+ALTER TABLE reembolsos_pago ADD COLUMN IF NOT EXISTS ultimo_error TEXT;
+ALTER TABLE reembolsos_pago ADD COLUMN IF NOT EXISTS reintentar_at TIMESTAMPTZ;
+ALTER TABLE reembolsos_pago ADD COLUMN IF NOT EXISTS intentos INTEGER NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS reembolsos_pago_org_pago_created_idx ON reembolsos_pago(org_id, pago_id, created_at);
+CREATE INDEX IF NOT EXISTS reembolsos_pago_org_estado_reintentar_idx ON reembolsos_pago(org_id, estado, reintentar_at);
 
 ALTER TABLE pagos_online ENABLE ROW LEVEL SECURITY;
 ALTER TABLE eventos_pago ENABLE ROW LEVEL SECURITY;
