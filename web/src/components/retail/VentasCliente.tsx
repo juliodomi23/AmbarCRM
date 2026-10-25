@@ -279,9 +279,10 @@ export function VentasCliente({
 
 function Kpi({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
-    <div className="surface p-4 shadow-soft">
-      <p className="text-xs uppercase text-muted-foreground">{etiqueta}</p>
-      <p className="mt-1 text-2xl font-bold">{valor}</p>
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-soft">
+      <span className="absolute inset-x-0 top-0 h-1 bg-brand-gradient" aria-hidden="true" />
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{etiqueta}</p>
+      <p className="mt-1 text-2xl font-bold tnum text-foreground">{valor}</p>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { TarjetaLealtad } from "@/components/lealtad/TarjetaLealtad";
 import type { ContactoVenta, ProductoRetail } from "@/components/retail/tipos";
 import { OPCIONES_METODO_PAGO, pedirDatos } from "@/components/PedirDatos";
 import { toast } from "@/components/Toaster";
-import { Boton, formatoMoneda } from "@/components/ui";
+import { Boton, EncabezadoPagina, formatoMoneda } from "@/components/ui";
 import { almacenIndexedDB } from "@/lib/caja-offline/almacen";
 import { calcularLineaLocal, horasDeCatalogo, leerCatalogoLocal, sincronizarCatalogo, type CatalogoLocal } from "@/lib/caja-offline/catalogo";
 import type { ProductoCatalogoCaja } from "@/lib/caja-offline/tipos";
@@ -475,7 +475,20 @@ export function CajaCliente({
     <div className="space-y-4 p-4 md:p-6">
       <div hidden data-caja-identidad={`${identidad.orgId}:${identidad.userId}`} />
       {modoSinRed && <EstadoSinRed enLinea={enLinea} catalogo={catalogoLocal} />}
-      <header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold">Caja · {turno.caja.nombre}</h1><p className="text-sm text-muted-foreground">Turno de {turno.usuario.nombre} · F2 cobrar · F4 buscar · Esc quitar última línea</p></div><div className="flex flex-wrap gap-2">{puedeVerReportes && <Link className="rounded-lg bg-muted px-4 py-2 text-sm font-medium" href="/reportes-retail">Reportes</Link>}{puedeVerReportes && ventasSinRed && <Link className="rounded-lg bg-muted px-4 py-2 text-sm font-medium" href="/caja/revision">Por revisar</Link>}<Boton variante="ghost" onClick={() => mover("entrada")}>+ Entrada</Boton><Boton variante="ghost" onClick={() => mover("salida")}>− Salida</Boton><Boton variante="ghost" onClick={verCorte}>Corte X</Boton><Boton variante="danger" onClick={cerrarTurno}>Corte Z</Boton></div></header>
+      <EncabezadoPagina
+        titulo={`Caja · ${turno.caja.nombre}`}
+        descripcion={`Turno de ${turno.usuario.nombre} · F2 cobrar · F4 buscar · Esc quitar última línea`}
+        acciones={
+          <>
+            {puedeVerReportes && <Link className="rounded-lg bg-muted px-4 py-2 text-sm font-medium" href="/reportes-retail">Reportes</Link>}
+            {puedeVerReportes && ventasSinRed && <Link className="rounded-lg bg-muted px-4 py-2 text-sm font-medium" href="/caja/revision">Por revisar</Link>}
+            <Boton variante="ghost" onClick={() => mover("entrada")}>+ Entrada</Boton>
+            <Boton variante="ghost" onClick={() => mover("salida")}>− Salida</Boton>
+            <Boton variante="ghost" onClick={verCorte}>Corte X</Boton>
+            <Boton variante="danger" onClick={cerrarTurno}>Corte Z</Boton>
+          </>
+        }
+      />
       <div className="grid gap-4 xl:grid-cols-[1fr_420px]">
         <section className="space-y-3">
           <input ref={busquedaRef} value={busqueda} onChange={(e) => setBusqueda(e.target.value)} onKeyDown={escanear} placeholder="Escanea código + Enter o busca nombre / SKU (F4)" className="w-full surface px-4 py-3 text-base shadow-soft" />

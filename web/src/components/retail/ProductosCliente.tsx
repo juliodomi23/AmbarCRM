@@ -172,22 +172,7 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
       <EncabezadoPagina
         titulo="Productos e inventario"
         descripcion="Catálogo, existencias y trazabilidad de movimientos."
-        acciones={
-          <>
-          <Link href="/productos/precios" className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">Precios y promos</Link>
-          <Link href="/productos/etiquetas" className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">Etiquetas</Link>
-          <Link href="/api/productos/exportar" className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">Exportar CSV</Link>
-          <label className="cursor-pointer rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">Importar CSV<input className="hidden" type="file" accept=".csv,text/csv" onChange={(evento) => void importarCatalogo(evento.target.files?.[0])} /></label>
-          <Boton variante="ghost" onClick={() => void cambiarPreciosLote()}>Precios en lote</Boton>
-          <Boton variante="ghost" onClick={() => void descontinuarRapido()}>Descontinuar</Boton>
-          <Link href="/compras" className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">
-            Compras
-          </Link>
-          <Link href="/ventas" className="rounded-lg bg-muted px-3.5 py-2 text-sm font-medium">
-            Ver ventas
-          </Link>
-          <Boton onClick={abrirNuevo}>+ Producto</Boton></>
-        }
+        acciones={<Boton onClick={abrirNuevo}>+ Producto</Boton>}
       />
 
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
@@ -196,6 +181,18 @@ export function ProductosCliente({ productos }: { productos: ProductoRetail[] })
         <Kpi etiqueta="Stock bajo o agotado" valor={String(bajoStock)} alerta={bajoStock > 0} />
         <Kpi etiqueta="Valor a costo" valor={formatoMoneda(numeroMoneda(valorCosto))} />
       </section>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Link href="/productos/precios" className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium transition hover:bg-muted">Precios y promos</Link>
+        <Link href="/productos/etiquetas" className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium transition hover:bg-muted">Etiquetas</Link>
+        <Link href="/compras" className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium transition hover:bg-muted">Compras</Link>
+        <Link href="/ventas" className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium transition hover:bg-muted">Ver ventas</Link>
+        <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden="true" />
+        <Link href="/api/productos/exportar" className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium transition hover:bg-muted">Exportar CSV</Link>
+        <label className="cursor-pointer rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium transition hover:bg-muted">Importar CSV<input className="hidden" type="file" accept=".csv,text/csv" onChange={(evento) => void importarCatalogo(evento.target.files?.[0])} /></label>
+        <Boton variante="ghost" className="!rounded-full !px-3 !py-1.5 !text-xs" onClick={() => void cambiarPreciosLote()}>Precios en lote</Boton>
+        <Boton variante="ghost" className="!rounded-full !px-3 !py-1.5 !text-xs" onClick={() => void descontinuarRapido()}>Descontinuar</Boton>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <input
@@ -336,9 +333,10 @@ function ProductoFoto({ producto }: { producto: ProductoRetail }) {
 
 function Kpi({ etiqueta, valor, alerta = false }: { etiqueta: string; valor: string; alerta?: boolean }) {
   return (
-    <div className="surface p-4 shadow-soft">
-      <p className="text-xs uppercase text-muted-foreground">{etiqueta}</p>
-      <p className={`mt-1 text-2xl font-bold ${alerta ? "text-warning" : ""}`}>{valor}</p>
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-soft">
+      <span className="absolute inset-x-0 top-0 h-1 bg-brand-gradient" aria-hidden="true" />
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{etiqueta}</p>
+      <p className={`mt-1 text-2xl font-bold tnum ${alerta ? "text-warning" : "text-foreground"}`}>{valor}</p>
     </div>
   );
 }
