@@ -77,6 +77,7 @@ export type VentaRetail = {
     montoReembolsado: DecimalSerializado;
     moneda: string;
     expiraAt: string | null;
+    metadata: unknown;
   } | null;
 };
 

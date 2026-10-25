@@ -1,99 +1,102 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Boton, Campo, Selector } from "@/components/ui";
+import { Boton } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 
 type EstadoCredencial = {
   proveedor: string;
-  publicKey: string | null;
   sandbox: boolean;
   configurado: boolean;
+  usuarioProveedor: string | null;
+  expiresAt: string | null;
+  requiereReconexion: boolean;
 };
 
 export function PagosConfig({ modulo: _modulo }: { modulo: { config?: unknown } }) {
-  const [proveedor, setProveedor] = useState("mercado_pago");
-  const [sandbox, setSandbox] = useState(true);
-  const [publicKey, setPublicKey] = useState("");
-  const [accessToken, setAccessToken] = useState("");
-  const [webhookSecret, setWebhookSecret] = useState("");
-  const [configurado, setConfigurado] = useState(false);
-  const [guardando, setGuardando] = useState(false);
+  const [credencial, setCredencial] = useState<EstadoCredencial | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [desconectando, setDesconectando] = useState(false);
 
   useEffect(() => {
     void fetch("/api/pagos/credenciales")
-      .then(async (respuesta) => respuesta.ok ? respuesta.json() : null)
+      .then(async (respuesta) => (respuesta.ok ? respuesta.json() : null))
       .then((datos: { credencial?: EstadoCredencial | null } | null) => {
-        if (!datos?.credencial) return;
-        setProveedor(datos.credencial.proveedor);
-        setSandbox(datos.credencial.sandbox);
-        setPublicKey(datos.credencial.publicKey ?? "");
-        setConfigurado(datos.credencial.configurado);
+        setCredencial(datos?.credencial ?? null);
+        setCargando(false);
       });
   }, []);
 
-  async function guardar() {
-    setGuardando(true);
-    try {
-      const respuesta = await fetch("/api/pagos/credenciales", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ proveedor, sandbox, publicKey, accessToken, webhookSecret }),
-      });
-      const datos = await respuesta.json().catch(() => ({}));
-      if (!respuesta.ok) return toast(datos.error ?? "No se pudo guardar", "error");
-      setAccessToken("");
-      setWebhookSecret("");
-      setConfigurado(true);
-      toast("Credenciales de pagos guardadas de forma segura");
-    } finally {
-      setGuardando(false);
-    }
-  }
-
-  async function borrar() {
-    setGuardando(true);
+  async function desconectar() {
+    setDesconectando(true);
     try {
       const respuesta = await fetch("/api/pagos/credenciales", { method: "DELETE" });
-      if (!respuesta.ok) return toast("No se pudieron desactivar las credenciales", "error");
-      setConfigurado(false);
-      toast("Credenciales de pagos desactivadas");
+      if (!respuesta.ok) return toast("No se pudo desconectar Mercado Pago", "error");
+      setCredencial(null);
+      toast("Mercado Pago fue desconectado");
     } finally {
-      setGuardando(false);
+      setDesconectando(false);
     }
   }
 
+  const conectado = Boolean(credencial?.configurado && !credencial.requiereReconexion);
+  const vencimiento = credencial?.expiresAt
+    ? new Date(credencial.expiresAt).toLocaleDateString("es-MX", {
+        dateStyle: "medium",
+        timeZone: "America/Mexico_City",
+      })
+    : null;
+
   return (
-    <div className="mt-3 grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-2">
-      <div className="sm:col-span-2">
-        <span className={`rounded-full px-2 py-1 text-xs ${configurado ? "bg-success/15 text-success" : "bg-warning/15 text-warning"}`}>
-          {configurado ? "Credenciales configuradas" : "Credenciales pendientes"}
+    <div className="mt-3 space-y-3 rounded-lg border border-border p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="font-medium">Mercado Pago</p>
+          <p className="text-xs text-muted-foreground">
+            {cargando
+              ? "Consultando conexión…"
+              : conectado
+                ? `Conectado como ${credencial?.usuarioProveedor ?? "cuenta autorizada"}`
+                : credencial?.requiereReconexion
+                  ? "La autorización venció o fue revocada"
+                  : "Conecta la cuenta que recibirá los pagos de esta empresa"}
+          </p>
+          {vencimiento && conectado && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Token vigente hasta {vencimiento}; se renovará automáticamente.
+            </p>
+          )}
+        </div>
+        <span
+          className={`rounded-full px-2 py-1 text-xs ${
+            conectado ? "bg-success/15 text-success" : "bg-warning/15 text-warning"
+          }`}
+        >
+          {conectado ? "Conectado" : credencial?.requiereReconexion ? "Reconectar" : "Sin conexión"}
         </span>
       </div>
-      <Selector label="Proveedor" value={proveedor} onChange={(e) => setProveedor(e.target.value)}>
-        <option value="mercado_pago">Mercado Pago</option>
-        <option value="mock">Mock (solo pruebas)</option>
-      </Selector>
-      <Campo label="Llave pública" value={publicKey} onChange={(e) => setPublicKey(e.target.value)} placeholder="APP_USR-…" autoComplete="off" />
-      <Campo label="Access token" type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} placeholder={configurado ? "Escribe uno nuevo para reemplazarlo" : "APP_USR-…"} autoComplete="new-password" />
-      <Campo label="Secreto del webhook" type="password" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} placeholder={configurado ? "Escribe uno nuevo para reemplazarlo" : "Secreto del proveedor"} autoComplete="new-password" />
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={sandbox} onChange={(e) => setSandbox(e.target.checked)} />
-        Usar checkout sandbox
-      </label>
-      {proveedor === "mock" && (
-        <p className="rounded-lg border border-warning/40 bg-warning/10 p-2 text-xs text-warning sm:col-span-2">
-          Mock genera cobros simulados y está bloqueado en producción salvo habilitación explícita del servidor.
+
+      {credencial?.proveedor === "mock" && (
+        <p className="rounded-lg border border-warning/40 bg-warning/10 p-2 text-xs text-warning">
+          Mock genera cobros simulados y está bloqueado en producción salvo habilitación explícita.
         </p>
       )}
-      <p className="text-xs text-muted-foreground sm:col-span-2">
-        Los secretos se cifran en el servidor y nunca vuelven a mostrarse en el navegador.
+
+      <p className="text-xs text-muted-foreground">
+        La autorización ocurre en Mercado Pago. AmbarCRM cifra los tokens y nunca los muestra en el navegador.
       </p>
-      <div className="flex flex-wrap gap-2 sm:col-span-2">
-        <Boton disabled={guardando || !accessToken || !webhookSecret} onClick={guardar}>
-          {guardando ? "Guardando…" : configurado ? "Reemplazar credenciales" : "Guardar credenciales"}
-        </Boton>
-        {configurado && <Boton variante="ghost" disabled={guardando} onClick={borrar}>Desactivar credenciales</Boton>}
+      <div className="flex flex-wrap gap-2">
+        <a
+          href="/api/pagos/oauth/iniciar"
+          className="inline-flex min-h-10 items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+        >
+          {conectado ? "Reconectar Mercado Pago" : "Conectar Mercado Pago"}
+        </a>
+        {credencial?.configurado && (
+          <Boton variante="ghost" disabled={desconectando} onClick={desconectar}>
+            {desconectando ? "Desconectando…" : "Desconectar"}
+          </Boton>
+        )}
       </div>
     </div>
   );

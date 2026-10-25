@@ -3,6 +3,7 @@ import { ProveedorMercadoPago } from "@/lib/pagos/mercado-pago";
 import { ProveedorMock } from "@/lib/pagos/mock";
 import type { ProveedorPago } from "@/lib/pagos/tipos";
 import { descifrarCredencialPago } from "@/lib/pagos/credenciales";
+import { renovarCredencialMercadoPago } from "@/lib/pagos/oauth";
 
 export class ErrorConfiguracionPagos extends Error {
   readonly status = 409;
@@ -17,7 +18,7 @@ function baseUrl() {
 }
 
 export async function obtenerProveedorPago(orgId: bigint): Promise<ProveedorPago> {
-  const credencial = await db.credencialPago.findFirst({
+  let credencial = await db.credencialPago.findFirst({
     where: { activo: true },
     orderBy: { updatedAt: "desc" },
   });
@@ -27,13 +28,30 @@ export async function obtenerProveedorPago(orgId: bigint): Promise<ProveedorPago
       if (!mockPagosPermitido())
         throw new ErrorConfiguracionPagos("El proveedor mock está bloqueado en producción");
       return new ProveedorMock(
-        descifrarCredencialPago(credencial.webhookSecretEncrypted),
+        process.env.PAGOS_MOCK_SECRET ?? "",
         baseUrl(),
       );
     }
+    if (credencial.requiereReconexion || !credencial.accessTokenEncrypted)
+      throw new ErrorConfiguracionPagos(
+        "Mercado Pago requiere volver a conectarse",
+      );
+    const renovarAntesDe = new Date(Date.now() + 7 * 24 * 60 * 60_000);
+    if (credencial.expiresAt && credencial.expiresAt <= renovarAntesDe) {
+      try {
+        credencial = await renovarCredencialMercadoPago(orgId, credencial);
+      } catch {
+        throw new ErrorConfiguracionPagos(
+          "Mercado Pago requiere volver a conectarse",
+        );
+      }
+    }
+    const accessTokenEncrypted = credencial.accessTokenEncrypted;
+    if (!accessTokenEncrypted)
+      throw new ErrorConfiguracionPagos("Mercado Pago requiere volver a conectarse");
     return new ProveedorMercadoPago({
-      accessToken: descifrarCredencialPago(credencial.accessTokenEncrypted),
-      webhookSecret: descifrarCredencialPago(credencial.webhookSecretEncrypted),
+      accessToken: descifrarCredencialPago(accessTokenEncrypted),
+      webhookSecret: process.env.MERCADOPAGO_WEBHOOK_SECRET ?? "",
       sandbox: credencial.sandbox,
     });
   }

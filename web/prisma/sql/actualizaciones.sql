@@ -2012,9 +2012,28 @@ CREATE TABLE IF NOT EXISTS pagos_online (
   UNIQUE (org_id, idempotency_key)
 );
 ALTER TABLE pagos_online ADD COLUMN IF NOT EXISTS monto_reembolsado NUMERIC(12,2) NOT NULL DEFAULT 0;
+UPDATE pagos_online
+SET monto_reembolsado = LEAST(monto, GREATEST(0, monto_reembolsado))
+WHERE monto_reembolsado < 0 OR monto_reembolsado > monto;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'pagos_online_monto_reembolsado_check') THEN
+    ALTER TABLE pagos_online ADD CONSTRAINT pagos_online_monto_reembolsado_check
+      CHECK (monto_reembolsado >= 0 AND monto_reembolsado <= monto);
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS pagos_online_org_estado_created_idx ON pagos_online(org_id, estado, created_at);
 CREATE INDEX IF NOT EXISTS pagos_online_org_origen_idx ON pagos_online(org_id, origen_tipo, origen_id);
 CREATE INDEX IF NOT EXISTS pagos_online_proveedor_referencia_idx ON pagos_online(proveedor, referencia_externa);
+WITH duplicados AS (
+  SELECT id, row_number() OVER (
+    PARTITION BY org_id, origen_tipo, origen_id ORDER BY created_at DESC, id DESC
+  ) AS posicion
+  FROM pagos_online WHERE estado = 'pendiente'
+)
+UPDATE pagos_online
+SET estado = 'cancelado',
+    metadata = metadata || '{"motivo":"checkout_pendiente_duplicado_migracion"}'::jsonb
+WHERE id IN (SELECT id FROM duplicados WHERE posicion > 1);
 CREATE UNIQUE INDEX IF NOT EXISTS pagos_online_un_pendiente_origen_idx
   ON pagos_online(org_id, origen_tipo, origen_id) WHERE estado = 'pendiente';
 CREATE UNIQUE INDEX IF NOT EXISTS pagos_online_id_org_idx ON pagos_online(id, org_id);
@@ -2044,15 +2063,27 @@ CREATE TABLE IF NOT EXISTS credenciales_pago (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
   proveedor TEXT NOT NULL CHECK (proveedor IN ('mercado_pago','mock')),
-  access_token_encrypted TEXT NOT NULL,
-  webhook_secret_encrypted TEXT NOT NULL,
+  access_token_encrypted TEXT,
+  refresh_token_encrypted TEXT,
+  webhook_secret_encrypted TEXT,
+  expires_at TIMESTAMPTZ,
+  user_id TEXT,
+  scope TEXT,
   public_key TEXT,
   sandbox BOOLEAN NOT NULL DEFAULT true,
   activo BOOLEAN NOT NULL DEFAULT true,
+  requiere_reconexion BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (org_id, proveedor)
 );
+ALTER TABLE credenciales_pago ALTER COLUMN access_token_encrypted DROP NOT NULL;
+ALTER TABLE credenciales_pago ALTER COLUMN webhook_secret_encrypted DROP NOT NULL;
+ALTER TABLE credenciales_pago ADD COLUMN IF NOT EXISTS refresh_token_encrypted TEXT;
+ALTER TABLE credenciales_pago ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE credenciales_pago ADD COLUMN IF NOT EXISTS user_id TEXT;
+ALTER TABLE credenciales_pago ADD COLUMN IF NOT EXISTS scope TEXT;
+ALTER TABLE credenciales_pago ADD COLUMN IF NOT EXISTS requiere_reconexion BOOLEAN NOT NULL DEFAULT false;
 CREATE INDEX IF NOT EXISTS credenciales_pago_org_activo_idx ON credenciales_pago(org_id, activo);
 
 CREATE TABLE IF NOT EXISTS reembolsos_pago (

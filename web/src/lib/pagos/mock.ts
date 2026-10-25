@@ -55,4 +55,11 @@ export class ProveedorMock implements ProveedorPago {
       estado: "aprobado",
     };
   }
+
+  async consultarReembolso(
+    _referenciaPago: string,
+    referenciaReembolso: string,
+  ): Promise<ResultadoReembolso> {
+    return { referencia: referenciaReembolso, estado: "aprobado" };
+  }
 }

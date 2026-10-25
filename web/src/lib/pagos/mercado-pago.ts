@@ -14,27 +14,40 @@ type PagoMp = {
   status?: string;
   external_reference?: string;
   transaction_amount?: number;
+  transaction_amount_refunded?: number;
   currency_id?: string;
+  status_detail?: string;
 };
 
 function estadoMercadoPago(estado?: string): EstadoPago {
   if (estado === "approved") return "aprobado";
   if (estado === "rejected") return "rechazado";
   if (estado === "cancelled") return "cancelado";
-  if (estado === "refunded" || estado === "charged_back") return "reembolsado";
+  if (estado === "refunded") return "reembolsado";
   return "pendiente";
 }
 
 function normalizarPago(pago: PagoMp) {
+  const monto = Number(pago.transaction_amount ?? 0);
+  const montoReembolsado = Number(pago.transaction_amount_refunded ?? 0);
+  const contracargo = pago.status === "charged_back";
+  const estado = contracargo
+    ? "aprobado"
+    : pago.status === "refunded" && montoReembolsado < monto
+      ? "aprobado"
+      : estadoMercadoPago(pago.status);
   return {
     pagoId: String(pago.external_reference ?? ""),
     referencia: String(pago.id ?? ""),
-    estado: estadoMercadoPago(pago.status),
-    monto: Number(pago.transaction_amount ?? 0).toFixed(2),
+    estado,
+    monto: monto.toFixed(2),
     moneda: String(pago.currency_id ?? ""),
+    montoReembolsado: montoReembolsado.toFixed(2),
+    contracargo,
     payload: {
       paymentId: String(pago.id ?? ""),
       status: String(pago.status ?? ""),
+      statusDetail: String(pago.status_detail ?? ""),
     },
   };
 }
@@ -176,7 +189,33 @@ export class ProveedorMercadoPago implements ProveedorPago {
     });
     return {
       referencia: String(resultado.id),
-      estado: resultado.status === "approved" ? "aprobado" : "pendiente",
+      estado:
+        resultado.status === "approved"
+          ? "aprobado"
+          : resultado.status === "rejected" || resultado.status === "cancelled"
+            ? "rechazado"
+            : "pendiente",
+    };
+  }
+
+  async consultarReembolso(
+    referenciaPago: string,
+    referenciaReembolso: string,
+  ): Promise<ResultadoReembolso> {
+    const resultado = await this.solicitar<{
+      id: string | number;
+      status?: string;
+    }>(
+      `/v1/payments/${encodeURIComponent(referenciaPago)}/refunds/${encodeURIComponent(referenciaReembolso)}`,
+    );
+    return {
+      referencia: String(resultado.id),
+      estado:
+        resultado.status === "approved"
+          ? "aprobado"
+          : resultado.status === "rejected" || resultado.status === "cancelled"
+            ? "rechazado"
+            : "pendiente",
     };
   }
 }

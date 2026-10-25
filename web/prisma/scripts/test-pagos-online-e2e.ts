@@ -4,6 +4,8 @@ import { NextRequest } from "next/server";
 import { db, dbRaw, runWithOrg } from "../../src/lib/db";
 import { firmaHmac } from "../../src/lib/pagos/firmas";
 import { cifrarCredencialPago } from "../../src/lib/pagos/credenciales";
+import { guardarTokensOAuth } from "../../src/lib/pagos/oauth";
+import { obtenerProveedorPago } from "../../src/lib/pagos/proveedor";
 import { POST as webhookPOST } from "../../src/app/api/public/pagos/webhook/[proveedor]/[org]/route";
 import {
   conciliarPendientes,
@@ -32,12 +34,22 @@ process.env.PAGOS_MOCK_SECRET = "secreto-e2e-pagos";
 process.env.PAGOS_BASE_URL = "http://localhost:3000";
 process.env.PAGOS_ORG_PILOTO = "91";
 process.env.PAGOS_TOKEN_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString("base64");
+process.env.MERCADOPAGO_CLIENT_ID = "cliente-e2e";
+process.env.MERCADOPAGO_CLIENT_SECRET = "secreto-oauth-e2e";
+process.env.MERCADOPAGO_REDIRECT_URI = "http://localhost:3000/api/pagos/oauth/callback";
+process.env.MERCADOPAGO_WEBHOOK_SECRET = "secreto-webhook-aplicacion-e2e";
 
 const admin = new pg.Pool({ connectionString: adminUrl, max: 1 });
 const orgA = 91n;
 const orgB = 92n;
 
-function evento(pagoId: bigint, id: string, monto = "100.00", moneda = "MXN") {
+function evento(
+  pagoId: bigint,
+  id: string,
+  monto = "100.00",
+  moneda = "MXN",
+  extra: { montoReembolsado?: string; contracargo?: boolean } = {},
+) {
   return {
     eventoId: id,
     tipo: "payment.updated",
@@ -46,6 +58,7 @@ function evento(pagoId: bigint, id: string, monto = "100.00", moneda = "MXN") {
     estado: "aprobado" as const,
     monto,
     moneda,
+    ...extra,
     payload: { status: "approved" },
   };
 }
@@ -71,7 +84,7 @@ async function main() {
       data: {
         proveedor: "mock",
         accessTokenEncrypted: cifrarCredencialPago("token-mock-e2e"),
-        webhookSecretEncrypted: cifrarCredencialPago(process.env.PAGOS_MOCK_SECRET!),
+        webhookSecretEncrypted: null,
         sandbox: true,
       },
     });
@@ -181,7 +194,23 @@ async function main() {
         "1.00",
         "refund:e2e:excedente",
       ),
-      /supera el monto disponible/,
+      /no se puede reembolsar|supera el monto disponible/,
+    );
+
+    await db.venta.update({ where: { id: pago.origenId }, data: { estado: "pendiente" } });
+    const nuevoCobro = await crearCheckoutVenta(
+      { orgId: orgA, userId: null, rol: "admin", puesto: "Administrador" },
+      {
+        origenTipo: "venta",
+        origenId: String(pago.origenId),
+        idempotencyKey: "venta:e2e:despues-reembolso",
+      },
+    );
+    await procesarEventoPago(orgA, "mock", evento(nuevoCobro.id, "aprobado-despues-reembolso"));
+    assert.equal(
+      await db.pagoVenta.count({ where: { ventaId: pago.origenId, metodo: "mock" } }),
+      1,
+      "un pagoVenta previo se actualiza sin confundir el evento con un duplicado",
     );
   });
 
@@ -220,7 +249,9 @@ async function main() {
     await db.venta.update({ where: { id: ventaCancelada.id }, data: { estado: "cancelada" } });
     await procesarEventoPago(orgA, "mock", evento(tardio.id, "aprobado-tardio", "80.00"));
     assert.equal((await db.venta.findUniqueOrThrow({ where: { id: ventaCancelada.id } })).estado, "cancelada");
-    assert.equal(await db.tarea.count({ where: { titulo: { startsWith: `[Pago ${tardio.id}]` } } }), 1);
+    const tardioGuardado = await db.pagoOnline.findUniqueOrThrow({ where: { id: tardio.id } });
+    assert.equal(tardioGuardado.estado, "reembolsado", "el pago tardío se reembolsa automáticamente");
+    assert.equal((tardioGuardado.metadata as { conflicto?: string }).conflicto, "venta_no_acreditable");
 
     const ventaEntregada = await db.venta.create({
       data: { folio: "V-ENTREGADA", total: "55.00", subtotal: "55.00", moneda: "MXN", estado: "pendiente" },
@@ -234,6 +265,10 @@ async function main() {
       (await db.venta.findUniqueOrThrow({ where: { id: ventaEntregada.id } })).estado,
       "entregada",
       "un segundo pago no regresa una venta entregada a pagada",
+    );
+    assert.equal(
+      (await db.pagoOnline.findUniqueOrThrow({ where: { id: segundoPago.id } })).estado,
+      "reembolsado",
     );
 
     const ventaCambiada = await db.venta.create({
@@ -249,7 +284,68 @@ async function main() {
       "pendiente",
       "un pago con total anterior no acredita la venta modificada",
     );
-    assert.equal(await db.tarea.count({ where: { titulo: { startsWith: `[Pago ${pagoTotalOriginal.id}]` } } }), 1);
+    assert.equal(
+      (await db.pagoOnline.findUniqueOrThrow({ where: { id: pagoTotalOriginal.id } })).estado,
+      "reembolsado",
+    );
+
+    const ventaAprobada = await db.venta.create({
+      data: { folio: "V-APROBADA-CONFLICTO", total: "45.00", subtotal: "45.00", moneda: "MXN", estado: "pendiente" },
+    });
+    const pagoAprobado = await crearCheckoutVenta(sesion, {
+      origenTipo: "venta", origenId: String(ventaAprobada.id), idempotencyKey: "venta:e2e:aprobada-conflicto",
+    });
+    await procesarEventoPago(orgA, "mock", evento(pagoAprobado.id, "aprobada-correcta", "45.00"));
+    await procesarEventoPago(orgA, "mock", evento(pagoAprobado.id, "aprobada-monto-distinto", "44.00"));
+    const aprobadoEnRevision = await db.pagoOnline.findUniqueOrThrow({ where: { id: pagoAprobado.id } });
+    assert.equal(aprobadoEnRevision.estado, "aprobado", "un evento distinto no degrada un pago aprobado");
+    assert.equal(
+      (aprobadoEnRevision.metadata as { conflicto?: string }).conflicto,
+      "monto_o_moneda_no_coinciden",
+    );
+
+    const ventaRefund = await db.venta.create({
+      data: { folio: "V-WEBHOOK-REFUND", total: "90.00", subtotal: "90.00", moneda: "MXN", estado: "pendiente" },
+    });
+    const pagoRefund = await crearCheckoutVenta(sesion, {
+      origenTipo: "venta", origenId: String(ventaRefund.id), idempotencyKey: "venta:e2e:webhook-refund",
+    });
+    await procesarEventoPago(orgA, "mock", evento(pagoRefund.id, "refund-base", "90.00"));
+    await procesarEventoPago(orgA, "mock", evento(pagoRefund.id, "refund-parcial", "90.00", "MXN", { montoReembolsado: "30.00" }));
+    assert.equal(
+      (await db.pagoOnline.findUniqueOrThrow({ where: { id: pagoRefund.id } })).montoReembolsado.toFixed(2),
+      "30.00",
+    );
+    await procesarEventoPago(orgA, "mock", evento(pagoRefund.id, "refund-total", "90.00", "MXN", { montoReembolsado: "90.00" }));
+    assert.equal((await db.pagoOnline.findUniqueOrThrow({ where: { id: pagoRefund.id } })).estado, "reembolsado");
+
+    const ventaContracargo = await db.venta.create({
+      data: { folio: "V-CONTRACARGO", total: "25.00", subtotal: "25.00", moneda: "MXN", estado: "pendiente" },
+    });
+    const pagoContracargo = await crearCheckoutVenta(sesion, {
+      origenTipo: "venta", origenId: String(ventaContracargo.id), idempotencyKey: "venta:e2e:contracargo",
+    });
+    await procesarEventoPago(orgA, "mock", evento(pagoContracargo.id, "contracargo-base", "25.00"));
+    await procesarEventoPago(orgA, "mock", evento(pagoContracargo.id, "contracargo-evento", "25.00", "MXN", { contracargo: true }));
+    const contracargo = await db.pagoOnline.findUniqueOrThrow({ where: { id: pagoContracargo.id } });
+    assert.equal(contracargo.montoReembolsado.toFixed(2), "0.00");
+    assert.equal((contracargo.metadata as { contracargo?: boolean }).contracargo, true);
+
+    const ventaPendienteRefund = await db.venta.create({
+      data: { folio: "V-REFUND-PENDIENTE", total: "20.00", subtotal: "20.00", moneda: "MXN", estado: "pendiente" },
+    });
+    const pagoPendienteRefund = await crearCheckoutVenta(sesion, {
+      origenTipo: "venta", origenId: String(ventaPendienteRefund.id), idempotencyKey: "venta:e2e:refund-pendiente",
+    });
+    await procesarEventoPago(orgA, "mock", evento(pagoPendienteRefund.id, "refund-pendiente-base", "20.00"));
+    await db.reembolsoPago.create({
+      data: {
+        pagoId: pagoPendienteRefund.id,
+        monto: "20.00",
+        referencia: "mock-refund-pendiente",
+        idempotencyKey: "refund:e2e:pendiente-conciliar",
+      },
+    });
 
     const ventaHttp = await db.venta.create({
       data: { folio: "V-WEBHOOK", total: "35.00", subtotal: "35.00", moneda: "MXN", estado: "pendiente" },
@@ -281,6 +377,12 @@ async function main() {
   assert.equal(orgIncorrecta.status, 409, "la ruta no reutiliza credenciales de otra organización");
   const conciliacion = await conciliarPendientes();
   assert.ok(conciliacion.procesados >= 0, "el cron continúa ante una organización sin credenciales");
+  assert.ok(conciliacion.reembolsosProcesados >= 1, "el cron concilia reembolsos pendientes");
+  await runWithOrg(orgA, async () => {
+    const conciliado = await db.pagoOnline.findFirstOrThrow({ where: { origenTipo: "venta", idempotencyKey: "venta:e2e:refund-pendiente" } });
+    assert.equal(conciliado.estado, "reembolsado");
+    assert.equal(conciliado.montoReembolsado.toFixed(2), "20.00");
+  });
   await runWithOrg(orgB, async () => {
     assert.equal(
       await db.pagoOnline.count(),
@@ -308,13 +410,74 @@ async function main() {
       "la FK compuesta impide asociar un evento de otra empresa",
     );
   });
-  const credencialPersistida = await admin.query(
-    "SELECT access_token_encrypted, webhook_secret_encrypted FROM credenciales_pago WHERE org_id = 91",
+
+  await runWithOrg(orgA, () =>
+    guardarTokensOAuth(orgA, {
+      access_token: "access-org-a",
+      refresh_token: "refresh-org-a",
+      expires_in: 1,
+      user_id: 1001,
+      scope: "offline_access",
+      live_mode: false,
+    }),
   );
-  assert.notEqual(credencialPersistida.rows[0].access_token_encrypted, "token-mock-e2e");
-  assert.notEqual(credencialPersistida.rows[0].webhook_secret_encrypted, process.env.PAGOS_MOCK_SECRET);
+  await runWithOrg(orgB, () =>
+    guardarTokensOAuth(orgB, {
+      access_token: "access-org-b",
+      refresh_token: "refresh-org-b",
+      expires_in: 15_552_000,
+      user_id: 1002,
+      scope: "offline_access",
+      live_mode: false,
+    }),
+  );
+  const credencialesOAuth = await admin.query(
+    "SELECT org_id, access_token_encrypted, refresh_token_encrypted, webhook_secret_encrypted FROM credenciales_pago WHERE proveedor = 'mercado_pago' ORDER BY org_id",
+  );
+  assert.equal(credencialesOAuth.rowCount, 2);
+  assert.notEqual(credencialesOAuth.rows[0].access_token_encrypted, "access-org-a");
+  assert.notEqual(credencialesOAuth.rows[0].refresh_token_encrypted, "refresh-org-a");
+  assert.notEqual(
+    credencialesOAuth.rows[0].access_token_encrypted,
+    credencialesOAuth.rows[1].access_token_encrypted,
+    "cada organización conserva tokens distintos",
+  );
+  assert.equal(credencialesOAuth.rows[0].webhook_secret_encrypted, null);
+
+  const fetchReal = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        access_token: "access-org-a-renovado",
+        refresh_token: "refresh-org-a-renovado",
+        expires_in: 15_552_000,
+        user_id: 1001,
+        scope: "offline_access",
+      }),
+    );
+  await runWithOrg(orgA, async () => {
+    const proveedorRenovado = await obtenerProveedorPago(orgA);
+    assert.equal(proveedorRenovado.clave, "mercado_pago", "un token próximo a vencer se renueva");
+  });
+  await runWithOrg(orgA, async () => {
+    await db.credencialPago.updateMany({
+      where: { proveedor: "mercado_pago" },
+      data: { expiresAt: new Date(Date.now() - 60_000) },
+    });
+  });
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ message: "invalid_grant" }), { status: 400 });
+  await runWithOrg(orgA, async () => {
+    await assert.rejects(obtenerProveedorPago(orgA), /volver a conectarse/);
+    assert.equal(
+      (await db.credencialPago.findFirstOrThrow({ where: { proveedor: "mercado_pago" } })).requiereReconexion,
+      true,
+      "un refresh inválido marca la conexión para reconectar",
+    );
+  });
+  globalThis.fetch = fetchReal;
   console.log(
-    "pagos-online E2E: credenciales, concurrencia, estado de venta, reembolsos acumulativos, cron y RLS OK",
+    "pagos-online E2E: OAuth multi-org/refresh, concurrencia, conflictos, reembolsos, webhook, cron y RLS OK",
   );
 }
 

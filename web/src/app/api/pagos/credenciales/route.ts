@@ -7,16 +7,23 @@ import { transaccionTenant } from "@/lib/retail-db";
 
 function dto(credencial: {
   proveedor: string;
+  accessTokenEncrypted: string | null;
   publicKey: string | null;
   sandbox: boolean;
   activo: boolean;
+  proveedorUserId: string | null;
+  expiresAt: Date | null;
+  requiereReconexion: boolean;
 }) {
   return {
     proveedor: credencial.proveedor,
     publicKey: credencial.publicKey,
     sandbox: credencial.sandbox,
     activo: credencial.activo,
-    configurado: credencial.activo,
+    configurado: Boolean(credencial.activo && credencial.accessTokenEncrypted),
+    usuarioProveedor: credencial.proveedorUserId,
+    expiresAt: credencial.expiresAt,
+    requiereReconexion: credencial.requiereReconexion,
   };
 }
 
@@ -32,10 +39,17 @@ export const PUT = conModulo(
   "pagos_en_linea",
   { admin: true },
   async (_sesion, req: NextRequest) => {
+    if (
+      process.env.NODE_ENV === "production" ||
+      process.env.PAGOS_PERMITIR_CREDENCIALES_MANUALES !== "1"
+    )
+      return NextResponse.json(
+        { error: "Las credenciales manuales están deshabilitadas; usa OAuth" },
+        { status: 403 },
+      );
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
     const proveedor = String(body.proveedor ?? "");
     const accessToken = typeof body.accessToken === "string" ? body.accessToken.trim() : "";
-    const webhookSecret = typeof body.webhookSecret === "string" ? body.webhookSecret.trim() : "";
     const publicKey = typeof body.publicKey === "string" ? body.publicKey.trim() : "";
     if (!["mercado_pago", "mock"].includes(proveedor))
       return NextResponse.json({ error: "Proveedor inválido" }, { status: 400 });
@@ -44,9 +58,9 @@ export const PUT = conModulo(
         { error: "El proveedor mock está bloqueado en producción" },
         { status: 400 },
       );
-    if (!accessToken || accessToken.length > 500 || !webhookSecret || webhookSecret.length > 500)
+    if (!accessToken || accessToken.length > 500)
       return NextResponse.json(
-        { error: "El access token y el secreto del webhook son obligatorios" },
+        { error: "El access token es obligatorio" },
         { status: 400 },
       );
     if (publicKey.length > 180)
@@ -59,16 +73,22 @@ export const PUT = conModulo(
         create: {
           proveedor,
           accessTokenEncrypted: cifrarCredencialPago(accessToken),
-          webhookSecretEncrypted: cifrarCredencialPago(webhookSecret),
+          refreshTokenEncrypted: null,
+          webhookSecretEncrypted: null,
           publicKey: publicKey || null,
           sandbox: body.sandbox !== false,
         },
         update: {
           accessTokenEncrypted: cifrarCredencialPago(accessToken),
-          webhookSecretEncrypted: cifrarCredencialPago(webhookSecret),
+          refreshTokenEncrypted: null,
+          webhookSecretEncrypted: null,
+          expiresAt: null,
+          proveedorUserId: null,
+          scope: null,
           publicKey: publicKey || null,
           sandbox: body.sandbox !== false,
           activo: true,
+          requiereReconexion: false,
         },
       });
     });
@@ -77,6 +97,16 @@ export const PUT = conModulo(
 );
 
 export const DELETE = conModulo("pagos_en_linea", { admin: true }, async () => {
-  await db.credencialPago.updateMany({ data: { activo: false } });
+  await db.credencialPago.updateMany({
+    data: {
+      activo: false,
+      accessTokenEncrypted: null,
+      refreshTokenEncrypted: null,
+      expiresAt: null,
+      proveedorUserId: null,
+      scope: null,
+      requiereReconexion: false,
+    },
+  });
   return NextResponse.json({ ok: true, configurado: false });
 });

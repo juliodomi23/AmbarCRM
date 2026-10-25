@@ -24,12 +24,14 @@ export type EventoPagoProveedor = {
   estado: EstadoPago;
   monto: string;
   moneda: string;
+  montoReembolsado?: string;
+  contracargo?: boolean;
   payload: Record<string, string | number | boolean | null>;
 };
 
 export type ResultadoReembolso = {
   referencia: string;
-  estado: "aprobado" | "pendiente";
+  estado: "aprobado" | "pendiente" | "rechazado";
 };
 
 export interface ProveedorPago {
@@ -45,5 +47,9 @@ export interface ProveedorPago {
     referencia: string,
     monto?: string,
     idempotencyKey?: string,
+  ): Promise<ResultadoReembolso>;
+  consultarReembolso(
+    referenciaPago: string,
+    referenciaReembolso: string,
   ): Promise<ResultadoReembolso>;
 }

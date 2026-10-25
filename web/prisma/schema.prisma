@@ -394,16 +394,21 @@ model EventoPago {
 }
 
 model CredencialPago {
-  id                     BigInt   @id @default(autoincrement())
-  orgId                  BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  id                     BigInt    @id @default(autoincrement())
+  orgId                  BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   proveedor              String
-  accessTokenEncrypted   String   @map("access_token_encrypted")
-  webhookSecretEncrypted String   @map("webhook_secret_encrypted")
-  publicKey              String?  @map("public_key")
-  sandbox                Boolean  @default(true)
-  activo                 Boolean  @default(true)
-  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  accessTokenEncrypted   String?   @map("access_token_encrypted")
+  refreshTokenEncrypted  String?   @map("refresh_token_encrypted")
+  webhookSecretEncrypted String?   @map("webhook_secret_encrypted")
+  expiresAt              DateTime? @map("expires_at") @db.Timestamptz(6)
+  proveedorUserId        String?   @map("user_id")
+  scope                  String?
+  publicKey              String?   @map("public_key")
+  sandbox                Boolean   @default(true)
+  activo                 Boolean   @default(true)
+  requiereReconexion     Boolean   @default(false) @map("requiere_reconexion")
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
