@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { BotonEliminar } from "@/components/modulos/BotonEliminar";
 import { FormularioModulo, type CampoFormulario } from "@/components/modulos/FormularioModulo";
 import { EnlacePublico } from "@/components/reservas/EnlacePublico";
+import { HorarioSemanal } from "@/components/reservas/HorarioSemanal";
 import { db } from "@/lib/db";
 import { moduloActivo } from "@/lib/modulos";
 import { opcionesDe } from "@/lib/opciones-formularios";
@@ -12,9 +13,6 @@ import { configReservas } from "@/lib/reservas/servidor";
 import { getSesion } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
-
-const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-const OPCIONES_DIA = DIAS.map((dia, i) => ({ valor: String(i), etiqueta: dia }));
 
 function Seccion({ titulo, descripcion, accion, children }: {
   titulo: string; descripcion: string; accion?: React.ReactNode; children: React.ReactNode;
@@ -51,6 +49,19 @@ export default async function ReservasEnLineaPage() {
   ]);
   const enlace = `${(process.env.NEXTAUTH_URL ?? "").replace(/\/+$/, "")}/reservar/${org?.slug ?? ""}`;
   const opcionesDoctor = opcionesDe(doctores, (d) => d.nombre);
+  const doctoresVista = doctores.map((doctor) => ({
+    id: String(doctor.id),
+    nombre: doctor.nombre,
+    especialidad: doctor.especialidad,
+    color: doctor.color,
+  }));
+  const horariosVista = horarios.map((horario) => ({
+    id: String(horario.id),
+    doctorId: String(horario.doctorId),
+    diaSemana: horario.diaSemana,
+    inicioMin: horario.inicioMin,
+    finMin: horario.finMin,
+  }));
 
   const camposServicio: CampoFormulario[] = [
     { nombre: "nombre", etiqueta: "Nombre", tipo: "texto", requerido: true },
@@ -75,7 +86,7 @@ export default async function ReservasEnLineaPage() {
         </p>
       )}
 
-      <Seccion titulo="Ajustes" descripcion={`${cfg.zona} · anticipación ${cfg.anticipacionMin} min · hasta ${cfg.ventanaDias} días a futuro · horarios cada ${cfg.granularidadMin} min · máximo ${cfg.maxPorTelefono} citas por teléfono en 24 horas`}
+      <Seccion titulo="Ajustes" descripcion="Reglas generales de la agenda pública."
         accion={esAdmin && (
           <FormularioModulo boton="Cambiar" titulo="Ajustes de reservas" endpoint="/api/reservas/ajustes" discreto
             valores={{ zona: cfg.zona, anticipacionMin: String(cfg.anticipacionMin), ventanaDias: String(cfg.ventanaDias), granularidadMin: String(cfg.granularidadMin), maxPorTelefono: String(cfg.maxPorTelefono) }}
@@ -87,7 +98,20 @@ export default async function ReservasEnLineaPage() {
               { nombre: "maxPorTelefono", etiqueta: "Máximo de citas por teléfono en 24 horas", tipo: "numero", requerido: true },
             ]} />
         )}>
-        <></>
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          {[
+            { etiqueta: "Zona horaria", valor: cfg.zona },
+            { etiqueta: "Anticipación", valor: `${cfg.anticipacionMin} min` },
+            { etiqueta: "Ventana", valor: `${cfg.ventanaDias} días` },
+            { etiqueta: "Intervalo", valor: `${cfg.granularidadMin} min` },
+            { etiqueta: "Tope por teléfono", valor: `${cfg.maxPorTelefono} citas / 24 h` },
+          ].map(({ etiqueta, valor }) => (
+            <div key={etiqueta} className="rounded-lg border border-border/60 bg-background/40 px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{etiqueta}</p>
+              <p className="mt-0.5 text-sm font-medium text-foreground">{valor}</p>
+            </div>
+          ))}
+        </div>
       </Seccion>
 
       <Seccion titulo="Servicios" descripcion="Lo que se puede agendar, cuánto dura y quién lo da."
@@ -115,22 +139,13 @@ export default async function ReservasEnLineaPage() {
         ))}
       </Seccion>
 
-      <Seccion titulo="Horario semanal" descripcion="Cuándo atiende cada especialista. Varias filas en un día = turno partido."
-        accion={esAdmin && doctores.length > 0 && (
-          <FormularioModulo boton="+ Horario" titulo="Agregar horario" endpoint="/api/reservas/horarios" campos={[
-            { nombre: "doctorId", etiqueta: "Especialista", tipo: "seleccion", requerido: true, opciones: opcionesDoctor },
-            { nombre: "diaSemana", etiqueta: "Día", tipo: "seleccion", requerido: true, opciones: OPCIONES_DIA, valorInicial: "1" },
-            { nombre: "inicio", etiqueta: "Desde", tipo: "hora", requerido: true, valorInicial: "09:00" },
-            { nombre: "fin", etiqueta: "Hasta", tipo: "hora", requerido: true, valorInicial: "14:00" },
-          ]} />
-        )}>
-        {horarios.length === 0 && <p className="text-sm text-muted-foreground">Sin horarios: nadie puede agendar todavía.</p>}
-        {horarios.map((h) => (
-          <div key={String(h.id)} className="flex items-center justify-between border-t pt-2 text-sm">
-            <span>{DIAS[h.diaSemana]} · {horaTexto(h.inicioMin)}–{horaTexto(h.finMin)} · {h.doctor.nombre}</span>
-            {esAdmin && <BotonEliminar endpoint={`/api/reservas/horarios/${h.id}`} titulo="Quitar horario" mensaje="Se quita este horario de atención." />}
-          </div>
-        ))}
+      <Seccion titulo="Horario semanal" descripcion="Cada especialista tiene su propio horario. Varios bloques en un día = turno partido.">
+        <HorarioSemanal
+          doctores={doctoresVista}
+          horarios={horariosVista}
+          esAdmin={esAdmin}
+          opcionesDoctor={opcionesDoctor}
+        />
       </Seccion>
 
       <Seccion titulo="Días especiales" descripcion="Vacaciones, días festivos o un horario distinto en una fecha."

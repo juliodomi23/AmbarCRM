@@ -44,6 +44,7 @@ export function FormularioModulo({
   endpoint,
   campos,
   valores: valoresGuardados,
+  iniciales,
   eliminar,
   acciones = [],
   discreto = false,
@@ -53,6 +54,7 @@ export function FormularioModulo({
   endpoint: string;
   campos: CampoFormulario[];
   valores?: Record<string, string>;
+  iniciales?: Record<string, string>;
   eliminar?: string;
   acciones?: AccionRapida[];
   discreto?: boolean;
@@ -61,7 +63,7 @@ export function FormularioModulo({
   const edicion = valoresGuardados !== undefined;
   const [abierto, setAbierto] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const [valores, setValores] = useState<Record<string, string>>(() => valoresIniciales(campos, valoresGuardados));
+  const [valores, setValores] = useState<Record<string, string>>(() => valoresIniciales(campos, valoresGuardados ?? iniciales));
 
   function cambiar(nombre: string, valor: string) {
     setValores((actuales) => ({ ...actuales, [nombre]: valor }));
@@ -90,7 +92,7 @@ export function FormularioModulo({
     setEnviando(false);
     if (!res.ok) return toast(data.error ?? "No se pudo completar", "error");
     toast(exito);
-    if (!edicion) setValores(valoresIniciales(campos));
+    if (!edicion) setValores(valoresIniciales(campos, iniciales));
     setAbierto(false);
     router.refresh();
     } catch { toast("No se pudo completar. Revisa tu conexión e intenta de nuevo.", "error"); }
