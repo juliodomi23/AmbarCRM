@@ -14,12 +14,16 @@ export const POST = conModulo(
     const id = aBigInt((await params).id);
     if (!id || sesion.orgId === null)
       return NextResponse.json({ error: "Pago inválido" }, { status: 400 });
-    const body = (await req.json().catch(() => ({}))) as { monto?: unknown };
+    const body = (await req.json().catch(() => ({}))) as {
+      monto?: unknown;
+      idempotencyKey?: unknown;
+    };
     try {
       const resultado = await reembolsarPago(
         { ...sesion, orgId: sesion.orgId },
         id,
         typeof body.monto === "string" ? body.monto : undefined,
+        typeof body.idempotencyKey === "string" ? body.idempotencyKey : "",
       );
       return NextResponse.json({ resultado });
     } catch (error) {

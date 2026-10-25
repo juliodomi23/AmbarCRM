@@ -176,6 +176,7 @@ export const MODULOS = [
     acceso: { puestosPorDefecto: ["Administrador", "Cajero", "Ventas"] },
     icono: "M3 6h18v12H3zM3 10h18M7 14h4m6 0h.01",
     ruta: "/ventas",
+    configuracionSolo: true,
   },
   {
     clave: "pedidos_en_linea",

@@ -45,7 +45,14 @@ export class ProveedorMock implements ProveedorPago {
     return null;
   }
 
-  async reembolsar(referencia: string): Promise<ResultadoReembolso> {
-    return { referencia: `refund-${referencia}`, estado: "aprobado" };
+  async reembolsar(
+    referencia: string,
+    _monto?: string,
+    idempotencyKey?: string,
+  ): Promise<ResultadoReembolso> {
+    return {
+      referencia: `refund-${referencia}-${idempotencyKey ?? "total"}`,
+      estado: "aprobado",
+    };
   }
 }

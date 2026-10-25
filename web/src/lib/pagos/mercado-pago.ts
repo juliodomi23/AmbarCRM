@@ -162,6 +162,7 @@ export class ProveedorMercadoPago implements ProveedorPago {
   async reembolsar(
     referencia: string,
     monto?: string,
+    idempotencyKey?: string,
   ): Promise<ResultadoReembolso> {
     const resultado = await this.solicitar<{
       id: string | number;
@@ -169,7 +170,7 @@ export class ProveedorMercadoPago implements ProveedorPago {
     }>(`/v1/payments/${encodeURIComponent(referencia)}/refunds`, {
       method: "POST",
       headers: {
-        "X-Idempotency-Key": `reembolso-${referencia}-${monto ?? "total"}`,
+        "X-Idempotency-Key": idempotencyKey ?? `reembolso-${referencia}-${monto ?? "total"}`,
       },
       body: JSON.stringify(monto ? { amount: Number(monto) } : {}),
     });

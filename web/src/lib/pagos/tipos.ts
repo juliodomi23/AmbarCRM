@@ -41,5 +41,9 @@ export interface ProveedorPago {
   consultarPago(
     referencia: string,
   ): Promise<Omit<EventoPagoProveedor, "eventoId" | "tipo"> | null>;
-  reembolsar(referencia: string, monto?: string): Promise<ResultadoReembolso>;
+  reembolsar(
+    referencia: string,
+    monto?: string,
+    idempotencyKey?: string,
+  ): Promise<ResultadoReembolso>;
 }

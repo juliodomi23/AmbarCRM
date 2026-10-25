@@ -3,7 +3,7 @@ import { Badge, tonoEstado } from "@/components/ui";
 
 const MENSAJES = {
   exito: {
-    titulo: "Pago recibido",
+    titulo: "Estamos confirmando tu pago",
     detalle:
       "Estamos confirmando el pago. La venta se actualizará automáticamente.",
   },
@@ -30,7 +30,7 @@ export default async function ResultadoPago({
       <section className="surface w-full max-w-md space-y-4 p-6 text-center shadow-soft">
         <Badge tono={tonoEstado(estado ?? "pendiente")}>
           {estado === "exito"
-            ? "Aprobado"
+            ? "Confirmando"
             : estado === "error"
               ? "Error"
               : "Pendiente"}

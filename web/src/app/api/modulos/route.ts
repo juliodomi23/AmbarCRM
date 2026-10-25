@@ -111,11 +111,31 @@ async function manejarPATCH(req: NextRequest) {
   if (clave === "pagos_en_linea") {
     const pagos = config as Record<string, unknown>;
     if (
+      ["accessToken", "webhookSecret", "access_token", "webhook_secret"].some(
+        (secreto) => Object.hasOwn(pagos, secreto),
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Las credenciales se guardan en la configuración segura de pagos" },
+        { status: 400 },
+      );
+    }
+    if (
       Object.hasOwn(pagos, "proveedor") &&
       !["mercado_pago", "mock"].includes(String(pagos.proveedor))
     ) {
       return NextResponse.json(
         { error: "Proveedor de pagos inválido" },
+        { status: 400 },
+      );
+    }
+    if (
+      pagos.proveedor === "mock" &&
+      process.env.NODE_ENV === "production" &&
+      process.env.PAGOS_PERMITIR_MOCK !== "1"
+    ) {
+      return NextResponse.json(
+        { error: "El proveedor mock está bloqueado en producción" },
         { status: 400 },
       );
     }
@@ -140,8 +160,6 @@ async function manejarPATCH(req: NextRequest) {
         { status: 400 },
       );
     }
-    delete pagos.accessToken;
-    delete pagos.webhookSecret;
   }
   delete (config as Record<string, unknown>).aurum;
   const puestos = normalizarPuestos(

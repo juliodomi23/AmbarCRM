@@ -42,7 +42,7 @@ export function CommandPalette({
         .then((d) =>
           setModulos(
             (d.modulos ?? [])
-              .filter((m: any) => m.activo)
+              .filter((m: any) => m.activo && !m.configuracionSolo)
               .map((m: any) => [m.nombre, m.ruta]),
           ),
         );

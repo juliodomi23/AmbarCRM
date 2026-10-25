@@ -8,164 +8,173 @@ datasource db {
 }
 
 model CampanaMarketing {
-  id BigInt @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  tipo String
-  nombre String
-  objetivo String
-  canal String
-  audiencia String @default("")
-  contenido String @default("")
-  fechaInicio DateTime? @map("fecha_inicio") @db.Date
-  fechaFin DateTime? @map("fecha_fin") @db.Date
-  presupuesto Decimal? @db.Decimal(12, 2)
-  estado String @default("borrador")
-  version Int @default(1)
-  aprobadaPorId BigInt? @map("aprobada_por_id")
-  aprobadaAt DateTime? @map("aprobada_at") @db.Timestamptz(6)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id            BigInt    @id @default(autoincrement())
+  orgId         BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  tipo          String
+  nombre        String
+  objetivo      String
+  canal         String
+  audiencia     String    @default("")
+  contenido     String    @default("")
+  fechaInicio   DateTime? @map("fecha_inicio") @db.Date
+  fechaFin      DateTime? @map("fecha_fin") @db.Date
+  presupuesto   Decimal?  @db.Decimal(12, 2)
+  estado        String    @default("borrador")
+  version       Int       @default(1)
+  aprobadaPorId BigInt?   @map("aprobada_por_id")
+  aprobadaAt    DateTime? @map("aprobada_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
   @@index([orgId, tipo, estado])
   @@index([orgId, tipo, updatedAt])
   @@map("campanas_marketing")
 }
 
 model ReglaAutomatizacion {
-  id BigInt @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  nombre String
-  evento String
-  condiciones Json @default("[]")
-  acciones Json @default("[]")
-  activo Boolean @default(true)
-  creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  id          BigInt   @id @default(autoincrement())
+  orgId       BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre      String
+  evento      String
+  condiciones Json     @default("[]")
+  acciones    Json     @default("[]")
+  activo      Boolean  @default(true)
+  creadoEn    DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
   @@index([orgId, evento])
   @@map("regla_automatizacion")
 }
 
 model EjecucionRegla {
-  id BigInt @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  reglaId BigInt @map("regla_id")
-  conversacionId BigInt @map("conversacion_id")
-  resultado String
-  detalle String
-  creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  id             BigInt   @id @default(autoincrement())
+  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  reglaId        BigInt   @map("regla_id")
+  conversacionId BigInt   @map("conversacion_id")
+  resultado      String
+  detalle        String
+  creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
   @@index([orgId, conversacionId, creadoEn])
   @@index([orgId, reglaId, creadoEn])
   @@map("ejecucion_regla")
 }
 
 model WebhookSaliente {
-  id BigInt @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  url String
-  secreto String
-  eventos String[]
-  activo Boolean @default(true)
-  creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz
-  ultimoEstado String? @map("ultimo_estado")
-  ultimoError String? @map("ultimo_error")
-  fallosSeguidos Int @default(0) @map("fallos_seguidos")
+  id             BigInt   @id @default(autoincrement())
+  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  url            String
+  secreto        String
+  eventos        String[]
+  activo         Boolean  @default(true)
+  creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  ultimoEstado   String?  @map("ultimo_estado")
+  ultimoError    String?  @map("ultimo_error")
+  fallosSeguidos Int      @default(0) @map("fallos_seguidos")
+
   @@index([orgId])
   @@map("webhook_saliente")
 }
 
 model MessengerLogin {
-  id String @id
-  proveedor String @default("messenger")
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  userId BigInt @map("user_id")
-  sessionHash String @map("session_hash")
-  stateHash String @map("state_hash")
-  canalId BigInt? @map("canal_id")
-  paginasEncrypted String? @map("paginas_encrypted")
-  venceAt DateTime @map("vence_at") @db.Timestamptz(6)
+  id               String   @id
+  proveedor        String   @default("messenger")
+  orgId            BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  userId           BigInt   @map("user_id")
+  sessionHash      String   @map("session_hash")
+  stateHash        String   @map("state_hash")
+  canalId          BigInt?  @map("canal_id")
+  paginasEncrypted String?  @map("paginas_encrypted")
+  venceAt          DateTime @map("vence_at") @db.Timestamptz(6)
+
   @@index([orgId, venceAt])
   @@map("messenger_login")
 }
 
 model Contrato {
-  id BigInt @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  contactoId BigInt @map("contacto_id")
-  oportunidadId BigInt? @map("oportunidad_id")
-  tipo String
-  estado String?
-  montoCierre Decimal? @map("monto_cierre") @db.Decimal(12, 2)
-  anticipoPct Decimal? @default(50) @map("anticipo_pct") @db.Decimal(5, 2)
-  mensualidad Decimal? @db.Decimal(12, 2)
-  diaCobro Int? @map("dia_cobro")
-  inicioMensualidad DateTime? @map("inicio_mensualidad") @db.Date
-  fechaBaja DateTime? @map("fecha_baja") @db.Date
-  notas String?
-  servidorId BigInt? @map("servidor_id")
-  servidor Servidor? @relation(fields: [servidorId, orgId], references: [id, orgId], onDelete: Restrict)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  contacto Contacto @relation(fields: [contactoId], references: [id], onDelete: Restrict)
-  oportunidad Oportunidad? @relation(fields: [oportunidadId], references: [id], onDelete: SetNull)
-  cobros Cobro[]
+  id                BigInt       @id @default(autoincrement())
+  orgId             BigInt       @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contactoId        BigInt       @map("contacto_id")
+  oportunidadId     BigInt?      @map("oportunidad_id")
+  tipo              String
+  estado            String?
+  montoCierre       Decimal?     @map("monto_cierre") @db.Decimal(12, 2)
+  anticipoPct       Decimal?     @default(50) @map("anticipo_pct") @db.Decimal(5, 2)
+  mensualidad       Decimal?     @db.Decimal(12, 2)
+  diaCobro          Int?         @map("dia_cobro")
+  inicioMensualidad DateTime?    @map("inicio_mensualidad") @db.Date
+  fechaBaja         DateTime?    @map("fecha_baja") @db.Date
+  notas             String?
+  servidorId        BigInt?      @map("servidor_id")
+  servidor          Servidor?    @relation(fields: [servidorId, orgId], references: [id, orgId], onDelete: Restrict)
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  contacto          Contacto     @relation(fields: [contactoId], references: [id], onDelete: Restrict)
+  oportunidad       Oportunidad? @relation(fields: [oportunidadId], references: [id], onDelete: SetNull)
+  cobros            Cobro[]
+
   @@index([orgId, estado])
   @@index([contactoId])
   @@map("contratos")
 }
 
 model Servidor {
-  id BigInt @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  nombre String
-  proveedor String
-  ip String
-  propietario String
-  loPagamos Boolean @default(true) @map("lo_pagamos")
-  costoAnualMxn Decimal? @map("costo_anual_mxn") @db.Decimal(12, 2)
-  vence DateTime? @db.Date
-  activo Boolean @default(true)
-  ramTotalMb Int? @map("ram_total_mb")
-  notas String?
-  cargasLibres String? @map("cargas_libres")
-  heartbeatTokenHash String @unique @map("heartbeat_token_hash")
-  ultimoReporte DateTime? @map("ultimo_reporte") @db.Timestamptz(6)
-  heartbeats HeartbeatServidor[]
-  contratos Contrato[]
+  id                 BigInt              @id @default(autoincrement())
+  orgId              BigInt              @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre             String
+  proveedor          String
+  ip                 String
+  propietario        String
+  loPagamos          Boolean             @default(true) @map("lo_pagamos")
+  costoAnualMxn      Decimal?            @map("costo_anual_mxn") @db.Decimal(12, 2)
+  vence              DateTime?           @db.Date
+  activo             Boolean             @default(true)
+  ramTotalMb         Int?                @map("ram_total_mb")
+  notas              String?
+  cargasLibres       String?             @map("cargas_libres")
+  heartbeatTokenHash String              @unique @map("heartbeat_token_hash")
+  ultimoReporte      DateTime?           @map("ultimo_reporte") @db.Timestamptz(6)
+  heartbeats         HeartbeatServidor[]
+  contratos          Contrato[]
+
   @@unique([orgId, nombre])
   @@unique([id, orgId])
   @@map("servidores")
 }
 
 model HeartbeatServidor {
-  id BigInt @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  servidorId BigInt @map("servidor_id")
-  fecha DateTime @default(now()) @db.Timestamptz(6)
-  ramPct Float @map("ram_pct")
-  cpuPct Float @map("cpu_pct")
-  discoPct Float @map("disco_pct")
-  ramTotalMb Int @map("ram_total_mb")
-  uptimeHoras Float @map("uptime_horas")
-  servidor Servidor @relation(fields: [servidorId, orgId], references: [id, orgId], onDelete: Cascade)
+  id          BigInt   @id @default(autoincrement())
+  orgId       BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  servidorId  BigInt   @map("servidor_id")
+  fecha       DateTime @default(now()) @db.Timestamptz(6)
+  ramPct      Float    @map("ram_pct")
+  cpuPct      Float    @map("cpu_pct")
+  discoPct    Float    @map("disco_pct")
+  ramTotalMb  Int      @map("ram_total_mb")
+  uptimeHoras Float    @map("uptime_horas")
+  servidor    Servidor @relation(fields: [servidorId, orgId], references: [id, orgId], onDelete: Cascade)
+
   @@index([orgId, servidorId, fecha])
   @@map("heartbeats_servidor")
 }
 
 model Cobro {
-  id BigInt @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  contratoId BigInt @map("contrato_id")
-  concepto String
-  periodo DateTime? @db.Date
-  monto Decimal @db.Decimal(12, 2)
-  montoPagado Decimal @default(0) @map("monto_pagado") @db.Decimal(12, 2)
-  pagos Json @default("[]")
-  vence DateTime? @db.Date
-  estado String @default("pendiente")
-  pagadoEn DateTime? @map("pagado_en") @db.Timestamptz(6)
-  metodo String?
-  referencia String?
-  nota String?
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  contrato Contrato @relation(fields: [contratoId], references: [id], onDelete: Restrict)
+  id          BigInt    @id @default(autoincrement())
+  orgId       BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contratoId  BigInt    @map("contrato_id")
+  concepto    String
+  periodo     DateTime? @db.Date
+  monto       Decimal   @db.Decimal(12, 2)
+  montoPagado Decimal   @default(0) @map("monto_pagado") @db.Decimal(12, 2)
+  pagos       Json      @default("[]")
+  vence       DateTime? @db.Date
+  estado      String    @default("pendiente")
+  pagadoEn    DateTime? @map("pagado_en") @db.Timestamptz(6)
+  metodo      String?
+  referencia  String?
+  nota        String?
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  contrato    Contrato  @relation(fields: [contratoId], references: [id], onDelete: Restrict)
+
   @@unique([contratoId, concepto, periodo])
   @@index([orgId, estado, vence])
   @@map("cobros")
@@ -324,8 +333,10 @@ model Org {
   activo    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
 
-  pagosOnline PagoOnline[]
-  eventosPago EventoPago[]
+  pagosOnline      PagoOnline[]
+  eventosPago      EventoPago[]
+  credencialesPago CredencialPago[]
+  reembolsosPago   ReembolsoPago[]
 
   @@map("orgs")
 }
@@ -338,6 +349,7 @@ model PagoOnline {
   proveedor          String
   estado             String    @default("pendiente")
   monto              Decimal   @db.Decimal(12, 2)
+  montoReembolsado   Decimal   @default(0) @map("monto_reembolsado") @db.Decimal(12, 2)
   moneda             String    @default("MXN")
   referenciaExterna  String?   @map("referencia_externa")
   checkoutReferencia String?   @map("checkout_referencia")
@@ -350,10 +362,12 @@ model PagoOnline {
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  org     Org          @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  eventos EventoPago[]
+  org        Org             @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  eventos    EventoPago[]
+  reembolsos ReembolsoPago[]
 
   @@unique([orgId, idempotencyKey])
+  @@unique([id, orgId])
   @@index([orgId, estado, createdAt])
   @@index([orgId, origenTipo, origenId])
   @@index([proveedor, referenciaExterna])
@@ -372,54 +386,92 @@ model EventoPago {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   org  Org        @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  pago PagoOnline @relation(fields: [pagoId], references: [id], onDelete: Cascade)
+  pago PagoOnline @relation(fields: [pagoId, orgId], references: [id, orgId], onDelete: Cascade)
 
   @@unique([orgId, proveedor, eventoId])
   @@index([orgId, pagoId, createdAt])
   @@map("eventos_pago")
 }
 
-model Usuario {
-  id           BigInt     @id @default(autoincrement())
-  orgId        BigInt     @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  nombre       String
-  email        String
-  passwordHash String     @map("password_hash")
-  passwordCambiadaAt DateTime? @map("password_cambiada_at") @db.Timestamptz(6)
-  rol          RolUsuario @default(agente)
-  puesto       String     @default("Agente")
-  agendaSoloPropia Boolean @default(false) @map("agenda_solo_propia")
-  agendaDoctorId BigInt? @map("agenda_doctor_id")
-  agendaDoctor Doctor? @relation("AccesoAgenda", fields: [agendaDoctorId], references: [id], onDelete: SetNull)
-  avatarUrl    String?    @map("avatar_url")
-  activo       Boolean    @default(true)
-  createdAt    DateTime   @default(now()) @map("created_at")
+model CredencialPago {
+  id                     BigInt   @id @default(autoincrement())
+  orgId                  BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  proveedor              String
+  accessTokenEncrypted   String   @map("access_token_encrypted")
+  webhookSecretEncrypted String   @map("webhook_secret_encrypted")
+  publicKey              String?  @map("public_key")
+  sandbox                Boolean  @default(true)
+  activo                 Boolean  @default(true)
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  contactos           Contacto[]
-  oportunidades       Oportunidad[]
-  conversaciones      Conversacion[]
-  mensajes            Mensaje[]
-  notas               Nota[]
-  tareas              Tarea[]
-  eventos             Evento[]
-  citas               Cita[]
-  evoluciones         EvolucionClinica[]
-  botsAsesor          Bot[]                     @relation("BotAsesor")
-  ventasCreadas       Venta[]                   @relation("VentaCreadoPor")
-  movimientos         MovimientoInventario[]    @relation("MovimientoUsuario")
-  comprasCreadas      Compra[]                  @relation("CompraCreadoPor")
-  turnosCaja          TurnoCaja[]
-  movimientosCaja     MovimientoCaja[]          @relation("MovimientoCajaUsuario")
-  devolucionesCaja    DevolucionVenta[]
-  apartadosCreados    Apartado[]
-  abonosApartado      AbonoApartado[]
-  movimientosCuenta   MovimientoCuentaCliente[]
-  cotizacionesCreadas Cotizacion[]              @relation("CotizacionCreadaPor")
-  expedientesLegales  ExpedienteLegal[]         @relation("ExpedienteResponsable")
-  registrosLegales    RegistroExpedienteLegal[] @relation("RegistroLegalUsuario")
-  asesoriasLegales    AsesoriaLegal[]           @relation("AsesoriaAbogado")
-  movimientosLegales  MovimientoLegal[]         @relation("MovimientoLegalUsuario")
-  operacionesLegales  RegistroOperacionLegal[]  @relation("OperacionLegalUsuario")
+  org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, proveedor])
+  @@index([orgId, activo])
+  @@map("credenciales_pago")
+}
+
+model ReembolsoPago {
+  id             BigInt   @id @default(autoincrement())
+  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  pagoId         BigInt   @map("pago_id")
+  monto          Decimal  @db.Decimal(12, 2)
+  referencia     String?
+  estado         String   @default("pendiente")
+  idempotencyKey String   @map("idempotency_key")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  org  Org        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  pago PagoOnline @relation(fields: [pagoId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@unique([orgId, idempotencyKey])
+  @@index([orgId, pagoId, createdAt])
+  @@map("reembolsos_pago")
+}
+
+model Usuario {
+  id                 BigInt     @id @default(autoincrement())
+  orgId              BigInt     @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre             String
+  email              String
+  passwordHash       String     @map("password_hash")
+  passwordCambiadaAt DateTime?  @map("password_cambiada_at") @db.Timestamptz(6)
+  rol                RolUsuario @default(agente)
+  puesto             String     @default("Agente")
+  agendaSoloPropia   Boolean    @default(false) @map("agenda_solo_propia")
+  agendaDoctorId     BigInt?    @map("agenda_doctor_id")
+  agendaDoctor       Doctor?    @relation("AccesoAgenda", fields: [agendaDoctorId], references: [id], onDelete: SetNull)
+  avatarUrl          String?    @map("avatar_url")
+  activo             Boolean    @default(true)
+  createdAt          DateTime   @default(now()) @map("created_at")
+
+  contactos                 Contacto[]
+  oportunidades             Oportunidad[]
+  conversaciones            Conversacion[]
+  mensajes                  Mensaje[]
+  notas                     Nota[]
+  tareas                    Tarea[]
+  eventos                   Evento[]
+  citas                     Cita[]
+  evoluciones               EvolucionClinica[]
+  botsAsesor                Bot[]                      @relation("BotAsesor")
+  ventasCreadas             Venta[]                    @relation("VentaCreadoPor")
+  movimientos               MovimientoInventario[]     @relation("MovimientoUsuario")
+  comprasCreadas            Compra[]                   @relation("CompraCreadoPor")
+  turnosCaja                TurnoCaja[]
+  movimientosCaja           MovimientoCaja[]           @relation("MovimientoCajaUsuario")
+  devolucionesCaja          DevolucionVenta[]
+  apartadosCreados          Apartado[]
+  abonosApartado            AbonoApartado[]
+  movimientosCuenta         MovimientoCuentaCliente[]
+  cotizacionesCreadas       Cotizacion[]               @relation("CotizacionCreadaPor")
+  expedientesLegales        ExpedienteLegal[]          @relation("ExpedienteResponsable")
+  registrosLegales          RegistroExpedienteLegal[]  @relation("RegistroLegalUsuario")
+  asesoriasLegales          AsesoriaLegal[]            @relation("AsesoriaAbogado")
+  movimientosLegales        MovimientoLegal[]          @relation("MovimientoLegalUsuario")
+  operacionesLegales        RegistroOperacionLegal[]   @relation("OperacionLegalUsuario")
   restablecimientosPassword RestablecimientoPassword[]
 
   @@unique([orgId, email])
@@ -429,14 +481,15 @@ model Usuario {
 }
 
 model RestablecimientoPassword {
-  id BigInt @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  usuarioId BigInt @map("usuario_id")
-  tokenHash String @unique @map("token_hash")
-  venceAt DateTime @map("vence_at") @db.Timestamptz(6)
-  usadoAt DateTime? @map("usado_at") @db.Timestamptz(6)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  usuario Usuario @relation(fields: [usuarioId, orgId], references: [id, orgId], onDelete: Cascade)
+  id        BigInt    @id @default(autoincrement())
+  orgId     BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  usuarioId BigInt    @map("usuario_id")
+  tokenHash String    @unique @map("token_hash")
+  venceAt   DateTime  @map("vence_at") @db.Timestamptz(6)
+  usadoAt   DateTime? @map("usado_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  usuario   Usuario   @relation(fields: [usuarioId, orgId], references: [id, orgId], onDelete: Cascade)
+
   @@index([usuarioId])
   @@map("restablecimientos_password")
 }
@@ -477,28 +530,28 @@ model Etapa {
 }
 
 model Contacto {
-  id            BigInt         @id @default(autoincrement())
-  orgId         BigInt         @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  nombre        String
-  telefono      String?
-  canalId       BigInt?        @map("canal_id")
-  identificadorExterno String? @map("identificador_externo")
-  email         String?
-  empresa       String?
-  avatarUrl     String?        @map("avatar_url")
-  fuente        FuenteContacto @default(manual)
-  notas         String?
-  responsableId BigInt?        @map("responsable_id")
-  listaPrecioId  BigInt?        @map("lista_precio_id")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at")
+  id                   BigInt         @id @default(autoincrement())
+  orgId                BigInt         @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre               String
+  telefono             String?
+  canalId              BigInt?        @map("canal_id")
+  identificadorExterno String?        @map("identificador_externo")
+  email                String?
+  empresa              String?
+  avatarUrl            String?        @map("avatar_url")
+  fuente               FuenteContacto @default(manual)
+  notas                String?
+  responsableId        BigInt?        @map("responsable_id")
+  listaPrecioId        BigInt?        @map("lista_precio_id")
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @default(now()) @updatedAt @map("updated_at")
 
   esPersonal     Boolean @default(false) @map("es_personal")
   optOutDifusion Boolean @default(false) @map("opt_out_difusion") // excluido de difusiones masivas
   campos         Json    @default("{}")
 
   responsable        Usuario?             @relation(fields: [responsableId], references: [id], onDelete: SetNull)
-  listaPrecio         ListaPrecio?         @relation(fields: [listaPrecioId], references: [id], onDelete: SetNull)
+  listaPrecio        ListaPrecio?         @relation(fields: [listaPrecioId], references: [id], onDelete: SetNull)
   etiquetas          ContactoEtiqueta[]
   oportunidades      Oportunidad[]
   conversaciones     Conversacion[]
@@ -515,9 +568,10 @@ model Contacto {
   notasCredito       NotaCreditoCliente[]
   cotizaciones       Cotizacion[]
 
-  solicitudesResena SolicitudResena[]
+  solicitudesResena    SolicitudResena[]
   campanasDestinatario CampanaDestinatario[]
-  contratos Contrato[]
+  contratos            Contrato[]
+
   @@unique([orgId, telefono])
   @@index([responsableId])
   @@index([listaPrecioId])
@@ -654,20 +708,20 @@ model MensajeGrupo {
 
 // Bot nativo: webhook saliente (CRM->n8n) + token para responder (n8n->CRM).
 model Bot {
-  id         BigInt   @id @default(autoincrement())
-  orgId      BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  nombre     String
-  webhookUrl String   @map("webhook_url") // n8n: el CRM le manda los mensajes entrantes
-  apiToken   String   @unique @map("api_token") // n8n: autentica de vuelta con header api_access_token
-  canalId    BigInt?  @map("canal_id") // null = aplica a todos los canales
-  activo     Boolean  @default(true)
-  createdAt  DateTime @default(now()) @map("created_at")
+  id            BigInt   @id @default(autoincrement())
+  orgId         BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre        String
+  webhookUrl    String   @map("webhook_url") // n8n: el CRM le manda los mensajes entrantes
+  apiToken      String   @unique @map("api_token") // n8n: autentica de vuelta con header api_access_token
+  canalId       BigInt?  @map("canal_id") // null = aplica a todos los canales
+  activo        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
   /// Secreto HMAC cifrado (encv1:…) con el que se firma lo que el CRM manda a n8n.
-  signingSecret String? @map("signing_secret")
+  signingSecret String?  @map("signing_secret")
   /// Asesor fijo para el handoff de este bot. null = round-robin entre usuarios activos.
-  asesorId   BigInt?  @map("asesor_id")
+  asesorId      BigInt?  @map("asesor_id")
   /// Lo que este bot puede hacer por /api/v1 (ver src/lib/bot-permisos.ts).
-  permisos   String[] @default(["leer_perfil", "enviar_mensaje", "notas_internas", "handoff"])
+  permisos      String[] @default(["leer_perfil", "enviar_mensaje", "notas_internas", "handoff"])
 
   canal     CanalWhatsapp? @relation(fields: [canalId], references: [id], onDelete: SetNull)
   asesor    Usuario?       @relation("BotAsesor", fields: [asesorId], references: [id], onDelete: SetNull)
@@ -699,31 +753,31 @@ model AuditoriaBot {
 }
 
 model Conversacion {
-  id              BigInt     @id @default(autoincrement())
-  orgId           BigInt     @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  contactoId      BigInt     @map("contacto_id")
-  canalId         BigInt?    @map("canal_id")
-  estado          EstadoConv @default(abierta)
-  responsableId   BigInt?    @map("responsable_id")
-  noLeidos        Int        @default(0) @map("no_leidos")
-  botActivo       Boolean    @default(true) @map("bot_activo")
-  etiquetas       String[]   @default([])
-  csatScore       Int?       @map("csat_score")
-  csatEnviadoAt   DateTime?  @map("csat_enviado_at")
-  avisoFueraAt    DateTime?  @map("aviso_fuera_at")
-  ultimoMensajeAt DateTime?  @map("ultimo_mensaje_at")
-  ultimoEntranteAt DateTime? @map("ultimo_entrante_at")
+  id               BigInt     @id @default(autoincrement())
+  orgId            BigInt     @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contactoId       BigInt     @map("contacto_id")
+  canalId          BigInt?    @map("canal_id")
+  estado           EstadoConv @default(abierta)
+  responsableId    BigInt?    @map("responsable_id")
+  noLeidos         Int        @default(0) @map("no_leidos")
+  botActivo        Boolean    @default(true) @map("bot_activo")
+  etiquetas        String[]   @default([])
+  csatScore        Int?       @map("csat_score")
+  csatEnviadoAt    DateTime?  @map("csat_enviado_at")
+  avisoFueraAt     DateTime?  @map("aviso_fuera_at")
+  ultimoMensajeAt  DateTime?  @map("ultimo_mensaje_at")
+  ultimoEntranteAt DateTime?  @map("ultimo_entrante_at")
   /// Chat fijado (va primero en la bandeja). Null = no fijado.
-  fijadoAt        DateTime?  @map("fijado_at")
-  createdAt       DateTime   @default(now()) @map("created_at")
-  updatedAt       DateTime   @default(now()) @updatedAt @map("updated_at")
+  fijadoAt         DateTime?  @map("fijado_at")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @default(now()) @updatedAt @map("updated_at")
 
-  contacto    Contacto            @relation(fields: [contactoId], references: [id], onDelete: Cascade)
-  canal       CanalWhatsapp?      @relation(fields: [canalId], references: [id], onDelete: SetNull)
-  responsable Usuario?            @relation(fields: [responsableId], references: [id], onDelete: SetNull)
-  mensajes    Mensaje[]
-  programados MensajeProgramado[]
-  citas       Cita[]
+  contacto     Contacto            @relation(fields: [contactoId], references: [id], onDelete: Cascade)
+  canal        CanalWhatsapp?      @relation(fields: [canalId], references: [id], onDelete: SetNull)
+  responsable  Usuario?            @relation(fields: [responsableId], references: [id], onDelete: SetNull)
+  mensajes     Mensaje[]
+  programados  MensajeProgramado[]
+  citas        Cita[]
   auditoriaBot AuditoriaBot[]
 
   @@unique([contactoId, canalId])
@@ -803,9 +857,9 @@ model Mensaje {
   conversacion Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
   usuario      Usuario?     @relation(fields: [enviadoPor], references: [id], onDelete: SetNull)
 
+  @@unique([canalId, waMessageId])
   @@index([conversacionId, timestamp])
   @@index([conversacionId, createdAt, id])
-  @@unique([canalId, waMessageId])
   @@index([orgId])
   @@map("mensajes")
 }
@@ -859,37 +913,37 @@ model Tarea {
 
 // Una fila de ajustes POR org (ya no es única global).
 model Ajustes {
-  id                 BigInt   @id @default(autoincrement())
-  orgId              BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  autoAsignar        Boolean  @default(false) @map("auto_asignar")
-  bienvenidaActiva   Boolean  @default(false) @map("bienvenida_activa")
-  bienvenidaTexto    String?  @map("bienvenida_texto")
-  crearLeadAuto      Boolean  @default(true) @map("crear_lead_auto")
+  id                       BigInt    @id @default(autoincrement())
+  orgId                    BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  autoAsignar              Boolean   @default(false) @map("auto_asignar")
+  bienvenidaActiva         Boolean   @default(false) @map("bienvenida_activa")
+  bienvenidaTexto          String?   @map("bienvenida_texto")
+  crearLeadAuto            Boolean   @default(true) @map("crear_lead_auto")
   // CSAT
-  csatActivo         Boolean  @default(false) @map("csat_activo")
-  csatTexto          String?  @map("csat_texto")
+  csatActivo               Boolean   @default(false) @map("csat_activo")
+  csatTexto                String?   @map("csat_texto")
   // Horario de atención
-  horarioActivo      Boolean  @default(false) @map("horario_activo")
-  horarioInicio      String?  @map("horario_inicio") // "09:00"
-  horarioFin         String?  @map("horario_fin") // "18:00"
-  horarioDias        String?  @map("horario_dias") // "1,2,3,4,5" (1=lunes)
-  fueraHorarioTexto  String?  @map("fuera_horario_texto")
+  horarioActivo            Boolean   @default(false) @map("horario_activo")
+  horarioInicio            String?   @map("horario_inicio") // "09:00"
+  horarioFin               String?   @map("horario_fin") // "18:00"
+  horarioDias              String?   @map("horario_dias") // "1,2,3,4,5" (1=lunes)
+  fueraHorarioTexto        String?   @map("fuera_horario_texto")
   // Auto-resolver
-  autoResolverActivo Boolean  @default(false) @map("auto_resolver_activo")
-  autoResolverHoras  Int      @default(24) @map("auto_resolver_horas")
+  autoResolverActivo       Boolean   @default(false) @map("auto_resolver_activo")
+  autoResolverHoras        Int       @default(24) @map("auto_resolver_horas")
   // IA
-  nombreNegocio      String?  @map("nombre_negocio")
-  iaPromptSistema    String?  @map("ia_prompt_sistema")
-  marcaNombre        String?  @map("marca_nombre")
-  marcaLogo          String?  @map("marca_logo")
-  marcaColorPrimario String?  @map("marca_color_primario")
-  marcaColorAcento   String?  @map("marca_color_acento")
-  marcaPreset        String?  @map("marca_preset")
-  tarifaMarketingUsd Decimal @default(0.04) @map("tarifa_marketing_usd") @db.Decimal(8, 4)
-  campanasEnvioActivas Boolean @default(false) @map("campanas_envio_activas")
-  campanasEnvioCambiadoPor BigInt? @map("campanas_envio_cambiado_por")
-  campanasEnvioCambiadoAt DateTime? @map("campanas_envio_cambiado_at") @db.Timestamptz(6)
-  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
+  nombreNegocio            String?   @map("nombre_negocio")
+  iaPromptSistema          String?   @map("ia_prompt_sistema")
+  marcaNombre              String?   @map("marca_nombre")
+  marcaLogo                String?   @map("marca_logo")
+  marcaColorPrimario       String?   @map("marca_color_primario")
+  marcaColorAcento         String?   @map("marca_color_acento")
+  marcaPreset              String?   @map("marca_preset")
+  tarifaMarketingUsd       Decimal   @default(0.04) @map("tarifa_marketing_usd") @db.Decimal(8, 4)
+  campanasEnvioActivas     Boolean   @default(false) @map("campanas_envio_activas")
+  campanasEnvioCambiadoPor BigInt?   @map("campanas_envio_cambiado_por")
+  campanasEnvioCambiadoAt  DateTime? @map("campanas_envio_cambiado_at") @db.Timestamptz(6)
+  updatedAt                DateTime  @default(now()) @updatedAt @map("updated_at")
 
   @@unique([orgId])
   @@map("ajustes")
@@ -909,37 +963,37 @@ model ModuloOrg {
 }
 
 model CampanaEnvio {
-  id              BigInt   @id @default(autoincrement())
-  orgId           BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  nombre          String
-  canalId         BigInt   @map("canal_id")
-  plantillaNombre String   @map("plantilla_nombre")
-  plantillaIdioma String   @map("plantilla_idioma")
-  plantillaEstado String?  @map("plantilla_estado")
+  id                    BigInt    @id @default(autoincrement())
+  orgId                 BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre                String
+  canalId               BigInt    @map("canal_id")
+  plantillaNombre       String    @map("plantilla_nombre")
+  plantillaIdioma       String    @map("plantilla_idioma")
+  plantillaEstado       String?   @map("plantilla_estado")
   plantillaConsultadaAt DateTime? @map("plantilla_consultada_at") @db.Timestamptz(6)
-  mapeoVariables  Json     @default("[]") @map("mapeo_variables")
-  estado          String   @default("borrador")
-  motivoPausa     String?  @map("motivo_pausa")
-  fallosConsultaMeta Int   @default(0) @map("fallos_consulta_meta")
-  diasSemana      Int[]    @default([1, 2, 3, 4, 5]) @map("dias_semana")
-  horaInicio      String   @default("09:30") @map("hora_inicio")
-  horaFin         String   @default("17:30") @map("hora_fin")
-  zonaHoraria     String   @default("America/Mexico_City") @map("zona_horaria")
-  tandaTamano     Int      @default(5) @map("tanda_tamano")
-  pausaTandaMin   Int      @default(10) @map("pausa_tanda_min")
-  topeDiario      Int      @default(50) @map("tope_diario")
-  fechaInicio     DateTime @default(now()) @map("fecha_inicio") @db.Timestamptz(6)
-  ultimaTandaAt   DateTime? @map("ultima_tanda_at") @db.Timestamptz(6)
-  creadoPor       BigInt? @map("creado_por")
-  confirmoPermiso Boolean @default(false) @map("confirmo_permiso")
-  permisoAt       DateTime? @map("permiso_at") @db.Timestamptz(6)
-  listaAceptadaPorArea Json? @map("lista_aceptada_por_area")
-  listaAceptadaPor BigInt? @map("lista_aceptada_por")
-  listaAceptadaAt DateTime? @map("lista_aceptada_at") @db.Timestamptz(6)
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  mapeoVariables        Json      @default("[]") @map("mapeo_variables")
+  estado                String    @default("borrador")
+  motivoPausa           String?   @map("motivo_pausa")
+  fallosConsultaMeta    Int       @default(0) @map("fallos_consulta_meta")
+  diasSemana            Int[]     @default([1, 2, 3, 4, 5]) @map("dias_semana")
+  horaInicio            String    @default("09:30") @map("hora_inicio")
+  horaFin               String    @default("17:30") @map("hora_fin")
+  zonaHoraria           String    @default("America/Mexico_City") @map("zona_horaria")
+  tandaTamano           Int       @default(5) @map("tanda_tamano")
+  pausaTandaMin         Int       @default(10) @map("pausa_tanda_min")
+  topeDiario            Int       @default(50) @map("tope_diario")
+  fechaInicio           DateTime  @default(now()) @map("fecha_inicio") @db.Timestamptz(6)
+  ultimaTandaAt         DateTime? @map("ultima_tanda_at") @db.Timestamptz(6)
+  creadoPor             BigInt?   @map("creado_por")
+  confirmoPermiso       Boolean   @default(false) @map("confirmo_permiso")
+  permisoAt             DateTime? @map("permiso_at") @db.Timestamptz(6)
+  listaAceptadaPorArea  Json?     @map("lista_aceptada_por_area")
+  listaAceptadaPor      BigInt?   @map("lista_aceptada_por")
+  listaAceptadaAt       DateTime? @map("lista_aceptada_at") @db.Timestamptz(6)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  canal CanalWhatsapp @relation(fields: [canalId], references: [id], onDelete: Restrict)
+  canal         CanalWhatsapp         @relation(fields: [canalId], references: [id], onDelete: Restrict)
   destinatarios CampanaDestinatario[]
 
   @@index([orgId, estado])
@@ -948,23 +1002,23 @@ model CampanaEnvio {
 }
 
 model CampanaDestinatario {
-  id BigInt @id @default(autoincrement())
-  orgId BigInt @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  campanaId BigInt @map("campana_id")
-  contactoId BigInt @map("contacto_id")
-  telefono String
-  variables Json @default("{}")
-  estado String @default("pendiente")
-  motivo String?
-  waMessageId String? @map("wa_message_id")
-  enviadoAt DateTime? @map("enviado_at") @db.Timestamptz(6)
-  errorCodigo Int? @map("error_codigo")
-  reintentos Int @default(0)
+  id           BigInt    @id @default(autoincrement())
+  orgId        BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  campanaId    BigInt    @map("campana_id")
+  contactoId   BigInt    @map("contacto_id")
+  telefono     String
+  variables    Json      @default("{}")
+  estado       String    @default("pendiente")
+  motivo       String?
+  waMessageId  String?   @map("wa_message_id")
+  enviadoAt    DateTime? @map("enviado_at") @db.Timestamptz(6)
+  errorCodigo  Int?      @map("error_codigo")
+  reintentos   Int       @default(0)
   reintentarAt DateTime? @map("reintentar_at") @db.Timestamptz(6)
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  campana CampanaEnvio @relation(fields: [campanaId], references: [id], onDelete: Cascade)
-  contacto Contacto @relation(fields: [contactoId], references: [id], onDelete: Restrict)
+  campana  CampanaEnvio @relation(fields: [campanaId], references: [id], onDelete: Cascade)
+  contacto Contacto     @relation(fields: [contactoId], references: [id], onDelete: Restrict)
 
   @@unique([campanaId, contactoId])
   @@index([campanaId, estado])
@@ -991,25 +1045,25 @@ model CampoPersonalizado {
 }
 
 model Cita {
-  id                    BigInt     @id @default(autoincrement())
-  orgId                 BigInt     @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  contactoId            BigInt     @map("contacto_id")
-  conversacionId        BigInt?    @map("conversacion_id")
-  responsableId         BigInt?    @map("responsable_id")
-  doctorId              BigInt?    @map("doctor_id")
-  inicio                DateTime
-  fin                   DateTime
-  titulo                String
-  notas                 String?
-  estado                EstadoCita @default(programada)
-  recordatorioEnviadoAt DateTime?  @map("recordatorio_enviado_at")
-  recordatorioIntentos Int        @default(0) @map("recordatorio_intentos")
-  recordatorioIntentadoAt DateTime? @map("recordatorio_intentado_at")
-  servicioId            BigInt?    @map("servicio_id")
-  tokenGestion          String?    @unique @map("token_gestion")
-  origen                String     @default("interna")
-  createdAt             DateTime   @default(now()) @map("created_at")
-  updatedAt             DateTime   @default(now()) @updatedAt @map("updated_at")
+  id                      BigInt     @id @default(autoincrement())
+  orgId                   BigInt     @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contactoId              BigInt     @map("contacto_id")
+  conversacionId          BigInt?    @map("conversacion_id")
+  responsableId           BigInt?    @map("responsable_id")
+  doctorId                BigInt?    @map("doctor_id")
+  inicio                  DateTime
+  fin                     DateTime
+  titulo                  String
+  notas                   String?
+  estado                  EstadoCita @default(programada)
+  recordatorioEnviadoAt   DateTime?  @map("recordatorio_enviado_at")
+  recordatorioIntentos    Int        @default(0) @map("recordatorio_intentos")
+  recordatorioIntentadoAt DateTime?  @map("recordatorio_intentado_at")
+  servicioId              BigInt?    @map("servicio_id")
+  tokenGestion            String?    @unique @map("token_gestion")
+  origen                  String     @default("interna")
+  createdAt               DateTime   @default(now()) @map("created_at")
+  updatedAt               DateTime   @default(now()) @updatedAt @map("updated_at")
 
   contacto     Contacto           @relation(fields: [contactoId], references: [id], onDelete: Cascade)
   conversacion Conversacion?      @relation(fields: [conversacionId], references: [id], onDelete: SetNull)
@@ -1019,6 +1073,7 @@ model Cita {
   evoluciones  EvolucionClinica[]
 
   solicitudesResena SolicitudResena[]
+
   @@index([orgId, inicio])
   @@index([contactoId])
   @@index([doctorId])
@@ -1036,12 +1091,12 @@ model Doctor {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
 
-  citas       Cita[]
-  evoluciones EvolucionClinica[]
-  servicios   ServicioReservaDoctor[]
-  horarios    HorarioDoctor[]
-  excepciones ExcepcionHorario[]
-  usuariosAgenda Usuario[] @relation("AccesoAgenda")
+  citas          Cita[]
+  evoluciones    EvolucionClinica[]
+  servicios      ServicioReservaDoctor[]
+  horarios       HorarioDoctor[]
+  excepciones    ExcepcionHorario[]
+  usuariosAgenda Usuario[]               @relation("AccesoAgenda")
 
   @@unique([orgId, nombre])
   @@index([orgId, activo])
@@ -1174,8 +1229,8 @@ model Producto {
   preciosVolumen PrecioVolumen[]
   preciosLista   ListaPrecioProducto[]
   promociones    Promocion[]
-  grupo          Producto?  @relation("VariantesProducto", fields: [grupoId], references: [id], onDelete: SetNull)
-  variantes      Producto[] @relation("VariantesProducto")
+  grupo          Producto?              @relation("VariantesProducto", fields: [grupoId], references: [id], onDelete: SetNull)
+  variantes      Producto[]             @relation("VariantesProducto")
 
   @@unique([orgId, sku])
   @@unique([orgId, codigoBarras])
@@ -1186,42 +1241,42 @@ model Producto {
 }
 
 model Venta {
-  id               BigInt    @id @default(autoincrement())
-  orgId            BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  folio            String
-  contactoId       BigInt?   @map("contacto_id")
-  creadoPorId      BigInt?   @map("creado_por_id")
-  turnoId          BigInt?   @map("turno_id")
-  cajaId           BigInt?   @map("caja_id")
-  uuidCliente      String?   @map("uuid_cliente")
-  tokenSeguimiento String?   @unique @map("token_seguimiento")
-  tipoEntrega      String?   @map("tipo_entrega")
-  direccionEntrega String?   @map("direccion_entrega")
-  horarioDeseado   DateTime? @map("horario_deseado")
-  costoEnvio       Decimal   @default(0) @map("costo_envio") @db.Decimal(12, 2)
-  pedidoIp         String?   @map("pedido_ip")
-  estado           String    @default("pendiente")
-  canal            String    @default("mostrador")
-  metodoPago       String?   @map("metodo_pago")
-  subtotal         Decimal   @default(0) @db.Decimal(12, 2)
-  descuento        Decimal   @default(0) @db.Decimal(12, 2)
-  total            Decimal   @default(0) @db.Decimal(12, 2)
-  cambio           Decimal   @default(0) @db.Decimal(12, 2)
-  moneda           String    @default("MXN")
-  notas            String?
-  stockAplicado    Boolean   @default(false) @map("stock_aplicado")
-  esCredito        Boolean   @default(false) @map("es_credito")
-  sinRed           Boolean   @default(false) @map("sin_red")
-  vendidaAt        DateTime? @map("vendida_at")
-  subidaAt         DateTime? @map("subida_at")
-  turnoOriginalId  BigInt?   @map("turno_original_id")
-  revisionMotivos  String[]  @default([]) @map("revision_motivos")
-  diferenciaPrecio Decimal?  @map("diferencia_precio") @db.Decimal(12, 2)
-  catalogoVersion  String?   @map("catalogo_version")
+  id                  BigInt    @id @default(autoincrement())
+  orgId               BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  folio               String
+  contactoId          BigInt?   @map("contacto_id")
+  creadoPorId         BigInt?   @map("creado_por_id")
+  turnoId             BigInt?   @map("turno_id")
+  cajaId              BigInt?   @map("caja_id")
+  uuidCliente         String?   @map("uuid_cliente")
+  tokenSeguimiento    String?   @unique @map("token_seguimiento")
+  tipoEntrega         String?   @map("tipo_entrega")
+  direccionEntrega    String?   @map("direccion_entrega")
+  horarioDeseado      DateTime? @map("horario_deseado")
+  costoEnvio          Decimal   @default(0) @map("costo_envio") @db.Decimal(12, 2)
+  pedidoIp            String?   @map("pedido_ip")
+  estado              String    @default("pendiente")
+  canal               String    @default("mostrador")
+  metodoPago          String?   @map("metodo_pago")
+  subtotal            Decimal   @default(0) @db.Decimal(12, 2)
+  descuento           Decimal   @default(0) @db.Decimal(12, 2)
+  total               Decimal   @default(0) @db.Decimal(12, 2)
+  cambio              Decimal   @default(0) @db.Decimal(12, 2)
+  moneda              String    @default("MXN")
+  notas               String?
+  stockAplicado       Boolean   @default(false) @map("stock_aplicado")
+  esCredito           Boolean   @default(false) @map("es_credito")
+  sinRed              Boolean   @default(false) @map("sin_red")
+  vendidaAt           DateTime? @map("vendida_at")
+  subidaAt            DateTime? @map("subida_at")
+  turnoOriginalId     BigInt?   @map("turno_original_id")
+  revisionMotivos     String[]  @default([]) @map("revision_motivos")
+  diferenciaPrecio    Decimal?  @map("diferencia_precio") @db.Decimal(12, 2)
+  catalogoVersion     String?   @map("catalogo_version")
   revisionResueltaAt  DateTime? @map("revision_resuelta_at")
   revisionResueltaPor BigInt?   @map("revision_resuelta_por")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at")
 
   contacto               Contacto?                 @relation(fields: [contactoId], references: [id], onDelete: SetNull)
   creadoPor              Usuario?                  @relation("VentaCreadoPor", fields: [creadoPorId], references: [id], onDelete: SetNull)
@@ -1238,6 +1293,7 @@ model Venta {
   reservasPedido         ReservaPedido[]
 
   solicitudesResena SolicitudResena[]
+
   @@unique([orgId, folio])
   @@unique([orgId, uuidCliente])
   @@index([orgId, estado, createdAt])
@@ -1266,17 +1322,17 @@ model ReservaPedido {
 }
 
 model VentaPartida {
-  id             BigInt  @id @default(autoincrement())
-  orgId          BigInt  @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  ventaId        BigInt  @map("venta_id")
-  productoId     BigInt  @map("producto_id")
-  cantidad       Decimal @db.Decimal(12, 3)
-  precioUnitario Decimal @map("precio_unitario") @db.Decimal(12, 2)
-  costoUnitario  Decimal? @map("costo_unitario") @db.Decimal(12, 2)
-  descuento      Decimal @default(0) @db.Decimal(12, 2)
-  descuentoPromocion Decimal @default(0) @map("descuento_promocion") @db.Decimal(12, 2)
-  promocionDescripcion String? @map("promocion_descripcion")
-  total          Decimal @db.Decimal(12, 2)
+  id                   BigInt   @id @default(autoincrement())
+  orgId                BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  ventaId              BigInt   @map("venta_id")
+  productoId           BigInt   @map("producto_id")
+  cantidad             Decimal  @db.Decimal(12, 3)
+  precioUnitario       Decimal  @map("precio_unitario") @db.Decimal(12, 2)
+  costoUnitario        Decimal? @map("costo_unitario") @db.Decimal(12, 2)
+  descuento            Decimal  @default(0) @db.Decimal(12, 2)
+  descuentoPromocion   Decimal  @default(0) @map("descuento_promocion") @db.Decimal(12, 2)
+  promocionDescripcion String?  @map("promocion_descripcion")
+  total                Decimal  @db.Decimal(12, 2)
 
   venta        Venta               @relation(fields: [ventaId], references: [id], onDelete: Cascade)
   producto     Producto            @relation(fields: [productoId], references: [id], onDelete: Restrict)
@@ -1553,17 +1609,17 @@ model Cotizacion {
 }
 
 model CotizacionPartida {
-  id           BigInt  @id @default(autoincrement())
-  orgId        BigInt  @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
-  cotizacionId BigInt  @map("cotizacion_id")
-  productoId   BigInt? @map("producto_id")
-  concepto     String
-  cantidad     Decimal @db.Decimal(12, 3)
-  precio       Decimal @db.Decimal(12, 2)
-  descuento    Decimal @default(0) @db.Decimal(12, 2)
-  descuentoPromocion Decimal @default(0) @map("descuento_promocion") @db.Decimal(12, 2)
+  id                   BigInt  @id @default(autoincrement())
+  orgId                BigInt  @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  cotizacionId         BigInt  @map("cotizacion_id")
+  productoId           BigInt? @map("producto_id")
+  concepto             String
+  cantidad             Decimal @db.Decimal(12, 3)
+  precio               Decimal @db.Decimal(12, 2)
+  descuento            Decimal @default(0) @db.Decimal(12, 2)
+  descuentoPromocion   Decimal @default(0) @map("descuento_promocion") @db.Decimal(12, 2)
   promocionDescripcion String? @map("promocion_descripcion")
-  total        Decimal @db.Decimal(12, 2)
+  total                Decimal @db.Decimal(12, 2)
 
   cotizacion Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
   producto   Producto?  @relation(fields: [productoId], references: [id], onDelete: SetNull)

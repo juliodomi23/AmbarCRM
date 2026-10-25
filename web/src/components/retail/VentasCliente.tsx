@@ -77,11 +77,13 @@ export function VentasCliente({
   productos,
   contactos,
   pagosActivos = false,
+  puedeReembolsar = false,
 }: {
   ventas: VentaRetail[];
   productos: ProductoRetail[];
   contactos: ContactoVenta[];
   pagosActivos?: boolean;
+  puedeReembolsar?: boolean;
 }) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState("");
@@ -292,7 +294,7 @@ export function VentasCliente({
                   Reimprimir ticket
                 </Link>
               )}
-              {pagosActivos && <CobroEnLinea venta={venta} />}
+              {pagosActivos && <CobroEnLinea venta={venta} puedeReembolsar={puedeReembolsar} />}
             </div>
           </article>
         ))}

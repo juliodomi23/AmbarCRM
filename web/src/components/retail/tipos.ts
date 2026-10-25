@@ -72,6 +72,11 @@ export type VentaRetail = {
     id: string;
     estado: string;
     checkoutUrl: string | null;
+    proveedor: string;
+    monto: DecimalSerializado;
+    montoReembolsado: DecimalSerializado;
+    moneda: string;
+    expiraAt: string | null;
   } | null;
 };
 

@@ -100,7 +100,7 @@ const checkout = await proveedor.crearCheckout({
   moneda: "MXN",
   idempotencyKey: "venta:10:100.00",
   urlResultado: "http://localhost:3000/pagos/resultado",
-  urlWebhook: "http://localhost:3000/api/public/pagos/webhook/mock?org=91",
+  urlWebhook: "http://localhost:3000/api/public/pagos/webhook/mock/91",
   expiraAt: new Date(ahora + 60_000),
 });
 assert.match(checkout.url, /pago=10/);
