@@ -1223,7 +1223,7 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 -- CorrecciÃ³n A2 Â· las notas de crÃ©dito pueden pagar ventas de caja.
 ALTER TABLE pagos_venta DROP CONSTRAINT IF EXISTS pagos_venta_metodo_check;
 ALTER TABLE pagos_venta ADD CONSTRAINT pagos_venta_metodo_check
-  CHECK (metodo IN ('efectivo', 'tarjeta', 'transferencia', 'nota_credito', 'mercado_pago', 'mock'));
+  CHECK (metodo IN ('efectivo', 'tarjeta', 'transferencia', 'nota_credito', 'mercado_pago', 'stripe', 'mock'));
 
 -- B Â· Cotizaciones.
 CREATE TABLE IF NOT EXISTS cotizaciones (
@@ -1987,7 +1987,7 @@ GRANT EXECUTE ON FUNCTION registrar_dispositivo_push(BIGINT, TEXT, TEXT) TO crm_
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 ALTER TABLE pagos_venta DROP CONSTRAINT IF EXISTS pagos_venta_metodo_check;
 ALTER TABLE pagos_venta ADD CONSTRAINT pagos_venta_metodo_check
-  CHECK (metodo IN ('efectivo', 'tarjeta', 'transferencia', 'nota_credito', 'mercado_pago', 'mock'));
+  CHECK (metodo IN ('efectivo', 'tarjeta', 'transferencia', 'nota_credito', 'mercado_pago', 'stripe', 'mock'));
 
 CREATE TABLE IF NOT EXISTS pagos_online (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
