@@ -28,6 +28,16 @@ for (const valor of [appUrl, adminUrl]) {
 }
 const admin = new pg.Pool({ connectionString: adminUrl, max: 1 });
 const orgId = 12n, otraOrgId = 13n;
+const FechaNativa = Date;
+const instanteBaseMs = FechaNativa.parse("2026-10-30T16:00:00Z");
+const relojPrueba = { ahora: () => instanteBaseMs };
+class FechaConRelojFijo extends FechaNativa {
+  constructor(valor?: string | number | Date) {
+    super(valor === undefined ? relojPrueba.ahora() : valor instanceof FechaNativa ? valor.getTime() : valor);
+  }
+  static now() { return relojPrueba.ahora(); }
+}
+globalThis.Date = FechaConRelojFijo as DateConstructor;
 const ahoraPrueba = new Date("2026-10-19T16:00:00Z");
 const plantilla = { name: "exi_aviso", language: "es_MX", status: "APPROVED" };
 const respuestas = new Map<string, number>();
@@ -251,7 +261,7 @@ async function main() {
     const llamarCron = () => cron(new NextRequest("http://127.0.0.1/api/cron/campanas-envio", { method: "POST", headers: { "x-api-key": "cron-prueba" } }));
     const interruptor = await crearCampana("Interruptor general", canal.id, [contactos[17].id, contactos[18].id, contactos[19].id], { tandaTamano: 1, diasSemana: [0,1,2,3,4,5,6], horaInicio: "00:00", horaFin: "23:59" });
     const primerDestinatario = await db.campanaDestinatario.findFirstOrThrow({ where: { campanaId: interruptor.id }, orderBy: { id: "asc" } });
-    const haceOnceMinutos = new Date(Date.now() - 11 * 60_000);
+    const haceOnceMinutos = new Date(relojPrueba.ahora() - 11 * 60_000);
     await db.campanaDestinatario.update({ where: { id: primerDestinatario.id }, data: { estado: "enviando", enviadoAt: haceOnceMinutos, updatedAt: haceOnceMinutos } });
     assert.equal((await getAjustes()).campanasEnvioActivas, false, "sin fila de ajustes el interruptor está apagado");
     const grafoAntes = consultasPlantillas, enviosAntes = llamadas.length;
@@ -428,7 +438,8 @@ async function main() {
     await db.campanaEnvio.update({ where: { id: c.id }, data: { estado: "completada" } });
 
     const recuperada = await crearCampana("Reinicio", canal.id, [contactos[7].id], { diasSemana: [0,1,2,3,4,5,6], horaInicio: "00:00", horaFin: "23:59" });
-    await db.campanaDestinatario.updateMany({ where: { campanaId: recuperada.id }, data: { estado: "enviando", enviadoAt: new Date(Date.now() - 11 * 60_000), updatedAt: new Date(Date.now() - 11 * 60_000) } });
+    const reservaAtrasada = new Date(relojPrueba.ahora() - 11 * 60_000);
+    await db.campanaDestinatario.updateMany({ where: { campanaId: recuperada.id }, data: { estado: "enviando", enviadoAt: reservaAtrasada, updatedAt: reservaAtrasada } });
     const respuesta = await cron(new NextRequest("http://127.0.0.1/api/cron/campanas-envio", { method: "POST", headers: { "x-api-key": "cron-prueba" } }));
     assert.equal(respuesta.status, 200);
     assert.equal(await db.campanaDestinatario.count({ where: { campanaId: recuperada.id, estado: "enviado" } }), 1);
@@ -442,7 +453,7 @@ async function main() {
       const d = await db.campanaDestinatario.findFirstOrThrow({ where: { campanaId: prueba.id } });
       assert.equal(d.errorCodigo, codigo);
       if (codigo === 131050) assert.equal((await db.contacto.findUniqueOrThrow({ where: { id: contactos[indice].id } })).optOutDifusion, true);
-      if (codigo === 131049) assert.ok(d.reintentarAt && d.reintentarAt > new Date());
+      if (codigo === 131049) assert.ok(d.reintentarAt && d.reintentarAt > new Date("2026-10-21T16:00:00Z"));
       if (codigo === 131042 || codigo === 190) assert.equal((await db.campanaEnvio.findUniqueOrThrow({ where: { id: prueba.id } })).estado, "pausada");
       await db.campanaEnvio.update({ where: { id: prueba.id }, data: { estado: "completada" } });
     }
@@ -531,4 +542,4 @@ async function main() {
 }
 
 try { await main(); }
-finally { globalThis.fetch = fetchOriginal; await admin.end(); await dbRaw.$disconnect(); }
+finally { globalThis.fetch = fetchOriginal; globalThis.Date = FechaNativa; await admin.end(); await dbRaw.$disconnect(); }
