@@ -1279,6 +1279,9 @@ model Producto {
   categoria        String?
   descripcion      String?
   precio           Decimal  @default(0) @db.Decimal(12, 2)
+  ivaTasa          Decimal  @default(0.16) @map("iva_tasa") @db.Decimal(7, 6)
+  ivaExento        Boolean  @default(false) @map("iva_exento")
+  precioIncluyeIva Boolean  @default(true) @map("precio_incluye_iva")
   costo            Decimal  @default(0) @db.Decimal(12, 2)
   stock            Decimal  @default(0) @db.Decimal(12, 3)
   stockMinimo      Decimal  @default(0) @map("stock_minimo") @db.Decimal(12, 3)
@@ -1333,6 +1336,8 @@ model Venta {
   subtotal            Decimal   @default(0) @db.Decimal(12, 2)
   descuento           Decimal   @default(0) @db.Decimal(12, 2)
   total               Decimal   @default(0) @db.Decimal(12, 2)
+  ivaTotal            Decimal   @default(0) @map("iva_total") @db.Decimal(12, 2)
+  ivaEnvio            Decimal   @default(0) @map("iva_envio") @db.Decimal(12, 2)
   cambio              Decimal   @default(0) @db.Decimal(12, 2)
   moneda              String    @default("MXN")
   notas               String?
@@ -1405,6 +1410,10 @@ model VentaPartida {
   costoUnitario        Decimal? @map("costo_unitario") @db.Decimal(12, 2)
   descuento            Decimal  @default(0) @db.Decimal(12, 2)
   descuentoPromocion   Decimal  @default(0) @map("descuento_promocion") @db.Decimal(12, 2)
+  ivaTasa              Decimal? @map("iva_tasa") @db.Decimal(7, 6)
+  ivaExento            Boolean? @map("iva_exento")
+  ivaImporte           Decimal? @map("iva_importe") @db.Decimal(12, 2)
+  baseImporte          Decimal? @map("base_importe") @db.Decimal(12, 2)
   promocionDescripcion String?  @map("promocion_descripcion")
   total                Decimal  @db.Decimal(12, 2)
 
@@ -1694,6 +1703,10 @@ model CotizacionPartida {
   descuentoPromocion   Decimal @default(0) @map("descuento_promocion") @db.Decimal(12, 2)
   promocionDescripcion String? @map("promocion_descripcion")
   total                Decimal @db.Decimal(12, 2)
+  ivaTasa              Decimal? @map("iva_tasa") @db.Decimal(7, 6)
+  ivaExento            Boolean? @map("iva_exento")
+  baseImporte          Decimal? @map("base_importe") @db.Decimal(12, 2)
+  ivaImporte           Decimal? @map("iva_importe") @db.Decimal(12, 2)
 
   cotizacion Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
   producto   Producto?  @relation(fields: [productoId], references: [id], onDelete: SetNull)
@@ -2468,6 +2481,7 @@ model ConceptoFactura {
   iva            Decimal  @default(0) @db.Decimal(12, 2)
   retenciones    Decimal  @default(0) @db.Decimal(12, 2)
   ivaTasa        Decimal  @default(0.16) @map("iva_tasa") @db.Decimal(7, 6)
+  ivaExento      Boolean  @default(false) @map("iva_exento")
   retencionTasa  Decimal  @default(0) @map("retencion_tasa") @db.Decimal(7, 6)
   claveProdServ  String?  @map("clave_prod_serv")
   claveUnidad    String?  @map("clave_unidad")

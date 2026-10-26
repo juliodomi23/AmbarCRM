@@ -2312,6 +2312,7 @@ CREATE TABLE IF NOT EXISTS conceptos_factura (
   UNIQUE (id, org_id)
 );
 ALTER TABLE conceptos_factura ADD COLUMN IF NOT EXISTS iva_tasa NUMERIC(7,6) NOT NULL DEFAULT 0.160000;
+ALTER TABLE conceptos_factura ADD COLUMN IF NOT EXISTS iva_exento BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE conceptos_factura ADD COLUMN IF NOT EXISTS retencion_tasa NUMERIC(7,6) NOT NULL DEFAULT 0.000000;
 UPDATE conceptos_factura
 SET iva_tasa = CASE WHEN iva > 0 THEN 0.160000 ELSE 0 END
@@ -2446,3 +2447,26 @@ DO $$ DECLARE t TEXT; BEGIN
 END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON calendarios_conectados,eventos_calendario TO crm_app;
 GRANT USAGE, SELECT ON SEQUENCE calendarios_conectados_id_seq,eventos_calendario_id_seq TO crm_app;
+-- IVA por producto: defaults conservan precios actuales (16% incluido).
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS iva_tasa NUMERIC(7,6) DEFAULT 0.16;
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS iva_exento BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS precio_incluye_iva BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS iva_total NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS iva_envio NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE venta_partidas ADD COLUMN IF NOT EXISTS iva_tasa NUMERIC(7,6);
+ALTER TABLE venta_partidas ADD COLUMN IF NOT EXISTS iva_exento BOOLEAN;
+ALTER TABLE venta_partidas ADD COLUMN IF NOT EXISTS iva_importe NUMERIC(12,2);
+ALTER TABLE venta_partidas ADD COLUMN IF NOT EXISTS base_importe NUMERIC(12,2);
+ALTER TABLE cotizacion_partidas ADD COLUMN IF NOT EXISTS iva_tasa NUMERIC(7,6);
+ALTER TABLE cotizacion_partidas ADD COLUMN IF NOT EXISTS iva_exento BOOLEAN;
+ALTER TABLE cotizacion_partidas ADD COLUMN IF NOT EXISTS base_importe NUMERIC(12,2);
+ALTER TABLE cotizacion_partidas ADD COLUMN IF NOT EXISTS iva_importe NUMERIC(12,2);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'productos_iva_tasa_check') THEN
+    ALTER TABLE productos ADD CONSTRAINT productos_iva_tasa_check CHECK (iva_tasa IS NULL OR iva_tasa IN (0, 0.08, 0.16));
+  END IF;
+END $$;
+UPDATE productos SET iva_tasa = 0.16 WHERE iva_tasa IS NULL;
+ALTER TABLE productos ALTER COLUMN iva_tasa SET DEFAULT 0.16;
+ALTER TABLE productos ALTER COLUMN iva_tasa SET NOT NULL;
+
