@@ -15,6 +15,7 @@
     "check:app-movil-http": "tsx scripts/check-app-movil-http.ts",
     "check:pagos-online": "tsx scripts/check-pagos-online.ts",
     "check:cfdi": "tsx scripts/check-cfdi.ts",
+    "check:iva-producto": "tsx scripts/check-iva-producto.ts",
     "check:calendario": "tsx scripts/check-calendario.ts",
     "test:calendario:e2e": "tsx prisma/scripts/test-calendario-e2e.ts",
     "seed:admin": "node scripts/seed-admin.mjs"

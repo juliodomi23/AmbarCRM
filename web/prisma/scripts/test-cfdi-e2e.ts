@@ -30,6 +30,7 @@ async function limpiarOrgs() {
   await admin.query("DELETE FROM pagos_online WHERE org_id = ANY($1::bigint[])", [orgsPrueba]);
   await admin.query("DELETE FROM ventas WHERE org_id = ANY($1::bigint[])", [orgsPrueba]);
   await admin.query("DELETE FROM contactos WHERE org_id = ANY($1::bigint[])", [orgsPrueba]);
+  await admin.query("DELETE FROM productos WHERE org_id = ANY($1::bigint[])", [orgsPrueba]);
   await admin.query("DELETE FROM modulos_org WHERE org_id = ANY($1::bigint[])", [orgsPrueba]);
   await admin.query("DELETE FROM datos_emisor WHERE org_id = ANY($1::bigint[])", [orgsPrueba]);
   await admin.query("DELETE FROM orgs WHERE id = ANY($1::bigint[])", [orgsPrueba]);
@@ -225,6 +226,26 @@ async function main() {
     "el concepto y el total conservan la tasa exacta",
   );
   assert.doesNotMatch(xmlCienTexto, /0\.159961/u);
+
+  const ventaMixta = await runWithOrg(orgA, async () => {
+    const contacto = await db.contacto.create({ data: { nombre: "Cliente IVA mixto" } });
+    await db.datosFiscales.create({ data: { contactoId: contacto.id, rfc: "XAXX010101000", razonSocial: "Cliente IVA mixto", regimenFiscal: "601", codigoPostal: "06600", usoCfdi: "G03" } });
+    const venta = await db.venta.create({ data: { folio: "V-CFDI-MIXTO", contactoId: contacto.id, subtotal: "266.00", total: "266.00", ivaTotal: "16.00", moneda: "MXN", estado: "pagada" } });
+    const gravado = await db.producto.create({ data: { nombre: "Gravado 16", ivaTasa: "0.16" } });
+    const exento = await db.producto.create({ data: { nombre: "Exento", ivaTasa: "0", ivaExento: true } });
+    const tasaCero = await db.producto.create({ data: { nombre: "Tasa cero", ivaTasa: "0", ivaExento: false } });
+    await db.ventaPartida.createMany({ data: [
+      { ventaId: venta.id, productoId: gravado.id, cantidad: 1, precioUnitario: "116.00", total: "116.00", baseImporte: "100.00", ivaImporte: "16.00", ivaTasa: "0.16", ivaExento: false },
+      { ventaId: venta.id, productoId: exento.id, cantidad: 1, precioUnitario: "100.00", total: "100.00", baseImporte: "100.00", ivaImporte: "0.00", ivaTasa: "0.00", ivaExento: true },
+      { ventaId: venta.id, productoId: tasaCero.id, cantidad: 1, precioUnitario: "50.00", total: "50.00", baseImporte: "50.00", ivaImporte: "0.00", ivaTasa: "0.00", ivaExento: false },
+    ] });
+    return venta;
+  });
+  const facturaMixta = await runWithOrg(orgA, () => crearFactura(orgA, { ventaId: ventaMixta.id.toString(), idempotencyKey: "cfdi-e2e-iva-mixto", timbrar: true }));
+  assert.equal(Number(facturaMixta.factura.total), 266);
+  assert.equal(Number(facturaMixta.factura.impuestos), 16);
+  assert.equal(facturaMixta.factura.conceptos.length, 3);
+  assert.deepEqual(facturaMixta.factura.conceptos.map((c) => [Number(c.ivaTasa), c.ivaExento]), [[0.16, false], [0, true], [0, false]]);
 
   const ventaCasiCien = await runWithOrg(orgA, async () => {
     const contacto = await db.contacto.create({ data: { nombre: "Cliente casi cien" } });
