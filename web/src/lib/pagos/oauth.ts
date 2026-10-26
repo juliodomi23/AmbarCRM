@@ -13,6 +13,7 @@ type PayloadState = {
   userId: string;
   nonce: string;
   exp: number;
+  proveedor: "mercado_pago" | "stripe";
 };
 
 export type TokensMercadoPago = {
@@ -48,20 +49,30 @@ function testTokenActivo() {
 }
 
 function firma(valor: string) {
-  return createHmac("sha256", configuracionOAuth().clientSecret)
+  const clave = process.env.PAGOS_TOKEN_ENCRYPTION_KEY?.trim();
+  const secreto = clave ? Buffer.from(clave, "base64") : Buffer.alloc(0);
+  if (secreto.length !== 32)
+    throw new Error("PAGOS_TOKEN_ENCRYPTION_KEY debe ser una clave Base64 de 32 bytes");
+  return createHmac("sha256", secreto)
     .update(valor)
     .digest("base64url");
 }
 
-export function crearStateOAuth(orgId: bigint, userId: bigint) {
+export function crearStatePago(
+  orgId: bigint,
+  userId: bigint,
+  proveedor: "mercado_pago" | "stripe",
+  usarPkce = false,
+) {
   const payload: PayloadState = {
     orgId: String(orgId),
     userId: String(userId),
     nonce: randomBytes(24).toString("base64url"),
     exp: Date.now() + DURACION_STATE_MS,
+    proveedor,
   };
   const codificado = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const codeVerifier = pkceActivo()
+  const codeVerifier = usarPkce && pkceActivo()
     ? randomBytes(48).toString("base64url")
     : undefined;
   const codeChallenge = codeVerifier
@@ -77,6 +88,10 @@ export function crearStateOAuth(orgId: bigint, userId: bigint) {
     codeVerifier,
     codeChallenge,
   };
+}
+
+export function crearStateOAuth(orgId: bigint, userId: bigint) {
+  return crearStatePago(orgId, userId, "mercado_pago", true);
 }
 
 export function leerCookieOAuth(valor: string) {
@@ -99,11 +114,12 @@ export function leerCookieOAuth(valor: string) {
   }
 }
 
-export function validarStateOAuth(
+export function validarStatePago(
   state: string,
   nonceCookie: string,
   orgId: bigint,
   userId: bigint,
+  proveedor: "mercado_pago" | "stripe" = "mercado_pago",
   ahora = Date.now(),
 ) {
   const [codificado, recibida, extra] = state.split(".");
@@ -120,11 +136,22 @@ export function validarStateOAuth(
       payload.nonce === nonceCookie &&
       payload.orgId === String(orgId) &&
       payload.userId === String(userId) &&
+      payload.proveedor === proveedor &&
       payload.exp >= ahora
     );
   } catch {
     return false;
   }
+}
+
+export function validarStateOAuth(
+  state: string,
+  nonceCookie: string,
+  orgId: bigint,
+  userId: bigint,
+  ahora = Date.now(),
+) {
+  return validarStatePago(state, nonceCookie, orgId, userId, "mercado_pago", ahora);
 }
 
 export function urlAutorizacionMercadoPago(
@@ -208,7 +235,6 @@ function datosTokens(tokens: TokensMercadoPago) {
 
 export async function guardarTokensOAuth(orgId: bigint, tokens: TokensMercadoPago) {
   await transaccionTenant(orgId, async (tx) => {
-    await tx.credencialPago.updateMany({ data: { activo: false } });
     await tx.credencialPago.upsert({
       where: { orgId_proveedor: { orgId, proveedor: "mercado_pago" } },
       create: {

@@ -44,8 +44,8 @@ function metadataConflictoResuelto(metadata: Prisma.JsonValue) {
   } as Prisma.InputJsonObject;
 }
 
-async function proveedorPara(orgId: bigint) {
-  try { return await obtenerProveedorPago(orgId); }
+async function proveedorPara(orgId: bigint, proveedor?: "mercado_pago" | "stripe" | "mock") {
+  try { return await obtenerProveedorPago(orgId, proveedor); }
   catch (error) {
     if (error instanceof ErrorConfiguracionPagos) throw new ErrorPago(error.message, error.status);
     throw error;
@@ -480,9 +480,10 @@ async function conciliarReembolsosPendientes(
   const pendientes = await db.reembolsoPago.findMany({
     where: {
       estado: "pendiente",
+      pago: { proveedor: proveedor.clave },
       OR: [{ reintentarAt: null }, { reintentarAt: { lte: new Date() } }],
     },
-    include: { pago: { select: { referenciaExterna: true } } },
+    include: { pago: { select: { referenciaExterna: true, proveedor: true } } },
     take: 50,
   });
   let procesados = 0;
@@ -602,45 +603,32 @@ export async function conciliarPendientes() {
           }))
         )
           return;
-        let proveedor;
-        try {
-          proveedor = await obtenerProveedorPago(org.id);
-        } catch (error) {
-          if (error instanceof ErrorConfiguracionPagos) return;
-          throw error;
-        }
         const pendientes = await db.pagoOnline.findMany({
           where: { estado: "pendiente", checkoutReferencia: { not: null } },
           take: 50,
         });
-        for (const pago of pendientes) {
-          try {
-            const consulta = await proveedor.consultarPago(
-              pago.checkoutReferencia!,
-            );
-            if (!consulta) continue;
-            await procesarEventoPago(org.id, proveedor.clave, {
-              eventoId: `conciliacion:${consulta.referencia}:${consulta.estado}`,
-              tipo: "conciliacion",
-              ...consulta,
-            });
-            procesados++;
-          } catch (error) {
-            errores.push({
-              orgId: String(org.id),
-              pagoId: String(pago.id),
-              motivo:
-                error instanceof Error
-                  ? error.message.slice(0, 180)
-                  : "error desconocido",
-            });
+        for (const clave of new Set(pendientes.map((pago) => pago.proveedor as "mercado_pago" | "stripe" | "mock"))) {
+          let proveedor;
+          try { proveedor = await obtenerProveedorPago(org.id, clave); }
+          catch (error) { if (error instanceof ErrorConfiguracionPagos) continue; throw error; }
+          for (const pago of pendientes.filter((registro) => registro.proveedor === clave)) {
+            try {
+              const consulta = await proveedor.consultarPago(pago.checkoutReferencia!);
+              if (!consulta) continue;
+              await procesarEventoPago(org.id, proveedor.clave, { eventoId: `conciliacion:${consulta.referencia}:${consulta.estado}`, tipo: "conciliacion", ...consulta });
+              procesados++;
+            } catch (error) {
+              errores.push({ orgId: String(org.id), pagoId: String(pago.id), motivo: error instanceof Error ? error.message.slice(0, 180) : "error desconocido" });
+            }
           }
         }
-        reembolsosProcesados += await conciliarReembolsosPendientes(
-          org.id,
-          proveedor,
-          errores,
-        );
+        const pagosConReembolsos = await db.pagoOnline.findMany({ where: { reembolsos: { some: { estado: "pendiente" } } }, select: { proveedor: true }, distinct: ["proveedor"] });
+        for (const registro of pagosConReembolsos) {
+          try {
+            const proveedor = await obtenerProveedorPago(org.id, registro.proveedor as "mercado_pago" | "stripe" | "mock");
+            reembolsosProcesados += await conciliarReembolsosPendientes(org.id, proveedor, errores);
+          } catch (error) { if (!(error instanceof ErrorConfiguracionPagos)) throw error; }
+        }
       });
     } catch (error) {
       errores.push({
@@ -718,7 +706,7 @@ export async function reembolsarPago(
 
   let proveedor;
   try {
-    proveedor = await proveedorPara(sesion.orgId);
+    proveedor = await proveedorPara(sesion.orgId, reservado.pago.proveedor as "mercado_pago" | "stripe" | "mock");
   } catch (error) {
     await registrarErrorReembolso(
       sesion.orgId,

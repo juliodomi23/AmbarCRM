@@ -28,6 +28,7 @@ export type EventoPagoProveedor = {
   montoReembolsado?: string;
   contracargo?: boolean;
   payload: Record<string, string | number | boolean | null>;
+  cuenta?: { id: string; chargesEnabled?: boolean; detailsSubmitted?: boolean; desautorizada?: boolean };
 };
 
 export type ResultadoReembolso = {
@@ -36,7 +37,7 @@ export type ResultadoReembolso = {
 };
 
 export interface ProveedorPago {
-  readonly clave: "mercado_pago" | "mock";
+  readonly clave: "mercado_pago" | "stripe" | "mock";
   crearCheckout(
     datos: DatosCheckout,
   ): Promise<{ url: string; referencia: string; expiraAt: Date }>;
