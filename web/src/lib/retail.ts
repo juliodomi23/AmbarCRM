@@ -40,6 +40,9 @@ function idBigInt(valor: unknown) {
 export function validarProducto(body: Record<string, unknown>) {
   const nombre = texto(body.nombre);
   const precio = decimal(body.precio);
+  const ivaExento = body.ivaTasa === "exento" || body.ivaExento === true;
+  const ivaTasa = ivaExento ? new Prisma.Decimal("0.16") : decimal(body.ivaTasa ?? "0.16");
+  const precioIncluyeIva = body.precioIncluyeIva === undefined ? true : booleano(body.precioIncluyeIva);
   const costo = decimal(body.costo ?? 0);
   const vendePorPeso = booleano(body.vendePorPeso);
   const stock = cantidad(body.stock ?? 0);
@@ -56,6 +59,7 @@ export function validarProducto(body: Record<string, unknown>) {
 
   if (!nombre) return { error: "El nombre del producto es obligatorio" } as const;
   if (precio === null) return { error: "El precio no es válido" } as const;
+  if (ivaTasa === null || !["0", "0.08", "0.16"].includes(ivaTasa.toString())) return { error: "La tasa de IVA debe ser 0, 0.08 o 0.16" } as const;
   if (costo === null) return { error: "El costo no es válido" } as const;
   if (stock === null) return { error: "La existencia no es válida" } as const;
   if (stockMinimo === null) return { error: "El stock mínimo no es válido" } as const;
@@ -74,6 +78,9 @@ export function validarProducto(body: Record<string, unknown>) {
     categoria: texto(body.categoria),
     descripcion: texto(body.descripcion),
     precio,
+    ivaTasa,
+    ivaExento,
+    precioIncluyeIva,
     costo,
     stock,
     stockMinimo,

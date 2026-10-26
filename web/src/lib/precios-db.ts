@@ -15,6 +15,7 @@ export type PrecioCalculado = {
   descuentoPromocion: Prisma.Decimal;
   promocionDescripcion: string | null;
   total: Prisma.Decimal;
+  ivaIncluido: boolean;
   fuentePrecio: "catalogo" | "volumen" | "lista";
 };
 
@@ -47,6 +48,8 @@ export async function calcularPrecios(
     tx.promocion.findMany({ where: { activa: true, OR: [{ productoId: { in: ids } }, { categoria: { in: productos.flatMap((p) => p.categoria ? [p.categoria] : []) } }] }, orderBy: { id: "asc" } }),
     zonaEmpresa(tx),
   ]);
+  const moduloVentas = await tx.moduloOrg.findFirst({ where: { clave: "ventas", activo: true }, select: { config: true } });
+  const preciosIncluyenIva = !(moduloVentas?.config && typeof moduloVentas.config === "object" && !Array.isArray(moduloVentas.config) && (moduloVentas.config as Record<string, unknown>).preciosIncluyenIva === false);
   const precioLista = new Map(preciosLista.map((item) => [String(item.productoId), item.precio]));
   const hoy = fechaLocal(opciones.ahora ?? new Date(), zona);
 
@@ -75,6 +78,17 @@ export async function calcularPrecios(
       promociones: promocionesPuras,
       hoy,
     });
-    return { producto, cantidad: entrada.cantidad, ...linea };
+    const incluyeIva = preciosIncluyenIva && producto.precioIncluyeIva;
+    if (incluyeIva || !producto.ivaTasa || producto.ivaTasa.isZero()) return { producto, cantidad: entrada.cantidad, ivaIncluido: incluyeIva, ...linea };
+    const factor = new Prisma.Decimal(1).plus(producto.ivaTasa);
+    return {
+      producto,
+      cantidad: entrada.cantidad,
+      ivaIncluido: false,
+      ...linea,
+      bruto: linea.bruto.mul(factor).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+      total: linea.total.mul(factor).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+      descuentoPromocion: linea.descuentoPromocion.mul(factor).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+    };
   });
 }

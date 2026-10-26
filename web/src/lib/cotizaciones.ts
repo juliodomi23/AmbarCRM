@@ -3,6 +3,7 @@ import { cantidad } from "@/lib/cantidad";
 import { dinero } from "@/lib/dinero";
 import { CERO_DECIMAL } from "@/lib/retail";
 import { fechaLocal } from "@/lib/reservas/horarios";
+import { desglosarImporte, redondearImporte } from "@/lib/iva-producto";
 
 export const ESTADOS_COTIZACION = ["borrador", "enviada", "aceptada", "rechazada", "vencida"] as const;
 export type EstadoCotizacion = (typeof ESTADOS_COTIZACION)[number];
@@ -111,28 +112,37 @@ export function validarCotizacion(body: Record<string, unknown>) {
 }
 
 export function calcularCotizacion(
-  partidas: readonly { productoId: bigint | null; concepto: string; cantidad: Prisma.Decimal; precio: Prisma.Decimal; descuento: Prisma.Decimal; descuentoPromocion?: Prisma.Decimal; promocionDescripcion?: string | null }[],
+  partidas: readonly { productoId: bigint | null; concepto: string; cantidad: Prisma.Decimal; precio: Prisma.Decimal; descuento: Prisma.Decimal; descuentoPromocion?: Prisma.Decimal; promocionDescripcion?: string | null; ivaTasa?: Prisma.Decimal; ivaExento?: boolean; ivaIncluido?: boolean; importeBruto?: Prisma.Decimal }[],
   descuentoGeneral: Prisma.Decimal,
   config: ConfigCotizaciones,
 ) {
   let subtotal = CERO_DECIMAL;
   let descuentoPartidas = CERO_DECIMAL;
   const calculadas = partidas.map((partida) => {
-    const bruto = partida.precio.mul(partida.cantidad).toDecimalPlaces(2);
+    const bruto = (partida.importeBruto ?? partida.precio.mul(partida.cantidad)).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
     if (partida.descuento.gt(bruto)) throw new Error("El descuento de un concepto supera su importe");
     subtotal = subtotal.plus(bruto);
     descuentoPartidas = descuentoPartidas.plus(partida.descuento);
-    return { ...partida, total: bruto.minus(partida.descuento) };
+    return { ...partida, bruto, total: bruto.minus(partida.descuento) };
   });
   const descuento = descuentoPartidas.plus(descuentoGeneral);
   if (descuento.gt(subtotal)) throw new Error("El descuento supera el subtotal");
-  const base = subtotal.minus(descuento);
-  const tasa = config.ivaPorcentaje.div(100);
-  const impuestos = config.preciosConIva
-    ? base.minus(base.div(tasa.plus(1))).toDecimalPlaces(2)
-    : base.mul(tasa).toDecimalPlaces(2);
-  const total = config.preciosConIva ? base : base.plus(impuestos);
-  return { partidas: calculadas, subtotal, descuento, impuestos, total };
+  let descuentoGeneralAsignado = CERO_DECIMAL;
+  const partidasConImpuestos = calculadas.map((partida, indice) => {
+    const asignado = indice === calculadas.length - 1
+      ? descuentoGeneral.minus(descuentoGeneralAsignado)
+      : (subtotal.isZero() ? CERO_DECIMAL : redondearImporte(descuentoGeneral.mul(partida.bruto).div(subtotal)));
+    descuentoGeneralAsignado = descuentoGeneralAsignado.plus(asignado);
+    const tasa = partida.ivaTasa ?? config.ivaPorcentaje.div(100);
+    const exento = partida.ivaExento ?? false;
+    const incluyeIva = partida.ivaIncluido ?? config.preciosConIva;
+    const desglose = desglosarImporte(partida.total.minus(asignado), tasa, incluyeIva, exento);
+    const totalLinea = desglose.baseImporte.plus(desglose.ivaImporte);
+    return { ...partida, ivaTasa: tasa, ivaExento: exento, baseImporte: desglose.baseImporte, ivaImporte: desglose.ivaImporte, total: totalLinea };
+  });
+  const impuestos = partidasConImpuestos.reduce((suma, partida) => suma.plus(partida.ivaImporte), CERO_DECIMAL);
+  const total = partidasConImpuestos.reduce((suma, partida) => suma.plus(partida.total), CERO_DECIMAL);
+  return { partidas: partidasConImpuestos, subtotal, descuento, impuestos, total };
 }
 
 export function validarRespuestaCotizacion(body: Record<string, unknown>) {
