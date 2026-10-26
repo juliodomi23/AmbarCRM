@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import pg from "pg";
 import { NextRequest } from "next/server";
 import { db, dbRaw, runWithOrg } from "../../src/lib/db";
@@ -7,7 +8,9 @@ import { cifrarCredencialPago } from "../../src/lib/pagos/credenciales";
 import { guardarTokensOAuth } from "../../src/lib/pagos/oauth";
 import { obtenerProveedorPago } from "../../src/lib/pagos/proveedor";
 import { ProveedorMock } from "../../src/lib/pagos/mock";
+import { crearStatePago, validarStatePago } from "../../src/lib/pagos/oauth";
 import { POST as webhookPOST } from "../../src/app/api/public/pagos/webhook/[proveedor]/[org]/route";
+import { POST as webhookStripeConnect } from "../../src/app/api/public/pagos/webhook/stripe/route";
 import {
   conciliarPendientes,
   crearCheckoutVenta,
@@ -39,6 +42,14 @@ process.env.MERCADOPAGO_CLIENT_ID = "cliente-e2e";
 process.env.MERCADOPAGO_CLIENT_SECRET = "secreto-oauth-e2e";
 process.env.MERCADOPAGO_REDIRECT_URI = "http://localhost:3000/api/pagos/oauth/callback";
 process.env.MERCADOPAGO_WEBHOOK_SECRET = "secreto-webhook-aplicacion-e2e";
+process.env.STRIPE_SECRET_KEY = "sk_test_e2e";
+process.env.STRIPE_WEBHOOK_SECRET = "whsec_e2e";
+process.env.STRIPE_PAIS = "MX";
+
+const stateStripe = crearStatePago(91n, 7n, "stripe");
+assert.equal(validarStatePago(stateStripe.state, stateStripe.nonce, 91n, 7n, "stripe"), true);
+assert.equal(validarStatePago(stateStripe.state, "nonce-invalid", 91n, 7n, "stripe"), false, "state con nonce incorrecto se rechaza");
+assert.equal(validarStatePago(stateStripe.state, stateStripe.nonce, 91n, 7n, "stripe", Date.now() + 11 * 60_000), false, "state vencido se rechaza");
 
 const admin = new pg.Pool({ connectionString: adminUrl, max: 1 });
 const orgA = 91n;
@@ -491,7 +502,7 @@ async function main() {
     new NextRequest("http://localhost/api/public/pagos/webhook/mock/92", { method: "POST", body: "{}" }),
     { params: Promise.resolve({ proveedor: "mock", org: "92" }) },
   );
-  assert.equal(orgIncorrecta.status, 409, "la ruta no reutiliza credenciales de otra organización");
+  assert.equal(orgIncorrecta.status, 404, "la ruta no revela ni reutiliza credenciales de otra organización sin conexión local");
   const conciliacion = await conciliarPendientes();
   assert.ok(conciliacion.procesados >= 0, "el cron continúa ante una organización sin credenciales");
   assert.ok(conciliacion.reembolsosProcesados >= 1, "el cron concilia reembolsos pendientes");
@@ -573,6 +584,7 @@ async function main() {
       }),
     );
   await runWithOrg(orgA, async () => {
+    await db.moduloOrg.updateMany({ where: { clave: "pagos_en_linea" }, data: { config: { proveedor: "mercado_pago" } } });
     const proveedorRenovado = await obtenerProveedorPago(orgA);
     assert.equal(proveedorRenovado.clave, "mercado_pago", "un token próximo a vencer se renueva");
   });
@@ -593,8 +605,138 @@ async function main() {
     );
   });
   globalThis.fetch = fetchReal;
+
+  let sesionesStripe = 0;
+  let estadoCuentaStripe = { charges_enabled: false, details_submitted: false };
+  const reembolsosStripe = new Map<string, { id: string; status: string }>();
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    if (url.endsWith("/v1/checkout/sessions")) {
+      sesionesStripe++;
+      const campos = new URLSearchParams(String(init?.body ?? ""));
+      assert.equal(campos.get("line_items[0][price_data][unit_amount]"), "3333");
+      assert.ok(campos.get("line_items[0][price_data][product_data][description]"), "Stripe recibe la descripción del cobro");
+      assert.equal(campos.get("payment_method_types[0]"), "card");
+      const segundosHastaExpirar = Number(campos.get("expires_at")) - Math.floor(Date.now() / 1000);
+      assert.ok(segundosHastaExpirar >= 30 * 60 && segundosHastaExpirar <= 24 * 60 * 60, "Checkout respeta la ventana de expiración de Stripe");
+      return new Response(JSON.stringify({ id: "cs_e2e_stripe_1", url: "https://checkout.stripe.test/e2e", expires_at: Math.floor(Date.now() / 1000) + 3600 }));
+    }
+    if (url.endsWith("/v1/accounts/acct_e2e123")) {
+      return new Response(JSON.stringify({ id: "acct_e2e123", ...estadoCuentaStripe }));
+    }
+    if (url.endsWith("/v1/refunds")) {
+      const headers = new Headers(init?.headers);
+      const key = headers.get("Idempotency-Key") ?? "";
+      const existente = reembolsosStripe.get(key);
+      if (existente) return new Response(JSON.stringify(existente));
+      const resultado = { id: `re_${reembolsosStripe.size + 1}`, status: "succeeded" };
+      reembolsosStripe.set(key, resultado);
+      return new Response(JSON.stringify(resultado));
+    }
+    if (url.includes("/v1/refunds/")) return new Response(JSON.stringify({ id: "re_1", status: "succeeded" }));
+    throw new Error(`fetch inesperado en E2E Stripe: ${url}`);
+  };
+  await runWithOrg(orgA, async () => {
+    await db.credencialPago.upsert({
+      where: { orgId_proveedor: { orgId: orgA, proveedor: "stripe" } },
+      create: { proveedor: "stripe", proveedorUserId: "acct_e2e123", accessTokenEncrypted: null, refreshTokenEncrypted: null, webhookSecretEncrypted: null, sandbox: true, activo: true, stripeChargesEnabled: false, stripeDetailsSubmitted: false },
+      update: { proveedorUserId: "acct_e2e123", sandbox: true, activo: true, requiereReconexion: false, stripeChargesEnabled: false, stripeDetailsSubmitted: false },
+    });
+    await db.moduloOrg.updateMany({ where: { clave: "pagos_en_linea" }, data: { config: { proveedor: "stripe" } } });
+    await assert.rejects(obtenerProveedorPago(orgA), /Falta completar datos en Stripe/, "no permite cobrar durante onboarding incompleto");
+  });
+  await runWithOrg(orgB, async () => {
+    assert.equal(await db.credencialPago.count({ where: { proveedor: "stripe" } }), 0, "RLS no expone la conexión Stripe de la organización A");
+    assert.equal(await db.pagoOnline.count({ where: { proveedor: "stripe" } }), 0, "RLS no expone los pagos Stripe de la organización A");
+  });
+
+  async function stripeRequest(eventoStripe: Record<string, unknown>, opts: { firma?: boolean; timestamp?: number; rutaGlobal?: boolean } = {}) {
+    const cuerpo = JSON.stringify(eventoStripe);
+    const timestamp = opts.timestamp ?? Math.floor(Date.now() / 1000);
+    const firma = createHmac("sha256", process.env.STRIPE_WEBHOOK_SECRET!).update(`${timestamp}.${cuerpo}`).digest("hex");
+    const req = new NextRequest("http://localhost/api/public/pagos/webhook/stripe/91", {
+      method: "POST",
+      headers: { "Stripe-Signature": opts.firma === false ? `t=${timestamp},v1=invalid` : `t=${timestamp},v1=${firma}` },
+      body: cuerpo,
+    });
+    return opts.rutaGlobal ? webhookStripeConnect(req) : webhookPOST(req, { params: Promise.resolve({ proveedor: "stripe", org: "91" }) });
+  }
+  const accountEvent = (id: string, type: string, account = "acct_e2e123") => ({ id, type, account, data: { object: { id: account } } });
+  const incompleto = await stripeRequest(accountEvent("evt_acct_incompleto", "account.updated"));
+  assert.equal(incompleto.status, 200, JSON.stringify(await incompleto.clone().json()));
+  await runWithOrg(orgA, async () => {
+    const guardada = await db.credencialPago.findUniqueOrThrow({ where: { orgId_proveedor: { orgId: orgA, proveedor: "stripe" } } });
+    assert.equal(guardada.stripeChargesEnabled, false, "onboarding incompleto conserva cobros bloqueados");
+    assert.equal(guardada.stripeDetailsSubmitted, false);
+    await assert.rejects(obtenerProveedorPago(orgA), /Falta completar datos en Stripe/);
+  });
+  estadoCuentaStripe = { charges_enabled: true, details_submitted: true };
+  const cuentaLista = await stripeRequest(accountEvent("evt_acct_habilitada", "account.updated"), { rutaGlobal: true });
+  assert.equal(cuentaLista.status, 200);
+  await runWithOrg(orgA, async () => {
+    const guardada = await db.credencialPago.findUniqueOrThrow({ where: { orgId_proveedor: { orgId: orgA, proveedor: "stripe" } } });
+    assert.equal(guardada.stripeChargesEnabled, true, "account.updated habilita cobros solo con charges_enabled");
+    assert.equal(guardada.stripeDetailsSubmitted, true);
+  });
+  const invalidaStripe = await stripeRequest(accountEvent("evt_acct_firma_invalida", "account.updated"), { firma: false });
+  assert.equal(invalidaStripe.status, 401, "firma inválida no cambia la conexión");
+  const vencidaStripe = await stripeRequest(accountEvent("evt_acct_firma_vencida", "account.updated"), { timestamp: Math.floor(Date.now() / 1000) - 600 });
+  assert.equal(vencidaStripe.status, 401, "firma vencida no cambia la conexión");
+  const cuentaAjena = await stripeRequest(accountEvent("evt_acct_ajena", "account.updated", "acct_otraorg"));
+  assert.equal(cuentaAjena.status, 400, "rechaza evento de otra cuenta conectada");
+
+  const stripeSesion = { orgId: orgA, userId: null, rol: "admin", puesto: "Administrador" };
+  const ventaStripe = await runWithOrg(orgA, async () => db.venta.create({ data: { folio: "V-STRIPE-1", total: "33.33", subtotal: "33.33", moneda: "MXN", estado: "pendiente" } }));
+  const pagoStripe = await runWithOrg(orgA, () => crearCheckoutVenta(stripeSesion, { origenTipo: "venta", origenId: String(ventaStripe.id), idempotencyKey: "venta:e2e:stripe-1" }));
+  const pagoStripeRepetido = await runWithOrg(orgA, () => crearCheckoutVenta(stripeSesion, { origenTipo: "venta", origenId: String(ventaStripe.id), idempotencyKey: "venta:e2e:stripe-1" }));
+  assert.equal(pagoStripeRepetido.id, pagoStripe.id);
+  assert.equal(sesionesStripe, 1, "reintento con misma clave no crea otra sesión Stripe");
+  const stripeEventoPago = (id: string, type: string, pagoId: bigint, estado = "paid") => ({ id, type, account: "acct_e2e123", data: { object: { id: `cs_${pagoId}`, payment_intent: `pi_${pagoId}`, client_reference_id: String(pagoId), metadata: { pagoId: String(pagoId) }, amount_total: 3333, currency: "mxn", payment_status: estado } } });
+  const aprobadoStripe = await stripeRequest(stripeEventoPago("evt_stripe_aprobado", "checkout.session.completed", pagoStripe.id));
+  assert.equal(aprobadoStripe.status, 200);
+  const duplicadoStripe = await stripeRequest(stripeEventoPago("evt_stripe_aprobado", "checkout.session.completed", pagoStripe.id));
+  assert.equal((await duplicadoStripe.json()).duplicado, true, "Stripe deduplica el evento repetido");
+  await runWithOrg(orgA, async () => {
+    assert.equal((await db.pagoOnline.findUniqueOrThrow({ where: { id: pagoStripe.id } })).estado, "aprobado");
+    assert.equal(await db.pagoVenta.count({ where: { ventaId: ventaStripe.id } }), 1);
+  });
+
+  for (const caso of [
+    { folio: "V-STRIPE-ASYNC", id: "venta:e2e:stripe-async", event: "checkout.session.async_payment_failed", expected: "rechazado" },
+    { folio: "V-STRIPE-EXPIRED", id: "venta:e2e:stripe-expired", event: "checkout.session.expired", expected: "cancelado" },
+  ]) {
+    const venta = await runWithOrg(orgA, async () => db.venta.create({ data: { folio: caso.folio, total: "33.33", subtotal: "33.33", moneda: "MXN", estado: "pendiente" } }));
+    const registro = await runWithOrg(orgA, () => crearCheckoutVenta(stripeSesion, { origenTipo: "venta", origenId: String(venta.id), idempotencyKey: caso.id }));
+    const respuesta = await stripeRequest(stripeEventoPago(`evt_${caso.event}`, caso.event, registro.id, "unpaid"));
+    assert.equal(respuesta.status, 200);
+    await runWithOrg(orgA, async () => assert.equal((await db.pagoOnline.findUniqueOrThrow({ where: { id: registro.id } })).estado, caso.expected));
+  }
+
+  await runWithOrg(orgA, () => db.moduloOrg.updateMany({ where: { clave: "pagos_en_linea" }, data: { config: { proveedor: "mock" } } }));
+  const parcialStripe = await runWithOrg(orgA, () => reembolsarPago(stripeSesion, pagoStripe.id, "10.00", "refund:e2e:stripe-partial"));
+  assert.equal(parcialStripe.estado, "aprobado", "reembolso usa Stripe aunque cambie el proveedor predeterminado");
+  const parcialStripeRepetido = await runWithOrg(orgA, () => reembolsarPago(stripeSesion, pagoStripe.id, "10.00", "refund:e2e:stripe-partial"));
+  assert.equal(parcialStripeRepetido.id, parcialStripe.id, "reembolso Stripe idempotente");
+  await runWithOrg(orgA, () => reembolsarPago(stripeSesion, pagoStripe.id, "23.33", "refund:e2e:stripe-resto"));
+  await runWithOrg(orgA, async () => {
+    const completo = await db.pagoOnline.findUniqueOrThrow({ where: { id: pagoStripe.id } });
+    assert.equal(completo.estado, "reembolsado");
+    assert.equal(completo.montoReembolsado.toFixed(2), "33.33");
+  });
+  const desconectada = await stripeRequest(accountEvent("evt_stripe_deauthorized", "account.application.deauthorized"));
+  assert.equal(desconectada.status, 200);
+  await runWithOrg(orgA, async () => {
+    const actualizada = await db.credencialPago.findUniqueOrThrow({ where: { orgId_proveedor: { orgId: orgA, proveedor: "stripe" } } });
+    assert.equal(actualizada.requiereReconexion, true, "deauthorized marca Stripe para reconectar");
+    assert.equal(actualizada.stripeChargesEnabled, false);
+    const proveedorMock = await obtenerProveedorPago(orgA);
+    assert.equal(proveedorMock.clave, "mock", "el proveedor predeterminado por org cambia de forma independiente");
+    const stripeDirecto = await obtenerProveedorPago(orgA, "stripe", { webhook: true });
+    assert.equal(stripeDirecto.clave, "stripe", "la conexión antigua sigue resolviéndose para auditar webhooks");
+  });
+  globalThis.fetch = fetchReal;
   console.log(
-    "pagos-online E2E: OAuth multi-org/refresh, concurrencia, conflictos, reembolsos, webhook, cron y RLS OK",
+    "pagos-online E2E: regresión MP, Stripe Standard/Account Links, webhooks, estados, reembolsos, multi-proveedor y RLS OK",
   );
 }
 
