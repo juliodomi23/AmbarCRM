@@ -93,6 +93,7 @@ export class ProveedorMercadoPago implements ProveedorPago {
           {
             id: datos.pagoId,
             title: datos.titulo,
+            ...(datos.descripcion ? { description: datos.descripcion } : {}),
             quantity: 1,
             currency_id: datos.moneda,
             unit_price: Number(datos.monto),

@@ -61,6 +61,16 @@ async function esperarCheckout(pagoId: bigint) {
   return null;
 }
 
+function textoCheckoutVenta(venta: { folio: string; contacto: { nombre: string | null } | null; partidas: { producto: { nombre: string } }[] }) {
+  const [primera, ...resto] = venta.partidas.map((p) => p.producto.nombre);
+  const concepto = primera ? (resto.length ? `${primera} y ${resto.length} más` : primera) : `Venta ${venta.folio}`;
+  const cliente = venta.contacto?.nombre?.trim();
+  return {
+    titulo: (cliente ? `${concepto} · ${cliente}` : concepto).slice(0, 120),
+    descripcion: `Venta ${venta.folio}${cliente ? ` · Cliente: ${cliente}` : ""}`.slice(0, 200),
+  };
+}
+
 export async function crearCheckoutVenta(sesion: SesionPago, entrada: { origenTipo?: unknown; origenId?: unknown; idempotencyKey?: unknown }) {
   if (entrada.origenTipo !== "venta") throw new ErrorPago("Por ahora el cobro en línea está disponible desde ventas");
   const origenId = typeof entrada.origenId === "string" && /^\d+$/.test(entrada.origenId) ? BigInt(entrada.origenId) : null;
@@ -79,7 +89,11 @@ export async function crearCheckoutVenta(sesion: SesionPago, entrada: { origenTi
     await db.pagoOnline.update({ where: { id: pendiente.id }, data: { estado: "cancelado" } });
   } else if (pendiente) return pendiente;
 
-  const venta = await db.venta.findUnique({ where: { id: origenId }, select: { id: true, folio: true, total: true, moneda: true, estado: true } });
+  const venta = await db.venta.findUnique({ where: { id: origenId }, select: {
+    id: true, folio: true, total: true, moneda: true, estado: true,
+    contacto: { select: { nombre: true } },
+    partidas: { select: { producto: { select: { nombre: true } } }, orderBy: { id: "asc" } },
+  } });
   if (!venta || venta.estado === "cancelada") throw new ErrorPago("La venta no existe o está cancelada", 404);
   if (venta.total.lte(0)) throw new ErrorPago("La venta no tiene un total cobrable");
   if (venta.estado !== "pendiente") throw new ErrorPago("La venta ya no admite un cobro nuevo", 409);
@@ -103,7 +117,7 @@ export async function crearCheckoutVenta(sesion: SesionPago, entrada: { origenTi
   const raiz = baseUrl();
   try {
     const checkout = await proveedor.crearCheckout({
-      pagoId: String(pago.id), titulo: `Venta ${venta.folio}`, monto: pago.monto.toFixed(2), moneda: pago.moneda,
+      pagoId: String(pago.id), ...textoCheckoutVenta(venta), monto: pago.monto.toFixed(2), moneda: pago.moneda,
       idempotencyKey, urlResultado: `${raiz}/pagos/resultado`,
       urlWebhook: `${raiz}/api/public/pagos/webhook/${proveedor.clave}/${sesion.orgId}`,
       expiraAt: pago.expiraAt ?? new Date(Date.now() + 24 * 60 * 60_000),

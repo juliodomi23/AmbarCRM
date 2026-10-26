@@ -8,6 +8,7 @@ export type EstadoPago =
 export type DatosCheckout = {
   pagoId: string;
   titulo: string;
+  descripcion?: string;
   monto: string;
   moneda: string;
   idempotencyKey: string;
