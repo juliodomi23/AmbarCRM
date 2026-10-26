@@ -342,6 +342,8 @@ model Org {
   facturas         Factura[]
   conceptosFactura ConceptoFactura[]
   eventosFactura   EventoFactura[]
+  calendariosConectados CalendarioConectado[]
+  eventosCalendario EventoCalendario[]
 
   @@map("orgs")
 }
@@ -469,6 +471,7 @@ model Usuario {
   tareas                    Tarea[]
   eventos                   Evento[]
   citas                     Cita[]
+  conexionesCalendario      CalendarioConectado[]
   evoluciones               EvolucionClinica[]
   botsAsesor                Bot[]                      @relation("BotAsesor")
   ventasCreadas             Venta[]                    @relation("VentaCreadoPor")
@@ -1090,11 +1093,63 @@ model Cita {
   evoluciones  EvolucionClinica[]
 
   solicitudesResena SolicitudResena[]
+  eventosCalendario EventoCalendario[]
 
   @@index([orgId, inicio])
   @@index([contactoId])
   @@index([doctorId])
+  @@unique([id, orgId])
   @@map("citas")
+}
+
+model CalendarioConectado {
+  id                     BigInt   @id @default(autoincrement())
+  orgId                  BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  proveedor              String   @default("google")
+  usuarioCrmId           BigInt   @map("usuario_crm_id")
+  cuentaGoogle           String   @map("cuenta_google")
+  calendarId             String   @default("primary") @map("calendar_id")
+  accessTokenEncrypted   String   @map("access_token_encrypted")
+  refreshTokenEncrypted  String?  @map("refresh_token_encrypted")
+  tokenExpiraAt          DateTime? @map("token_expira_at") @db.Timestamptz(6)
+  syncToken              String?  @map("sync_token")
+  sincronizadoAt         DateTime? @map("sincronizado_at") @db.Timestamptz(6)
+  sincronizandoAt        DateTime? @map("sincronizando_at") @db.Timestamptz(6)
+  estado                 String   @default("activa")
+  timezone               String   @default("America/Mexico_City")
+  ultimoError            String?  @map("ultimo_error")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  eventos                EventoCalendario[]
+  org                    Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  usuario                Usuario  @relation(fields: [usuarioCrmId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@unique([orgId, usuarioCrmId])
+  @@unique([id, orgId])
+  @@index([orgId, estado])
+  @@map("calendarios_conectados")
+}
+
+model EventoCalendario {
+  id             BigInt   @id @default(autoincrement())
+  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  citaId         BigInt?  @map("cita_id")
+  calendarioId   BigInt   @map("calendario_id")
+  eventoExterno  String   @map("evento_externo")
+  etag           String?
+  estado         String   @default("creado")
+  ultimoSync     DateTime? @map("ultimo_sync") @db.Timestamptz(6)
+  detalle        String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  cita           Cita?    @relation(fields: [citaId, orgId], references: [id, orgId], onDelete: Cascade)
+  calendario     CalendarioConectado @relation(fields: [calendarioId, orgId], references: [id, orgId], onDelete: Cascade)
+  org            Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, calendarioId, eventoExterno])
+  @@index([orgId, citaId])
+  @@index([orgId, estado, updatedAt])
+  @@map("eventos_calendario")
 }
 
 model Doctor {

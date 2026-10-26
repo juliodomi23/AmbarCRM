@@ -1,0 +1,40 @@
+import assert from "node:assert/strict";
+import { resolverConflictoLww, validarZonaHoraria } from "../src/lib/calendario/tipos";
+import { ProveedorCalendarioMock, mockCalendarioPermitido } from "../src/lib/calendario/mock";
+import { crearStateCalendario, leerNonceCalendario, validarStateCalendario, intercambiarCodigoCalendario } from "../src/lib/calendario/oauth";
+
+assert.equal(validarZonaHoraria("America/Mexico_City"), true);
+assert.equal(validarZonaHoraria("zona-inexistente"), false);
+const base = new Date("2026-01-01T10:00:00.000Z");
+assert.equal(resolverConflictoLww(base, "2026-01-01T11:00:00.000Z"), "calendar");
+assert.equal(resolverConflictoLww(base, "2026-01-01T09:00:00.000Z"), "crm");
+assert.equal(resolverConflictoLww(base, null), "crm");
+process.env.GOOGLE_CALENDAR_CLIENT_ID = "test-client-id";
+process.env.GOOGLE_CALENDAR_CLIENT_SECRET = "test-client-secret";
+const state = crearStateCalendario(101n, 202n);
+const nonce = leerNonceCalendario(state.cookie)!;
+assert.equal(validarStateCalendario(state.state, nonce, 101n, 202n), true);
+assert.equal(validarStateCalendario(state.state, "nonce-invalido", 101n, 202n), false);
+const fetchOriginal = globalThis.fetch;
+globalThis.fetch = async () => new Response(JSON.stringify({ error: "invalid_grant" }), { status: 400 });
+await assert.rejects(() => intercambiarCodigoCalendario("codigo-invalido"), /rechazó la autorización/);
+globalThis.fetch = fetchOriginal;
+
+const mock = new ProveedorCalendarioMock();
+const evento = await mock.guardarEvento(null, { summary: "Cita", start: { dateTime: base.toISOString() }, end: { dateTime: new Date(+base + 1800000).toISOString() } });
+assert.equal((await mock.obtenerEvento(evento.id))?.summary, "Cita");
+const actualizado = await mock.guardarEvento(evento.id, { summary: "Cita movida" });
+assert.equal(actualizado.id, evento.id);
+assert.equal((await mock.listarCambios()).items.length, 1);
+await mock.eliminarEvento(evento.id);
+assert.equal((await mock.obtenerEvento(evento.id))?.status, "cancelled");
+
+const anterior = process.env.NODE_ENV; const permiso = process.env.CALENDARIO_PERMITIR_MOCK;
+process.env.NODE_ENV = "production"; process.env.CALENDARIO_PERMITIR_MOCK = "0";
+assert.equal(mockCalendarioPermitido(), false);
+process.env.NODE_ENV = "test";
+process.env.CALENDARIO_PERMITIR_MOCK = "1";
+assert.equal(mockCalendarioPermitido(), true);
+if (anterior === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = anterior;
+if (permiso === undefined) delete process.env.CALENDARIO_PERMITIR_MOCK; else process.env.CALENDARIO_PERMITIR_MOCK = permiso;
+console.log("check:calendario OK");

@@ -278,7 +278,11 @@ export async function reservarCita(
         include: { doctor: { select: { nombre: true } } },
       });
     });
-    if (cita) return cita;
+    if (cita) {
+      const { pushCitaCalendario } = await import("@/lib/calendario/servicio");
+      await runWithOrg(orgId, () => pushCitaCalendario(cita.id)).catch(() => undefined);
+      return cita;
+    }
   }
   return null;
 }
@@ -295,7 +299,7 @@ export async function reprogramarCita(
   gestionPublica?: { token: string },
 ) {
   const fin = new Date(nuevoInicio.getTime() + (cita.fin.getTime() - cita.inicio.getTime()));
-  return transaccionTenant(orgId, async (tx) => {
+  const actualizada = await transaccionTenant(orgId, async (tx) => {
     await tx.$queryRaw`SELECT id FROM citas WHERE id = ${cita.id} FOR UPDATE`;
     const actual = await tx.cita.findFirst({ where: { id: cita.id }, include: { servicio: { select: { bufferMin: true } } } });
     if (!actual || !["programada", "confirmada"].includes(actual.estado) || actual.doctorId !== cita.doctorId || +actual.inicio !== +cita.inicio || +actual.fin !== +cita.fin) return null;
@@ -322,6 +326,11 @@ export async function reprogramarCita(
       include: { doctor: { select: { nombre: true } } },
     });
   });
+  if (actualizada) {
+    const { pushCitaCalendario } = await import("@/lib/calendario/servicio");
+    await runWithOrg(orgId, () => pushCitaCalendario(actualizada.id)).catch(() => undefined);
+  }
+  return actualizada;
 }
 
 /** Empresa dueña de una cita por el token de su enlace público, o null. */

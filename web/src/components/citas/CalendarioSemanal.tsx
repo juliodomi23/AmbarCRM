@@ -193,7 +193,7 @@ function EventoCalendario({
         aria-hidden="true"
       />
       <span className="block pr-2 text-[11px] font-semibold leading-tight text-foreground">
-        {cita.titulo}
+        {cita.titulo}{cita.calendarSynced && <span className="ml-1 text-[10px] text-muted-foreground" title="Sincronizada con Google Calendar" aria-label="Sincronizada con Google Calendar">◷</span>}
       </span>
       {mostrarHora && (
         <span className="mt-0.5 block text-[10px] font-medium leading-tight text-foreground/70">

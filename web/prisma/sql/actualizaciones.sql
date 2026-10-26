@@ -2371,3 +2371,78 @@ CREATE UNIQUE INDEX IF NOT EXISTS facturas_un_activa_venta_idx
   ON facturas(org_id, venta_id) WHERE estado IN ('borrador','timbrando','timbrada') AND venta_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS facturas_un_activa_pago_idx
   ON facturas(org_id, pago_id) WHERE estado IN ('borrador','timbrando','timbrada') AND pago_id IS NOT NULL;
+
+-- Google Calendar bidireccional (Fase 3). Idempotente y aislado por organización.
+CREATE UNIQUE INDEX IF NOT EXISTS citas_id_org_uq ON citas(id, org_id);
+CREATE TABLE IF NOT EXISTS calendarios_conectados (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  proveedor TEXT NOT NULL DEFAULT 'google' CHECK (proveedor IN ('google','mock')),
+  usuario_crm_id BIGINT,
+  cuenta_google TEXT NOT NULL,
+  calendar_id TEXT NOT NULL DEFAULT 'primary',
+  access_token_encrypted TEXT NOT NULL,
+  refresh_token_encrypted TEXT,
+  token_expira_at TIMESTAMPTZ,
+  sync_token TEXT,
+  sincronizado_at TIMESTAMPTZ,
+  sincronizando_at TIMESTAMPTZ,
+  estado TEXT NOT NULL DEFAULT 'activa' CHECK (estado IN ('activa','requiere_reconectar','revocada')),
+  timezone TEXT NOT NULL DEFAULT 'America/Mexico_City',
+  ultimo_error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(org_id, calendar_id), UNIQUE(id, org_id)
+);
+ALTER TABLE calendarios_conectados ADD COLUMN IF NOT EXISTS usuario_crm_id BIGINT;
+-- Las conexiones previas pertenecían a la organización; asignarlas al admin conserva
+-- sus tokens y mapeos y permite que la organización las administre desde su cuenta.
+UPDATE calendarios_conectados c SET usuario_crm_id = (
+  SELECT u.id FROM usuarios u WHERE u.org_id = c.org_id AND u.rol = 'admin' ORDER BY u.id LIMIT 1
+) WHERE c.usuario_crm_id IS NULL;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM calendarios_conectados WHERE usuario_crm_id IS NULL) THEN
+    RAISE EXCEPTION 'No se puede migrar Calendar: hay conexiones sin usuario admin en su organización';
+  END IF;
+END $$;
+ALTER TABLE calendarios_conectados ALTER COLUMN usuario_crm_id SET NOT NULL;
+ALTER TABLE calendarios_conectados DROP CONSTRAINT IF EXISTS calendarios_conectados_org_id_calendar_id_key;
+DROP INDEX IF EXISTS calendarios_conectados_org_calendar_id_key;
+CREATE UNIQUE INDEX IF NOT EXISTS calendarios_conectados_org_usuario_uq ON calendarios_conectados(org_id, usuario_crm_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calendarios_conectados_usuario_org_fkey') THEN
+    ALTER TABLE calendarios_conectados ADD CONSTRAINT calendarios_conectados_usuario_org_fkey
+      FOREIGN KEY(usuario_crm_id, org_id) REFERENCES usuarios(id, org_id) ON DELETE CASCADE;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS calendarios_conectados_org_estado_idx ON calendarios_conectados(org_id, estado);
+CREATE TABLE IF NOT EXISTS eventos_calendario (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  cita_id BIGINT,
+  calendario_id BIGINT NOT NULL,
+  evento_externo TEXT NOT NULL,
+  etag TEXT,
+  estado TEXT NOT NULL DEFAULT 'creado' CHECK (estado IN ('creado','actualizado','cancelado','eliminado','desvinculado','conflicto','pendiente','error')),
+  ultimo_sync TIMESTAMPTZ,
+  detalle TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(org_id, calendario_id, evento_externo),
+  FOREIGN KEY(cita_id, org_id) REFERENCES citas(id, org_id) ON DELETE CASCADE,
+  FOREIGN KEY(calendario_id, org_id) REFERENCES calendarios_conectados(id, org_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS eventos_calendario_org_cita_idx ON eventos_calendario(org_id, cita_id);
+CREATE INDEX IF NOT EXISTS eventos_calendario_org_estado_updated_idx ON eventos_calendario(org_id, estado, updated_at);
+ALTER TABLE eventos_calendario DROP CONSTRAINT IF EXISTS eventos_calendario_estado_check;
+ALTER TABLE eventos_calendario ADD CONSTRAINT eventos_calendario_estado_check
+  CHECK (estado IN ('creado','actualizado','cancelado','eliminado','desvinculado','conflicto','pendiente','error'));
+DO $$ DECLARE t TEXT; BEGIN
+  FOREACH t IN ARRAY ARRAY['calendarios_conectados','eventos_calendario'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format('CREATE POLICY org_isolation ON %I USING (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint) WITH CHECK (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint)', t);
+  END LOOP;
+END $$;
+GRANT SELECT, INSERT, UPDATE, DELETE ON calendarios_conectados,eventos_calendario TO crm_app;
+GRANT USAGE, SELECT ON SEQUENCE calendarios_conectados_id_seq,eventos_calendario_id_seq TO crm_app;

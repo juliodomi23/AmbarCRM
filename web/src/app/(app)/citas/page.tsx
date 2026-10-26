@@ -8,12 +8,14 @@ import { duracionCitas } from "@/lib/citas-duracion";
 import { aBigInt } from "@/lib/ids";
 import { accesoAgendaActual } from "@/lib/citas-acceso";
 import { getSesion } from "@/lib/session";
+import { CalendarioPanel } from "@/components/calendario/CalendarioPanel";
 export const dynamic = "force-dynamic";
-export default async function CitasPage({ searchParams }: { searchParams: Promise<{ contactoId?: string | string[] }> }) {
+export default async function CitasPage({ searchParams }: { searchParams: Promise<{ contactoId?: string | string[]; conexion?: string }> }) {
   if (!(await moduloActivo("citas"))) redirect("/");
   const [acceso, sesion] = await Promise.all([accesoAgendaActual(), getSesion()]);
   const parametros = await searchParams;
   const contactoId = typeof parametros.contactoId === "string" ? aBigInt(parametros.contactoId) : null;
+  const calendarioActivo = await moduloActivo("calendario");
   const [contactos, usuarios, doctores, servicios, moduloCitas] = await Promise.all([
     db.contacto.findMany({
       select: { id: true, nombre: true, expediente: { select: { id: true } } },
@@ -30,6 +32,7 @@ export default async function CitasPage({ searchParams }: { searchParams: Promis
     if (precargado) contactos.push(precargado);
   }
   return (
+    <>
     <CitasCliente
       agendaPropia={acceso.restringida}
       puedeAdministrar={sesion?.user?.rol === "admin"}
@@ -40,5 +43,7 @@ export default async function CitasPage({ searchParams }: { searchParams: Promis
       usuarios={serializar(usuarios)}
       doctores={serializar(doctores)}
     />
+    {calendarioActivo && <CalendarioPanel embebido admin={sesion?.user?.rol === "admin"} resultadoOAuth={parametros.conexion} />}
+    </>
   );
 }

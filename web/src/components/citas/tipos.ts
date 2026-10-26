@@ -25,6 +25,7 @@ export type EstadoCita =
   | "no_asistio";
 
 export type Cita = {
+  calendarSynced?: boolean;
   origen?: string;
   servicio?: { bufferMin: number; duracionMin: number } | null;
   servicioId?: string | null;

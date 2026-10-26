@@ -42,7 +42,10 @@ export const GET = conModulo("citas", {}, conErroresCita(async (s: SesionModulo,
     orderBy: [{ inicio: "asc" }, { id: "asc" }],
     ...paginacion,
   });
-  return NextResponse.json(serializar({ citas, siguienteCursor: citas.length === paginacion.take ? String(citas.at(-1)!.id) : null, zona: (await configReservasEmpresa()).zona }));
+  const mapeos = citas.length ? await db.eventoCalendario.findMany({ where: { citaId: { in: citas.map((cita) => cita.id) }, estado: { in: ["creado", "actualizado"] } }, select: { citaId: true } }) : [];
+  const vinculadas = new Set(mapeos.map((mapeo) => String(mapeo.citaId)));
+  const citasConCalendario = citas.map((cita) => ({ ...cita, calendarSynced: vinculadas.has(String(cita.id)) }));
+  return NextResponse.json(serializar({ citas: citasConCalendario, siguienteCursor: citas.length === paginacion.take ? String(citas.at(-1)!.id) : null, zona: (await configReservasEmpresa()).zona }));
 }));
 
 export const POST = conModulo("citas", {}, conErroresCita(async (s: SesionModulo, req: NextRequest) => {

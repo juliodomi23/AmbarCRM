@@ -56,6 +56,8 @@ export async function POST(req: NextRequest, { params }: Props) {
       data: { estado: "confirmada" },
     }));
     if (!confirmada.count) return errorPublico("La cita cambió; vuelve a consultar el enlace", 409);
+    const { pushCitaCalendario } = await import("@/lib/calendario/servicio");
+    await runWithOrg(orgId, () => pushCitaCalendario(cita.id)).catch(() => undefined);
     return NextResponse.json({ ok: true, estado: "confirmada" });
   }
   if (body.accion === "cancelar") {
@@ -64,6 +66,8 @@ export async function POST(req: NextRequest, { params }: Props) {
       data: { estado: "cancelada" },
     }));
     if (!cancelada.count) return errorPublico("La cita cambió; vuelve a consultar el enlace", 409);
+    const { pushCitaCalendario } = await import("@/lib/calendario/servicio");
+    await runWithOrg(orgId, () => pushCitaCalendario(cita.id)).catch(() => undefined);
     return NextResponse.json({ ok: true, estado: "cancelada" });
   }
   if (!encontrada.reprogramable || !cita.doctorId) return errorPublico("Esta cita ya no se puede reprogramar en línea; escríbele al negocio", 409);

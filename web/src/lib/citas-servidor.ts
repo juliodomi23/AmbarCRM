@@ -7,6 +7,7 @@ import { errorFechaPasada, errorHorarioCita } from "@/lib/citas-horarios";
 import { duracionCitas, finDeCita, finVisible } from "@/lib/citas-duracion";
 import { accesoAgenda, permiteEspecialista, type IdentidadAgenda } from "@/lib/citas-acceso";
 import { nuevoTokenCita } from "@/lib/citas-token";
+import { runWithOrg } from "@/lib/db";
 
 async function resolverDuracion(tx: Prisma.TransactionClient, datos: { inicio: Date; fin?: Date; doctorId: bigint | null; servicioId?: bigint | null }) {
   if (datos.servicioId) await tx.$queryRaw`SELECT id FROM servicios_reserva WHERE id = ${datos.servicioId} FOR SHARE`;
@@ -62,7 +63,7 @@ type DatosAgenda = {
 };
 
 export async function crearCitaInterna(orgId: bigint, datos: DatosAgenda, bloquear = true, sesion?: IdentidadAgenda) {
-  return transaccionTenant(orgId, async (tx) => {
+  const cita = await transaccionTenant(orgId, async (tx) => {
     if (sesion && !permiteEspecialista(await accesoAgenda(sesion, tx), datos.doctorId)) throw new ErrorCita("Solo puedes agendar con tu especialista asignado", 403);
     const doctores = datos.doctorId !== null ? await bloquearAgenda(tx, [datos.doctorId], bloquear) : [];
     if (datos.doctorId !== null && !doctores[0]?.activo) throw new ErrorCita("Especialista inexistente o inactivo");
@@ -75,6 +76,9 @@ export async function crearCitaInterna(orgId: bigint, datos: DatosAgenda, bloque
     await validarHorario(tx, { ...datos, fin: finDeCita(fin, bufferMin) });
     return tx.cita.create({ data: { ...datos, fin, tokenGestion: nuevoTokenCita() }, include: incluirCita });
   });
+  const { pushCitaCalendario } = await import("@/lib/calendario/servicio");
+  await runWithOrg(orgId, () => pushCitaCalendario(cita.id)).catch(() => undefined);
+  return cita;
 }
 
 export type CambiosCita = Partial<Pick<DatosAgenda, "titulo" | "notas" | "inicio" | "fin" | "doctorId" | "servicioId">> & { estado?: EstadoCita };
@@ -94,7 +98,7 @@ export async function eliminarCitaCancelada(orgId: bigint, id: bigint, sesion?: 
 }
 
 export async function editarCita(orgId: bigint, id: bigint, datos: CambiosCita, sesion?: IdentidadAgenda) {
-  return transaccionTenant(orgId, async (tx) => {
+  const resultado = await transaccionTenant(orgId, async (tx) => {
     const acceso = sesion ? await accesoAgenda(sesion, tx) : null;
     await tx.$queryRaw`SELECT id FROM citas WHERE id = ${id} FOR UPDATE`;
     const actual = await tx.cita.findFirst({ where: { id }, include: { servicio: { select: { bufferMin: true } } } });
@@ -130,4 +134,7 @@ export async function editarCita(orgId: bigint, id: bigint, datos: CambiosCita, 
     }, include: incluirCita });
     return { cita, completada: actual.estado !== "completada" && cita.estado === "completada" };
   });
+  const { pushCitaCalendario } = await import("@/lib/calendario/servicio");
+  await runWithOrg(orgId, () => pushCitaCalendario(resultado.cita.id)).catch(() => undefined);
+  return resultado;
 }

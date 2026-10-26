@@ -11,6 +11,13 @@ const ACCESO_LEGAL = {
 
 export const MODULOS = [
   {
+    clave: "calendario", area: "CRM y agenda", nombre: "Google Calendar",
+    descripcion: "Sincroniza citas de la agenda con Google Calendar.",
+    acceso: { puestosPorDefecto: ["Administrador", "Recepcionista", "Doctor"] },
+    icono: "M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2z", ruta: "/citas",
+    configuracionSolo: true,
+  },
+  {
     clave: "campanas_envio", area: "Marketing y crecimiento", nombre: "Campañas de envío",
     descripcion: "Importa clientes y programa plantillas aprobadas de WhatsApp.",
     soloOrgId: 12,
