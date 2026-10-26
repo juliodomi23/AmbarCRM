@@ -4,6 +4,7 @@ import { db, dbRaw, runWithOrg } from "@/lib/db";
 import { bloquearProductos, ErrorRetail, transaccionTenant } from "@/lib/retail-db";
 import { cantidadPedidoValida, configPedidos, type ConfigPedidos, type PartidaPedidoEntrada } from "@/lib/pedidos";
 import { calcularPrecios } from "@/lib/precios-db";
+import { desgloseVenta } from "@/lib/iva-producto";
 
 export class ErrorPedido extends ErrorRetail {}
 
@@ -95,6 +96,9 @@ export async function crearPedido(orgId: bigint, config: ConfigPedidos, datos: C
     const subtotalNeto = subtotal.minus(descuentoPromociones);
     if (subtotalNeto.lt(config.minimoCompra)) throw new ErrorPedido(`El pedido mínimo es de $${config.minimoCompra.toFixed(2)}`, 409);
     const costoEnvio = datos.tipoEntrega === "domicilio" ? config.costoEnvio : new Prisma.Decimal(0);
+    const impuestoVenta = desgloseVenta(calculadas.map(({ precio, total }) => ({
+      total, tasa: precio.producto.ivaTasa, exento: precio.producto.ivaExento, ivaIncluido: precio.ivaIncluido,
+    })), new Prisma.Decimal(0), costoEnvio);
 
     let contacto = await tx.contacto.findFirst({ where: { telefono: { endsWith: datos.telefono10 } } });
     contacto ??= await tx.contacto.create({ data: { nombre: datos.nombre, telefono: `52${datos.telefono10}`, fuente: "web" } });
@@ -103,8 +107,8 @@ export async function crearPedido(orgId: bigint, config: ConfigPedidos, datos: C
         folio: folioPedido(), contactoId: contacto.id, uuidCliente: datos.uuidCliente,
         tokenSeguimiento: crypto.randomBytes(16).toString("hex"), estado: "pendiente", canal: "tienda_en_linea",
         tipoEntrega: datos.tipoEntrega, direccionEntrega: datos.direccion, horarioDeseado: datos.horarioDeseado,
-        costoEnvio, pedidoIp: datos.ip, subtotal, descuento: descuentoPromociones, total: subtotalNeto.plus(costoEnvio), notas: datos.notas, stockAplicado: false,
-        partidas: { create: calculadas.map(({ producto, cantidad, precio, total }) => ({
+        costoEnvio, pedidoIp: datos.ip, subtotal, descuento: descuentoPromociones, total: subtotalNeto.plus(costoEnvio), ivaTotal: impuestoVenta.ivaTotal, ivaEnvio: impuestoVenta.ivaEnvio, notas: datos.notas, stockAplicado: false,
+        partidas: { create: calculadas.map(({ producto, cantidad, precio, total }, indice) => ({
           productoId: producto.id,
           cantidad,
           precioUnitario: precio.precioUnitario,
@@ -113,6 +117,7 @@ export async function crearPedido(orgId: bigint, config: ConfigPedidos, datos: C
           descuentoPromocion: precio.descuentoPromocion,
           promocionDescripcion: precio.promocionDescripcion,
           total,
+          ...impuestoVenta.partidas[indice],
         })) },
         reservasPedido: { create: calculadas.map(({ producto, cantidad }) => ({ productoId: producto.id, cantidad })) },
       },

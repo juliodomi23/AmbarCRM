@@ -10,15 +10,16 @@ export type { CatalogoCaja } from "@/lib/caja-offline/tipos";
 export async function construirCatalogoCaja(orgId: bigint): Promise<CatalogoCaja> {
   const datos = await transaccionTenant(orgId, async (tx) => {
     const lista = await tx.listaPrecio.findFirst({ where: { tipo: "publico", activa: true }, orderBy: { id: "asc" }, select: { id: true } });
-    const [productos, escalas, preciosLista, promociones, zona, modulo] = await Promise.all([
+    const [productos, escalas, preciosLista, promociones, zona, modulo, ventas] = await Promise.all([
       tx.producto.findMany({ where: { activo: true }, orderBy: { id: "asc" } }),
       tx.precioVolumen.findMany({ orderBy: [{ productoId: "asc" }, { desde: "desc" }] }),
       lista ? tx.listaPrecioProducto.findMany({ where: { listaId: lista.id } }) : [],
       tx.promocion.findMany({ where: { activa: true }, orderBy: { id: "asc" } }),
       zonaEmpresa(tx),
       tx.moduloOrg.findFirst({ where: { clave: "caja", activo: true }, select: { config: true } }),
+      tx.moduloOrg.findFirst({ where: { clave: "ventas", activo: true }, select: { config: true } }),
     ]);
-    return { productos, escalas, preciosLista, promociones, zona, config: modulo?.config ?? null };
+    return { productos, escalas, preciosLista, promociones, zona, config: modulo?.config ?? null, ventasConfig: ventas?.config ?? null };
   });
   const precioLista = new Map(datos.preciosLista.map((item) => [String(item.productoId), item.precio.toString()]));
   const escalasPorProducto = new Map<string, Array<{ desde: string; precio: string }>>();
@@ -30,6 +31,7 @@ export async function construirCatalogoCaja(orgId: bigint): Promise<CatalogoCaja
     zona: datos.zona,
     descuentoMaximo: descuentoMaximoCajero(datos.config),
     ventasSinRed: ventasSinRedActivas(datos.config),
+    preciosIncluyenIva: (datos.ventasConfig as { preciosIncluyenIva?: unknown } | null)?.preciosIncluyenIva !== false,
     productos: datos.productos.map((producto): ProductoCatalogoCaja => ({
       id: String(producto.id),
       nombre: producto.nombre,
@@ -40,6 +42,9 @@ export async function construirCatalogoCaja(orgId: bigint): Promise<CatalogoCaja
       vendePorPeso: producto.vendePorPeso,
       stock: producto.stock.toString(),
       precio: producto.precio.toString(),
+      ivaTasa: producto.ivaTasa.toString(),
+      ivaExento: producto.ivaExento,
+      precioIncluyeIva: producto.precioIncluyeIva,
       precioLista: precioLista.get(String(producto.id)) ?? null,
       escalas: escalasPorProducto.get(String(producto.id)) ?? [],
     })),

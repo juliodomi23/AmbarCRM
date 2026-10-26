@@ -12,6 +12,7 @@ import { cantidadValidaParaProducto } from "@/lib/cantidad";
 import { bloquearProductos, ErrorRetail, reservasActivasPorProducto, transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
 import { conModulo } from "@/lib/con-modulo";
+import { desgloseVenta } from "@/lib/iva-producto";
 
 export const GET = conModulo("ventas", {}, async (sesion) => {
   const ventas = await db.venta.findMany({
@@ -60,6 +61,11 @@ export const POST = conModulo("ventas", {}, async (sesion, req: NextRequest) => 
       }, CERO_DECIMAL);
       const descuentoPromociones = precios.reduce((suma, precio) => suma.plus(precio.descuentoPromocion), CERO_DECIMAL);
       if (descuento.gt(subtotal.minus(descuentoPromociones))) throw new ErrorRetail("El descuento no puede superar el subtotal");
+      const impuestoVenta = desgloseVenta(partidas.map((partida) => {
+        const calculo = porId.get(String(partida.productoId))!;
+        return { total: calculo.total, tasa: calculo.producto.ivaTasa, exento: calculo.producto.ivaExento, ivaIncluido: calculo.ivaIncluido };
+      }), descuento);
+      const snapshotPorProducto = new Map(partidas.map((partida, indice) => [String(partida.productoId), impuestoVenta.partidas[indice]]));
       const aplicaStock = estadoUsaInventario(cabecera.estado);
       if (aplicaStock) {
         for (const partida of partidas) {
@@ -80,6 +86,8 @@ export const POST = conModulo("ventas", {}, async (sesion, req: NextRequest) => 
           subtotal,
           descuento: descuento.plus(descuentoPromociones),
           total: subtotal.minus(descuento).minus(descuentoPromociones),
+          ivaTotal: impuestoVenta.ivaTotal,
+          ivaEnvio: impuestoVenta.ivaEnvio,
           stockAplicado: aplicaStock,
         },
       });
@@ -98,6 +106,8 @@ export const POST = conModulo("ventas", {}, async (sesion, req: NextRequest) => 
             descuentoPromocion: calculo.descuentoPromocion,
             promocionDescripcion: calculo.promocionDescripcion,
             total: calculo.total,
+            ivaTasa: producto.ivaTasa,
+            ...snapshotPorProducto.get(String(partida.productoId)),
           },
         });
         if (aplicaStock) {

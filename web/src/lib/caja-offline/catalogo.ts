@@ -3,6 +3,7 @@ import { calcularLineaPura } from "@/lib/precios-puro";
 import { fechaLocal } from "@/lib/reservas/horarios";
 import { claveIdentidad, type Almacen } from "@/lib/caja-offline/almacen";
 import type { CatalogoCaja, ProductoCatalogoCaja } from "@/lib/caja-offline/tipos";
+import { desglosarImporte } from "@/lib/iva-producto";
 
 export type IdentidadCaja = { orgId: string; userId: string };
 
@@ -77,12 +78,24 @@ export function calcularLineaLocal(
     promociones: catalogo.promociones.map((promo) => ({ ...promo, valor: promo.valor === null ? null : decimal(promo.valor) })),
     hoy: fechaLocal(ahora, catalogo.zona),
   });
+  const ivaIncluido = catalogo.preciosIncluyenIva !== false && producto.precioIncluyeIva !== false;
+  const tasa = new Prisma.Decimal(producto.ivaTasa ?? "0.16");
+  const multiplicador = !ivaIncluido && !producto.ivaExento ? new Prisma.Decimal(1).plus(tasa) : new Prisma.Decimal(1);
+  const bruto = linea.bruto.mul(multiplicador).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  const descuentoPromocion = linea.descuentoPromocion.mul(multiplicador).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  const total = bruto.minus(descuentoPromocion);
+  const impuesto = desglosarImporte(total, tasa, ivaIncluido, producto.ivaExento === true);
   return {
     precioUnitario: linea.precioUnitario.toFixed(2),
-    bruto: linea.bruto.toFixed(2),
-    descuentoPromocion: linea.descuentoPromocion.toFixed(2),
+    bruto: bruto.toFixed(2),
+    descuentoPromocion: descuentoPromocion.toFixed(2),
     promocionDescripcion: linea.promocionDescripcion,
-    total: linea.total.toFixed(2),
+    total: total.toFixed(2),
+    ivaTasa: tasa.toFixed(6),
+    ivaExento: producto.ivaExento === true,
+    ivaIncluido,
+    baseImporte: impuesto.baseImporte.toFixed(2),
+    ivaImporte: impuesto.ivaImporte.toFixed(2),
     fuentePrecio: linea.fuentePrecio,
   };
 }

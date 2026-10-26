@@ -10,6 +10,9 @@ export type ProductoCatalogoCaja = {
   vendePorPeso: boolean;
   stock: string;
   precio: string;
+  ivaTasa?: string;
+  ivaExento?: boolean;
+  precioIncluyeIva?: boolean;
   precioLista: string | null;
   escalas: Array<{ desde: string; precio: string }>;
 };
@@ -33,6 +36,7 @@ export type CatalogoCaja = {
   zona: string;
   descuentoMaximo: number;
   ventasSinRed: boolean;
+  preciosIncluyenIva?: boolean;
   productos: ProductoCatalogoCaja[];
   promociones: PromocionCatalogoCaja[];
 };

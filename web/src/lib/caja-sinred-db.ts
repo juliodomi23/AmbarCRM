@@ -14,6 +14,7 @@ import {
 } from "@/lib/caja-sinred";
 import { calcularPrecios } from "@/lib/precios-db";
 import { CERO_DECIMAL } from "@/lib/retail";
+import { desgloseVenta } from "@/lib/iva-producto";
 import { bloquearProductos, transaccionTenant } from "@/lib/retail-db";
 
 /** `registrar = false`: no es un rechazo definitivo (se reintenta o espera), así que no entra a cola_caja_rechazos. */
@@ -122,6 +123,18 @@ export async function registrarVentaSinRed(sesion: IdentidadCaja, datos: VentaSi
       }
       const subtotalVenta = total.gt(subtotal) ? total : subtotal;
       const descuentoVenta = subtotalVenta.minus(total);
+      const impuestoCalculado = desgloseVenta(datos.partidas.map((partida) => {
+        const calculo = porId.get(String(partida.productoId))!;
+        return { total: calculo.total, descuento: partida.descuento, tasa: calculo.producto.ivaTasa, exento: calculo.producto.ivaExento, ivaIncluido: calculo.ivaIncluido };
+      }), datos.descuento);
+      const snapshotsOffline = datos.partidas.every((partida) => partida.baseImporte && partida.ivaImporte && partida.ivaTasa);
+      const impuestoVenta = snapshotsOffline ? {
+        partidas: datos.partidas.map((partida) => ({
+          baseImporte: partida.baseImporte!, ivaImporte: partida.ivaImporte!, ivaTasa: partida.ivaTasa!, ivaExento: partida.ivaExento!,
+        })),
+        ivaTotal: datos.partidas.reduce((suma, partida) => suma.plus(partida.ivaImporte!), CERO_DECIMAL),
+        ivaEnvio: CERO_DECIMAL,
+      } : impuestoCalculado;
 
       const venta = await tx.venta.create({
         data: {
@@ -138,6 +151,8 @@ export async function registrarVentaSinRed(sesion: IdentidadCaja, datos: VentaSi
           subtotal: subtotalVenta,
           descuento: descuentoVenta,
           total,
+          ivaTotal: impuestoVenta.ivaTotal,
+          ivaEnvio: impuestoVenta.ivaEnvio,
           cambio,
           notas: datos.notas,
           stockAplicado: true,
@@ -154,7 +169,7 @@ export async function registrarVentaSinRed(sesion: IdentidadCaja, datos: VentaSi
         data: datos.pagos.map((pago) => ({ ventaId: venta.id, metodo: pago.metodo, monto: pago.monto })),
       });
       let negativo = false;
-      for (const partida of datos.partidas) {
+      for (const [indice, partida] of datos.partidas.entries()) {
         const calculo = porId.get(String(partida.productoId))!;
         const producto = calculo.producto;
         const actual = await tx.producto.findUniqueOrThrow({ where: { id: producto.id }, select: { stock: true } });
@@ -171,6 +186,7 @@ export async function registrarVentaSinRed(sesion: IdentidadCaja, datos: VentaSi
             descuentoPromocion: calculo.descuentoPromocion,
             promocionDescripcion: calculo.promocionDescripcion,
             total: calculo.total.minus(partida.descuento),
+            ...impuestoVenta.partidas[indice],
           },
         });
         await tx.producto.update({ where: { id: producto.id }, data: { stock: existenciaDespues } });

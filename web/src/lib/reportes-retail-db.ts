@@ -3,6 +3,7 @@ import { configReservas } from "@/lib/reservas/servidor";
 import { rangoReporte, fechaHoraLocal } from "@/lib/reportes-retail";
 import { transaccionTenant } from "@/lib/retail-db";
 import { ingresosNetosPorPartida } from "@/lib/venta-importes";
+import { desglosarImporte } from "@/lib/iva-producto";
 
 const CERO = new Prisma.Decimal(0);
 type Acumulado = {
@@ -121,8 +122,13 @@ export async function reporteRetail(
     };
 
     let envios = CERO;
+    let ivaTrasladado = CERO;
     for (const venta of ventas) {
       envios = envios.plus(venta.costoEnvio);
+      const tieneSnapshot = venta.partidas.length > 0 && venta.partidas.every((partida) => partida.baseImporte !== null && partida.ivaImporte !== null && partida.ivaTasa !== null && partida.ivaExento !== null);
+      ivaTrasladado = ivaTrasladado.plus(tieneSnapshot
+        ? venta.ivaTotal
+        : desglosarImporte(venta.total, new Prisma.Decimal("0.16"), true).ivaImporte);
       const importes = ingresosNetosPorPartida(venta.partidas, venta.total.minus(venta.costoEnvio));
       for (const partida of venta.partidas) {
         const ingreso = importes.get(String(partida.id)) ?? CERO;
@@ -174,7 +180,7 @@ export async function reporteRetail(
       }
     }
     return {
-      zona, rango: { desde: rango.desde, hasta: rango.hasta, dias: rango.dias }, resumen, envios,
+      zona, rango: { desde: rango.desde, hasta: rango.hasta, dias: rango.dias }, resumen: { ...resumen, ivaTrasladado }, envios,
       productos: { variantes, agrupados: filas(porPadre).sort((a, b) => b.ingresos.comparedTo(a.ingresos)) },
       categorias: filas(porCategoria).sort((a, b) => b.ingresos.comparedTo(a.ingresos)),
       ventas: {

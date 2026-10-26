@@ -1,4 +1,6 @@
 import type { VentaEnCola } from "@/lib/caja-offline/cola";
+import { Prisma } from "@prisma/client";
+import { desglosarImporte } from "@/lib/iva-producto";
 
 const escapar = (valor: unknown) =>
   String(valor).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -19,7 +21,10 @@ export function htmlTicketLocal(venta: VentaEnCola, datos: DatosTicketLocal) {
   const ancho = datos.ancho === 58 ? 58 : 80;
   const dinero = (valor: string | number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(valor));
   const fecha = new Date(venta.vendidaAt).toLocaleString("es-MX", { timeZone: datos.zona });
-  const subtotal = venta.partidas.reduce((suma, partida) => suma + Number(partida.total) + Number(partida.descuento), 0);
+  const subtotal = venta.partidas.reduce((suma, partida) => suma.plus(partida.total).plus(partida.descuento), new Prisma.Decimal(0)).plus(venta.descuento);
+  const ivaTotal = venta.ivaTotal === undefined
+    ? desglosarImporte(new Prisma.Decimal(venta.totalCobrado), new Prisma.Decimal("0.16"), true).ivaImporte
+    : new Prisma.Decimal(venta.ivaTotal);
   const partidas = venta.partidas.map((partida) => `
       <div class="partida"><p>${escapar(partida.nombre)}</p>
       <p class="fila"><span>${escapar(Number(partida.cantidad))} × ${dinero(partida.precioUnitario)}</span><span>${dinero(Number(partida.total))}</span></p>
@@ -39,7 +44,8 @@ export function htmlTicketLocal(venta: VentaEnCola, datos: DatosTicketLocal) {
   <div class="caja"><p>Folio: ${escapar(venta.folio)}</p><p>Fecha: ${escapar(fecha)}</p><p>Cajero: ${escapar(datos.cajero)}</p></div>
   ${partidas}
   <div class="caja">
-    <p class="fila"><span>Subtotal</span><span>${dinero(subtotal)}</span></p>
+    <p class="fila"><span>Subtotal</span><span>${dinero(subtotal.toFixed(2))}</span></p>
+    <p class="fila"><span>IVA incluido</span><span>${dinero(ivaTotal.toFixed(2))}</span></p>
     <p class="fila total"><span>Total</span><span>${dinero(venta.totalCobrado)}</span></p>
   </div>
   ${pagos}

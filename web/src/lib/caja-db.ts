@@ -10,6 +10,7 @@ import {
 import { CERO_DECIMAL } from "@/lib/retail";
 import { calcularPrecios } from "@/lib/precios-db";
 import { bloquearProductos, ErrorRetail, reservasActivasPorProducto, transaccionTenant } from "@/lib/retail-db";
+import { desgloseVenta } from "@/lib/iva-producto";
 
 export type IdentidadCaja = { userId: bigint; orgId: bigint; rol?: string; puesto?: string };
 
@@ -242,6 +243,10 @@ export async function registrarVentaCaja(sesion: IdentidadCaja, datos: VentaCaja
       if (datos.descuento.gt(baseTrasPartidas)) throw new ErrorCaja("El descuento general supera el subtotal");
       const descuentoTotal = descuentosPartidas.plus(datos.descuento);
       const total = subtotal.minus(descuentoTotal);
+      const impuestoVenta = desgloseVenta(datos.partidas.map((partida) => {
+        const calculo = porId.get(String(partida.productoId))!;
+        return { total: calculo.total, descuento: partida.descuento, tasa: calculo.producto.ivaTasa, exento: calculo.producto.ivaExento, ivaIncluido: calculo.ivaIncluido };
+      }), datos.descuento);
       const modulo = await tx.moduloOrg.findFirst({ where: { clave: "caja", activo: true }, select: { config: true } });
       const maximo = descuentoMaximoCajero(modulo?.config);
       const baseTrasPromocion = subtotal.minus(descuentosPromocion);
@@ -277,6 +282,8 @@ export async function registrarVentaCaja(sesion: IdentidadCaja, datos: VentaCaja
           subtotal,
           descuento: descuentoTotal,
           total,
+          ivaTotal: impuestoVenta.ivaTotal,
+          ivaEnvio: impuestoVenta.ivaEnvio,
           cambio,
           notas: datos.notas,
           stockAplicado: true,
@@ -285,7 +292,7 @@ export async function registrarVentaCaja(sesion: IdentidadCaja, datos: VentaCaja
       await tx.pagoVenta.createMany({
         data: datos.pagos.map((pago) => ({ ventaId: venta.id, metodo: pago.metodo, monto: pago.monto })),
       });
-      for (const partida of datos.partidas) {
+      for (const [indice, partida] of datos.partidas.entries()) {
         const calculo = porId.get(String(partida.productoId))!;
         const producto = calculo.producto;
         const existenciaDespues = producto.stock.minus(partida.cantidad);
@@ -300,6 +307,7 @@ export async function registrarVentaCaja(sesion: IdentidadCaja, datos: VentaCaja
             descuentoPromocion: calculo.descuentoPromocion,
             promocionDescripcion: calculo.promocionDescripcion,
             total: calculo.total.minus(partida.descuento),
+            ...impuestoVenta.partidas[indice],
           },
         });
         await tx.producto.update({ where: { id: producto.id }, data: { stock: existenciaDespues } });

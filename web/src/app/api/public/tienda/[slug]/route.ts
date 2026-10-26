@@ -11,6 +11,7 @@ import { errorPublico, limitarIp, telefonoMx } from "@/lib/reservas/publico";
 import { getAjustes } from "@/lib/services/config";
 import { calcularPrecios } from "@/lib/precios-db";
 import { transaccionTenant } from "@/lib/retail-db";
+import { desgloseVenta } from "@/lib/iva-producto";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ slug: string }> };
@@ -29,9 +30,15 @@ export async function PUT(req: NextRequest, { params }: Props) {
       if (visibles !== partidas.length) throw new ErrorPedido("Uno de los productos ya no está disponible", 404);
       return calcularPrecios(tx, partidas, { publico: true });
     });
+      const impuesto = desgloseVenta(calculadas.map((partida) => ({
+        total: partida.total, tasa: partida.producto.ivaTasa, exento: partida.producto.ivaExento, ivaIncluido: partida.ivaIncluido,
+      })), new Prisma.Decimal(0));
     return NextResponse.json({
-      partidas: calculadas.map((partida) => ({ productoId: String(partida.producto.id), precioUnitario: partida.precioUnitario.toFixed(2), descuentoPromocion: partida.descuentoPromocion.toFixed(2), promocion: partida.promocionDescripcion, total: partida.total.toFixed(2) })),
+      partidas: calculadas.map((partida, indice) => ({ productoId: String(partida.producto.id), precioUnitario: partida.precioUnitario.toFixed(2), descuentoPromocion: partida.descuentoPromocion.toFixed(2), promocion: partida.promocionDescripcion, total: partida.total.toFixed(2), baseImporte: impuesto.partidas[indice].baseImporte.toFixed(2), ivaImporte: impuesto.partidas[indice].ivaImporte.toFixed(2), ivaExento: partida.producto.ivaExento, ivaTasa: partida.producto.ivaTasa.toFixed(6) })),
       subtotal: calculadas.reduce((suma, partida) => suma.plus(partida.total), new Prisma.Decimal(0)).toFixed(2),
+      ivaProductos: impuesto.ivaTotal.toFixed(2),
+      costoEnvio: negocio.config.costoEnvio.toFixed(2),
+      ivaEnvio: desgloseVenta([], new Prisma.Decimal(0), negocio.config.costoEnvio).ivaEnvio.toFixed(2),
     });
   } catch (error) {
     if (error instanceof ErrorPedido || (error instanceof Error && "status" in error)) {

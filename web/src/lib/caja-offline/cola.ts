@@ -10,10 +10,12 @@ export type VentaEnCola = {
   turnoId: string;
   /** Instante real de la venta (reloj de la caja), ISO. */
   vendidaAt: string;
-  partidas: Array<{ productoId: string; nombre: string; cantidad: string; descuento: string; precioUnitario: string; total: string }>;
+  partidas: Array<{ productoId: string; nombre: string; cantidad: string; descuento: string; precioUnitario: string; total: string; ivaTasa?: string; ivaExento?: boolean; baseImporte?: string; ivaImporte?: string }>;
   pagos: Array<{ metodo: "efectivo" | "tarjeta" | "transferencia"; monto: string }>;
   descuento: string;
   totalCobrado: string;
+  ivaTotal?: string;
+  ivaEnvio?: string;
   cambio: string;
   catalogoVersion: string | null;
   estado: EstadoCola;
@@ -71,7 +73,7 @@ function cuerpoDeSubida(venta: VentaEnCola) {
     totalCobrado: venta.totalCobrado,
     descuento: venta.descuento,
     catalogoVersion: venta.catalogoVersion,
-    partidas: venta.partidas.map((partida) => ({ productoId: partida.productoId, cantidad: partida.cantidad, descuento: partida.descuento })),
+    partidas: venta.partidas.map((partida) => ({ productoId: partida.productoId, cantidad: partida.cantidad, descuento: partida.descuento, ivaTasa: partida.ivaTasa, ivaExento: partida.ivaExento, baseImporte: partida.baseImporte, ivaImporte: partida.ivaImporte })),
     pagos: venta.pagos,
   };
 }

@@ -13,6 +13,7 @@ import { CERO_DECIMAL } from "@/lib/retail";
 import { calcularPrecios } from "@/lib/precios-db";
 import { bloquearProductos, bloquearVenta, ErrorRetail, reservasActivasPorProducto, transaccionTenant } from "@/lib/retail-db";
 import { importeAcumuladoPorCantidad, ingresosNetosPorPartida } from "@/lib/venta-importes";
+import { desgloseVenta } from "@/lib/iva-producto";
 
 export class ErrorCajaA2 extends ErrorRetail {}
 
@@ -83,8 +84,9 @@ async function guardarPartidasYDescontar(
   usuarioId: bigint,
   partidas: readonly PartidaNueva[],
   porId: Awaited<ReturnType<typeof prepararPartidas>>["porId"],
+  impuestoVenta: ReturnType<typeof desgloseVenta>,
 ) {
-  for (const partida of partidas) {
+  for (const [indice, partida] of partidas.entries()) {
     const calculo = porId.get(String(partida.productoId))!;
     const producto = calculo.producto;
     const existenciaDespues = producto.stock.minus(partida.cantidad);
@@ -99,6 +101,7 @@ async function guardarPartidasYDescontar(
         descuentoPromocion: calculo.descuentoPromocion,
         promocionDescripcion: calculo.promocionDescripcion,
         total: calculo.total.minus(partida.descuento),
+        ...impuestoVenta.partidas[indice],
       },
     });
     await tx.producto.update({ where: { id: producto.id }, data: { stock: existenciaDespues } });
@@ -257,6 +260,10 @@ export async function crearApartado(
     const existente = await tx.venta.findFirst({ where: { uuidCliente: datos.uuidCliente }, include: { apartado: true } });
     if (existente?.apartado) return { apartado: existente.apartado, repetido: true };
     const { porId, subtotal, descuentosPartidas } = await prepararPartidas(tx, datos.partidas, contacto.id);
+    const impuestoVenta = desgloseVenta(datos.partidas.map((partida) => {
+      const calculo = porId.get(String(partida.productoId))!;
+      return { total: calculo.total, descuento: partida.descuento, tasa: calculo.producto.ivaTasa, exento: calculo.producto.ivaExento, ivaIncluido: calculo.ivaIncluido };
+    }), CERO_DECIMAL);
     const total = subtotal.minus(descuentosPartidas);
     if (datos.anticipo.gt(total)) throw new ErrorCajaA2("El anticipo no puede superar el total");
     const saldo = total.minus(datos.anticipo);
@@ -277,12 +284,14 @@ export async function crearApartado(
         subtotal,
         descuento: descuentosPartidas,
         total,
+        ivaTotal: impuestoVenta.ivaTotal,
+        ivaEnvio: impuestoVenta.ivaEnvio,
         notas: datos.notas,
         stockAplicado: true,
       },
     });
     await tx.pagoVenta.create({ data: { ventaId: venta.id, metodo: datos.metodo, monto: datos.anticipo } });
-    await guardarPartidasYDescontar(tx, venta.id, venta.folio, sesion.userId, datos.partidas, porId);
+    await guardarPartidasYDescontar(tx, venta.id, venta.folio, sesion.userId, datos.partidas, porId, impuestoVenta);
     const apartado = await tx.apartado.create({
       data: {
         ventaId: venta.id,
@@ -447,6 +456,10 @@ export async function registrarVentaCredito(
     if (datos.descuento.gt(base)) throw new ErrorCajaA2("El descuento general supera el subtotal");
     const descuentoTotal = descuentosPartidas.plus(datos.descuento);
     const total = subtotal.minus(descuentoTotal);
+    const impuestoVenta = desgloseVenta(datos.partidas.map((partida) => {
+      const calculo = porId.get(String(partida.productoId))!;
+      return { total: calculo.total, descuento: partida.descuento, tasa: calculo.producto.ivaTasa, exento: calculo.producto.ivaExento, ivaIncluido: calculo.ivaIncluido };
+    }), datos.descuento);
     const modulo = await tx.moduloOrg.findFirst({ where: { clave: "caja", activo: true }, select: { config: true } });
     const baseTrasPromocion = subtotal.minus(descuentosPromocion);
     const descuentoManual = descuentosManualesPartidas.plus(datos.descuento);
@@ -473,12 +486,14 @@ export async function registrarVentaCredito(
         subtotal,
         descuento: descuentoTotal,
         total,
+        ivaTotal: impuestoVenta.ivaTotal,
+        ivaEnvio: impuestoVenta.ivaEnvio,
         notas: datos.notas,
         stockAplicado: true,
         esCredito: true,
       },
     });
-    await guardarPartidasYDescontar(tx, venta.id, venta.folio, sesion.userId, datos.partidas, porId);
+    await guardarPartidasYDescontar(tx, venta.id, venta.folio, sesion.userId, datos.partidas, porId, impuestoVenta);
     await tx.cuentaCliente.update({ where: { id: cuenta.id }, data: { saldo: saldoDespues } });
     await tx.movimientoCuentaCliente.create({
       data: {

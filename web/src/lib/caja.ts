@@ -11,6 +11,10 @@ export type PartidaCajaEntrada = {
   productoId: bigint;
   cantidad: Prisma.Decimal;
   descuento: Prisma.Decimal;
+  ivaTasa?: Prisma.Decimal;
+  ivaExento?: boolean;
+  baseImporte?: Prisma.Decimal;
+  ivaImporte?: Prisma.Decimal;
 };
 
 export type PagoCajaEntrada = { metodo: MetodoCaja; monto: Prisma.Decimal };
@@ -90,8 +94,16 @@ export function validarVentaCaja(body: Record<string, unknown>) {
     const productoId = id(entrada.productoId);
     const cantidadPartida = cantidad(entrada.cantidad, new Prisma.Decimal("0.001"));
     const descuentoPartida = decimalDinero(entrada.descuento ?? 0);
+    const ivaTasa = entrada.ivaTasa === undefined ? undefined : decimalDinero(entrada.ivaTasa);
+    const baseImporte = entrada.baseImporte === undefined ? undefined : decimalDinero(entrada.baseImporte);
+    const ivaImporte = entrada.ivaImporte === undefined ? undefined : decimalDinero(entrada.ivaImporte);
+    const ivaExento = entrada.ivaExento === undefined ? undefined : entrada.ivaExento === true;
     if (productoId === null || cantidadPartida === null || descuentoPartida === null) {
       return { error: "Revisa productos, cantidades y descuentos" } as const;
+    }
+    const tieneSnapshot = [ivaTasa, baseImporte, ivaImporte, ivaExento].some((valor) => valor !== undefined);
+    if (tieneSnapshot && (ivaTasa === null || ivaTasa === undefined || !["0", "0.08", "0.16"].includes(ivaTasa.toString()) || baseImporte === null || baseImporte === undefined || baseImporte.lt(0) || ivaImporte === null || ivaImporte === undefined || ivaImporte.lt(0) || ivaExento === undefined)) {
+      return { error: "El snapshot de IVA de la venta offline no es válido" } as const;
     }
     const clave = String(productoId);
     const previa = partidas.get(clave);
@@ -99,6 +111,10 @@ export function validarVentaCaja(body: Record<string, unknown>) {
       productoId,
       cantidad: cantidadPartida.plus(previa?.cantidad ?? 0),
       descuento: descuentoPartida.plus(previa?.descuento ?? 0),
+      ivaTasa: ivaTasa ?? undefined,
+      ivaExento,
+      baseImporte: baseImporte ?? undefined,
+      ivaImporte: ivaImporte ?? undefined,
     });
   }
 
