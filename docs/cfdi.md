@@ -64,9 +64,15 @@ Venta o pago
 Reglas del servidor:
 
 - El cliente nunca define subtotal, impuestos ni total: se recalculan.
-- El total de la venta/pago se interpreta como importe **con IVA incluido** y se
-  desglosa con IVA 16 % exacto. Si el redondeo por concepto desvía el total, se
-  separa un concepto de ajuste; la tasa no cambia.
+- Para ventas con snapshot fiscal por partida, los conceptos deben usar la tasa
+  persistida de cada partida (incluye exento y tasa 0 como tratamientos
+  distintos). Los orígenes históricos sin snapshot conservan la regla anterior:
+  importe con IVA incluido al 16 %.
+- El descuento reduce proporcionalmente la base gravable. La configuración
+  comercial concentra las reglas: el envío lleva IVA al 16 % y aparece como
+  concepto separado (pendiente de validar con contador). El cargo por servicio,
+  cuando exista, debe facturarse como concepto propio con su IVA (validar con
+  contador).
 - Cada concepto persiste `iva_tasa` y `retencion_tasa` como `NUMERIC(7,6)`. El
   XML usa esa tasa exacta (`TasaOCuota="0.160000"` para IVA 16 %), incluso si el
   importe redondeado dividido entre el IVA daría `0.159961`.
@@ -137,8 +143,8 @@ reales ni sustituye el XML original del PAC.
 - `web/src/lib/cfdi/validar.ts`: funciones puras para RFC, régimen fiscal, uso
   CFDI, CP, forma/método de pago, correo, moneda, cantidades e impuestos.
 - `web/src/lib/cfdi/calcular.ts`: importes en centavos, redondeo a 2 decimales,
-  IVA 16 % y retenciones básicas. Incluye el desglose desde total con concepto
-  de ajuste.
+  tasas por concepto y retenciones básicas. Incluye el desglose histórico desde
+  total con concepto de ajuste.
 - `web/src/lib/cfdi/servicio.ts`: crear borrador, timbrar, cancelar, consultar y
   descargar. Recalcula todo, aplica idempotencia, reclamo atómico y snapshot.
 - `web/src/lib/cfdi/permisos.ts`: regla compartida de Administrador/Finanzas
