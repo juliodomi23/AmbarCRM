@@ -1,5 +1,6 @@
 "use client";
 
+import { Prisma } from "@prisma/client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -14,6 +15,7 @@ import { almacenIndexedDB } from "@/lib/caja-offline/almacen";
 import { calcularLineaLocal, horasDeCatalogo, leerCatalogoLocal, sincronizarCatalogo, type CatalogoLocal } from "@/lib/caja-offline/catalogo";
 import type { ProductoCatalogoCaja } from "@/lib/caja-offline/tipos";
 import { imprimirTicketLocal } from "@/lib/caja-offline/ticket";
+import { desgloseVenta } from "@/lib/iva-producto";
 import { confirmar } from "@/components/Confirmador";
 import { descartarVenta, encolarVenta, folioSinRed, listarCola, reintentarVenta, subirCola, type VentaEnCola } from "@/lib/caja-offline/cola";
 
@@ -43,7 +45,7 @@ type Corte = {
 type VentaResultado = { id: string; folio: string; contacto: ContactoVenta | null };
 type ContactoBusqueda = { id: string; nombre: string; detalle: string };
 
-const dinero = (valor: string) => Number(valor || 0);
+const dinero = (valor: string) => new Prisma.Decimal(valor || 0);
 const normalizar = (valor: string) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 class ErrorRed extends Error {}
@@ -190,16 +192,18 @@ export function CajaCliente({
       return producto && Number(linea.cantidad) > 0 ? calcularLineaLocal(catalogoLocal.catalogo, producto, linea.cantidad) : null;
     });
   }, [catalogoLocal, lineas]);
-  const subtotal = calculoLineas
-    ? lineas.reduce((suma, linea, indice) => suma + Number(calculoLineas[indice]?.bruto ?? Number(linea.producto.precio) * Number(linea.cantidad || 0)), 0)
-    : lineas.reduce((suma, linea) => suma + Number(linea.producto.precio) * Number(linea.cantidad || 0), 0);
+  const subtotal = lineas.reduce((suma, linea, indice) => suma.plus(calculoLineas?.[indice]?.bruto ?? new Prisma.Decimal(linea.producto.precio).mul(linea.cantidad || 0).toDecimalPlaces(2)), new Prisma.Decimal(0));
   const descuentoPromociones = calculoLineas
-    ? calculoLineas.reduce((suma, calculo) => suma + Number(calculo?.descuentoPromocion ?? 0), 0)
-    : 0;
-  const descuentoLineas = lineas.reduce((suma, linea) => suma + dinero(linea.descuento), 0) + descuentoPromociones;
-  const total = Math.max(0, subtotal - descuentoLineas - dinero(descuento));
-  const pagado = Object.values(pagos).reduce((suma, monto) => suma + dinero(monto), 0);
-  const cambio = Math.max(0, pagado - total);
+    ? calculoLineas.reduce((suma, calculo) => suma.plus(calculo?.descuentoPromocion ?? 0), new Prisma.Decimal(0))
+    : new Prisma.Decimal(0);
+  const descuentoLineas = lineas.reduce((suma, linea) => suma.plus(dinero(linea.descuento)), new Prisma.Decimal(0)).plus(descuentoPromociones);
+  const total = Prisma.Decimal.max(new Prisma.Decimal(0), subtotal.minus(descuentoLineas).minus(dinero(descuento)));
+  const impuestoVista = desgloseVenta(lineas.map((linea, indice) => {
+    const calculo = calculoLineas?.[indice];
+    return { total: new Prisma.Decimal(calculo?.total ?? new Prisma.Decimal(linea.producto.precio).mul(linea.cantidad || 0).toFixed(2)), descuento: dinero(linea.descuento), tasa: new Prisma.Decimal(calculo?.ivaTasa ?? String(linea.producto.ivaTasa ?? "0.16")), exento: calculo?.ivaExento ?? linea.producto.ivaExento === true, ivaIncluido: calculo?.ivaIncluido ?? linea.producto.precioIncluyeIva !== false };
+  }), dinero(descuento));
+  const pagado = Object.values(pagos).reduce((suma, monto) => suma.plus(dinero(monto)), new Prisma.Decimal(0));
+  const cambio = Prisma.Decimal.max(new Prisma.Decimal(0), pagado.minus(total));
   const puedeVerReportes = usuario.rol === "admin" || usuario.puesto.trim().toLocaleLowerCase("es-MX") === "encargado de tienda";
 
   useEffect(() => busquedaRef.current?.focus(), [turno]);
@@ -309,14 +313,18 @@ export function CajaCliente({
       return;
     }
     if (contactoId) return toast("Sin internet no se puede vender a un cliente: quítalo de la venta", "error");
-    if (dinero(pagos.nota_credito) > 0) return toast("Sin internet no se aceptan notas de crédito", "error");
-    const baseTrasPromocion = subtotal - descuentoPromociones;
-    const manual = descuentoLineas - descuentoPromociones + dinero(descuento);
-    const porcentaje = baseTrasPromocion > 0 ? (manual * 100) / baseTrasPromocion : 0;
-    if (!catalogoLocal.sinTopeDescuento && porcentaje > catalogoLocal.catalogo.descuentoMaximo) {
+    if (dinero(pagos.nota_credito).gt(0)) return toast("Sin internet no se aceptan notas de crédito", "error");
+    const baseTrasPromocion = subtotal.minus(descuentoPromociones);
+    const manual = descuentoLineas.minus(descuentoPromociones).plus(dinero(descuento));
+    const porcentaje = baseTrasPromocion.isZero() ? new Prisma.Decimal(0) : manual.mul(100).div(baseTrasPromocion);
+    if (!catalogoLocal.sinTopeDescuento && porcentaje.gt(catalogoLocal.catalogo.descuentoMaximo)) {
       return toast(`Sin internet el descuento no puede pasar de ${catalogoLocal.catalogo.descuentoMaximo}%`, "error");
     }
-    if (pagado < total) return toast("El pago no cubre el total", "error");
+    if (pagado.lt(total)) return toast("El pago no cubre el total", "error");
+    const impuestoVenta = desgloseVenta(lineas.map((linea, indice) => {
+      const calculo = calculoLineas?.[indice];
+      return { total: new Prisma.Decimal(calculo?.total ?? "0"), descuento: dinero(linea.descuento), tasa: new Prisma.Decimal(calculo?.ivaTasa ?? "0.16"), exento: calculo?.ivaExento ?? false, ivaIncluido: calculo?.ivaIncluido ?? true };
+    }), dinero(descuento));
     const registro: VentaEnCola = {
       uuidCliente: uuid,
       folio: folioSinRed(uuid),
@@ -329,13 +337,19 @@ export function CajaCliente({
         cantidad: linea.cantidad,
         descuento: linea.descuento || "0",
         precioUnitario: calculoLineas?.[indice]?.precioUnitario ?? String(linea.producto.precio),
-        total: calculoLineas?.[indice]?.total ?? (Number(linea.producto.precio) * Number(linea.cantidad)).toFixed(2),
+        total: calculoLineas?.[indice]?.total ?? new Prisma.Decimal(linea.producto.precio).mul(linea.cantidad).toFixed(2),
+        ivaTasa: calculoLineas?.[indice]?.ivaTasa,
+        ivaExento: calculoLineas?.[indice]?.ivaExento,
+        baseImporte: impuestoVenta.partidas[indice].baseImporte.toFixed(2),
+        ivaImporte: impuestoVenta.partidas[indice].ivaImporte.toFixed(2),
       })),
       pagos: (["efectivo", "tarjeta", "transferencia"] as const)
-        .filter((metodo) => dinero(pagos[metodo]) > 0)
+        .filter((metodo) => dinero(pagos[metodo]).gt(0))
         .map((metodo) => ({ metodo, monto: pagos[metodo] })),
       descuento: descuento || "0",
       totalCobrado: total.toFixed(2),
+      ivaTotal: impuestoVenta.ivaTotal.toFixed(2),
+      ivaEnvio: impuestoVenta.ivaEnvio.toFixed(2),
       cambio: cambio.toFixed(2),
       catalogoVersion: catalogoLocal.catalogo.version,
       estado: "pendiente",
@@ -362,7 +376,7 @@ export function CajaCliente({
         uuidCliente: uuid,
         descuento,
         partidas: lineas.map((linea) => ({ productoId: linea.producto.id, cantidad: linea.cantidad, descuento: linea.descuento })),
-        pagos: Object.entries(pagos).filter(([, monto]) => dinero(monto) > 0).map(([metodo, monto]) => ({ metodo, monto })),
+        pagos: Object.entries(pagos).filter(([, monto]) => dinero(monto).gt(0)).map(([metodo, monto]) => ({ metodo, monto })),
       });
       setVenta(data.venta); setVentaLocal(null); limpiarVenta();
       toast(data.repetida ? "La venta ya estaba registrada" : `Venta ${data.venta.folio} cobrada`);
@@ -501,7 +515,7 @@ export function CajaCliente({
           <div className="text-xs"><label htmlFor="buscar-cliente">Cliente (opcional, busca sin acentos)</label><input id="buscar-cliente" value={busquedaContacto} onChange={(e) => { setBusquedaContacto(e.target.value); setContactoId(""); }} placeholder="Nombre o teléfono" className="mt-1 w-full rounded border p-2" />{contactoId && <button onClick={() => { setContactoId(""); setBusquedaContacto(""); }} className="mt-1 text-primary">Quitar cliente</button>}{contactosEncontrados.length > 0 && !contactoId && <div className="mt-1 max-h-32 overflow-y-auto rounded border bg-card p-1">{contactosEncontrados.map((contacto) => <button key={contacto.id} onClick={() => { setContactoId(contacto.id); setBusquedaContacto(contacto.nombre); }} className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted">{contacto.nombre}{contacto.detalle ? ` · ${contacto.detalle}` : ""}</button>)}</div>}</div>
           <label className="block text-xs">Descuento general $ <span className="text-muted-foreground">(Cajero hasta {descuentoMaximo}%)</span><input type="number" min="0" step="0.01" value={descuento} onChange={(e) => setDescuento(e.target.value)} className="mt-1 w-full rounded border p-2" /></label>
           <div className="space-y-2"><p className="text-xs font-semibold uppercase text-muted-foreground">Cobro mixto</p>{(["efectivo", "tarjeta", "transferencia", "nota_credito"] as const).map((metodo) => <label key={metodo} className="grid grid-cols-[1fr_130px] items-center text-sm capitalize"><span>{metodo.replace("_", " ")}</span><input type="number" min="0" step="0.01" value={pagos[metodo]} disabled={metodo === "nota_credito" && !contactoId} onChange={(e) => setPagos({ ...pagos, [metodo]: e.target.value })} className="rounded border p-2 text-right disabled:opacity-50" /></label>)}<div className="flex flex-wrap gap-1">{[50,100,200,500,1000].map((billete) => <button key={billete} onClick={() => setPagos({ ...pagos, efectivo: String(billete) })} className="rounded bg-muted px-2 py-1 text-xs">${billete}</button>)}</div></div>
-          <div className="border-t pt-3 text-sm"><p className="flex justify-between"><span>Subtotal</span><span>{formatoMoneda(subtotal)}</span></p><p className="flex justify-between"><span>Pagado</span><span>{formatoMoneda(pagado)}</span></p><p className="flex justify-between text-base font-bold"><span>Total</span><span>{formatoMoneda(total)}</span></p><p className="flex justify-between text-success"><span>Cambio</span><span>{formatoMoneda(cambio)}</span></p></div>
+          <div className="border-t pt-3 text-sm"><p className="flex justify-between"><span>Subtotal</span><span>{formatoMoneda(subtotal.toNumber())}</span></p><p className="flex justify-between"><span>IVA trasladado</span><span>{formatoMoneda(impuestoVista.ivaTotal.toNumber())}</span></p><p className="flex justify-between"><span>Pagado</span><span>{formatoMoneda(pagado.toNumber())}</span></p><p className="flex justify-between text-base font-bold"><span>Total</span><span>{formatoMoneda(total.toNumber())}</span></p><p className="flex justify-between text-success"><span>Cambio</span><span>{formatoMoneda(cambio.toNumber())}</span></p></div>
           <div className="grid grid-cols-3 gap-2"><Boton className="py-3" disabled={!lineas.length || pagado < total || ocupado} onClick={cobrar}>Cobrar (F2)</Boton><Boton variante="ghost" disabled={!lineas.length || !contactoId || ocupado || (modoSinRed && !enLinea)} onClick={apartar}>Apartar</Boton><Boton variante="ghost" disabled={!lineas.length || !contactoId || ocupado || (modoSinRed && !enLinea)} onClick={venderCredito}>A crédito</Boton></div>
         </aside>
       </div>

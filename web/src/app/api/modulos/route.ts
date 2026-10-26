@@ -78,6 +78,13 @@ async function manejarPATCH(req: NextRequest) {
     );
   // La conexión con Aurum (clave cifrada) solo se cambia desde /api/lealtad/conexion.
   if (
+    clave === "ventas" &&
+    ((Object.hasOwn(config, "preciosIncluyenIva") && typeof config.preciosIncluyenIva !== "boolean") ||
+    (Object.hasOwn(config, "iva8Habilitado") && typeof config.iva8Habilitado !== "boolean"))
+  ) {
+    return NextResponse.json({ error: "La configuración fiscal de ventas debe usar valores booleanos" }, { status: 400 });
+  }
+  if (
     clave === "citas" &&
     Object.hasOwn(config, "duracionMin") &&
     (!Number.isInteger(config.duracionMin) ||

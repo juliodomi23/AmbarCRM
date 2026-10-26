@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,6 +11,7 @@ import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { moduloActivo } from "@/lib/modulos";
 import { getAjustes } from "@/lib/services/config";
+import { desglosarImporte } from "@/lib/iva-producto";
 import estilos from "./ticket.module.css";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +56,15 @@ export default async function TicketPage({ params, searchParams }: ParametrosTic
       style: "currency",
       currency: venta.moneda,
     }).format(Number(valor));
+  const tieneSnapshotIva = venta.partidas.some((partida) => partida.baseImporte !== null && partida.ivaImporte !== null);
+  const ivaTicket = tieneSnapshotIva
+    ? venta.ivaTotal
+    : desglosarImporte(venta.total, new Prisma.Decimal("0.16"), true).ivaImporte;
+  const ivaEnvioTicket = venta.ivaEnvio.gt(0)
+    ? venta.ivaEnvio
+    : venta.costoEnvio.gt(0)
+      ? desglosarImporte(venta.costoEnvio, new Prisma.Decimal("0.16"), true).ivaImporte
+      : venta.ivaEnvio;
 
   return (
     <main className={estilos.pagina}>
@@ -120,6 +131,10 @@ export default async function TicketPage({ params, searchParams }: ParametrosTic
           {venta.descuento.gt(0) && (
             <p className="flex justify-between"><span>Descuento</span><span>−{moneda(venta.descuento)}</span></p>
           )}
+          {venta.costoEnvio.gt(0) && <p className="flex justify-between"><span>Envío</span><span>{moneda(venta.costoEnvio)}</span></p>}
+          {venta.costoEnvio.gt(0) && <p className="flex justify-between"><span>IVA de envío</span><span>{moneda(ivaEnvioTicket)}</span></p>}
+          <p className="flex justify-between"><span>IVA trasladado</span><span>{moneda(ivaTicket)}</span></p>
+          <p className="flex justify-between"><span>IVA incluido</span><span>{moneda(venta.ivaTotal)}</span></p>
           <p className="flex justify-between text-sm font-bold"><span>Total</span><span>{moneda(venta.total)}</span></p>
         </div>
 

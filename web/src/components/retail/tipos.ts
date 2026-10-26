@@ -21,6 +21,9 @@ export type ProductoRetail = {
   categoria: string | null;
   descripcion: string | null;
   precio: DecimalSerializado;
+  ivaTasa: DecimalSerializado;
+  ivaExento: boolean;
+  precioIncluyeIva: boolean;
   costo: DecimalSerializado;
   stock: DecimalSerializado;
   stockMinimo: DecimalSerializado;

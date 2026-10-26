@@ -28,6 +28,11 @@ export const POST = conModulo("productos", {}, async (sesion, req: NextRequest) 
   if ("error" in validacion) {
     return NextResponse.json({ error: validacion.error }, { status: 400 });
   }
+  if (String(validacion.data.ivaTasa) === "0.08") {
+    const moduloVentas = await db.moduloOrg.findFirst({ where: { clave: "ventas", activo: true }, select: { config: true } });
+    const config = moduloVentas?.config as Record<string, unknown> | null;
+    if (config?.iva8Habilitado !== true) return NextResponse.json({ error: "El IVA al 8 % debe habilitarlo un administrador en Configuración de ventas" }, { status: 400 });
+  }
 
   try {
     const producto = await transaccionTenant(sesion.orgId, async (tx) => {

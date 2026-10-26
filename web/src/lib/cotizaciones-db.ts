@@ -40,7 +40,7 @@ function folioCotizacion() {
   return `COT-${Date.now().toString(36).toUpperCase()}-${randomBytes(2).toString("hex").toUpperCase()}`;
 }
 
-async function prepararPartidas(tx: Prisma.TransactionClient, contactoId: bigint, entradas: readonly PartidaCotizacionEntrada[]) {
+async function prepararPartidas(tx: Prisma.TransactionClient, contactoId: bigint, entradas: readonly PartidaCotizacionEntrada[], config: ReturnType<typeof configCotizaciones>) {
   const ids = entradas.flatMap((partida) => partida.productoId === null ? [] : [partida.productoId]);
   const precios = ids.length
     ? await calcularPrecios(tx, entradas.flatMap((partida) => partida.productoId === null ? [] : [{ productoId: partida.productoId, cantidad: partida.cantidad }]), { contactoId })
@@ -56,6 +56,10 @@ async function prepararPartidas(tx: Prisma.TransactionClient, contactoId: bigint
       descuento: partida.descuento.plus(calculo?.descuentoPromocion ?? 0),
       descuentoPromocion: calculo?.descuentoPromocion ?? new Prisma.Decimal(0),
       promocionDescripcion: calculo?.promocionDescripcion ?? null,
+      ivaTasa: calculo ? calculo.producto.ivaTasa : config.ivaPorcentaje.div(100),
+      ivaExento: calculo?.producto.ivaExento ?? false,
+      ivaIncluido: calculo ? true : config.preciosConIva,
+      importeBruto: calculo?.bruto,
     };
   });
 }
@@ -70,7 +74,7 @@ export async function crearCotizacion(orgId: bigint, userId: bigint | null, dato
     }
     const modulo = await tx.moduloOrg.findFirst({ where: { clave: "cotizaciones", activo: true }, select: { config: true } });
     const config = configCotizaciones(modulo?.config);
-    const preparadas = await prepararPartidas(tx, contacto.id, datos.partidas);
+    const preparadas = await prepararPartidas(tx, contacto.id, datos.partidas, config);
     let calculo;
     try {
       calculo = calcularCotizacion(preparadas, datos.descuentoGeneral, config);
@@ -107,6 +111,10 @@ export async function crearCotizacion(orgId: bigint, userId: bigint | null, dato
         descuentoPromocion: partida.descuentoPromocion,
         promocionDescripcion: partida.promocionDescripcion,
         total: partida.total,
+        ivaTasa: partida.ivaTasa,
+        ivaExento: partida.ivaExento,
+        baseImporte: partida.baseImporte,
+        ivaImporte: partida.ivaImporte,
       })),
     });
     return tx.cotizacion.findUniqueOrThrow({ where: { id: cotizacion.id }, include: detalleCotizacion });
@@ -158,6 +166,8 @@ async function convertirEnVenta(tx: Prisma.TransactionClient, cotizacion: Awaite
       subtotal: cotizacion.subtotal,
       descuento: cotizacion.descuento,
       total: cotizacion.total,
+      ivaTotal: cotizacion.impuestos,
+      ivaEnvio: new Prisma.Decimal(0),
       notas: `Convertida desde ${cotizacion.folio}`,
       stockAplicado: true,
     },
@@ -174,6 +184,12 @@ async function convertirEnVenta(tx: Prisma.TransactionClient, cotizacion: Awaite
         descuentoPromocion: partida.descuentoPromocion,
         promocionDescripcion: partida.promocionDescripcion,
         total: partida.total,
+        ...(partida.baseImporte !== null && partida.ivaImporte !== null && partida.ivaTasa !== null && partida.ivaExento !== null ? {
+          baseImporte: partida.baseImporte,
+          ivaImporte: partida.ivaImporte,
+          ivaTasa: partida.ivaTasa,
+          ivaExento: partida.ivaExento,
+        } : {}),
       },
     });
   }

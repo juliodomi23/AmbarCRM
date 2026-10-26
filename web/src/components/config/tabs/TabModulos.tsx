@@ -92,6 +92,16 @@ export function TabModulos({
       };
     });
   }
+  function actualizarConfigVentas(campo: "preciosIncluyenIva" | "iva8Habilitado", valor: boolean) {
+    let actual: Record<string, unknown>;
+    try {
+      actual = JSON.parse(config.ventas ?? "{}");
+    } catch {
+      return;
+    }
+    actual[campo] = valor;
+    setConfig({ ...config, ventas: JSON.stringify(actual, null, 2) });
+  }
   return (
     <div className="max-w-2xl space-y-3">
       {items.map((m) => (
@@ -148,6 +158,21 @@ export function TabModulos({
                 <LealtadConfig modulo={m} canales={canales} />
               )}
               {m.clave === "pagos_en_linea" && <PagosConfig modulo={m} />}
+              {m.clave === "ventas" && (
+                <div className="mt-3 space-y-2 rounded-lg border border-border p-3 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={(() => { try { return JSON.parse(config.ventas ?? "{}").preciosIncluyenIva !== false; } catch { return true; } })()} onChange={(e) => actualizarConfigVentas("preciosIncluyenIva", e.target.checked)} />
+                    Los precios incluyen IVA (configuración por defecto)
+                  </label>
+                  <p className="text-xs text-muted-foreground">Al desactivarlo, el IVA se suma al precio como concepto separado. Confirma la configuración fiscal con tu contador.</p>
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={(() => { try { return JSON.parse(config.ventas ?? "{}").iva8Habilitado === true; } catch { return false; } })()} onChange={(e) => actualizarConfigVentas("iva8Habilitado", e.target.checked)} />
+                    Habilitar tasa del 8 % en el catálogo de productos
+                  </label>
+                  <p className="text-xs text-muted-foreground">Solo admin. Actívala si la organización acredita los requisitos del estímulo fronterizo. Validar con contador.</p>
+                  <Boton onClick={() => guardar("ventas")}>Guardar configuración</Boton>
+                </div>
+              )}
               {(m.clave === "marketing" || m.clave === "meta_ads") && (
                 <div className="mt-3 space-y-2 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
                   <p>

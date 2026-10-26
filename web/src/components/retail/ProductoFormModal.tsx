@@ -11,6 +11,8 @@ const INICIAL = {
   categoria: "",
   descripcion: "",
   precio: "",
+  ivaTasa: "0.16",
+  precioIncluyeIva: true,
   costo: "",
   stock: "0",
   stockMinimo: "0",
@@ -38,6 +40,14 @@ export function ProductoFormModal({
   onGuardar: (formulario: ProductoFormulario) => Promise<void>;
 }) {
   const [formulario, setFormulario] = useState(INICIAL);
+  const [iva8Habilitado, setIva8Habilitado] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/modulos").then((respuesta) => respuesta.json()).then((datos) => {
+      const ventas = datos.modulos?.find((modulo: { clave: string }) => modulo.clave === "ventas");
+      setIva8Habilitado(ventas?.config?.iva8Habilitado === true);
+    }).catch(() => setIva8Habilitado(false));
+  }, []);
 
   useEffect(() => {
     if (!abierto) return;
@@ -50,6 +60,8 @@ export function ProductoFormModal({
             categoria: producto.categoria ?? "",
             descripcion: producto.descripcion ?? "",
             precio: String(producto.precio),
+            ivaTasa: producto.ivaExento ? "exento" : String(producto.ivaTasa ?? "0.16"),
+            precioIncluyeIva: producto.precioIncluyeIva ?? true,
             costo: String(producto.costo),
             stock: String(producto.stock),
             stockMinimo: String(producto.stockMinimo),
@@ -151,6 +163,15 @@ export function ProductoFormModal({
             placeholder="pieza, kg, m…"
             required
           />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium text-muted-foreground">IVA del producto</span>
+            <select className="w-full rounded-lg border border-input px-3 py-2" value={formulario.ivaTasa} onChange={(evento) => set("ivaTasa", evento.target.value)}>
+              <option value="0.16">16 %</option>{iva8Habilitado && <option value="0.08">8 % (estímulo fronterizo)</option>}<option value="0">0 %</option><option value="exento">Exento</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={formulario.precioIncluyeIva} onChange={(evento) => set("precioIncluyeIva", evento.target.checked)} />El precio ya incluye IVA</label>
         </div>
         <label className="flex items-center gap-2 text-sm">
           <input
