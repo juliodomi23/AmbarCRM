@@ -1994,7 +1994,7 @@ CREATE TABLE IF NOT EXISTS pagos_online (
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
   origen_tipo TEXT NOT NULL CHECK (origen_tipo IN ('venta','cita','cotizacion','pedido')),
   origen_id BIGINT NOT NULL,
-  proveedor TEXT NOT NULL CHECK (proveedor IN ('mercado_pago','mock')),
+  proveedor TEXT NOT NULL CHECK (proveedor IN ('mercado_pago','stripe','mock')),
   estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente','aprobado','rechazado','cancelado','reembolsado')),
   monto NUMERIC(12,2) NOT NULL CHECK (monto > 0),
   monto_reembolsado NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (monto_reembolsado >= 0 AND monto_reembolsado <= monto),
@@ -2037,6 +2037,8 @@ WHERE id IN (SELECT id FROM duplicados WHERE posicion > 1);
 CREATE UNIQUE INDEX IF NOT EXISTS pagos_online_un_pendiente_origen_idx
   ON pagos_online(org_id, origen_tipo, origen_id) WHERE estado = 'pendiente';
 CREATE UNIQUE INDEX IF NOT EXISTS pagos_online_id_org_idx ON pagos_online(id, org_id);
+ALTER TABLE pagos_online DROP CONSTRAINT IF EXISTS pagos_online_proveedor_check;
+ALTER TABLE pagos_online ADD CONSTRAINT pagos_online_proveedor_check CHECK (proveedor IN ('mercado_pago','stripe','mock'));
 
 CREATE TABLE IF NOT EXISTS eventos_pago (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
