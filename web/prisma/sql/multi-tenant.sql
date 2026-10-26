@@ -298,6 +298,10 @@ ALTER TABLE credenciales_pago ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
 ALTER TABLE credenciales_pago ADD COLUMN IF NOT EXISTS user_id TEXT;
 ALTER TABLE credenciales_pago ADD COLUMN IF NOT EXISTS scope TEXT;
 ALTER TABLE credenciales_pago ADD COLUMN IF NOT EXISTS requiere_reconexion BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE credenciales_pago ADD COLUMN IF NOT EXISTS stripe_charges_enabled BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE credenciales_pago ADD COLUMN IF NOT EXISTS stripe_details_submitted BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE credenciales_pago DROP CONSTRAINT IF EXISTS credenciales_pago_proveedor_check;
+ALTER TABLE credenciales_pago ADD CONSTRAINT credenciales_pago_proveedor_check CHECK (proveedor IN ('mercado_pago','stripe','mock'));
 CREATE INDEX IF NOT EXISTS credenciales_pago_org_activo_idx ON credenciales_pago(org_id, activo);
 
 CREATE TABLE IF NOT EXISTS reembolsos_pago (
@@ -345,3 +349,18 @@ CREATE POLICY org_isolation ON reembolsos_pago
 GRANT SELECT, INSERT, UPDATE ON pagos_online, eventos_pago, credenciales_pago, reembolsos_pago TO crm_app;
 REVOKE DELETE ON pagos_online, eventos_pago, credenciales_pago, reembolsos_pago FROM crm_app;
 GRANT USAGE, SELECT ON SEQUENCE pagos_online_id_seq, eventos_pago_id_seq, credenciales_pago_id_seq, reembolsos_pago_id_seq TO crm_app;
+
+-- Resolver una cuenta Stripe Connect por acct_ sin exponer consultas cross-tenant a la app.
+CREATE OR REPLACE FUNCTION resolve_org_by_stripe_account(p_account text)
+RETURNS TABLE(org_id BIGINT)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+  SELECT c.org_id
+  FROM public.credenciales_pago c
+  JOIN public.orgs o ON o.id = c.org_id AND o.activo = true
+  WHERE c.proveedor = 'stripe' AND c.user_id = p_account AND c.activo = true
+  LIMIT 2
+$$;
+REVOKE ALL ON FUNCTION resolve_org_by_stripe_account(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION resolve_org_by_stripe_account(text) TO crm_app;

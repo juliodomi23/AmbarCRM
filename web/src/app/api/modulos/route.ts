@@ -122,7 +122,7 @@ async function manejarPATCH(req: NextRequest) {
     }
     if (
       Object.hasOwn(pagos, "proveedor") &&
-      !["mercado_pago", "mock"].includes(String(pagos.proveedor))
+      !["mercado_pago", "stripe", "mock"].includes(String(pagos.proveedor))
     ) {
       return NextResponse.json(
         { error: "Proveedor de pagos inválido" },

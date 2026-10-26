@@ -2,7 +2,7 @@
 
 ## Decisión
 
-Se adopta Mercado Pago Checkout Pro para México. Encaja con el mercado objetivo, permite enviar un enlace alojado por el proveedor y evita que AmbarCRM procese datos de tarjeta. Stripe se conserva como adaptador futuro: su API es sólida, pero no se implementa en esta fase para no duplicar integración, conciliación y operación antes de validar el flujo principal.
+Mercado Pago Checkout Pro sigue disponible para México y Stripe se incorpora como segundo proveedor. Ambos alojan el formulario de pago y evitan que AmbarCRM procese datos de tarjeta. Cada organización guarda sus credenciales por proveedor y elige un proveedor predeterminado para los cobros nuevos.
 
 La aplicación usa la interfaz `ProveedorPago`; `ProveedorMercadoPago` llama las APIs HTTP con `fetch` nativo y `ProveedorMock` cubre pruebas sin red. No se agregó una dependencia.
 
@@ -26,7 +26,7 @@ venta → checkout pendiente → webhook firmado → evento único
 
 - `pagos_online`: importe `NUMERIC(12,2)`, moneda, origen polimórfico, estado, preferencia, payment id, checkout, expiración y clave idempotente única por organización.
 - `eventos_pago`: evento único por organización/proveedor y payload mínimo sin PII.
-- `credenciales_pago`: access y refresh token OAuth cifrados AES-256-GCM por organización, vencimiento, usuario del proveedor, scope y estado de reconexión. La API nunca devuelve tokens al navegador.
+- `credenciales_pago`: Mercado Pago guarda sus tokens OAuth cifrados AES-256-GCM; Stripe guarda solo el `acct_...` en `user_id`, el modo test/live y los estados de onboarding. La API nunca devuelve tokens al navegador.
 - `reembolsos_pago`: reserva e idempotencia mientras un reembolso está pendiente. El único total visible y contable es `pagos_online.monto_reembolsado`.
 - Las cuatro tablas llevan `org_id`, índices, RLS `USING` + `WITH CHECK` y permisos explícitos para `crm_app`. Pagos y eventos no permiten `DELETE`.
 - El evento se procesa dentro de la misma transacción que el origen. Un duplicado concurrente pierde por la restricción única y se responde como duplicado.
@@ -101,3 +101,68 @@ El check puro valida firmas, replay y reglas del adaptador. El E2E requiere `DAT
 - Rotar el secreto global de webhook requiere actualizar la variable de la aplicación y la configuración de Mercado Pago de forma coordinada.
 - No se guardan payloads completos, nombres, correos, tarjetas ni tokens del pagador.
 - Antes de producción se debe probar con una cuenta sandbox real, después con un cobro de importe mínimo y un reembolso controlado.
+
+## Stripe Connect con cuentas Standard
+
+Stripe usa Connect Onboarding para cuentas `type=standard`, en vez de OAuth. Stripe desaconseja OAuth para nuevas plataformas Connect y recomienda onboarding Standard con Account Links. Account Links crea una cuenta nueva; conectar una cuenta Stripe que ya existía requeriría OAuth y queda pendiente. Referencias: [OAuth y recomendación para cuentas Standard](https://docs.stripe.com/connect/oauth-standard-accounts), [Connect Onboarding Standard](https://docs.stripe.com/connect/standard-accounts).
+
+La plataforma crea la cuenta con `STRIPE_SECRET_KEY`, solicita un Account Link y guarda únicamente el `acct_...` en `credenciales_pago.user_id`. No hay tokens por organización. Las operaciones sobre la cuenta conectada usan la llave secreta de la plataforma y el encabezado `Stripe-Account: acct_...` ([autenticación de cuentas conectadas](https://docs.stripe.com/connect/authentication)). La cuenta debe tener `charges_enabled=true` para crear checkouts. La respuesta de retorno solo indica que el usuario salió del onboarding: el servidor consulta la cuenta y también escucha `account.updated` antes de habilitar cobros.
+
+El state de `return_url` y `refresh_url` queda firmado y ligado a la organización, el administrador y una cookie HttpOnly de diez minutos. Si el Account Link caduca, `/api/pagos/stripe/actualizar` genera otro. La URL base procede de `PAGOS_BASE_URL` o `NEXTAUTH_URL`; no se configura un redirect URI aparte.
+
+Stripe deriva el modo de la llave: `sk_test_` guarda sandbox y `sk_live_` guarda real. Una cuenta creada en modo prueba no se puede usar con la llave live. `STRIPE_PAIS` indica el país ISO 3166-1 alpha-2 enviado al crear la cuenta Standard (por defecto `MX`); debe corresponder al país de la cuenta de plataforma Stripe. Stripe usa el país de la persona o empresa conectada para determinar requisitos de onboarding ([parámetro country de Accounts](https://docs.stripe.com/api/accounts/create)). `STRIPE_SECRET_KEY` nunca se guarda ni se devuelve por API; `STRIPE_WEBHOOK_SECRET` es el secreto del endpoint Connect de la plataforma.
+
+### Checkout, importes y reembolsos
+
+Se crea una Checkout Session `mode=payment`, moneda `mxn`, métodos explícitos `card`, referencia en `client_reference_id` y `metadata[pagoId]`, expiración de 24 horas y `Idempotency-Key`. Stripe recibe montos en centavos; la conversión se hace desde texto decimal con aritmética entera. No se habilitan OXXO ni SPEI en esta fase.
+
+Los reembolsos usan `/v1/refunds` con `payment_intent`, monto entero de centavos para parciales y una clave de idempotencia estable. La aplicación consulta `/v1/refunds/{id}`; estados `pending` y `requires_action` quedan pendientes, `succeeded` se registra como aprobado y `failed`/`canceled` como rechazado. Stripe documenta reembolsos parciales repetidos hasta alcanzar el total ([crear y consultar reembolsos](https://docs.stripe.com/api/refunds/create), [estados de Refund](https://docs.stripe.com/api/refunds/object)).
+
+### Webhooks de Connect y aislamiento
+
+Registra un endpoint Connect en modo **Connected accounts**. Stripe envía esos eventos a un destino común e incluye la cuenta emisora en `event.account`; no asigna un endpoint diferente por cuenta. Por ello el destino de plataforma es:
+
+`https://crm.ejemplo.com/api/public/pagos/webhook/stripe`
+
+La ruta verifica `Stripe-Signature` sobre el cuerpo sin modificar y una tolerancia de cinco minutos. Resuelve `event.account` con una función `SECURITY DEFINER` de alcance limitado que devuelve hasta dos coincidencias; una segunda validación RLS dentro de la organización verifica que el identificador coincida. Se conserva `/api/public/pagos/webhook/stripe/<orgId>` para llamadas por organización y compatibilidad, pero el endpoint global es el que debe configurarse en Stripe para Connect. Stripe describe el alcance y el campo `account` en [Connect webhooks](https://docs.stripe.com/connect/webhooks).
+
+Marca estos eventos en el endpoint:
+
+- `checkout.session.completed`
+- `checkout.session.async_payment_succeeded`
+- `checkout.session.async_payment_failed`
+- `checkout.session.expired`
+- `charge.refunded`
+- `charge.dispute.created`
+- `account.updated`
+- `account.application.deauthorized`
+
+Los eventos se deduplican con la clave única existente de `eventos_pago`. Una firma inválida o una cuenta no registrada/reconciliada responde 4xx sin acreditar un cobro. `account.application.deauthorized` marca la credencial para reconectar. Los tipos y sus semánticas están en la [referencia de eventos de Stripe](https://docs.stripe.com/api/events/types).
+
+### OXXO y SPEI
+
+No están habilitados: el Checkout envía explícitamente solo `card`. OXXO requiere mostrar un voucher y confirmar el pago después; Stripe informa la emisión y el éxito con eventos asíncronos. Además, Stripe indica que OXXO no permite reembolsos de la forma usual ([OXXO](https://docs.stripe.com/payments/oxxo)).
+
+SPEI se ofrece mediante transferencias bancarias MXN (`mx_bank_transfer`/Customer Balance), con una cuenta virtual e importe recibido que puede diferir del esperado; Checkout requiere un Customer y la conciliación es asíncrona. Para activarlo habría que crear/guardar Customer por cliente, manejar saldos, transferencias parciales o excedentes y usar eventos de éxito/fallo asíncronos ([transferencias bancarias y soporte Connect](https://docs.stripe.com/payments/bank-transfers)). Ninguno se activa al habilitarlos en el Dashboard: requiere cambio explícito de código y pruebas.
+
+### Variables y operación
+
+```env
+STRIPE_SECRET_KEY=sk_test_... # o sk_live_... en real
+STRIPE_PAIS=MX
+STRIPE_WEBHOOK_SECRET=whsec_...
+PAGOS_BASE_URL=https://crm.ejemplo.com
+PAGOS_TOKEN_ENCRYPTION_KEY=<base64 de 32 bytes>
+```
+
+En Stripe, activa Connect y revisa la identidad visual del onboarding Standard. En Webhooks crea el destino anterior, selecciona **Connected accounts**, marca los ocho eventos de la lista y copia su signing secret `whsec_...` a `STRIPE_WEBHOOK_SECRET`. Guarda la llave de plataforma de prueba en `STRIPE_SECRET_KEY` para empezar; después de verificar, cambia ambas variables al modo live y redepliega. El modo del registro se toma de la llave activa.
+
+Para recibir eventos locales, inicia AmbarCRM y corre:
+
+```bash
+stripe listen --forward-connect-to localhost:3000/api/public/pagos/webhook/stripe
+```
+
+Copia el `whsec_...` que imprime Stripe CLI a `STRIPE_WEBHOOK_SECRET` del entorno local. Es distinto al secreto del endpoint del Dashboard. El comando oficial se documenta en [Stripe CLI: escuchar eventos Connect](https://docs.stripe.com/cli/listen).
+
+La acción **Desconectar** quita la asociación local de AmbarCRM. Las cuentas Standard live no se pueden borrar mediante la API cuando Stripe es responsable de los saldos negativos ([restricciones de eliminación de cuentas](https://docs.stripe.com/api/accounts/delete)); para revocar Connect en la plataforma, el cliente debe administrar su conexión desde Stripe. Un onboarding posterior puede crear otra cuenta nueva.

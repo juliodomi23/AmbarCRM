@@ -415,6 +415,8 @@ model CredencialPago {
   sandbox                Boolean   @default(true)
   activo                 Boolean   @default(true)
   requiereReconexion     Boolean   @default(false) @map("requiere_reconexion")
+  stripeChargesEnabled   Boolean   @default(false) @map("stripe_charges_enabled")
+  stripeDetailsSubmitted Boolean   @default(false) @map("stripe_details_submitted")
   createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 

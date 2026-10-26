@@ -18,36 +18,38 @@ function dto(credencial: {
   proveedorUserId: string | null;
   expiresAt: Date | null;
   requiereReconexion: boolean;
+  stripeChargesEnabled?: boolean;
+  stripeDetailsSubmitted?: boolean;
 }) {
   return {
     proveedor: credencial.proveedor,
     publicKey: credencial.publicKey,
     sandbox: credencial.sandbox,
     activo: credencial.activo,
-    configurado: Boolean(credencial.activo && credencial.accessTokenEncrypted),
+    configurado: Boolean(credencial.activo && (credencial.proveedor === "stripe" ? credencial.proveedorUserId : credencial.accessTokenEncrypted)),
     usuarioProveedor: credencial.proveedorUserId,
     expiresAt: credencial.expiresAt,
     requiereReconexion: credencial.requiereReconexion,
+    chargesEnabled: credencial.stripeChargesEnabled ?? false,
+    detailsSubmitted: credencial.stripeDetailsSubmitted ?? false,
   };
 }
 
 export const GET = conModulo("pagos_en_linea", { admin: true }, async () => {
-  const credencial = await db.credencialPago.findFirst({
-    where: { activo: true },
-    orderBy: { updatedAt: "desc" },
-  });
-  let errorConfiguracion: string | null = null;
+  const credenciales = await db.credencialPago.findMany({ where: { activo: true }, orderBy: { updatedAt: "desc" } });
+  const modulo = await db.moduloOrg.findFirst({ where: { clave: "pagos_en_linea", activo: true }, select: { config: true } });
+  const config = modulo?.config && typeof modulo.config === "object" && !Array.isArray(modulo.config) ? modulo.config as Record<string, unknown> : {};
+  let erroresConfiguracion: Record<string, string | null> = {};
   try {
-    validarConfiguracionPagosAplicacion();
+    erroresConfiguracion = validarConfiguracionPagosAplicacion();
   } catch (error) {
-    errorConfiguracion =
-      error instanceof ErrorConfiguracionPagos
-        ? error.message
-        : "Pagos no configurados";
+    const mensaje = error instanceof ErrorConfiguracionPagos ? error.message : "Pagos no configurados";
+    erroresConfiguracion = { mercado_pago: mensaje, stripe: mensaje };
   }
   return NextResponse.json({
-    credencial: credencial ? dto(credencial) : null,
-    errorConfiguracion,
+    credenciales: credenciales.map(dto),
+    proveedorPredeterminado: typeof config.proveedor === "string" ? config.proveedor : process.env.PAGOS_PROVEEDOR ?? "mercado_pago",
+    erroresConfiguracion,
   });
 });
 
@@ -112,8 +114,11 @@ export const PUT = conModulo(
   },
 );
 
-export const DELETE = conModulo("pagos_en_linea", { admin: true }, async () => {
+export const DELETE = conModulo("pagos_en_linea", { admin: true }, async (_sesion, req: NextRequest) => {
+  const proveedor = req.nextUrl.searchParams.get("proveedor");
+  if (proveedor && !["mercado_pago", "stripe", "mock"].includes(proveedor)) return NextResponse.json({ error: "Proveedor inválido" }, { status: 400 });
   await db.credencialPago.updateMany({
+    where: proveedor ? { proveedor } : {},
     data: {
       activo: false,
       accessTokenEncrypted: null,
@@ -122,6 +127,8 @@ export const DELETE = conModulo("pagos_en_linea", { admin: true }, async () => {
       proveedorUserId: null,
       scope: null,
       requiereReconexion: false,
+      stripeChargesEnabled: false,
+      stripeDetailsSubmitted: false,
     },
   });
   return NextResponse.json({ ok: true, configurado: false });
