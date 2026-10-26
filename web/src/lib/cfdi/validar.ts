@@ -193,6 +193,7 @@ export function validarConcepto(valor: unknown): Validacion<ConceptoNormalizado>
   if (!valorUnitario.ok) return valorUnitario;
   const ivaTasa = validarTasa(concepto.ivaTasa, "la tasa de IVA", 0.16);
   if (!ivaTasa.ok) return ivaTasa;
+  if (concepto.ivaExento !== undefined && typeof concepto.ivaExento !== "boolean") return fallo("el indicador de IVA exento no es válido");
   const retencionTasa = validarTasa(concepto.retencionTasa, "la tasa de retención", 0);
   if (!retencionTasa.ok) return retencionTasa;
 
@@ -210,6 +211,7 @@ export function validarConcepto(valor: unknown): Validacion<ConceptoNormalizado>
     cantidad: cantidad.valor,
     valorUnitario: valorUnitario.valor,
     ivaTasa: ivaTasa.valor,
+    ivaExento: concepto.ivaExento === true,
     retencionTasa: retencionTasa.valor,
     ...(claveProdServ ? { claveProdServ } : {}),
     ...(claveUnidad ? { claveUnidad } : {}),

@@ -10,6 +10,7 @@ import type {
   ResultadoCancelacion,
   ResultadoTimbrado,
 } from "./tipos";
+import { Prisma } from "@prisma/client";
 
 function escaparXml(valor: string) {
   return valor
@@ -25,15 +26,31 @@ function dinero(valor: number) {
 }
 
 export function generarXmlMock(datos: DatosTimbrado, uuid: string) {
+  const gruposImpuesto = new Map<string, { base: Prisma.Decimal; iva: Prisma.Decimal; tasa: number; exento: boolean }>();
+  for (const concepto of datos.conceptos) {
+    const clave = concepto.ivaExento ? "exento" : concepto.ivaTasa.toFixed(6);
+    const grupo = gruposImpuesto.get(clave) ?? { base: new Prisma.Decimal(0), iva: new Prisma.Decimal(0), tasa: concepto.ivaTasa, exento: concepto.ivaExento === true };
+    grupo.base = grupo.base.plus(concepto.importe);
+    grupo.iva = grupo.iva.plus(concepto.iva);
+    gruposImpuesto.set(clave, grupo);
+  }
   const conceptos = datos.conceptos
-    .map((concepto) => `    <cfdi:Concepto ClaveProdServ="${escaparXml(concepto.claveProdServ ?? "01010101")}" Cantidad="${concepto.cantidad}" ClaveUnidad="${escaparXml(concepto.claveUnidad ?? "E48")}" Descripcion="${escaparXml(concepto.descripcion)}" ValorUnitario="${dinero(concepto.valorUnitario)}" Importe="${dinero(concepto.importe)}" ObjetoImp="02">
+    .map((concepto) => {
+      const traslado = concepto.ivaExento
+        ? `<cfdi:Traslado Base="${dinero(concepto.importe)}" Impuesto="002" TipoFactor="Exento"/>`
+        : `<cfdi:Traslado Base="${dinero(concepto.importe)}" Impuesto="002" TipoFactor="Tasa" TasaOCuota="${concepto.ivaTasa.toFixed(6)}" Importe="${dinero(concepto.iva)}"/>`;
+      return `    <cfdi:Concepto ClaveProdServ="${escaparXml(concepto.claveProdServ ?? "01010101")}" Cantidad="${concepto.cantidad}" ClaveUnidad="${escaparXml(concepto.claveUnidad ?? "E48")}" Descripcion="${escaparXml(concepto.descripcion)}" ValorUnitario="${dinero(concepto.valorUnitario)}" Importe="${dinero(concepto.importe)}" ObjetoImp="02">
       <cfdi:Impuestos>
         <cfdi:Traslados>
-          <cfdi:Traslado Base="${dinero(concepto.importe)}" Impuesto="002" TipoFactor="Tasa" TasaOCuota="${concepto.ivaTasa.toFixed(6)}" Importe="${dinero(concepto.iva)}"/>
+          ${traslado}
         </cfdi:Traslados>
       </cfdi:Impuestos>
-    </cfdi:Concepto>`)
+    </cfdi:Concepto>`;
+    })
     .join("\n");
+  const traslados = [...gruposImpuesto.values()].map((grupo) => grupo.exento
+    ? `<cfdi:Traslado Base="${dinero(grupo.base.toNumber())}" Impuesto="002" TipoFactor="Exento"/>`
+    : `<cfdi:Traslado Base="${dinero(grupo.base.toNumber())}" Impuesto="002" TipoFactor="Tasa" TasaOCuota="${grupo.tasa.toFixed(6)}" Importe="${dinero(grupo.iva.toNumber())}"/>`).join("\n      ");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!-- XML de ejemplo generado por ProveedorMock. No es un CFDI válido ante el SAT. -->
@@ -45,7 +62,7 @@ ${conceptos}
   </cfdi:Conceptos>
   <cfdi:Impuestos TotalImpuestosTrasladados="${dinero(datos.impuestos)}">
     <cfdi:Traslados>
-      <cfdi:Traslado Base="${dinero(datos.subtotal)}" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="${dinero(datos.impuestos)}"/>
+      ${traslados}
     </cfdi:Traslados>
   </cfdi:Impuestos>
   <cfdi:Complemento>

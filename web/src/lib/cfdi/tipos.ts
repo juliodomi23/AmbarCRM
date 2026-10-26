@@ -15,6 +15,7 @@ export type ConceptoEntrada = {
   cantidad: number | string;
   valorUnitario: number | string;
   ivaTasa?: number | string;
+  ivaExento?: boolean;
   retencionTasa?: number | string;
   claveProdServ?: string;
   claveUnidad?: string;
@@ -25,6 +26,7 @@ export type ConceptoNormalizado = {
   cantidad: number;
   valorUnitario: number;
   ivaTasa: number;
+  ivaExento?: boolean;
   retencionTasa: number;
   claveProdServ?: string;
   claveUnidad?: string;

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { transaccionTenant } from "@/lib/retail-db";
-import { calcularFactura, conceptosDesdeTotal, totalCoincide } from "./calcular";
+import { calcularFactura, conceptosDesdeSnapshots, conceptosDesdeTotal, totalCoincide } from "./calcular";
 import { ErrorCfdi } from "./errores";
 import { obtenerProveedorFactura } from "./proveedor";
 import {
@@ -35,6 +35,7 @@ const selectConcepto = {
   iva: true,
   retenciones: true,
   ivaTasa: true,
+  ivaExento: true,
   retencionTasa: true,
   claveProdServ: true,
   claveUnidad: true,
@@ -94,6 +95,7 @@ type Origen = {
   total: number;
   moneda: string;
   descripcion: string;
+  conceptos?: ConceptoNormalizado[];
 };
 
 const ESTADOS_ACTIVOS = ["borrador", "timbrando", "timbrada"] as const;
@@ -172,18 +174,45 @@ async function resolverOrigen(entrada: EntradaFactura): Promise<Origen> {
   if (entrada.ventaId) {
     const venta = await db.venta.findFirst({
       where: { id: BigInt(entrada.ventaId) },
-      select: { id: true, folio: true, total: true, moneda: true, estado: true, contactoId: true },
+      select: {
+        id: true, folio: true, total: true, moneda: true, estado: true, contactoId: true, costoEnvio: true, ivaEnvio: true,
+        partidas: { select: { total: true, baseImporte: true, ivaImporte: true, ivaTasa: true, ivaExento: true, producto: { select: { nombre: true } } }, orderBy: { id: "asc" } },
+      },
     });
     if (!venta) throw new ErrorCfdi("La venta no existe", 404);
     if (venta.estado === "cancelada") throw new ErrorCfdi("No se puede facturar una venta cancelada", 409);
     const total = Number(venta.total);
     if (!Number.isFinite(total) || total <= 0) throw new ErrorCfdi("La venta no tiene un total facturable", 409);
+    const partidasConSnapshot = venta.partidas.length > 0 && venta.partidas.every((partida) => partida.baseImporte !== null && partida.ivaImporte !== null && partida.ivaTasa !== null && partida.ivaExento !== null);
+    let conceptos: ConceptoNormalizado[] | undefined;
+    if (partidasConSnapshot) {
+      const snapshots = venta.partidas.map((partida, indice) => ({
+        descripcion: `${partida.producto.nombre} · venta ${venta.folio} · partida ${indice + 1}`,
+        baseImporte: partida.baseImporte!,
+        ivaTasa: partida.ivaTasa!,
+        ivaExento: partida.ivaExento!,
+      }));
+      if (venta.costoEnvio.gt(0)) {
+        snapshots.push({
+          descripcion: `Envío · venta ${venta.folio}`,
+          baseImporte: venta.costoEnvio.minus(venta.ivaEnvio),
+          ivaTasa: new Prisma.Decimal("0.16"),
+          ivaExento: false,
+        });
+      }
+      try {
+        conceptos = conceptosDesdeSnapshots(Number(venta.total), snapshots);
+      } catch {
+        throw new ErrorCfdi("Los snapshots fiscales de la venta no suman su total; no se puede emitir CFDI", 409);
+      }
+    }
     return {
       ventaId: venta.id,
       contactoId: venta.contactoId ?? (entrada.contactoId ? BigInt(entrada.contactoId) : null),
       total,
       moneda: venta.moneda,
       descripcion: `Venta ${venta.folio}`,
+      ...(conceptos ? { conceptos } : {}),
     };
   }
 
@@ -232,6 +261,12 @@ function conceptosParaFactura(
       );
     }
     return { conceptos: validados.valor, calculo };
+  }
+
+  if (origen.conceptos) {
+    const calculo = calcularFactura(origen.conceptos);
+    if (!totalCoincide(calculo.total, origen.total)) throw new ErrorCfdi("Los snapshots fiscales no coinciden con el total de la venta", 409);
+    return { conceptos: origen.conceptos, calculo };
   }
 
   let conceptos: ConceptoNormalizado[];
@@ -423,6 +458,7 @@ export async function crearFactura(orgId: bigint, valor: unknown) {
               iva: concepto.iva,
               retenciones: concepto.retenciones,
               ivaTasa: concepto.ivaTasa,
+              ivaExento: concepto.ivaExento ?? false,
               retencionTasa: concepto.retencionTasa,
               claveProdServ: concepto.claveProdServ ?? null,
               claveUnidad: concepto.claveUnidad ?? null,
