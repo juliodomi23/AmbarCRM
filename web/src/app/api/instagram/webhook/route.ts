@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
   if (!Array.isArray(payload?.entry)) {
     return verifyMetaWebhookSignature(raw, firma) ? NextResponse.json({ ok: true }) : firmaInvalida();
   }
+  console.log("[instagram-webhook]", payload.object, payload.entry.map((e: { id?: unknown; messaging?: unknown[] }) => `${e?.id}:${e?.messaging?.length ?? 0}`).join(","), "firma", verifyMetaWebhookSignature(raw, firma));
   let autorizada = false;
   let rechazada = false;
   for (const entry of payload.entry) {
