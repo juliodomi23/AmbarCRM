@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       res.cookies.set(cookieCanal("instagram"), intento.id, { ...opcionesCookieCanal("instagram"), maxAge: LOGIN_DURACION_MS / 1000 });
       return res;
     }
-    const paginas = await listarPaginasMessenger(identidad, req.cookies.get(cookieCanal("instagram"))?.value ?? "", req.headers.get("x-messenger-state"), body.code, "instagram");
+    const paginas = await listarPaginasMessenger(identidad, req.cookies.get(cookieCanal("instagram"))?.value ?? "", req.headers.get("x-messenger-state"), { code: body.code, token: body.token }, "instagram");
     return NextResponse.json(paginas);
   }, "instagram");
 }

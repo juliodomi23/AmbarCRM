@@ -28,22 +28,22 @@ const codigo = String(Date.now());
 try {
   const intento = await iniciar();
   for (const state of [undefined, "", "f".repeat(64)]) {
-    await assert.rejects(listarPaginasMessenger(a, intento.id, state, codigo), rechaza(403));
+    await assert.rejects(listarPaginasMessenger(a, intento.id, state, { code: codigo }), rechaza(403));
   }
   assert.equal(llamadas, 0, "state inválido no consulta Graph");
   assert.equal((await filas())[0].paginasEncrypted, null, "state inválido no guarda credenciales");
-  await assert.rejects(listarPaginasMessenger(b, intento.id, intento.state, codigo), rechaza(403));
-  await assert.rejects(listarPaginasMessenger({ ...a, sessionToken: "otra-sesion" }, intento.id, intento.state, codigo), rechaza(403));
-  await assert.rejects(listarPaginasMessenger({ ...a, userId: 1003n }, intento.id, intento.state, codigo), rechaza(403));
+  await assert.rejects(listarPaginasMessenger(b, intento.id, intento.state, { code: codigo }), rechaza(403));
+  await assert.rejects(listarPaginasMessenger({ ...a, sessionToken: "otra-sesion" }, intento.id, intento.state, { code: codigo }), rechaza(403));
+  await assert.rejects(listarPaginasMessenger({ ...a, userId: 1003n }, intento.id, intento.state, { code: codigo }), rechaza(403));
   await runWithOrg(b.orgId, async () => assert.equal(await db.messengerLogin.count(), 0));
-  const lista = await listarPaginasMessenger(a, intento.id, intento.state, codigo);
+  const lista = await listarPaginasMessenger(a, intento.id, intento.state, { code: codigo });
   assert.deepEqual(Object.keys(lista[0]).sort(), ["foto", "id", "nombre"]);
   for (const privado of ["access_token", "usuario-corto", "usuario-largo", "pagina-privada", "token", "secreto-meta"]) assert.ok(!JSON.stringify(lista).includes(privado));
   const guardado = (await filas())[0];
   assert.ok(guardado.paginasEncrypted?.startsWith("encv1:"));
   assert.ok(!guardado.paginasEncrypted?.includes("pagina-privada"));
   assert.ok(guardado.venceAt.getTime() <= Date.now() + 600_000);
-  await assert.rejects(listarPaginasMessenger(a, intento.id, intento.state, codigo), rechaza(409));
+  await assert.rejects(listarPaginasMessenger(a, intento.id, intento.state, { code: codigo }), rechaza(409));
   await assert.rejects(conectarPaginaMessenger(a, intento.id, intento.state, "999999"), rechaza(403, /autorizadas/));
   await assert.rejects(conectarPaginaMessenger(b, intento.id, intento.state, lista[0].id), rechaza(403));
   await assert.rejects(conectarPaginaMessenger(a, intento.id, undefined, lista[0].id), rechaza(403));
@@ -57,7 +57,7 @@ try {
     await db.canalWhatsapp.update({ where: { id: c.id }, data: { estado: "desconectado", config: { ...config, errorAutorizacion: "Token vencido" } } });
   });
   const reconexion = await iniciarMessengerLogin(a, BigInt(canal.id));
-  await listarPaginasMessenger(a, reconexion.id, reconexion.state, codigo);
+  await listarPaginasMessenger(a, reconexion.id, reconexion.state, { code: codigo });
   await assert.rejects(conectarPaginaMessenger(a, reconexion.id, reconexion.state, lista[1].id), rechaza(409, /misma|pertenece/));
   const reactivado = await conectarPaginaMessenger(a, reconexion.id, reconexion.state, lista[0].id, "Reconectada");
   assert.equal(reactivado.id, canal.id);
@@ -68,7 +68,7 @@ try {
     assert.ok(!(c.config as Record<string, unknown>).errorAutorizacion);
   });
   const cambioConcurrente = await iniciar();
-  await listarPaginasMessenger(a, cambioConcurrente.id, cambioConcurrente.state, codigo);
+  await listarPaginasMessenger(a, cambioConcurrente.id, cambioConcurrente.state, { code: codigo });
   alSuscribir = () => runWithOrg(a.orgId, async () => {
     const c = await db.canalWhatsapp.findUniqueOrThrow({ where: { id: BigInt(canal.id) } });
     await db.canalWhatsapp.update({ where: { id: c.id }, data: { config: { ...(c.config as Record<string, string>), appId: "456" } } });
@@ -77,20 +77,20 @@ try {
   alSuscribir = undefined;
   await runWithOrg(a.orgId, () => guardarCanalMessenger({ quitar_app: true }, BigInt(canal.id)));
   const duplicado = await iniciarMessengerLogin(b);
-  await listarPaginasMessenger(b, duplicado.id, duplicado.state, codigo);
+  await listarPaginasMessenger(b, duplicado.id, duplicado.state, { code: codigo });
   await assert.rejects(conectarPaginaMessenger(b, duplicado.id, duplicado.state, lista[0].id), rechaza(409, /ya está conectada/));
   await runWithOrg(b.orgId, async () => assert.equal(await db.canalWhatsapp.count(), 0));
 
   const vencido = await iniciar();
   await runWithOrg(a.orgId, () => db.messengerLogin.update({ where: { id: vencido.id }, data: { venceAt: new Date(Date.now() - 1) } }));
-  await assert.rejects(listarPaginasMessenger(a, vencido.id, vencido.state, codigo), rechaza(403));
+  await assert.rejects(listarPaginasMessenger(a, vencido.id, vencido.state, { code: codigo }), rechaza(403));
   const venceConPaginas = await iniciar();
-  await listarPaginasMessenger(a, venceConPaginas.id, venceConPaginas.state, codigo);
+  await listarPaginasMessenger(a, venceConPaginas.id, venceConPaginas.state, { code: codigo });
   await runWithOrg(a.orgId, () => db.messengerLogin.update({ where: { id: venceConPaginas.id }, data: { venceAt: new Date(Date.now() - 1) } }));
   await assert.rejects(conectarPaginaMessenger(a, venceConPaginas.id, venceConPaginas.state, lista[0].id), rechaza(403));
 
   const permisos = await iniciar();
-  await assert.rejects(listarPaginasMessenger(a, permisos.id, permisos.state, "permisos"), (error: unknown) =>
+  await assert.rejects(listarPaginasMessenger(a, permisos.id, permisos.state, { code: "permisos" }), (error: unknown) =>
     error instanceof ErrorRetail && /no tiene permiso.*conexión manual/.test(error.message) && !error.message.includes("TOKEN-SECRETO"));
   assert.equal((await filas()).length, 0);
   const propio = await runWithOrg(a.orgId, () => guardarCanalMessenger({ nombre: "Propia", page_id: `${codigo}3`, page_access_token: "token-manual", app_id: "456", app_secret: "secreto-propio" }));
@@ -98,14 +98,14 @@ try {
   await assert.rejects(iniciarMessengerLogin(a, BigInt(propio.id)), rechaza(409, /app propia.*manual/));
   assert.equal(llamadas, antes);
   const intentoPropio = await iniciar();
-  await listarPaginasMessenger(a, intentoPropio.id, intentoPropio.state, codigo);
+  await listarPaginasMessenger(a, intentoPropio.id, intentoPropio.state, { code: codigo });
   await runWithOrg(a.orgId, () => guardarCanalMessenger({ app_id: "456", app_secret: "secreto-propio" }, BigInt(canal.id)));
   await assert.rejects(conectarPaginaMessenger(a, intentoPropio.id, intentoPropio.state, lista[0].id), rechaza(409, /app propia.*manual/));
 
   const paginasMultiples = await iniciar();
-  assert.equal((await listarPaginasMessenger(a, paginasMultiples.id, paginasMultiples.state, "paginacion")).length, 2, "pagina siguiendo cursor, nunca paging.next con token");
+  assert.equal((await listarPaginasMessenger(a, paginasMultiples.id, paginasMultiples.state, { code: "paginacion" })).length, 2, "pagina siguiendo cursor, nunca paging.next con token");
   const carrera = await iniciar();
-  await listarPaginasMessenger(a, carrera.id, carrera.state, codigo);
+  await listarPaginasMessenger(a, carrera.id, carrera.state, { code: codigo });
   const concurrentes = await Promise.allSettled([1, 2].map(() => conectarPaginaMessenger(a, carrera.id, carrera.state, lista[1].id)));
   assert.equal(concurrentes.filter((r) => r.status === "fulfilled").length, 1, "un intento solo conecta una vez bajo concurrencia");
   assert.equal(concurrentes.filter((r) => r.status === "rejected").length, 1);
@@ -113,11 +113,11 @@ try {
   const inicioIgSimultaneo = await iniciarMessengerLogin(a, undefined, "instagram");
   assert.equal((await filas()).filter((f) => f.id === inicioMsgSimultaneo.id || f.id === inicioIgSimultaneo.id).length, 2,
     "iniciar Instagram no borra el intento Messenger de la misma sesión");
-  await listarPaginasMessenger(a, inicioMsgSimultaneo.id, inicioMsgSimultaneo.state, codigo);
-  await listarPaginasMessenger(a, inicioIgSimultaneo.id, inicioIgSimultaneo.state, codigo, "instagram");
+  await listarPaginasMessenger(a, inicioMsgSimultaneo.id, inicioMsgSimultaneo.state, { code: codigo });
+  await listarPaginasMessenger(a, inicioIgSimultaneo.id, inicioIgSimultaneo.state, { code: codigo }, "instagram");
   const intentoIg = await iniciarMessengerLogin(a, undefined, "instagram");
-  await assert.rejects(listarPaginasMessenger(a, intentoIg.id, intentoIg.state, codigo), rechaza(403));
-  const paginasIg = await listarPaginasMessenger(a, intentoIg.id, intentoIg.state, codigo, "instagram");
+  await assert.rejects(listarPaginasMessenger(a, intentoIg.id, intentoIg.state, { code: codigo }), rechaza(403));
+  const paginasIg = await listarPaginasMessenger(a, intentoIg.id, intentoIg.state, { code: codigo }, "instagram");
   const conexionIg = await conectarPaginaMessenger(a, intentoIg.id, intentoIg.state, paginasIg[0].id, undefined, "instagram");
   await runWithOrg(a.orgId, async () => {
     const c = await db.canalWhatsapp.findUniqueOrThrow({ where: { id: BigInt(conexionIg.id) } });
@@ -129,7 +129,7 @@ try {
     assert.equal(decryptMetaToken(config.appSecretEncrypted), "secreto-meta-simulado");
   });
   const sinCuenta = await iniciarMessengerLogin(a, undefined, "instagram");
-  const sinCuentaPaginas = await listarPaginasMessenger(a, sinCuenta.id, sinCuenta.state, "777", "instagram");
+  const sinCuentaPaginas = await listarPaginasMessenger(a, sinCuenta.id, sinCuenta.state, { code: "777" }, "instagram");
   await assert.rejects(conectarPaginaMessenger(a, sinCuenta.id, sinCuenta.state, sinCuentaPaginas[0].id, undefined, "instagram"), rechaza(409, /no tiene una cuenta profesional/));
   console.log("OK · Facebook simulado: Messenger e Instagram, cuenta vinculada, intentos aislados, intercambio POST sin credenciales en URL, cifrado, CSRF, sesión/empresa, vencimiento, reconexión y concurrencia");
 } finally {

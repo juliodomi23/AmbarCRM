@@ -46,15 +46,16 @@ async function intentoValido(identidad: IdentidadLogin, id: string, state: unkno
   return intento;
 }
 
-export async function listarPaginasMessenger(identidad: IdentidadLogin, id: string, state: unknown, code: unknown, proveedor: ProveedorLogin = "messenger") {
+export async function listarPaginasMessenger(identidad: IdentidadLogin, id: string, state: unknown, credencial: { code?: unknown; token?: unknown }, proveedor: ProveedorLogin = "messenger") {
   return runWithOrg(identidad.orgId, async () => {
     const intento = await intentoValido(identidad, id, state, proveedor);
-    if (typeof code !== "string" || !code || code.length > 8192) throw new ErrorRetail("Meta no devolvió un código válido.");
+    const valida = (v: unknown): v is string => typeof v === "string" && v.length > 0 && v.length <= 8192;
+    if (valida(credencial.token) === valida(credencial.code)) throw new ErrorRetail("Meta no devolvió una credencial válida.");
     if (intento.canalId) await canalGlobal(intento.canalId, proveedor);
     const tomado = await db.messengerLogin.updateMany({ where: { id, paginasEncrypted: null, venceAt: { gt: new Date() } }, data: { paginasEncrypted: "" } });
     if (tomado.count !== 1) throw new ErrorRetail("Este inicio de sesión ya fue utilizado. Vuelve a conectar.", 409);
     try {
-      const paginas = await paginasDeFacebook(code);
+      const paginas = await paginasDeFacebook(valida(credencial.token) ? { token: credencial.token } : { code: credencial.code as string });
       const actualizado = await db.messengerLogin.updateMany({ where: { id, venceAt: { gt: new Date() } }, data: { paginasEncrypted: encryptMetaToken(JSON.stringify(paginas)) } });
       if (actualizado.count !== 1) throw new ErrorRetail("La conexión venció. Vuelve a conectar.", 403);
       return paginas.map(({ id, nombre, foto }) => ({ id, nombre, foto }));

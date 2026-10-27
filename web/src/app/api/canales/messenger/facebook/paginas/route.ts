@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       res.cookies.set(COOKIE_MESSENGER, intento.id, { ...COOKIE_OPCIONES, maxAge: LOGIN_DURACION_MS / 1000 });
       return res;
     }
-    const paginas = await listarPaginasMessenger(identidad, req.cookies.get(COOKIE_MESSENGER)?.value ?? "", req.headers.get("x-messenger-state"), body.code);
+    const paginas = await listarPaginasMessenger(identidad, req.cookies.get(COOKIE_MESSENGER)?.value ?? "", req.headers.get("x-messenger-state"), { code: body.code, token: body.token });
     return NextResponse.json(paginas);
   });
 }

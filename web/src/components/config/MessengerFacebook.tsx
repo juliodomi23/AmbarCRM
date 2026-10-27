@@ -31,8 +31,9 @@ export function MessengerFacebook({ canalId, pageId, nombre, appPropia, proveedo
 
   async function finalizar(resp: any) {
     try {
-      if (!resp?.authResponse?.code) throw new Error("Conexión cancelada o sin permisos en la app de Meta. Usa la conexión manual si tu cuenta no tiene un rol en la app.");
-      const lista: Pagina[] = await solicitar(base, "paginas", { code: resp.authResponse.code }, inicio?.state);
+      const { code, accessToken } = resp?.authResponse ?? {};
+      if (!code && !accessToken) throw new Error("Conexión cancelada o sin permisos en la app de Meta. Usa la conexión manual si tu cuenta no tiene un rol en la app.");
+      const lista: Pagina[] = await solicitar(base, "paginas", { code, token: accessToken }, inicio?.state);
       setPaginas(lista);
       if (!lista.length) setError("Facebook no compartió páginas. Si tu página está en un portafolio empresarial, pide al administrador que comparta contigo el acceso a esa página y vuelve a iniciar sesión. También puedes usar la conexión manual.");
     } catch (e) { setError(e instanceof Error ? e.message : "No se pudo conectar."); }
@@ -44,8 +45,8 @@ export function MessengerFacebook({ canalId, pageId, nombre, appPropia, proveedo
     setError(""); setOk(""); setOcupado(true);
     try {
       window.FB.login((resp: any) => { void finalizar(resp); }, {
-        ...(inicio.configId ? { config_id: inicio.configId } : { scope: inicio.scope }),
-        state: inicio.state, response_type: "code", override_default_response_type: true,
+        ...(inicio.configId ? { config_id: inicio.configId, response_type: "code", override_default_response_type: true } : { scope: inicio.scope }),
+        state: inicio.state,
       });
     } catch { setOcupado(false); setError("No se pudo abrir Facebook. Revisa el bloqueador de ventanas emergentes."); }
   }

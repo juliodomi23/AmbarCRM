@@ -46,9 +46,11 @@ function fotoPublica(value: unknown): string | null {
   } catch { return null; }
 }
 
-export async function paginasDeFacebook(code: string): Promise<PaginaFacebook[]> {
-  // El código de FB.login (SDK) exige redirect_uri vacío; si Meta lo rechaza se reintenta con el origen registrado.
-  const corto = await intercambiar({ code, redirect_uri: "" }).catch(() => intercambiar({ code, redirect_uri: process.env.NEXTAUTH_URL?.replace(/\/?$/, "/") ?? "" }));
+// Con scope, FB.login devuelve el token de usuario (no hay canje de código ni redirect_uri); con config_id devuelve un código.
+export type CredencialFacebook = { code?: string; token?: string };
+
+export async function paginasDeFacebook({ code, token: tokenCorto }: CredencialFacebook): Promise<PaginaFacebook[]> {
+  const corto = tokenCorto ?? await intercambiar({ code: code! });
   const token = await intercambiar({ grant_type: "fb_exchange_token", fb_exchange_token: corto });
   const paginas: PaginaFacebook[] = [];
   let cursor: string | undefined;
