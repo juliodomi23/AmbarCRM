@@ -47,7 +47,8 @@ function fotoPublica(value: unknown): string | null {
 }
 
 export async function paginasDeFacebook(code: string): Promise<PaginaFacebook[]> {
-  const corto = await intercambiar({ code });
+  // El código de FB.login (SDK) exige redirect_uri vacío; si Meta lo rechaza se reintenta con el origen registrado.
+  const corto = await intercambiar({ code, redirect_uri: "" }).catch(() => intercambiar({ code, redirect_uri: process.env.NEXTAUTH_URL?.replace(/\/?$/, "/") ?? "" }));
   const token = await intercambiar({ grant_type: "fb_exchange_token", fb_exchange_token: corto });
   const paginas: PaginaFacebook[] = [];
   let cursor: string | undefined;
