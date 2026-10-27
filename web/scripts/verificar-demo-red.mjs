@@ -13,7 +13,7 @@ const navegador = await chromium.launch({ executablePath: "/opt/pw-browsers/chro
 const permitido = (u) => {
   const x = new URL(u);
   if (x.origin !== new URL(BASE).origin) return x.protocol === "data:" || x.protocol === "blob:";
-  return x.pathname === "/demo" && !x.searchParams.has("_rsc") || x.pathname.startsWith("/_next/static/") || ["/manifest.json", "/icon.svg", "/favicon.ico", "/apple-touch-icon.png"].includes(x.pathname);
+  return x.pathname === "/demo" && !x.searchParams.has("_rsc") || x.pathname.startsWith("/_next/static/") || ["/manifest.json", "/icon.png", "/favicon.ico", "/apple-icon.png"].includes(x.pathname);
 };
 let fallos = 0;
 for (const [ancho, alto] of [[1280, 800], [375, 812]]) {

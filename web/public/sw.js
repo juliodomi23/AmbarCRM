@@ -7,8 +7,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(titulo, {
       body: data.cuerpo || "Tienes un mensaje nuevo",
-      icon: "/icon.svg",
-      badge: "/icon.svg",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
       tag: data.url || "ambarcrm", // agrupa notificaciones del mismo chat
       data: { url: data.url || "/chat" }
     })
