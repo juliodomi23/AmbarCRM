@@ -17,6 +17,7 @@ async function graph(path: string, init: RequestInit) {
   const res = await fetch(`${META_GRAPH_URL}/${path}`, { ...init, cache: "no-store", signal: AbortSignal.timeout(8000) });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.error) {
+    console.error("[meta-login]", path.split("?")[0], res.status, data.error?.code, data.error?.error_subcode, data.error?.message);
     const permiso = [10, 200, 299].includes(Number(data.error?.code)) || res.status === 403;
     throw new ErrorRetail(permiso ? ERROR_PERMISOS_META : "Meta no pudo validar la conexión. Vuelve a iniciar sesión o usa la conexión manual.", 424);
   }
