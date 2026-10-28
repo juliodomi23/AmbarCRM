@@ -17,7 +17,7 @@ import { ConfiguracionCliente } from "@/components/config/ConfiguracionCliente";
 
 export const dynamic = "force-dynamic";
 
-export default async function ConfiguracionPage() {
+export default async function ConfiguracionPage({ searchParams }: { searchParams: Promise<{ instagram?: string; instagram_mensaje?: string }> }) {
   const session = await getSesion();
   if (session?.user?.rol !== "admin") redirect("/embudos");
 
@@ -69,7 +69,10 @@ export default async function ConfiguracionPage() {
       )
     : null;
 
+  const parametros = await searchParams;
   return (
+    <>
+    {parametros.instagram && <p role="status" className="mx-auto max-w-5xl p-3 text-sm">{parametros.instagram_mensaje}</p>}
     <ConfiguracionCliente
       especialistasAgenda={serializar(await db.doctor.findMany({ select: { id: true, nombre: true, activo: true }, orderBy: { nombre: "asc" } }))}
       citasHabilitadas={modulosActivos.some((m) => m.clave === "citas")}
@@ -87,5 +90,6 @@ export default async function ConfiguracionPage() {
       modulos={MODULOS.filter(m => moduloVisibleEnOrg(m, session.user.orgId))}
       modulosClientes={esPlataforma ? [...MODULOS] : []}
     />
+    </>
   );
 }

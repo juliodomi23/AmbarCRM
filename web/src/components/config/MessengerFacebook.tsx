@@ -19,7 +19,7 @@ async function solicitar(base: string, ruta: string, body: object, state?: strin
   return data;
 }
 
-export function MessengerFacebook({ canalId, pageId, nombre, appPropia, proveedor = "messenger" }: { canalId?: string; pageId?: string | null; nombre: string; appPropia: boolean; proveedor?: "messenger" | "instagram" }) {
+export function MessengerFacebook({ canalId, pageId, nombre, appPropia, proveedor = "messenger", login }: { canalId?: string; pageId?: string | null; nombre: string; appPropia: boolean; proveedor?: "messenger" | "instagram"; login?: string | null }) {
   const router = useRouter();
   const base = `/api/canales/${proveedor}/facebook`;
   const canalNombre = proveedor === "instagram" ? "Instagram" : "Messenger";
@@ -28,6 +28,14 @@ export function MessengerFacebook({ canalId, pageId, nombre, appPropia, proveedo
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
+
+  async function conectarInstagram() {
+    setOcupado(true); setError("");
+    try {
+      const data = await solicitar("/api/canales/instagram/oauth", "iniciar", { canal_id: canalId, nombre: nombre.trim() || undefined });
+      window.location.assign(data.url);
+    } catch (e) { setError(e instanceof Error ? e.message : "No se pudo conectar con Instagram."); setOcupado(false); }
+  }
 
   async function finalizar(resp: any) {
     try {
@@ -71,6 +79,12 @@ export function MessengerFacebook({ canalId, pageId, nombre, appPropia, proveedo
   }
 
   if (appPropia) return <p className="text-sm text-warning" role="status">Este canal usa una app propia de Meta. Usa la conexión manual para conservar sus credenciales.</p>;
+
+  if (proveedor === "instagram" && (!canalId || login === "instagram")) return <div className="space-y-2 rounded-lg border border-border p-3">
+    <Boton type="button" onClick={() => void conectarInstagram()} disabled={ocupado}>{ocupado ? "Conectando…" : "Conectar con Instagram"}</Boton>
+    <p className="text-xs text-muted-foreground">Inicia sesión con tu cuenta profesional de Instagram (Empresa o Creador). También puedes usar la conexión manual de abajo.</p>
+    {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+  </div>;
 
   return <div className="space-y-3 rounded-lg border border-border p-3">
     <Boton type="button" onClick={() => inicio ? conectar() : void reiniciar()} disabled={ocupado || paginas !== null || Boolean(ok)}>{ocupado ? "Conectando…" : inicio ? "Iniciar sesión en Facebook" : "Conectar con Facebook"}</Boton>

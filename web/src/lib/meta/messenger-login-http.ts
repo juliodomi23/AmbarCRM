@@ -10,6 +10,8 @@ export const COOKIE_MESSENGER = "ambar-messenger-login";
 export const COOKIE_OPCIONES = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict" as const, path: "/api/canales/messenger/facebook" };
 export const cookieCanal = (proveedor: ProveedorLogin) => proveedor === "messenger" ? COOKIE_MESSENGER : "ambar-instagram-login";
 export const opcionesCookieCanal = (proveedor: ProveedorLogin) => proveedor === "messenger" ? COOKIE_OPCIONES : { ...COOKIE_OPCIONES, path: "/api/canales/instagram/facebook" };
+export const COOKIE_INSTAGRAM_OAUTH = "ambar-instagram-oauth";
+export const OPCIONES_INSTAGRAM_OAUTH = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, path: "/api/canales/instagram/oauth/callback" };
 
 export async function conMessengerLogin(req: NextRequest, ruta: string, operacion: (identidad: IdentidadLogin, body: Record<string, unknown>) => Promise<NextResponse>, proveedor: ProveedorLogin = "messenger") {
   const sesion = await requireSesion(true);

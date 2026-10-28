@@ -1773,6 +1773,7 @@ CREATE OR REPLACE FUNCTION meta_page_other_channels(p_page text, p_app text, p_g
     FROM canales_whatsapp
     WHERE activo AND proveedor::text IN ('messenger', 'instagram')
       AND config->>'pageId' = p_page
+      AND COALESCE(config->>'login', '') <> 'instagram'
       AND (p_exclude IS NULL OR id <> p_exclude)
       AND (p_app = '' OR COALESCE(config->>'appId', p_global_app) IN (p_app, ''))
 $$;

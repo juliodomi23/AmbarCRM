@@ -8,7 +8,7 @@ import { confirmar } from "@/components/Confirmador";
 import { MessengerFacebook } from "./MessengerFacebook";
 import { nombreVisibleCanal } from "@/lib/channel/tipo-canal";
 
-export type CanalExternoDatos = { id: string; nombre: string; proveedor: string; webhookUrl?: string | null; pageId?: string | null; instagramId?: string | null; appId?: string | null; tieneAppSecret?: boolean; estado: string; errorAutorizacion?: string | null };
+export type CanalExternoDatos = { id: string; nombre: string; proveedor: string; webhookUrl?: string | null; pageId?: string | null; instagramId?: string | null; login?: string | null; appId?: string | null; tieneAppSecret?: boolean; estado: string; errorAutorizacion?: string | null };
 
 export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDatos; tipo?: "api" | "messenger" | "instagram" }) {
   const proveedor = canal?.proveedor ?? tipo;
@@ -32,7 +32,7 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
     try {
       const continuar = await confirmar({
         titulo: `Desconectar ${canal.nombre}`,
-        mensaje: "Se cancelará la suscripción en Facebook; el historial se conserva.",
+        mensaje: canal.login === "instagram" ? "Se cancelará la suscripción en Instagram; el historial se conserva." : "Se cancelará la suscripción en Facebook; el historial se conserva.",
         confirmar: "Desconectar",
       });
       if (!continuar) return;
@@ -50,8 +50,9 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
       let data = await res.json().catch(() => ({}));
       if (res.status === 502) {
         const forzar = await confirmar({
-          titulo: "Facebook no permitió cancelar la suscripción. ¿Retirar solo del CRM?",
-          mensaje: "La suscripción puede seguir activa en Facebook. Tendrás que quitar la app desde la configuración de la página. Se respetará tu elección sobre conservar o borrar las conversaciones.",
+          titulo: `${canal.login === "instagram" ? "Instagram" : "Facebook"} no permitió cancelar la suscripción. ¿Retirar solo del CRM?`,
+          mensaje: canal.login === "instagram" ? "La suscripción puede seguir activa en Instagram. Revoca el acceso desde la configuración de la cuenta. Se respetará tu elección sobre conservar o borrar las conversaciones."
+            : "La suscripción puede seguir activa en Facebook. Tendrás que quitar la app desde la configuración de la página. Se respetará tu elección sobre conservar o borrar las conversaciones.",
           confirmar: "Retirar solo del CRM",
           cancelar: "Conservar canal",
         });
@@ -61,11 +62,11 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
       }
       if (!res.ok) return toast(data.error || "No se pudo desconectar. El canal se conservó; vuelve a intentarlo.", "error");
       const historial = borrarDatos ? "Conversaciones borradas." : "El historial se conservó.";
-      const resultado = data.forzado ? `Retiro forzado. ${data.motivo}` : data.desuscrito === false ? data.motivo : "Página desconectada de Facebook.";
+      const resultado = data.forzado ? `Retiro forzado. ${data.motivo}` : data.desuscrito === false ? data.motivo : canal.login === "instagram" ? "Cuenta desconectada de Instagram." : "Página desconectada de Facebook.";
       toast(`${resultado} ${historial}`, "ok");
       router.refresh();
     } catch {
-      toast("No se pudo desconectar de Facebook. Vuelve a intentarlo.", "error");
+      toast(`No se pudo desconectar de ${canal.login === "instagram" ? "Instagram" : "Facebook"}. Vuelve a intentarlo.`, "error");
     } finally { setGuardando(false); }
   }
   async function guardar(regenerar = false, quitarApp = false) {
@@ -91,8 +92,8 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
   return <section className="surface max-w-2xl space-y-3 p-4">
     <h3 className="font-semibold">{canal ? esMeta ? nombreVisibleCanal(canal.nombre, proveedor) : `${nombreCanal} · ${canal.nombre}` : `Nuevo canal ${nombreCanal}`}</h3>
     {canal?.errorAutorizacion && <p className="text-sm text-destructive" role="alert">{canal.errorAutorizacion}</p>}
-    {esMeta && <MessengerFacebook proveedor={esInstagram ? "instagram" : "messenger"} canalId={canal?.id} pageId={canal?.pageId} nombre={nombre} appPropia={esMessenger && Boolean(appId || appSecret || canal?.tieneAppSecret)} />}
-    <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void guardar(); }}>
+    {esMeta && <MessengerFacebook proveedor={esInstagram ? "instagram" : "messenger"} canalId={canal?.id} pageId={canal?.pageId} nombre={nombre} login={canal?.login} appPropia={esMessenger && Boolean(appId || appSecret || canal?.tieneAppSecret)} />}
+    {canal?.login !== "instagram" && <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void guardar(); }}>
       <Campo label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required maxLength={150} />
       {esMeta ? <>
         {esInstagram && <Campo label="ID de la cuenta de Instagram (instagram_id)" value={instagramId} onChange={(e) => setInstagramId(e.target.value)} required maxLength={40} />}
@@ -107,8 +108,8 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
       <div className="flex gap-2"><Boton type="submit" disabled={guardando}>Guardar</Boton>
         {canal && esMessenger && (canal.appId || canal.tieneAppSecret) && <Boton type="button" disabled={guardando} onClick={() => void guardar(false, true)}>Quitar app propia</Boton>}
         {canal && !esMeta && <Boton type="button" disabled={guardando} onClick={() => void guardar(true)}>Regenerar credenciales</Boton>}</div>
-      {canal && esMeta && <Boton type="button" variante="danger" disabled={guardando} onClick={() => void desconectar()}>Desconectar</Boton>}
-    </form>
+    </form>}
+    {canal && esMeta && <Boton type="button" variante="danger" disabled={guardando} onClick={() => void desconectar()}>Desconectar</Boton>}
     {secretos && <div className="space-y-2 rounded border border-border p-3 text-sm" role="status">
       <p>Guarda estas credenciales. Se muestran una sola vez.</p>
       <p>Clave de entrada (x-api-key): <code className="break-all select-all">{secretos.apiKey}</code></p>
