@@ -63,6 +63,11 @@ function hora(iso: string | null) {
 function dia(iso: string) { return new Date(iso).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" }); }
 function claveDia(iso: string) { return new Date(iso).toISOString().slice(0, 10); }
 
+function etiquetaCanal(nombre: string, proveedor?: string | null) {
+  const visible = nombreVisibleCanal(nombre, proveedor);
+  return tipoCanal(proveedor) === "whatsapp" && !/\bwhatsapp\b/i.test(visible) ? `WhatsApp · ${visible}` : visible;
+}
+
 /** Acuse de un mensaje saliente: ✓ enviado · ✓✓ entregado · ✓✓ azul leído. */
 function ticks(status: string): { txt: string; clase: string } {
   switch (status) {
@@ -128,6 +133,7 @@ export function ChatCliente({
   canales = [],
   tipoInicial,
   usuarioId,
+  puedeConfigurarCanales = false,
   humanAgentHabilitado = false
 }: {
   conversaciones: ConversacionItem[];
@@ -138,6 +144,7 @@ export function ChatCliente({
   canales?: Canal[];
   tipoInicial?: TipoCanal;
   usuarioId?: string;
+  puedeConfigurarCanales?: boolean;
   humanAgentHabilitado?: boolean;
 }) {
   const [convs, setConvs] = useState<ConversacionItem[]>(conversaciones);
@@ -518,11 +525,12 @@ export function ChatCliente({
         <div className="shrink-0 border-b border-border px-4 py-3 space-y-2">
           <p className="font-semibold text-primary">Conversaciones</p>
           {tiposDisponibles.length > 1 && (
-            <div className="flex gap-1" role="group" aria-label="Tipo de canal">
+            <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted/70 p-1" role="group" aria-label="Tipo de canal">
               {tiposDisponibles.map((tipo) => (
                 <button key={tipo} type="button" onClick={() => {
                   setFiltroTipo(tipo); setFiltroCanal(""); setSelId(null); setMensajes([]); setPanelMovil(false);
-                }} className={`flex-1 rounded-lg py-1 text-xs font-medium ${tipoActual === tipo ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground transition-colors hover:bg-muted/70"}`}>
+                }} aria-pressed={tipoActual === tipo} className={`flex min-w-0 items-center justify-center gap-1 rounded-lg px-1 py-2 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${tipoActual === tipo ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:bg-card/70 hover:text-foreground"}`}>
+                  <IconoCanal proveedor={tipo} />
                   {tipo === "whatsapp" ? "WhatsApp" : tipo === "messenger" ? "Messenger" : "Instagram"}
                 </button>
               ))}
@@ -575,7 +583,7 @@ export function ChatCliente({
           {/* Filtros estado / etiqueta */}
           <div className="flex gap-2">
             <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} aria-label="Filtrar por estado"
-              className="flex-1 rounded-lg border border-input px-2 py-1 text-xs">
+              className="min-w-0 flex-1 rounded-lg border border-input bg-card px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/30">
               <option value="">Todos</option>
               <option value="abierta">Abiertas</option>
               <option value="pendiente">Pendientes</option>
@@ -583,32 +591,39 @@ export function ChatCliente({
             </select>
             {etiquetas.length > 0 && (
               <select value={filtroEtiqueta} onChange={(e) => setFiltroEtiqueta(e.target.value)} aria-label="Filtrar por etiqueta"
-                className="flex-1 rounded-lg border border-input px-2 py-1 text-xs">
+                className="min-w-0 flex-1 rounded-lg border border-input bg-card px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/30">
                 <option value="">Toda etiqueta</option>
                 {etiquetas.map((et) => <option key={et.id} value={et.nombre}>{et.nombre}</option>)}
               </select>
             )}
           </div>
           {canalesDelTipo.length > 0 && (
-            <select value={filtroCanal} onChange={(e) => setFiltroCanal(e.target.value)} aria-label="Filtrar por canal"
-              className="w-full rounded-lg border border-input px-2 py-1 text-xs">
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"><IconoCanal proveedor={tipoActual} /></span>
+              <select value={filtroCanal} onChange={(e) => setFiltroCanal(e.target.value)} aria-label="Filtrar por canal"
+              className="w-full rounded-lg border border-input bg-card py-1.5 pl-9 pr-2 text-xs text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/30">
               <option value="">Todos los canales de {tipoActual === "whatsapp" ? "WhatsApp" : tipoActual === "messenger" ? "Messenger" : "Instagram"}</option>
               {canalesDelTipo.map((canal) => (
-                <option key={canal.id} value={canal.id}>{nombreVisibleCanal(canal.nombre, canal.proveedor)}{canal.activo ? "" : " (inactivo)"}</option>
+                <option key={canal.id} value={canal.id}>{etiquetaCanal(canal.nombre, canal.proveedor)}{canal.activo ? "" : " (inactivo)"}</option>
               ))}
-            </select>
+              </select>
+            </div>
           )}
         </div>
         <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
-          {convsFiltradas.length === 0 && (
+          {convsFiltradas.length === 0 && (canalesDelTipo.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 px-6 py-10 text-center text-sm text-muted-foreground">
+              <span className="grid h-11 w-11 place-items-center rounded-full bg-muted"><IconoCanal proveedor={tipoActual} /></span>
+              <p>Esta empresa no tiene un canal de {tipoActual === "whatsapp" ? "WhatsApp" : tipoActual === "messenger" ? "Messenger" : "Instagram"} conectado.</p>
+              {puedeConfigurarCanales && <Link href="/configuracion?tab=canal" className="font-medium text-primary underline-offset-4 hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Ir a Configuración → Canales</Link>}
+            </div>
+          ) : (
             <p className="p-6 text-center text-sm text-muted-foreground">
-              {canalesDelTipo.length === 0
-                ? `Esta empresa no tiene un canal de ${tipoActual === "whatsapp" ? "WhatsApp" : tipoActual === "messenger" ? "Messenger" : "Instagram"} conectado.`
-                : busqueda || filtroEstado || filtroEtiqueta || filtroCanal || filtroResponsable
+              {busqueda || filtroEstado || filtroEtiqueta || filtroCanal || filtroResponsable
                 ? "Ninguna conversación coincide con los filtros."
                 : `Aún no hay conversaciones. Llegarán aquí cuando entre un mensaje de ${tipoActual === "whatsapp" ? "WhatsApp" : tipoActual === "messenger" ? "Messenger" : "Instagram"}.`}
             </p>
-          )}
+          ))}
           {convsFiltradas.map((c) => (
             <div
               key={c.id}
@@ -625,12 +640,12 @@ export function ChatCliente({
                   <span className="flex items-center justify-between">
                     <span className="flex min-w-0 items-center gap-1">
                       {c.fijado && <span className="shrink-0 text-[10px]" title="Chat fijado">📌</span>}
-                      <IconoCanal proveedor={c.canalProveedor ?? canales.find((canal) => canal.id === c.canalId)?.proveedor} />
                       <span className="truncate text-sm font-medium text-foreground">{c.contacto.nombre}</span>
                     </span>
                     <span className="ml-2 shrink-0 text-[10px] text-muted-foreground">{hora(c.ultimoMensajeAt)}</span>
                   </span>
                   <span className="truncate block text-xs text-muted-foreground">{c.preview}</span>
+                  <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"><IconoCanal proveedor={c.canalProveedor ?? canales.find((canal) => canal.id === c.canalId)?.proveedor} /><span className="truncate">{etiquetaCanal(c.canalNombre, c.canalProveedor ?? canales.find((canal) => canal.id === c.canalId)?.proveedor)}</span></span>
                   <span className="mt-1 flex flex-wrap gap-1 text-[9px] font-medium"><span className="rounded-full bg-info/10 px-1.5 py-0.5 text-info">{c.estado}</span>{c.noLeidos > 0 && <span className="rounded-full bg-warning/10 px-1.5 py-0.5 text-warning">sin leer</span>}{c.botActivo && <span className="rounded-full bg-success/10 px-1.5 py-0.5 text-success">bot activo</span>}{c.etiquetas.slice(0, 3).map((nombre) => {
                     const color = colorEtiqueta.get(nombre) ?? "#64748b";
                     return <span key={nombre} className="inline-flex max-w-24 items-center gap-1 truncate rounded-full px-1.5 py-0.5" style={{ backgroundColor: `${color}1f`, color }}><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />{nombre}</span>;
@@ -685,7 +700,8 @@ export function ChatCliente({
                 {seleccionada.contacto.nombre.slice(0, 2).toUpperCase()}
               </span>
               <div className="min-w-0 flex-1 leading-tight">
-                <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-foreground"><IconoCanal proveedor={proveedor} />{seleccionada.contacto.nombre}</p>
+                <p className="truncate text-sm font-semibold text-foreground">{seleccionada.contacto.nombre}</p>
+                <p className="inline-flex max-w-full items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"><IconoCanal proveedor={proveedor} /><span className="truncate">{etiquetaCanal(seleccionada.canalNombre, proveedor)}</span></p>
                 {seleccionada.contacto.telefono && (
                   <p className="truncate text-xs text-muted-foreground">+{seleccionada.contacto.telefono}</p>
                 )}

@@ -72,6 +72,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
       canales={canales}
       tipoInicial={tipoInicial}
       usuarioId={usuarioId}
+      puedeConfigurarCanales={sesion?.user?.rol === "admin"}
       humanAgentHabilitado={process.env.META_HUMAN_AGENT_APROBADO === "true"}
     />
   );
