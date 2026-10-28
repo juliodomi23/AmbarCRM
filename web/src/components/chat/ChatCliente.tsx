@@ -13,7 +13,7 @@ import { EnviarPlantilla } from "@/components/chat/EnviarPlantilla";
 import { estadoVentana, textoRestante } from "@/lib/meta/ventana";
 import { webmAOgg } from "@/lib/audio/webm-a-ogg";
 import { IconoCanal } from "@/components/chat/IconoCanal";
-import { TIPOS_CANAL, tipoCanal, type TipoCanal } from "@/lib/channel/tipo-canal";
+import { TIPOS_CANAL, tipoCanal, nombreVisibleCanal, type TipoCanal } from "@/lib/channel/tipo-canal";
 
 type Embudo = { id: string; nombre: string; etapas: { id: string; nombre: string }[] };
 type Usuario = { id: string; nombre: string };
@@ -594,7 +594,7 @@ export function ChatCliente({
               className="w-full rounded-lg border border-input px-2 py-1 text-xs">
               <option value="">Todos los canales de {tipoActual === "whatsapp" ? "WhatsApp" : tipoActual === "messenger" ? "Messenger" : "Instagram"}</option>
               {canalesDelTipo.map((canal) => (
-                <option key={canal.id} value={canal.id}>{canal.nombre}{canal.activo ? "" : " (inactivo)"}</option>
+                <option key={canal.id} value={canal.id}>{nombreVisibleCanal(canal.nombre, canal.proveedor)}{canal.activo ? "" : " (inactivo)"}</option>
               ))}
             </select>
           )}

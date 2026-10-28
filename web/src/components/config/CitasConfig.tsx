@@ -5,6 +5,7 @@ import { Boton } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import type { VariableRecordatorio } from "@/lib/citas";
 import { duracionCitas } from "@/lib/citas-duracion";
+import { nombreVisibleCanal } from "@/lib/channel/tipo-canal";
 
 type Plantilla = {
   name: string;
@@ -140,7 +141,7 @@ export function CitasConfig({
         >
           {canales.map((canal) => (
             <option key={canal.id} value={canal.id}>
-              {canal.nombre}
+              {nombreVisibleCanal(canal.nombre, canal.proveedor)}
             </option>
           ))}
         </select>

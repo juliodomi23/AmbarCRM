@@ -4,12 +4,17 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 import { ChatCliente, type ConversacionItem } from "../src/components/chat/ChatCliente";
-import { tipoCanal, type TipoCanal } from "../src/lib/channel/tipo-canal";
+import { nombreVisibleCanal, tipoCanal, type TipoCanal } from "../src/lib/channel/tipo-canal";
 
 assert.equal(tipoCanal("cloud_api"), "whatsapp");
 assert.equal(tipoCanal("api"), "whatsapp");
 assert.equal(tipoCanal("messenger"), "messenger");
 assert.equal(tipoCanal("instagram"), "instagram");
+assert.equal(nombreVisibleCanal("Ámbar Rojo", "messenger"), "Messenger · Ámbar Rojo");
+assert.equal(nombreVisibleCanal("Ámbar Rojo", "instagram"), "Instagram · Ámbar Rojo");
+assert.equal(nombreVisibleCanal("Messenger · Ámbar Rojo", "messenger"), "Messenger · Ámbar Rojo");
+assert.equal(nombreVisibleCanal("Instagram Ámbar Rojo", "instagram"), "Instagram Ámbar Rojo");
+assert.equal(nombreVisibleCanal("Ámbar Rojo", "cloud_api"), "Ámbar Rojo");
 
 const sinNavegar = () => undefined;
 const router = { back: sinNavegar, forward: sinNavegar, refresh: sinNavegar, push: sinNavegar, replace: sinNavegar, prefetch: sinNavegar, bfcacheId: "chat" };
@@ -39,10 +44,12 @@ assert.ok(!mixto.includes('<option value="2"') && !mixto.includes('<option value
 const directoMessenger = renderizar(canales, "messenger");
 assert.ok(directoMessenger.includes("Contacto 2") && !directoMessenger.includes("Contacto 1"));
 assert.ok(directoMessenger.includes("Todos los canales de Messenger"));
+assert.ok(directoMessenger.includes("Messenger · Página"));
 
 const soloInstagram = renderizar(canales.slice(2));
 assert.ok(!soloInstagram.includes('aria-label="Tipo de canal"'));
 assert.ok(soloInstagram.includes("Todos los canales de Instagram"));
+assert.ok(soloInstagram.includes("Instagram · Cuenta"));
 assert.ok(soloInstagram.includes("Contacto 3") && !soloInstagram.includes("Contacto 1"));
 
 const soloWhatsapp = renderizar(canales.slice(0, 1));

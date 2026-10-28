@@ -7,6 +7,7 @@ import { api } from "@/components/config/tabs/shared";
 import { toast } from "@/components/Toaster";
 import { confirmar } from "@/components/Confirmador";
 import { ETIQUETAS_PERMISO, PERMISOS_BOT, type PermisoBot } from "@/lib/bot-permisos";
+import { nombreVisibleCanal } from "@/lib/channel/tipo-canal";
 
 export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
   const router = useRouter();
@@ -112,7 +113,7 @@ export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
             <option value="">Todos los canales</option>
             {canales.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.nombre}
+                {nombreVisibleCanal(c.nombre, c.proveedor)}
               </option>
             ))}
           </select>
@@ -146,7 +147,7 @@ export function TabBots({ bots, canales }: { bots: any[]; canales: any[] }) {
               <div>
                 <p className="font-semibold text-foreground">{b.nombre}</p>
                 <p className="text-xs text-muted-foreground">
-                  {b.canal?.nombre ?? "Todos los canales"}
+                  {b.canal ? nombreVisibleCanal(b.canal.nombre, b.canal.proveedor) : "Todos los canales"}
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs">

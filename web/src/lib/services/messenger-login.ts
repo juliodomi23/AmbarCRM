@@ -5,6 +5,7 @@ import { decryptMetaToken, encryptMetaToken } from "@/lib/meta/credentials";
 import { requireMetaAppCredentials } from "@/lib/meta/config";
 import { instagramDePagina, paginasDeFacebook, validarPaginaFacebook, type PaginaFacebook, ERROR_PERMISOS_META } from "@/lib/meta/messenger-facebook";
 import { guardarCanalInstagram, guardarCanalMessenger } from "@/lib/services/canales";
+import { nombreVisibleCanal } from "@/lib/channel/tipo-canal";
 
 export const LOGIN_DURACION_MS = 10 * 60_000;
 export const AVISO_APP_PROPIA = "Este canal usa una app propia de Meta. Usa la conexión manual para conservar sus credenciales.";
@@ -90,9 +91,10 @@ export async function conectarPaginaMessenger(identidad: IdentidadLogin, id: str
       if (proveedor === "instagram") {
         const { appId, appSecret } = requireMetaAppCredentials();
         return await guardarCanalInstagram({ instagram_id: instagramId, page_id: pagina.id, page_access_token: pagina.token,
-          app_id: appId, app_secret: appSecret, nombre: nombre ?? canal?.nombre ?? pagina.nombre }, canal?.id, true);
+          app_id: appId, app_secret: appSecret, nombre: nombre ?? canal?.nombre ?? nombreVisibleCanal(pagina.nombre, proveedor) }, canal?.id, true);
       }
-      return await guardarCanalMessenger({ page_id: pagina.id, page_access_token: pagina.token, nombre: nombre ?? canal?.nombre ?? pagina.nombre }, canal?.id, true);
+      return await guardarCanalMessenger({ page_id: pagina.id, page_access_token: pagina.token,
+        nombre: nombre ?? canal?.nombre ?? nombreVisibleCanal(pagina.nombre, proveedor) }, canal?.id, true);
     } catch (error) {
       if (error instanceof ErrorRetail && error.status === 424) throw new ErrorRetail(ERROR_PERMISOS_META, 424);
       throw error;

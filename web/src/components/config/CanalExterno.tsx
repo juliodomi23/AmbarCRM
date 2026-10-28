@@ -6,6 +6,7 @@ import { Boton, Campo } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import { confirmar } from "@/components/Confirmador";
 import { MessengerFacebook } from "./MessengerFacebook";
+import { nombreVisibleCanal } from "@/lib/channel/tipo-canal";
 
 export type CanalExternoDatos = { id: string; nombre: string; proveedor: string; webhookUrl?: string | null; pageId?: string | null; instagramId?: string | null; appId?: string | null; tieneAppSecret?: boolean; estado: string; errorAutorizacion?: string | null };
 
@@ -88,7 +89,7 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
     finally { setGuardando(false); }
   }
   return <section className="surface max-w-2xl space-y-3 p-4">
-    <h3 className="font-semibold">{canal ? `${nombreCanal} · ${canal.nombre}` : `Nuevo canal ${nombreCanal}`}</h3>
+    <h3 className="font-semibold">{canal ? esMeta ? nombreVisibleCanal(canal.nombre, proveedor) : `${nombreCanal} · ${canal.nombre}` : `Nuevo canal ${nombreCanal}`}</h3>
     {canal?.errorAutorizacion && <p className="text-sm text-destructive" role="alert">{canal.errorAutorizacion}</p>}
     {esMeta && <MessengerFacebook proveedor={esInstagram ? "instagram" : "messenger"} canalId={canal?.id} pageId={canal?.pageId} nombre={nombre} appPropia={esMessenger && Boolean(appId || appSecret || canal?.tieneAppSecret)} />}
     <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void guardar(); }}>
