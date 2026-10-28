@@ -13,7 +13,7 @@ import { EnviarPlantilla } from "@/components/chat/EnviarPlantilla";
 import { estadoVentana, textoRestante } from "@/lib/meta/ventana";
 import { webmAOgg } from "@/lib/audio/webm-a-ogg";
 import { IconoCanal } from "@/components/chat/IconoCanal";
-import { TIPOS_CANAL, tipoCanal, nombreVisibleCanal, type TipoCanal } from "@/lib/channel/tipo-canal";
+import { tipoCanal, tiposDeBandeja, nombreVisibleCanal, type TipoCanal } from "@/lib/channel/tipo-canal";
 
 type Embudo = { id: string; nombre: string; etapas: { id: string; nombre: string }[] };
 type Usuario = { id: string; nombre: string };
@@ -160,9 +160,9 @@ export function ChatCliente({
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroEtiqueta, setFiltroEtiqueta] = useState("");
   const colorEtiqueta = new Map(etiquetas.map((e) => [e.nombre, e.color]));
-  const tiposDisponibles = TIPOS_CANAL.filter((tipo) => canales.some((canal) => tipoCanal(canal.proveedor) === tipo));
-  const [filtroTipo, setFiltroTipo] = useState<TipoCanal>(() => tipoInicial ?? tiposDisponibles[0] ?? "whatsapp");
-  const tipoActual = tiposDisponibles.includes(filtroTipo) ? filtroTipo : tiposDisponibles[0] ?? "whatsapp";
+  const { disponibles: tiposDisponibles, inicial: primerTipoConCanal } = tiposDeBandeja(canales);
+  const [filtroTipo, setFiltroTipo] = useState<TipoCanal>(() => tipoInicial ?? primerTipoConCanal ?? "whatsapp");
+  const tipoActual = tiposDisponibles.includes(filtroTipo) ? filtroTipo : primerTipoConCanal ?? "whatsapp";
   const [filtroCanal, setFiltroCanal] = useState("");
   const [filtroResponsable, setFiltroResponsable] = useState<"" | "mias" | "sinasignar" | "personal">("");
   const [buscandoMensajes, setBuscandoMensajes] = useState(false);
@@ -602,7 +602,9 @@ export function ChatCliente({
         <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
           {convsFiltradas.length === 0 && (
             <p className="p-6 text-center text-sm text-muted-foreground">
-              {busqueda || filtroEstado || filtroEtiqueta || filtroCanal || filtroResponsable
+              {canalesDelTipo.length === 0
+                ? `Esta empresa no tiene un canal de ${tipoActual === "whatsapp" ? "WhatsApp" : tipoActual === "messenger" ? "Messenger" : "Instagram"} conectado.`
+                : busqueda || filtroEstado || filtroEtiqueta || filtroCanal || filtroResponsable
                 ? "Ninguna conversación coincide con los filtros."
                 : `Aún no hay conversaciones. Llegarán aquí cuando entre un mensaje de ${tipoActual === "whatsapp" ? "WhatsApp" : tipoActual === "messenger" ? "Messenger" : "Instagram"}.`}
             </p>

@@ -4,7 +4,7 @@ import { listarUsuariosActivos, listarEtiquetas } from "@/lib/services/contactos
 import { serializar } from "@/lib/serialize";
 import { getSesion } from "@/lib/session";
 import { ChatCliente, type ConversacionItem } from "@/components/chat/ChatCliente";
-import { TIPOS_CANAL, tipoCanal } from "@/lib/channel/tipo-canal";
+import { tipoCanal, tiposDeBandeja } from "@/lib/channel/tipo-canal";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -21,9 +21,9 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
   const directa = conv && /^\d{1,18}$/.test(conv) ? await db.conversacion.findUnique({
     where: { id: BigInt(conv) }, select: { canal: { select: { proveedor: true } } },
   }) : null;
-  const tiposDisponibles = TIPOS_CANAL.filter((tipo) => canales.some((canal: { proveedor: string }) => tipoCanal(canal.proveedor) === tipo));
-  const tipoDirecto = directa?.canal?.proveedor ? tipoCanal(directa.canal.proveedor) : undefined;
-  const tipoInicial = tipoDirecto && tiposDisponibles.includes(tipoDirecto) ? tipoDirecto : tiposDisponibles[0];
+  const { disponibles: tiposDisponibles, inicial: primerTipoConCanal } = tiposDeBandeja(canales);
+  const tipoDirecto = directa ? tipoCanal(directa.canal?.proveedor) : undefined;
+  const tipoInicial = tipoDirecto && tiposDisponibles.includes(tipoDirecto) ? tipoDirecto : primerTipoConCanal;
   const [convsRaw, plantillasRaw, embudosRaw, usuariosRaw, etiquetasRaw, sesion] = await Promise.all([
     listarConversaciones(tipoInicial),
     listarPlantillas(),
