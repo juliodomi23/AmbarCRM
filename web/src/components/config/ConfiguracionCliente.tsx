@@ -29,7 +29,7 @@ export function ConfiguracionCliente({
   modulosPorOrg = null, modulos = [],
   modulosClientes = [],
   especialistasAgenda = [], citasHabilitadas = false,
-  esExi = false,
+  esExi = false, abrirCanales = false,
 }: {
   embudos: any[];
   usuarios: any[];
@@ -46,9 +46,10 @@ export function ConfiguracionCliente({
   especialistasAgenda?: { id: string; nombre: string; activo: boolean }[];
   citasHabilitadas?: boolean;
   esExi?: boolean;
+  abrirCanales?: boolean;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("Embudos");
+  const [tab, setTab] = useState<Tab>(abrirCanales ? "Canales" : "Embudos");
   const tabs: Tab[] = orgs ? [...TABS, "Clientes Ámbar CRM"] : [...TABS];
 
   useEffect(() => {

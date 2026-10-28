@@ -7,8 +7,10 @@ import { toast } from "@/components/Toaster";
 import { confirmar } from "@/components/Confirmador";
 import { MessengerFacebook } from "./MessengerFacebook";
 import { nombreVisibleCanal } from "@/lib/channel/tipo-canal";
+import { IconoCanal } from "@/components/chat/IconoCanal";
+import { mensajeConexionMeta } from "@/lib/meta/mensaje-conexion";
 
-export type CanalExternoDatos = { id: string; nombre: string; proveedor: string; webhookUrl?: string | null; pageId?: string | null; instagramId?: string | null; login?: string | null; appId?: string | null; tieneAppSecret?: boolean; estado: string; errorAutorizacion?: string | null };
+export type CanalExternoDatos = { id: string; nombre: string; proveedor: string; webhookUrl?: string | null; pageId?: string | null; instagramId?: string | null; login?: string | null; username?: string | null; appId?: string | null; tieneAppSecret?: boolean; estado: string; errorAutorizacion?: string | null };
 
 export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDatos; tipo?: "api" | "messenger" | "instagram" }) {
   const proveedor = canal?.proveedor ?? tipo;
@@ -90,8 +92,12 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
     finally { setGuardando(false); }
   }
   return <section className="surface max-w-2xl space-y-3 p-4">
-    <h3 className="font-semibold">{canal ? esMeta ? nombreVisibleCanal(canal.nombre, proveedor) : `${nombreCanal} · ${canal.nombre}` : `Nuevo canal ${nombreCanal}`}</h3>
-    {canal?.errorAutorizacion && <p className="text-sm text-destructive" role="alert">{canal.errorAutorizacion}</p>}
+    <div className="flex flex-wrap items-center gap-2">
+      <h3 className="inline-flex min-w-0 items-center gap-2 font-semibold"><IconoCanal proveedor={proveedor} /><span className="break-words">{canal ? esMeta ? nombreVisibleCanal(canal.nombre, proveedor) : `${nombreCanal} · ${canal.nombre}` : `Nuevo canal ${nombreCanal}`}</span></h3>
+      {canal && esMeta && <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${canal.errorAutorizacion ? "bg-destructive/10 text-destructive" : canal.estado === "conectado" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>{canal.errorAutorizacion ? "Requiere reconexión" : canal.estado === "conectado" ? "Conectado" : "Desconectado"}</span>}
+    </div>
+    {canal?.login === "instagram" && canal.username && <p className="text-sm text-muted-foreground">@{canal.username.replace(/^@/, "")}</p>}
+    {canal?.errorAutorizacion && <p className="text-sm text-destructive" role="alert">{mensajeConexionMeta(canal.errorAutorizacion, esInstagram ? "Instagram" : "Messenger")}</p>}
     {esMeta && <MessengerFacebook proveedor={esInstagram ? "instagram" : "messenger"} canalId={canal?.id} pageId={canal?.pageId} nombre={nombre} login={canal?.login} appPropia={esMessenger && Boolean(appId || appSecret || canal?.tieneAppSecret)} />}
     {canal?.login !== "instagram" && <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void guardar(); }}>
       <Campo label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required maxLength={150} />

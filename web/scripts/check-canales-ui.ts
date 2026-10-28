@@ -47,7 +47,8 @@ for (const proveedor of ["messenger", "instagram"] as const) {
   const html = renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: router },
     createElement(CanalExterno, { canal: { id: "9", nombre: "Ámbar Rojo", proveedor, estado: "conectado" } })));
   const tipo = proveedor === "messenger" ? "Messenger" : "Instagram";
-  assert.ok(html.includes(`<h3 class="font-semibold">${tipo} · Ámbar Rojo</h3>`));
+  assert.ok(html.includes(`${tipo} · Ámbar Rojo</span></h3>`));
+  assert.ok(html.includes("Conectado</span>"));
   assert.ok(!html.includes(`${tipo} · ${tipo}`));
 }
 console.log("OK · canales UI: selector, datos SSR/SSE, ventanas separadas, rutas públicas exactas y desconexión Messenger solo en configuración admin con confirmación e historial opcional");

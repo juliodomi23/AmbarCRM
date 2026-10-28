@@ -86,7 +86,7 @@ export async function conectarInstagramLogin(identidad: IdentidadLogin, id: stri
         if ((error as { code?: string }).code === "P2002") throw new ErrorRetail("esa cuenta de Instagram ya está conectada", 409);
         throw error;
       }
-      return { id: String(guardado.id), nombre: guardado.nombre };
+      return { id: String(guardado.id), nombre: guardado.nombre, username: cuenta.username };
     } finally {
       await db.messengerLogin.deleteMany({ where: { id } });
     }

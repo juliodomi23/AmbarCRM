@@ -3,6 +3,7 @@ import { getToken } from "next-auth/jwt";
 import { requireSesion } from "@/lib/session";
 import { conectarInstagramLogin } from "@/lib/services/messenger-login";
 import { COOKIE_INSTAGRAM_OAUTH, OPCIONES_INSTAGRAM_OAUTH } from "@/lib/meta/messenger-login-http";
+import { mensajeConexionMeta } from "@/lib/meta/mensaje-conexion";
 
 export const dynamic = "force-dynamic";
 
@@ -17,13 +18,14 @@ export async function GET(req: NextRequest) {
     if ("error" in sesion || !sesion.orgId || !sesion.userId || !sessionToken) throw new Error("Inicia sesión como administrador y vuelve a conectar Instagram.");
     const errorMeta = req.nextUrl.searchParams.get("error");
     if (errorMeta) throw new Error("Se canceló la autorización de Instagram.");
-    await conectarInstagramLogin({ orgId: sesion.orgId, userId: sesion.userId, sessionToken }, id ?? "",
+    const cuenta = await conectarInstagramLogin({ orgId: sesion.orgId, userId: sesion.userId, sessionToken }, id ?? "",
       req.nextUrl.searchParams.get("state"), req.nextUrl.searchParams.get("code"), retorno.origin,
       nombre ? decodeURIComponent(nombre) : undefined);
-    mensaje = "Cuenta de Instagram conectada.";
+    mensaje = `Instagram conectado: @${cuenta.username}`;
     retorno.searchParams.set("instagram", "ok");
   } catch (error) {
-    mensaje = error instanceof Error ? error.message : mensaje;
+    console.error("[instagram-oauth] No se pudo completar la conexión:", error);
+    mensaje = mensajeConexionMeta(error instanceof Error ? error.message : "", "Instagram");
     retorno.searchParams.set("instagram", "error");
   }
   retorno.searchParams.set("instagram_mensaje", mensaje);

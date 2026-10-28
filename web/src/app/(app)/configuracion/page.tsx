@@ -14,6 +14,7 @@ import {
 import { listarBots } from "@/lib/services/bots";
 import { serializar } from "@/lib/serialize";
 import { ConfiguracionCliente } from "@/components/config/ConfiguracionCliente";
+import { AvisoConexionInstagram } from "@/components/config/AvisoConexionInstagram";
 
 export const dynamic = "force-dynamic";
 
@@ -72,8 +73,9 @@ export default async function ConfiguracionPage({ searchParams }: { searchParams
   const parametros = await searchParams;
   return (
     <>
-    {parametros.instagram && <p role="status" className="mx-auto max-w-5xl p-3 text-sm">{parametros.instagram_mensaje}</p>}
+    <AvisoConexionInstagram estado={parametros.instagram} mensaje={parametros.instagram_mensaje} />
     <ConfiguracionCliente
+      abrirCanales={Boolean(parametros.instagram)}
       especialistasAgenda={serializar(await db.doctor.findMany({ select: { id: true, nombre: true, activo: true }, orderBy: { nombre: "asc" } }))}
       citasHabilitadas={modulosActivos.some((m) => m.clave === "citas")}
       embudos={serializar(embudos)}
