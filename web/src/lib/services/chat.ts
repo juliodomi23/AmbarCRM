@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import type { TipoCanal } from "@/lib/channel/tipo-canal";
+import { sumarNoLeidosPorTipo, type TipoCanal } from "@/lib/channel/tipo-canal";
 
 // Las etiquetas viven en el contacto (las mismas de Contactos, Difusión y el bot).
 const CONTACTO_CON_ETIQUETAS = { include: { etiquetas: { select: { etiqueta: { select: { nombre: true } } } } } } as const;
@@ -26,6 +26,19 @@ export function listarConversaciones(tipo?: TipoCanal) {
       mensajes: { orderBy: { timestamp: "desc" }, take: 1 }
     }
   });
+}
+
+export async function contarNoLeidosPorTipo(): Promise<Record<TipoCanal, number>> {
+  const grupos = await db.conversacion.groupBy({
+    by: ["canalId"],
+    where: { noLeidos: { gt: 0 } },
+    _sum: { noLeidos: true },
+  });
+  const canalIds = grupos.flatMap((grupo) => grupo.canalId == null ? [] : [grupo.canalId]);
+  const canales = canalIds.length ? await db.canalWhatsapp.findMany({
+    where: { id: { in: canalIds } }, select: { id: true, proveedor: true },
+  }) : [];
+  return sumarNoLeidosPorTipo(grupos.map((grupo) => ({ canalId: grupo.canalId, noLeidos: grupo._sum.noLeidos ?? 0 })), canales);
 }
 
 /** Busca conversaciones donde algún mensaje contenga el texto (para búsqueda global). */

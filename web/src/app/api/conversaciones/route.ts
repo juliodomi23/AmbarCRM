@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSesion } from "@/lib/session";
-import { listarConversaciones, buscarEnMensajes, etiquetasDeContacto } from "@/lib/services/chat";
+import { listarConversaciones, buscarEnMensajes, etiquetasDeContacto, contarNoLeidosPorTipo } from "@/lib/services/chat";
 import { serializar } from "@/lib/serialize";
 import { TIPOS_CANAL, type TipoCanal } from "@/lib/channel/tipo-canal";
 
@@ -36,11 +36,10 @@ export async function GET(req: NextRequest) {
   const parametroTipo = req.nextUrl.searchParams.get("tipo");
   const tipo = TIPOS_CANAL.includes(parametroTipo as TipoCanal) ? parametroTipo as TipoCanal : undefined;
 
-  if (q.length >= 2) {
-    const raw = serializar(await buscarEnMensajes(q, tipo));
-    return NextResponse.json({ conversaciones: raw.map(mapearConv), esBusqueda: true });
-  }
-
-  const convs = serializar(await listarConversaciones(tipo));
-  return NextResponse.json({ conversaciones: convs.map(mapearConv) });
+  const esBusqueda = q.length >= 2;
+  const [convs, noLeidosPorTipo] = await Promise.all([
+    esBusqueda ? buscarEnMensajes(q, tipo) : listarConversaciones(tipo),
+    contarNoLeidosPorTipo(),
+  ]);
+  return NextResponse.json({ conversaciones: serializar(convs).map(mapearConv), noLeidosPorTipo, ...(esBusqueda ? { esBusqueda: true } : {}) });
 }

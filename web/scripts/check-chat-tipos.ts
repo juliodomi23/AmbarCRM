@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 import { ChatCliente, type ConversacionItem } from "../src/components/chat/ChatCliente";
-import { nombreVisibleCanal, tipoCanal, tiposDeBandeja, type TipoCanal } from "../src/lib/channel/tipo-canal";
+import { nombreVisibleCanal, tipoCanal, tiposDeBandeja, sumarNoLeidosPorTipo, type TipoCanal } from "../src/lib/channel/tipo-canal";
 
 assert.equal(tipoCanal("cloud_api"), "whatsapp");
 assert.equal(tipoCanal("api"), "whatsapp");
@@ -15,6 +15,14 @@ assert.equal(nombreVisibleCanal("Ámbar Rojo", "instagram"), "Instagram · Ámba
 assert.equal(nombreVisibleCanal("Messenger · Ámbar Rojo", "messenger"), "Messenger · Ámbar Rojo");
 assert.equal(nombreVisibleCanal("Instagram Ámbar Rojo", "instagram"), "Instagram Ámbar Rojo");
 assert.equal(nombreVisibleCanal("Ámbar Rojo", "cloud_api"), "Ámbar Rojo");
+assert.deepEqual(sumarNoLeidosPorTipo([
+  { canalId: 1n, noLeidos: 2 }, { canalId: 2n, noLeidos: 3 },
+  { canalId: 3n, noLeidos: 1 }, { canalId: 4n, noLeidos: 4 },
+  { canalId: null, noLeidos: 5 },
+], [
+  { id: 1n, proveedor: "cloud_api" }, { id: 2n, proveedor: "api" },
+  { id: 3n, proveedor: "messenger" }, { id: 4n, proveedor: "instagram" },
+]), { whatsapp: 10, messenger: 1, instagram: 4 });
 
 const sinNavegar = () => undefined;
 const router = { back: sinNavegar, forward: sinNavegar, refresh: sinNavegar, push: sinNavegar, replace: sinNavegar, prefetch: sinNavegar, bfcacheId: "chat" };
@@ -30,9 +38,10 @@ const conversacion = (id: string, proveedor: string): ConversacionItem => ({
   canalActivo: true, botActivo: false,
 });
 const conversaciones = [conversacion("1", "cloud_api"), conversacion("2", "messenger"), conversacion("3", "instagram")];
-const renderizar = (canalesVisibles: typeof canales, tipoInicial?: TipoCanal, conversacionesVisibles = conversaciones) => renderToStaticMarkup(createElement(AppRouterContext.Provider,
+const renderizar = (canalesVisibles: typeof canales, tipoInicial?: TipoCanal, conversacionesVisibles = conversaciones,
+  noLeidosIniciales = { whatsapp: 0, messenger: 0, instagram: 0 }) => renderToStaticMarkup(createElement(AppRouterContext.Provider,
   { value: router }, createElement(SearchParamsContext.Provider, { value: new URLSearchParams() },
-    createElement(ChatCliente, { canales: canalesVisibles, conversaciones: conversacionesVisibles, plantillas: [], usuarioId: "7", tipoInicial }))));
+    createElement(ChatCliente, { canales: canalesVisibles, conversaciones: conversacionesVisibles, noLeidosIniciales, plantillas: [], usuarioId: "7", tipoInicial }))));
 
 const mixto = renderizar(canales);
 assert.ok(mixto.includes('aria-label="Tipo de canal"'));
@@ -55,9 +64,14 @@ assert.ok(soloInstagram.includes("Contacto 3") && !soloInstagram.includes("Conta
 const canalesMeta = canales.slice(1);
 assert.deepEqual(tiposDeBandeja(canalesMeta), { disponibles: ["whatsapp", "messenger", "instagram"], inicial: "messenger" });
 const soloMeta = renderizar(canalesMeta, undefined, conversaciones.slice(1));
-assert.ok(soloMeta.indexOf(">WhatsApp</button>") < soloMeta.indexOf(">Messenger</button>"));
-assert.ok(soloMeta.indexOf(">Messenger</button>") < soloMeta.indexOf(">Instagram</button>"));
+assert.ok(soloMeta.indexOf('aria-label="WhatsApp"') < soloMeta.indexOf('aria-label="Messenger"'));
+assert.ok(soloMeta.indexOf('aria-label="Messenger"') < soloMeta.indexOf('aria-label="Instagram"'));
 assert.ok(soloMeta.includes("Contacto 2") && !soloMeta.includes("Contacto 3"));
+const conConteos = renderizar(canales, "whatsapp", conversaciones.slice(0, 1), { whatsapp: 3, messenger: 1, instagram: 120 });
+assert.ok(conConteos.includes('aria-label="WhatsApp, 3 sin leer"'));
+assert.ok(conConteos.includes('aria-label="Messenger, 1 sin leer"'));
+assert.ok(conConteos.includes('aria-label="Instagram, 120 sin leer"'));
+assert.ok(conConteos.includes('>99+</span>'));
 const whatsappSinCanal = renderizar(canalesMeta, "whatsapp", conversaciones.slice(1));
 assert.ok(whatsappSinCanal.includes("Esta empresa no tiene un canal de WhatsApp conectado."));
 assert.ok(!whatsappSinCanal.includes("Aún no hay conversaciones") && !whatsappSinCanal.includes('aria-label="Filtrar por canal"'));
@@ -69,4 +83,4 @@ const soloWhatsapp = renderizar(canales.slice(0, 1));
 assert.ok(!soloWhatsapp.includes('aria-label="Tipo de canal"'));
 assert.ok(soloWhatsapp.includes("Contacto 1"));
 
-console.log("OK · bandeja por tipo: tres pestañas con Meta, WhatsApp vacío o sin canal, tipo inicial y filtros aislados");
+console.log("OK · bandeja por tipo: pestañas, filtros y conteo global de no leídos por canal");

@@ -14,6 +14,18 @@ export function tiposDeBandeja(canales: { proveedor: string }[]) {
   };
 }
 
+export function sumarNoLeidosPorTipo(
+  grupos: { canalId: bigint | null; noLeidos: number }[],
+  canales: { id: bigint; proveedor: string }[],
+): Record<TipoCanal, number> {
+  const proveedorPorCanal = new Map(canales.map((canal) => [canal.id, canal.proveedor]));
+  const conteos: Record<TipoCanal, number> = { whatsapp: 0, messenger: 0, instagram: 0 };
+  for (const grupo of grupos) {
+    conteos[tipoCanal(grupo.canalId == null ? null : proveedorPorCanal.get(grupo.canalId))] += grupo.noLeidos;
+  }
+  return conteos;
+}
+
 export function nombreVisibleCanal(nombre: string, proveedor?: string | null) {
   if (proveedor === "messenger" && !/\bmessenger\b/i.test(nombre)) return `Messenger · ${nombre}`;
   if (proveedor === "instagram" && !/\binstagram\b/i.test(nombre)) return `Instagram · ${nombre}`;

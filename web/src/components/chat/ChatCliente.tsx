@@ -126,6 +126,7 @@ function leerArchivo(file: File): Promise<string> {
 
 export function ChatCliente({
   conversaciones,
+  noLeidosIniciales,
   plantillas,
   usuarios = [],
   embudos = [],
@@ -137,6 +138,7 @@ export function ChatCliente({
   humanAgentHabilitado = false
 }: {
   conversaciones: ConversacionItem[];
+  noLeidosIniciales: Record<TipoCanal, number>;
   plantillas: Plantilla[];
   usuarios?: Usuario[];
   embudos?: Embudo[];
@@ -148,6 +150,7 @@ export function ChatCliente({
   humanAgentHabilitado?: boolean;
 }) {
   const [convs, setConvs] = useState<ConversacionItem[]>(conversaciones);
+  const [noLeidosPorTipo, setNoLeidosPorTipo] = useState(noLeidosIniciales);
   const [cargandoLista, setCargandoLista] = useState(conversaciones.length === 0);
   const [selId, setSelId] = useState<string | null>(null);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
@@ -266,6 +269,7 @@ export function ChatCliente({
         const data = await res.json();
         if (tipoRef.current !== tipoActual) return;
         setConvs(data.conversaciones);
+        if (data.noLeidosPorTipo) setNoLeidosPorTipo(data.noLeidosPorTipo);
       } catch {
         // La lista inicial sigue disponible si falla el refresco.
       } finally {
@@ -279,7 +283,7 @@ export function ChatCliente({
     setMensajes([]);
     setCargandoMsgs(true);
     setConvs((prev) => prev.map((c) => (c.id === id ? { ...c, noLeidos: 0 } : c)));
-    cargarMensajes(id);
+    void cargarMensajes(id).then(refrescarLista);
   }
 
   async function buscarEnHistorial() {
@@ -289,6 +293,7 @@ export function ChatCliente({
     if (res.ok) {
       const data = await res.json();
       setConvs(data.conversaciones);
+      if (data.noLeidosPorTipo) setNoLeidosPorTipo(data.noLeidosPorTipo);
     }
     setBuscandoMensajes(false);
   }
@@ -348,7 +353,7 @@ export function ChatCliente({
       const convId = String(payload.conversacion_id);
       const esEntrante = payload.direccion === "entrante";
       if (convId === selRef.current) {
-        cargarMensajes(convId);
+        void cargarMensajes(convId).then(refrescarLista);
         setVersionPanel((v) => v + 1);
       }
       // Avisa si entra un mensaje y la conversación no está abierta o la pestaña no está activa.
@@ -358,7 +363,7 @@ export function ChatCliente({
         notificar("Nuevo mensaje", conv ? nombreVisibleContacto(conv.contacto.nombre, conv.canalProveedor) : "Tienes un mensaje nuevo");
       }
       // Trae la lista actualizada del server (preview correcto + orden + no-leídos).
-      refrescarLista();
+      if (convId !== selRef.current) refrescarLista();
     };
     return () => es.close();
   }, [cargarMensajes, refrescarLista]);
@@ -541,11 +546,12 @@ export function ChatCliente({
           {tiposDisponibles.length > 1 && (
             <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted/70 p-1" role="group" aria-label="Tipo de canal">
               {tiposDisponibles.map((tipo) => (
-                <button key={tipo} type="button" onClick={() => {
+                <button key={tipo} type="button" aria-label={`${tipo === "whatsapp" ? "WhatsApp" : tipo === "messenger" ? "Messenger" : "Instagram"}${noLeidosPorTipo[tipo] > 0 ? `, ${noLeidosPorTipo[tipo]} sin leer` : ""}`} onClick={() => {
                   setFiltroTipo(tipo); setFiltroCanal(""); setSelId(null); setMensajes([]); setPanelMovil(false);
-                }} aria-pressed={tipoActual === tipo} className={`flex min-w-0 items-center justify-center gap-1 rounded-lg px-1 py-2 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${tipoActual === tipo ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:bg-card/70 hover:text-foreground"}`}>
+                }} aria-pressed={tipoActual === tipo} className={`flex min-w-0 items-center justify-center gap-1 rounded-lg px-1 py-2 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-[11px] ${tipoActual === tipo ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:bg-card/70 hover:text-foreground"}`}>
                   <IconoCanal proveedor={tipo} />
-                  {tipo === "whatsapp" ? "WhatsApp" : tipo === "messenger" ? "Messenger" : "Instagram"}
+                  <span className="truncate">{tipo === "whatsapp" ? "WhatsApp" : tipo === "messenger" ? "Messenger" : "Instagram"}</span>
+                  {noLeidosPorTipo[tipo] > 0 && <span aria-hidden="true" className="grid h-4 min-w-4 shrink-0 place-items-center rounded-full bg-primary px-1 text-[9px] font-bold leading-none text-primary-foreground">{noLeidosPorTipo[tipo] > 99 ? "99+" : noLeidosPorTipo[tipo]}</span>}
                 </button>
               ))}
             </div>

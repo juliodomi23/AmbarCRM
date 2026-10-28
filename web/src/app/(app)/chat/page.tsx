@@ -1,4 +1,4 @@
-import { etiquetasDeContacto, listarConversaciones, listarPlantillas } from "@/lib/services/chat";
+import { etiquetasDeContacto, listarConversaciones, listarPlantillas, contarNoLeidosPorTipo } from "@/lib/services/chat";
 import { getEmbudosConEtapas, listarCanales } from "@/lib/services/config";
 import { listarUsuariosActivos, listarEtiquetas } from "@/lib/services/contactos";
 import { serializar } from "@/lib/serialize";
@@ -24,13 +24,14 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
   const { disponibles: tiposDisponibles, inicial: primerTipoConCanal } = tiposDeBandeja(canales);
   const tipoDirecto = directa ? tipoCanal(directa.canal?.proveedor) : undefined;
   const tipoInicial = tipoDirecto && tiposDisponibles.includes(tipoDirecto) ? tipoDirecto : primerTipoConCanal;
-  const [convsRaw, plantillasRaw, embudosRaw, usuariosRaw, etiquetasRaw, sesion] = await Promise.all([
+  const [convsRaw, plantillasRaw, embudosRaw, usuariosRaw, etiquetasRaw, sesion, noLeidosPorTipo] = await Promise.all([
     listarConversaciones(tipoInicial),
     listarPlantillas(),
     getEmbudosConEtapas(),
     listarUsuariosActivos(),
     listarEtiquetas(),
-    getSesion()
+    getSesion(),
+    contarNoLeidosPorTipo()
   ]);
   const convs = serializar(convsRaw);
   const plantillas = serializar(plantillasRaw);
@@ -65,6 +66,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
   return (
     <ChatCliente
       conversaciones={conversaciones}
+      noLeidosIniciales={noLeidosPorTipo}
       plantillas={plantillas}
       embudos={embudos}
       usuarios={usuarios}
