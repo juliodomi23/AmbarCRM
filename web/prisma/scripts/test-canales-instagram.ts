@@ -6,6 +6,7 @@ import pg from "pg";
 import { EventEmitter } from "node:events";
 import { format } from "node:util";
 import { NextRequest } from "next/server";
+import { META_GRAPH_URL } from "../../src/lib/meta/config";
 
 const require = createRequire(import.meta.url);
 const { db, dbRaw, runWithOrg }: typeof import("../../src/lib/db") = require("../../src/lib/db.ts");
@@ -64,6 +65,7 @@ const entregas: any[] = [];
 const llamadas: { url: string; method: string }[] = [];
 let fallo: { status?: number; code?: number; red?: boolean; timeout?: boolean; sinConfirmar?: boolean; noJson?: boolean } | null = null;
 let perfilFalla = true;
+let cuentaSinConfirmar = false;
 let secuencia = 0;
 let esperarSuscripcion: (() => Promise<void>) | undefined;
 const fallarGraph = () => {
@@ -84,6 +86,7 @@ globalThis.fetch = async (input, init) => {
       assert.deepEqual(JSON.parse(String(init.body)).subscribed_fields, CAMPOS_INSTAGRAM);
       await esperarSuscripcion?.();
     }
+    if (cuentaSinConfirmar && url === `${META_GRAPH_URL}/${cuentas[0]}/subscribed_apps`) return Response.json({ success: false });
     return fallo ? fallarGraph() : Response.json({ success: true });
   }
   if (url.endsWith("/me/messages")) {
@@ -126,8 +129,16 @@ try {
   for (const invalida of [{ app_secret: "" }, { app_id: "incorrecto" }, { page_access_token: " " }, { instagram_id: "abc" }, { quitar_app: true }]) {
     assert.equal((await observar(await canales.POST(request("POST", datosAlta(cuentas[0], invalida))))).status, 400);
   }
+  cuentaSinConfirmar = true;
+  assert.equal((await observar(await canales.POST(request("POST", datosAlta(cuentas[0]))))).status, 424);
+  assert.equal(await runWithOrg(orgs[0].id, () => db.canalWhatsapp.count()), 0, "sin confirmación de la cuenta no se guarda el canal");
+  cuentaSinConfirmar = false;
   const alta = await observar(await canales.POST(request("POST", datosAlta(cuentas[0]))));
   assert.equal(alta.status, 201);
+  assert.deepEqual(llamadas.slice(-2), [
+    { url: `${META_GRAPH_URL}/${cuentas[0]}9/subscribed_apps`, method: "POST" },
+    { url: `${META_GRAPH_URL}/${cuentas[0]}/subscribed_apps`, method: "POST" },
+  ], "el alta suscribe la página y la cuenta de Instagram");
   const a = await alta.json();
   admin(1);
   const previoDuplicado = llamadas.length;
@@ -296,7 +307,12 @@ try {
   assert.equal((await observar(await detalle.PATCH(request("PATCH", { nombre: "Ajeno" }), props(a.id)))).status, 404);
   assert.equal(llamadas.length, antesPermisos);
   admin(0);
+  const antesRetiro = llamadas.length;
   assert.equal((await retiro(temporal.canal.id)).status, 200);
+  assert.deepEqual(llamadas.slice(antesRetiro).map((llamada) => llamada.url), [
+    `${META_GRAPH_URL}/${(temporal.canal.config as Record<string, string>).instagramId}/subscribed_apps`,
+    `${META_GRAPH_URL}/${(temporal.canal.config as Record<string, string>).pageId}/subscribed_apps`,
+  ], "la desconexión cancela la cuenta antes de la página");
   await runWithOrg(orgs[0].id, async () => assert.equal((await db.conversacion.findUniqueOrThrow({ where: { id: temporal.conversacion.id } })).canalId, null));
   for (const caso of [{ status: 400, code: 190 }, { status: 404 }, { status: 400, code: 803 }]) {
     const f = await fixtureRetiro(); fallo = caso;

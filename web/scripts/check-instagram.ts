@@ -15,9 +15,9 @@ for (const ruta of ["/api/instagram/webhooks", "/api/instagram/privado", "/api/c
 const sinNavegar = () => undefined;
 const router = { back: sinNavegar, forward: sinNavegar, refresh: sinNavegar, push: sinNavegar, replace: sinNavegar, prefetch: sinNavegar, bfcacheId: "instagram" };
 const formulario = renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: router }, createElement(CanalExterno, { tipo: "instagram" })));
-for (const texto of ["Instagram", "instagram_id", "24 h", "App Secret", "cuenta profesional"]) assert.ok(formulario.includes(texto), texto);
+for (const texto of ["Instagram", "instagram_id", "24 h", "App Secret", "cuenta profesional", "Conectar con Facebook", "conexión manual"]) assert.ok(formulario.includes(texto), texto);
 assert.equal((formulario.match(/type="password"/g) ?? []).length, 2);
-assert.ok(!formulario.includes("Conectar con Facebook") && !formulario.includes("Quitar app propia") && !formulario.includes("Regenerar credenciales"));
+assert.ok(!formulario.includes("Quitar app propia") && !formulario.includes("Regenerar credenciales"));
 const icono = renderToStaticMarkup(createElement(IconoCanal, { proveedor: "instagram" }));
 assert.ok(icono.includes('aria-label="Instagram"') && icono.includes("<rect"));
 assert.deepEqual(validarCondiciones([{ tipo: "canal", valor: "instagram" }]), [{ tipo: "canal", valor: "instagram" }]);
@@ -25,4 +25,4 @@ assert.throws(() => validarCondiciones([{ tipo: "canal", valor: "otro" }]));
 const sql = await readFile("prisma/sql/actualizaciones.sql", "utf8");
 assert.ok(sql.includes("ALTER TYPE proveedor_canal ADD VALUE IF NOT EXISTS 'instagram'"));
 assert.ok(sql.includes("canales_instagram_cuenta_activa_uq") && sql.includes("REVOKE ALL ON FUNCTION resolve_org_by_instagram(text) FROM PUBLIC"));
-console.log("OK · Instagram: formulario manual, secretos ocultos, icono, condición estricta, migración y ruta pública exacta");
+console.log("OK · Instagram: login guiado y formulario manual, secretos ocultos, icono, condición estricta, migración y ruta pública exacta");

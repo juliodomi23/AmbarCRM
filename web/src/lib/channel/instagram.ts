@@ -7,12 +7,31 @@ export { tipoEnvioMeta as tipoEnvioInstagram } from "./meta-mensajeria";
 export const CAMPOS_INSTAGRAM = ["messages"];
 export const ERROR_DESCONEXION_INSTAGRAM = "No se pudo cancelar la suscripción de Instagram en Facebook. El canal se conservó; vuelve a intentarlo.";
 
-export function suscribirCuenta(config: Record<string, unknown>, canalId?: bigint) {
-  return suscribirPaginaMeta(config, CAMPOS_INSTAGRAM, canalId);
+export async function suscribirCuenta(config: Record<string, unknown>, canalId?: bigint) {
+  await suscribirPaginaMeta(config, CAMPOS_INSTAGRAM, canalId);
+  const respuesta = await graphMensajeriaMeta(config, `${config.instagramId}/subscribed_apps`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ subscribed_fields: CAMPOS_INSTAGRAM }),
+  });
+  if (respuesta.success !== true) throw new Error("Meta no confirmó la suscripción de la cuenta de Instagram");
+  return respuesta;
 }
 
 export async function desuscribirCuenta(config: Record<string, unknown>, canalId: bigint) {
-  try { return await desuscribirPaginaMeta(config, canalId); }
+  try {
+    if (typeof config.instagramId !== "string" || !/^\d{1,40}$/.test(config.instagramId)) throw new Error(ERROR_DESCONEXION_INSTAGRAM);
+    try {
+      const respuesta = await graphMensajeriaMeta(config, `${config.instagramId}/subscribed_apps`, { method: "DELETE" });
+      if (respuesta.success !== true) throw new Error(ERROR_DESCONEXION_INSTAGRAM);
+    } catch (error) {
+      const datos = error as { code?: number; httpStatus?: number };
+      if (datos.httpStatus == null || datos.httpStatus === 429 || datos.httpStatus >= 500) throw error;
+      const tokenVencido = datos.code === 190 || (error instanceof Error && /session has been invalidated|error validating access token/i.test(error.message));
+      const cuentaInexistente = datos.httpStatus === 404 || datos.code === 803;
+      if (!tokenVencido && !cuentaInexistente) throw error;
+    }
+    return await desuscribirPaginaMeta(config, canalId);
+  }
   catch { throw new Error(ERROR_DESCONEXION_INSTAGRAM); }
 }
 

@@ -8,10 +8,11 @@ assert.equal(new URL(process.env.DATABASE_URL!).port, "55450", "solo base desech
 process.env.META_APP_ID = "123";
 process.env.META_APP_SECRET = "meta-compartida-simulada";
 const original = globalThis.fetch;
-const operaciones: { metodo: string; campos: string[] }[] = [];
+const operaciones: { id: string; metodo: string; campos: string[] }[] = [];
 globalThis.fetch = async (input, init) => {
   assert.match(String(input), /^https:\/\/graph\.facebook\.com\/v\d+\.\d+\/\d+\/subscribed_apps$/);
-  operaciones.push({ metodo: init?.method ?? "GET", campos: init?.body ? JSON.parse(String(init.body)).subscribed_fields : [] });
+  operaciones.push({ id: new URL(String(input)).pathname.split("/").at(-2)!,
+    metodo: init?.method ?? "GET", campos: init?.body ? JSON.parse(String(init.body)).subscribed_fields : [] });
   return Response.json({ success: true });
 };
 const marca = String(Date.now());
@@ -23,13 +24,14 @@ try {
   assert.deepEqual(operaciones.at(-1)?.campos, CAMPOS_MESSENGER);
   const instagram = await runWithOrg(orgs[1].id, () => guardarCanalInstagram({ nombre: "Instagram", instagram_id: `${marca}8`, page_id: pagina,
     page_access_token: "token-simulado", app_id: "123", app_secret: "meta-compartida-simulada" }));
-  assert.deepEqual(new Set(operaciones.at(-1)?.campos), new Set(CAMPOS_MESSENGER), "la segunda conexión conserva los campos de Messenger entre empresas");
+  assert.deepEqual(new Set(operaciones.at(-2)?.campos), new Set(CAMPOS_MESSENGER), "la segunda conexión conserva los campos de Messenger entre empresas");
+  assert.deepEqual(operaciones.at(-1), { id: `${marca}8`, metodo: "POST", campos: ["messages"] }, "Instagram suscribe su cuenta además de la página");
 
   const ig = await runWithOrg(orgs[1].id, () => db.canalWhatsapp.findUniqueOrThrow({ where: { id: BigInt(instagram.id) } }));
   const antes = operaciones.length;
   const retiroIg = await desuscribirCuenta(ig.config as Record<string, unknown>, ig.id);
   assert.equal(retiroIg.desuscrito, false);
-  assert.equal(operaciones.length, antes, "retirar Instagram no elimina la suscripción compartida");
+  assert.deepEqual(operaciones.slice(antes), [{ id: `${marca}8`, metodo: "DELETE", campos: [] }], "retirar Instagram cancela su cuenta sin eliminar la suscripción compartida de la página");
   await runWithOrg(orgs[1].id, () => db.canalWhatsapp.delete({ where: { id: ig.id } }));
 
   const msg = await runWithOrg(orgs[0].id, () => db.canalWhatsapp.findUniqueOrThrow({ where: { id: BigInt(messenger.id) } }));

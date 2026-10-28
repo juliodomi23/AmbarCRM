@@ -11,10 +11,15 @@ process.env.META_APP_ID = "123";
 process.env.META_APP_SECRET = "secreto-meta-simulado";
 const original = globalThis.fetch;
 let llamadas = 0;
+const suscripciones: { id: string; campos: string[] }[] = [];
 let alSuscribir: (() => Promise<void>) | undefined;
 globalThis.fetch = async (input, init) => {
   llamadas++;
-  if (String(input).endsWith("/subscribed_apps")) await alSuscribir?.();
+  if (String(input).endsWith("/subscribed_apps") && init?.method === "POST") {
+    suscripciones.push({ id: new URL(String(input)).pathname.split("/").at(-2)!,
+      campos: JSON.parse(String(init.body)).subscribed_fields });
+    await alSuscribir?.();
+  }
   return graphSimulado(input, init);
 };
 const orgs = await Promise.all(["a", "b"].map((letra) => dbRaw.org.create({ data: { nombre: `Login ${letra}`, slug: `login-fb-${letra}-${Date.now()}` } })));
@@ -119,6 +124,10 @@ try {
   await assert.rejects(listarPaginasMessenger(a, intentoIg.id, intentoIg.state, { code: codigo }), rechaza(403));
   const paginasIg = await listarPaginasMessenger(a, intentoIg.id, intentoIg.state, { code: codigo }, "instagram");
   const conexionIg = await conectarPaginaMessenger(a, intentoIg.id, intentoIg.state, paginasIg[0].id, undefined, "instagram");
+  assert.equal(suscripciones.at(-2)?.id, paginasIg[0].id);
+  assert.ok(suscripciones.at(-2)?.campos.includes("messages"));
+  assert.deepEqual(suscripciones.at(-1), { id: `${paginasIg[0].id}8`, campos: ["messages"] },
+    "Instagram suscribe la página y la cuenta con el token de página");
   await runWithOrg(a.orgId, async () => {
     const c = await db.canalWhatsapp.findUniqueOrThrow({ where: { id: BigInt(conexionIg.id) } });
     const config = c.config as Record<string, string>;
