@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, dbRaw, runWithOrg } from "@/lib/db";
-import { verifyMetaWebhookSignature } from "@/lib/meta/signature";
-import { decryptMetaToken } from "@/lib/meta/credentials";
+import { verifyMetaWebhookSignature, verificarFirmaInstagramCanal } from "@/lib/meta/signature";
 import { normalizarInstagram, perfilInstagram } from "@/lib/channel/instagram";
 import { ingestarEntrante } from "@/lib/services/ingest";
 
@@ -16,25 +15,20 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ error: "verificación inválida" }, { status: 403 });
 }
 
-function firmaDelCanal(config: Record<string, unknown>, raw: string, firma: string | null) {
-  if (config.appSecretEncrypted == null) return verifyMetaWebhookSignature(raw, firma);
-  if (typeof config.appSecretEncrypted !== "string" || !config.appSecretEncrypted) return false;
-  try { return verifyMetaWebhookSignature(raw, firma, decryptMetaToken(config.appSecretEncrypted)); }
-  catch { return false; }
-}
-
 const firmaInvalida = () => NextResponse.json({ error: "firma inválida" }, { status: 401 });
+const firmaGlobal = (raw: string, firma: string | null) => verifyMetaWebhookSignature(raw, firma) ||
+  verifyMetaWebhookSignature(raw, firma, process.env.INSTAGRAM_APP_SECRET?.trim());
 
 export async function POST(req: NextRequest) {
   const raw = await req.text();
   const firma = req.headers.get("x-hub-signature-256");
   let payload;
   try { payload = JSON.parse(raw); }
-  catch { return verifyMetaWebhookSignature(raw, firma) ? NextResponse.json({ error: "JSON inválido" }, { status: 400 }) : firmaInvalida(); }
+  catch { return firmaGlobal(raw, firma) ? NextResponse.json({ error: "JSON inválido" }, { status: 400 }) : firmaInvalida(); }
   if (!Array.isArray(payload?.entry)) {
-    return verifyMetaWebhookSignature(raw, firma) ? NextResponse.json({ ok: true }) : firmaInvalida();
+    return firmaGlobal(raw, firma) ? NextResponse.json({ ok: true }) : firmaInvalida();
   }
-  console.log("[instagram-webhook]", payload.object, payload.entry.map((e: { id?: unknown; messaging?: unknown[] }) => `${e?.id}:${e?.messaging?.length ?? 0}`).join(","), "firma", verifyMetaWebhookSignature(raw, firma));
+  console.log("[instagram-webhook]", payload.object, payload.entry.map((e: { id?: unknown; messaging?: unknown[] }) => `${e?.id}:${e?.messaging?.length ?? 0}`).join(","), "firma", firmaGlobal(raw, firma));
   let autorizada = false;
   let rechazada = false;
   for (const entry of payload.entry) {
@@ -49,7 +43,7 @@ export async function POST(req: NextRequest) {
         config: { path: ["instagramId"], equals: instagramId } } });
       if (!canal) return;
       const config = canal.config as Record<string, unknown>;
-      if (!firmaDelCanal(config, raw, firma)) { rechazada = true; return; }
+      if (!verificarFirmaInstagramCanal(config, raw, firma)) { rechazada = true; return; }
       autorizada = true;
       if (payload.object !== "instagram" || !Array.isArray(entry.messaging)) return;
       const appId = typeof config.appId === "string" ? config.appId : process.env.META_APP_ID?.trim();

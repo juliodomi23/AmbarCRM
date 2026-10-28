@@ -1,15 +1,47 @@
 import { db, dbRaw } from "@/lib/db";
-import { META_GRAPH_URL } from "@/lib/meta/config";
-import { tokenFromChannelConfig } from "@/lib/meta/credentials";
+import { INSTAGRAM_GRAPH_URL, META_GRAPH_URL } from "@/lib/meta/config";
+import { encryptMetaToken, tokenFromChannelConfig } from "@/lib/meta/credentials";
 import { destinoPublico } from "@/lib/webhook-url";
 import type { ChannelProvider, ContextoEnvio, MensajeEntranteNormalizado, TipoMensaje } from "./types";
 
 export const CAMPOS_MESSENGER_META = ["messages", "message_deliveries", "message_echoes", "message_reads", "standby", "messaging_handovers", "messaging_postbacks"];
 
+export function hostMensajeria(config: Record<string, unknown>) {
+  return config.login === "instagram" ? INSTAGRAM_GRAPH_URL : META_GRAPH_URL;
+}
+
+async function refrescarInstagram(config: Record<string, unknown>) {
+  if (config.login !== "instagram" || typeof config.tokenExpiraAt !== "string" ||
+      Date.parse(config.tokenExpiraAt) > Date.now() + 15 * 86400_000) return;
+  const token = tokenFromChannelConfig(config);
+  const url = new URL("https://graph.instagram.com/refresh_access_token");
+  url.searchParams.set("grant_type", "ig_refresh_token");
+  url.searchParams.set("access_token", token);
+  let res: Response | null = null;
+  let data: any = {};
+  try {
+    res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    data = await res.json().catch(() => ({}));
+  } catch { console.error("[instagram-login]", { endpoint: "/refresh_access_token", http: null, mensaje: "Fallo de red" }); }
+  if (!res?.ok || typeof data.access_token !== "string" || !Number.isFinite(Number(data.expires_in))) {
+    if (res) console.error("[instagram-login]", { endpoint: "/refresh_access_token", http: res.status,
+      code: data.error?.code, subcode: data.error?.error_subcode, mensaje: data.error?.message });
+    const errorAutorizacion = "No se pudo renovar el acceso de Instagram. Vuelve a conectar el canal.";
+    await db.canalWhatsapp.updateMany({ where: { proveedor: "instagram", activo: true, config: { path: ["instagramId"], equals: String(config.instagramId) } },
+      data: { config: { ...config, errorAutorizacion } as Record<string, string> } });
+    throw new Error(errorAutorizacion);
+  }
+  const actualizado = { ...config, tokenEncrypted: encryptMetaToken(data.access_token),
+    tokenExpiraAt: new Date(Date.now() + Number(data.expires_in) * 1000).toISOString() };
+  await db.canalWhatsapp.updateMany({ where: { proveedor: "instagram", activo: true, config: { path: ["instagramId"], equals: String(config.instagramId) } },
+    data: { config: actualizado as Record<string, string> } });
+  Object.assign(config, actualizado);
+}
+
 export async function graphMensajeriaMeta(config: Record<string, unknown>, path: string, init?: RequestInit) {
   const token = tokenFromChannelConfig(config);
-  if (!token) throw new Error("Messenger sin token de página");
-  const res = await fetch(`${META_GRAPH_URL}/${path}`, {
+  if (!token) throw new Error("Canal sin token de acceso");
+  const res = await fetch(`${hostMensajeria(config)}/${path}`, {
     ...init, headers: { Authorization: `Bearer ${token}`, ...init?.headers }, signal: AbortSignal.timeout(5000),
   });
   const data = await res.json().catch(() => ({}));
@@ -117,14 +149,15 @@ export function makeMensajeriaMetaProvider(config?: unknown, opciones: {
     if (opciones.maxTexto && typeof texto === "string" && texto.length > opciones.maxTexto) {
       return { ok: false, error: `${nombre} admite hasta ${opciones.maxTexto} caracteres por mensaje` };
     }
-    const tipo = tipoEnvioMeta(contexto);
+    const tipo = tipoEnvioMeta(contexto, Date.now(), datos.login === "instagram" ? false : process.env.META_HUMAN_AGENT_APROBADO === "true");
     if (!tipo) return { ok: false, error: contexto?.humano
       ? process.env.META_HUMAN_AGENT_APROBADO !== "true" ? `Ventana de 24 h de ${nombre} cerrada. La capacidad Human Agent aún no está habilitada en este CRM.`
         : `Ventana de ${nombre} cerrada: el asesor solo puede responder hasta 7 días desde el último mensaje entrante.`
       : `Ventana de 24 h de ${nombre} cerrada: el bot no puede enviar mensajes.` };
     try {
+      await refrescarInstagram(datos);
       const data = await graphMensajeriaMeta(datos, "me/messages", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipient: { id: destinatario }, message, ...tipo }) });
+        body: JSON.stringify({ recipient: { id: destinatario }, message, ...(datos.login === "instagram" ? {} : tipo) }) });
       if (!data.message_id) return { ok: false, error: "Meta no devolvió el identificador del mensaje" };
       return { ok: true, waMessageId: String(data.message_id) };
     } catch (e) {

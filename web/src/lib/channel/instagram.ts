@@ -5,9 +5,16 @@ import {
 
 export { tipoEnvioMeta as tipoEnvioInstagram } from "./meta-mensajeria";
 export const CAMPOS_INSTAGRAM = ["messages"];
-export const ERROR_DESCONEXION_INSTAGRAM = "No se pudo cancelar la suscripción de Instagram en Facebook. El canal se conservó; vuelve a intentarlo.";
+export const ERROR_DESCONEXION_INSTAGRAM = "No se pudo cancelar la suscripción de Instagram. El canal se conservó; vuelve a intentarlo.";
 
 export async function suscribirCuenta(config: Record<string, unknown>, canalId?: bigint) {
+  if (config.login === "instagram") {
+    const respuesta = await graphMensajeriaMeta(config, "me/subscribed_apps", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ subscribed_fields: CAMPOS_INSTAGRAM }),
+    });
+    if (respuesta.success !== true) throw new Error("Instagram no confirmó la suscripción");
+    return respuesta;
+  }
   await suscribirPaginaMeta(config, CAMPOS_INSTAGRAM, canalId);
   const respuesta = await graphMensajeriaMeta(config, `${config.instagramId}/subscribed_apps`, {
     method: "POST", headers: { "Content-Type": "application/json" },
@@ -19,6 +26,17 @@ export async function suscribirCuenta(config: Record<string, unknown>, canalId?:
 
 export async function desuscribirCuenta(config: Record<string, unknown>, canalId: bigint) {
   try {
+    if (config.login === "instagram") {
+      try {
+        const respuesta = await graphMensajeriaMeta(config, "me/subscribed_apps", { method: "DELETE" });
+        if (respuesta.success !== true) throw new Error(ERROR_DESCONEXION_INSTAGRAM);
+        return { desuscrito: true };
+      } catch (error) {
+        const datos = error as { code?: number; httpStatus?: number };
+        if (datos.code === 190 || datos.code === 803 || datos.httpStatus === 404) return { desuscrito: false, motivo: "El token venció o la cuenta ya no existe; se retiró el canal local." };
+        throw error;
+      }
+    }
     if (typeof config.instagramId !== "string" || !/^\d{1,40}$/.test(config.instagramId)) throw new Error(ERROR_DESCONEXION_INSTAGRAM);
     try {
       const respuesta = await graphMensajeriaMeta(config, `${config.instagramId}/subscribed_apps`, { method: "DELETE" });

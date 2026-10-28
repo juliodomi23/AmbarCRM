@@ -59,7 +59,9 @@ async function manejarDELETE(req: NextRequest, props: { params: Promise<{ id: st
       desconexionMessenger = {
         desuscrito: false,
         forzado: true,
-        motivo: "Se retiró del CRM, pero la suscripción puede seguir activa en Facebook: quita la app desde la configuración de la página",
+        motivo: (canal.config as Record<string, unknown> | null)?.login === "instagram"
+          ? "Se retiró del CRM, pero la suscripción puede seguir activa en Instagram: revoca el acceso desde la configuración de la cuenta"
+          : "Se retiró del CRM, pero la suscripción puede seguir activa en Facebook: quita la app desde la configuración de la página",
       };
     }
   }
