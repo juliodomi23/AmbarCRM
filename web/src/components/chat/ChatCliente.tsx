@@ -22,7 +22,7 @@ type Canal = { id: string; nombre: string; proveedor: string; activo: boolean };
 
 export type ConversacionItem = {
   id: string;
-  contacto: { id: string; nombre: string; telefono: string | null };
+  contacto: { id: string; nombre: string; telefono: string | null; avatarUrl?: string | null };
   esPersonal: boolean;
   fijado: boolean;
   responsableId: string | null;
@@ -148,6 +148,7 @@ export function ChatCliente({
   humanAgentHabilitado?: boolean;
 }) {
   const [convs, setConvs] = useState<ConversacionItem[]>(conversaciones);
+  const [cargandoLista, setCargandoLista] = useState(conversaciones.length === 0);
   const [selId, setSelId] = useState<string | null>(null);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [cargandoMsgs, setCargandoMsgs] = useState(false);
@@ -183,6 +184,7 @@ export function ChatCliente({
   const chunksRef = useRef<Blob[]>([]);
   const finRef = useRef<HTMLDivElement>(null);
   const archivoRef = useRef<HTMLInputElement>(null);
+  const textoRef = useRef<HTMLTextAreaElement>(null);
   const selRef = useRef<string | null>(null);
   selRef.current = selId;
   const convsRef = useRef<ConversacionItem[]>(convs);
@@ -247,16 +249,28 @@ export function ChatCliente({
     setCargandoMsgs(false);
   }, []);
 
+  useEffect(() => {
+    if (!textoRef.current) return;
+    textoRef.current.style.height = "auto";
+    textoRef.current.style.height = `${Math.min(textoRef.current.scrollHeight, 160)}px`;
+  }, [texto]);
+
   // Refresca la bandeja desde el server (preview = último mensaje, orden y no-leídos exactos).
   const refrescarRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refrescarLista = useCallback(() => {
     if (refrescarRef.current) clearTimeout(refrescarRef.current);
     refrescarRef.current = setTimeout(async () => {
-      const res = await fetch(tiposDisponibles.length ? `/api/conversaciones?tipo=${tipoActual}` : "/api/conversaciones");
-      if (!res.ok) return;
-      const data = await res.json();
-      if (tipoRef.current !== tipoActual) return;
-      setConvs(data.conversaciones);
+      try {
+        const res = await fetch(tiposDisponibles.length ? `/api/conversaciones?tipo=${tipoActual}` : "/api/conversaciones");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (tipoRef.current !== tipoActual) return;
+        setConvs(data.conversaciones);
+      } catch {
+        // La lista inicial sigue disponible si falla el refresco.
+      } finally {
+        setCargandoLista(false);
+      }
     }, 400);
   }, [tipoActual, tiposDisponibles.length]);
 
@@ -341,7 +355,7 @@ export function ChatCliente({
       if (esEntrante && (document.hidden || convId !== selRef.current)) {
         const conv = convsRef.current.find((c) => c.id === convId);
         reproducirBeep();
-        notificar("Nuevo mensaje", conv ? conv.contacto.nombre : "Tienes un mensaje nuevo");
+        notificar("Nuevo mensaje", conv ? nombreVisibleContacto(conv.contacto.nombre, conv.canalProveedor) : "Tienes un mensaje nuevo");
       }
       // Trae la lista actualizada del server (preview correcto + orden + no-leídos).
       refrescarLista();
@@ -519,11 +533,11 @@ export function ChatCliente({
 
   return (
     <>
-    <div className="flex h-full">
+    <div className="flex h-full min-h-0 bg-background">
       {/* Lista de conversaciones */}
-      <div className={`h-full w-full flex-col border-r border-border bg-card md:w-80 ${selId ? "hidden md:flex" : "flex"}`}>
-        <div className="shrink-0 border-b border-border px-4 py-3 space-y-2">
-          <p className="font-semibold text-primary">Conversaciones</p>
+      <div className={`h-full w-full flex-col border-r border-border/70 bg-card md:w-80 xl:w-96 ${selId ? "hidden md:flex" : "flex"}`}>
+        <div className="shrink-0 space-y-3 border-b border-border/70 bg-card px-4 py-4 shadow-soft">
+          <p className="font-display text-lg font-bold text-foreground">Conversaciones</p>
           {tiposDisponibles.length > 1 && (
             <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted/70 p-1" role="group" aria-label="Tipo de canal">
               {tiposDisponibles.map((tipo) => (
@@ -537,19 +551,19 @@ export function ChatCliente({
             </div>
           )}
           {/* Búsqueda */}
-          <div className="flex gap-1">
+          <div className="flex gap-1.5">
             <input
               value={busqueda}
               onChange={(e) => { setBusqueda(e.target.value); }}
               onKeyDown={(e) => { if (e.key === "Enter") buscarEnHistorial(); }}
               placeholder="Buscar…"
-              className="min-w-0 flex-1 rounded-lg border border-input bg-card px-3 py-1.5 text-sm outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/30"
+              className="min-w-0 flex-1 rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/30"
             />
             <button
               onClick={buscarEnHistorial}
               disabled={buscandoMensajes || busqueda.trim().length < 2}
               title="Buscar también en el historial de mensajes (Enter)"
-              className="shrink-0 rounded-lg border border-input px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted/60 disabled:opacity-40"
+              className="shrink-0 rounded-xl border border-input bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/60 disabled:opacity-40"
             >
               {buscandoMensajes ? "…" : "Historial"}
             </button>
@@ -562,7 +576,7 @@ export function ChatCliente({
             )}
           </div>
           {/* Filtros de responsable */}
-          <div className="flex gap-1">
+          <div className="flex gap-1 overflow-x-auto pb-0.5">
             {(["", "mias", "sinasignar", "personal"] as const).map((v) => {
               const label =
                 v === "" ? "Todas"
@@ -573,7 +587,7 @@ export function ChatCliente({
                 <button
                   key={v}
                   onClick={() => setFiltroResponsable(v)}
-                  className={`flex-1 rounded-lg py-1 text-[11px] font-medium ${filtroResponsable === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground transition-colors hover:bg-muted/70"}`}
+                  className={`shrink-0 rounded-full px-2.5 py-1.5 text-[11px] font-medium transition-colors ${filtroResponsable === v ? "bg-primary text-primary-foreground shadow-soft" : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground"}`}
                 >
                   {label}
                 </button>
@@ -611,58 +625,75 @@ export function ChatCliente({
           )}
         </div>
         <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
-          {convsFiltradas.length === 0 && (canalesDelTipo.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 px-6 py-10 text-center text-sm text-muted-foreground">
-              <span className="grid h-11 w-11 place-items-center rounded-full bg-muted"><IconoCanal proveedor={tipoActual} /></span>
+          {cargandoLista && convsFiltradas.length === 0 && [0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex h-24 items-center gap-3 border-b border-border/40 px-4" aria-hidden="true">
+              <span className="skeleton h-11 w-11 shrink-0 rounded-full" />
+              <span className="min-w-0 flex-1 space-y-2"><span className="skeleton block h-3 w-2/3" /><span className="skeleton block h-2.5 w-5/6" /></span>
+              <span className="skeleton h-2.5 w-8" />
+            </div>
+          ))}
+          {!cargandoLista && convsFiltradas.length === 0 && (canalesDelTipo.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 px-6 py-12 text-center text-sm text-muted-foreground">
+              <span className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary"><IconoCanal proveedor={tipoActual} /></span>
               <p>Esta empresa no tiene un canal de {tipoActual === "whatsapp" ? "WhatsApp" : tipoActual === "messenger" ? "Messenger" : "Instagram"} conectado.</p>
               {puedeConfigurarCanales && <Link href="/configuracion?tab=canal" className="font-medium text-primary underline-offset-4 hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Ir a Configuración → Canales</Link>}
             </div>
           ) : (
-            <p className="p-6 text-center text-sm text-muted-foreground">
+            <div className="flex flex-col items-center gap-3 px-6 py-12 text-center text-sm text-muted-foreground">
+              <span className="grid h-14 w-14 place-items-center rounded-2xl bg-muted text-primary"><IconoCanal proveedor={tipoActual} /></span>
+              <p>
               {busqueda || filtroEstado || filtroEtiqueta || filtroCanal || filtroResponsable
                 ? "Ninguna conversación coincide con los filtros."
                 : `Aún no hay conversaciones. Llegarán aquí cuando entre un mensaje de ${tipoActual === "whatsapp" ? "WhatsApp" : tipoActual === "messenger" ? "Messenger" : "Instagram"}.`}
-            </p>
+              </p>
+            </div>
           ))}
           {convsFiltradas.map((c) => (
             <div
               key={c.id}
-              className={`group relative flex items-center gap-3 border-b border-border/60 px-4 py-3 transition-colors hover:bg-muted/60 ${
-                selId === c.id ? "bg-muted" : ""
+              className={`group relative flex min-h-24 items-center gap-2 border-b border-l-[3px] border-b-border/50 px-3 py-3 transition-colors hover:bg-muted/55 focus-within:bg-muted/55 ${
+                selId === c.id ? "border-l-primary bg-primary/10 hover:bg-primary/15" : "border-l-transparent"
               }`}
             >
               <button
                 onClick={() => abrir(c.id)}
-                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <AvatarNombre nombre={c.contacto.nombre} className="h-10 w-10" />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center justify-between">
+                <span className="relative shrink-0">
+                  <AvatarNombre nombre={nombreVisibleContacto(c.contacto.nombre, c.canalProveedor)} url={c.contacto.avatarUrl} className="h-11 w-11 ring-2 ring-card" />
+                  <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full border-2 border-card bg-muted text-primary"><IconoCanal proveedor={c.canalProveedor ?? canales.find((canal) => canal.id === c.canalId)?.proveedor} /></span>
+                </span>
+                <span className="min-w-0 flex-1 space-y-1">
+                  <span className="flex min-w-0 items-center justify-between gap-2">
                     <span className="flex min-w-0 items-center gap-1">
                       {c.fijado && <span className="shrink-0 text-[10px]" title="Chat fijado">📌</span>}
-                      <span className="truncate text-sm font-medium text-foreground">{nombreVisibleContacto(c.contacto.nombre, c.canalProveedor)}</span>
+                      <span className="truncate text-sm font-semibold text-foreground">{nombreVisibleContacto(c.contacto.nombre, c.canalProveedor)}</span>
                     </span>
-                    <span className="ml-2 shrink-0 text-[10px] text-muted-foreground">{hora(c.ultimoMensajeAt)}</span>
+                    <span className="tnum shrink-0 text-[10px] font-medium text-muted-foreground">{hora(c.ultimoMensajeAt)}</span>
                   </span>
-                  <span className="truncate block text-xs text-muted-foreground">{c.preview}</span>
-                  <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"><IconoCanal proveedor={c.canalProveedor ?? canales.find((canal) => canal.id === c.canalId)?.proveedor} /><span className="truncate">{etiquetaCanal(c.canalNombre, c.canalProveedor ?? canales.find((canal) => canal.id === c.canalId)?.proveedor)}</span></span>
-                  <span className="mt-1 flex flex-wrap gap-1 text-[9px] font-medium"><span className="rounded-full bg-info/10 px-1.5 py-0.5 text-info">{c.estado}</span>{c.noLeidos > 0 && <span className="rounded-full bg-warning/10 px-1.5 py-0.5 text-warning">sin leer</span>}{c.botActivo && <span className="rounded-full bg-success/10 px-1.5 py-0.5 text-success">bot activo</span>}{c.etiquetas.slice(0, 3).map((nombre) => {
+                  <span className="block truncate text-xs text-muted-foreground">{c.preview || "Sin mensajes todavía"}</span>
+                  <span className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap text-[10px] font-medium text-muted-foreground">
+                    <span className="max-w-28 shrink-0 truncate rounded-full bg-muted px-2 py-0.5">{etiquetaCanal(c.canalNombre, c.canalProveedor ?? canales.find((canal) => canal.id === c.canalId)?.proveedor)}</span>
+                    <span className="shrink-0 capitalize">{c.estado}</span>
+                    {c.botActivo && <span className="shrink-0 text-success">· Bot activo</span>}
+                    {c.etiquetas.slice(0, 2).map((nombre) => {
                     const color = colorEtiqueta.get(nombre) ?? "#64748b";
-                    return <span key={nombre} className="inline-flex max-w-24 items-center gap-1 truncate rounded-full px-1.5 py-0.5" style={{ backgroundColor: `${color}1f`, color }}><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />{nombre}</span>;
-                  })}{c.etiquetas.length > 3 && <span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">+{c.etiquetas.length - 3}</span>}</span>
+                     return <span key={nombre} className="inline-flex max-w-20 shrink-0 items-center gap-1 truncate rounded-full px-1.5 py-0.5" style={{ backgroundColor: `${color}1f`, color }}><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />{nombre}</span>;
+                   })}{c.etiquetas.length > 2 && <span className="shrink-0">+{c.etiquetas.length - 2}</span>}
+                  </span>
                 </span>
               </button>
-              <div className="flex shrink-0 flex-col items-center gap-1">
+              <div className="flex w-6 shrink-0 flex-col items-center gap-1">
                 {c.noLeidos > 0 && (
-                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-success px-1 text-[10px] font-bold text-success-foreground">
-                    {c.noLeidos}
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground" aria-label={`${c.noLeidos} mensajes sin leer`}>
+                    {c.noLeidos > 99 ? "99+" : c.noLeidos}
                   </span>
                 )}
                 <button
                   onClick={(e) => toggleFijado(c, e)}
                   title={c.fijado ? "Quitar de fijados" : "Fijar chat arriba"}
                   aria-label={c.fijado ? "Quitar de fijados" : "Fijar chat arriba"}
-                  className={`h-5 w-5 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground ${c.fijado ? "grid" : "hidden group-hover:grid"}`}
+                  className={`h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground ${c.fijado ? "grid" : "grid md:hidden md:group-hover:grid md:group-focus-within:grid"}`}
                 >
                   <span className={`text-[11px] ${c.fijado ? "" : "opacity-60"}`}>📌</span>
                 </button>
@@ -670,7 +701,7 @@ export function ChatCliente({
                   onClick={(e) => cambiarEstadoConv(c.id, c.estado === "cerrada" ? "abierta" : "cerrada", e)}
                   title={c.estado === "cerrada" ? "Reabrir conversación" : "Cerrar conversación"}
                   aria-label={c.estado === "cerrada" ? "Reabrir conversación" : "Cerrar conversación"}
-                  className="hidden h-5 w-5 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground group-hover:grid"
+                  className="grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground md:hidden md:group-hover:grid md:group-focus-within:grid"
                 >
                   {c.estado === "cerrada" ? <IconoDeshacer className="h-3.5 w-3.5" /> : <IconoCheck className="h-3.5 w-3.5" />}
                 </button>
@@ -683,12 +714,16 @@ export function ChatCliente({
       {/* Hilo */}
       <div className={`flex min-w-0 flex-1 flex-col bg-background ${selId ? "" : "hidden md:flex"}`}>
         {!seleccionada ? (
-          <div className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground">
-            Selecciona una conversación para ver el chat.
+          <div className="grid h-full place-items-center px-6 text-center">
+            <div className="max-w-xs space-y-3">
+              <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-primary/10 text-primary"><IconoCanal proveedor={tipoActual} /></span>
+              <p className="font-display text-lg font-semibold text-foreground">Tu bandeja de mensajes</p>
+              <p className="text-sm text-muted-foreground">Selecciona una conversación para ver el chat.</p>
+            </div>
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-3 border-b border-border bg-card px-4 py-2.5">
+            <div className="flex min-h-[72px] items-center gap-2.5 border-b border-border/70 bg-card px-3 py-2.5 shadow-soft sm:gap-3 sm:px-5">
               <button
                 className="-ml-2 grid h-10 w-10 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted md:hidden"
                 aria-label="Volver a la lista"
@@ -696,24 +731,22 @@ export function ChatCliente({
               >
                 <IconoFlecha className="h-5 w-5" />
               </button>
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                {nombreVisibleContacto(seleccionada.contacto.nombre, proveedor).slice(0, 2).toUpperCase()}
-              </span>
-              <div className="min-w-0 flex-1 leading-tight">
-                <p className="truncate text-sm font-semibold text-foreground">{nombreVisibleContacto(seleccionada.contacto.nombre, proveedor)}</p>
-                <p className="inline-flex max-w-full items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"><IconoCanal proveedor={proveedor} /><span className="truncate">{etiquetaCanal(seleccionada.canalNombre, proveedor)}</span></p>
-                {seleccionada.contacto.telefono && (
-                  <p className="truncate text-xs text-muted-foreground">+{seleccionada.contacto.telefono}</p>
-                )}
+              <AvatarNombre nombre={nombreVisibleContacto(seleccionada.contacto.nombre, proveedor)} url={seleccionada.contacto.avatarUrl} className="h-10 w-10 ring-2 ring-primary/10" />
+              <div className="min-w-0 flex-1 space-y-1 leading-tight">
+                <p className="truncate text-sm font-bold text-foreground sm:text-base">{nombreVisibleContacto(seleccionada.contacto.nombre, proveedor)}</p>
+                <div className="flex min-w-0 items-center gap-1.5 text-[10px] sm:text-[11px]">
+                  <span className="inline-flex max-w-[55%] items-center gap-1 truncate rounded-full bg-muted px-2 py-0.5 text-muted-foreground"><IconoCanal proveedor={proveedor} /><span className="truncate">{etiquetaCanal(seleccionada.canalNombre, proveedor)}</span></span>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 font-medium capitalize ${seleccionada.estado === "abierta" ? "bg-success/10 text-success" : seleccionada.estado === "pendiente" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"}`}>{seleccionada.estado}</span>
+                </div>
               </div>
               <Link
                 href={`/cotizaciones?nueva=1&contactoId=${seleccionada.contacto.id}`}
-                className="hidden rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 sm:block"
+                className="hidden shrink-0 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 sm:block"
               >
                 Nueva cotización
               </Link>
               <span
-                className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground"
+                className="hidden shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground xl:flex"
                 title={enVivo ? "Recibiendo mensajes en tiempo real" : "Sin conexión en vivo, reintentando…"}
               >
                 <span className={`h-2 w-2 rounded-full ${enVivo ? "bg-success" : "animate-pulse bg-warning"}`} />
@@ -723,32 +756,33 @@ export function ChatCliente({
                 onClick={() => setPanelMovil(true)}
                 title="Detalles y oportunidades"
                 aria-label="Detalles y oportunidades"
-                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted lg:hidden"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted lg:hidden"
               >
                 <IconoInfo className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="scroll-thin flex-1 space-y-2 overflow-y-auto p-4">
+            <div className="scroll-thin min-h-0 flex-1 space-y-2 overflow-y-auto bg-surface/50 px-3 py-4 sm:px-6 sm:py-5">
               {cargandoMsgs && mensajes.length === 0 &&
                 [0, 1, 2, 3].map((i) => (
                   <div key={i} className={`flex ${i % 2 ? "justify-end" : "justify-start"}`}>
-                    <div className="h-10 w-40 animate-pulse rounded-2xl bg-muted" />
+                    <div className={`skeleton rounded-2xl ${i % 2 ? "h-14 w-48" : "h-20 w-56"}`} />
                   </div>
                 ))}
+              {!cargandoMsgs && mensajes.length === 0 && <div className="grid h-full place-items-center text-center"><div className="space-y-2"><span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-card text-primary shadow-soft"><IconoCanal proveedor={proveedor} /></span><p className="text-sm font-medium text-foreground">Aún no hay mensajes</p><p className="text-xs text-muted-foreground">Los mensajes de este contacto aparecerán aquí.</p></div></div>}
               {mensajes.map((m, indice) => (
                 <Fragment key={m.id}>
-                {(indice === 0 || claveDia(m.timestamp) !== claveDia(mensajes[indice - 1].timestamp)) && <div className="flex items-center gap-3 py-2"><span className="h-px flex-1 bg-border"/><span className="rounded-full bg-muted px-3 py-1 text-[10px] font-medium capitalize text-muted-foreground">{dia(m.timestamp)}</span><span className="h-px flex-1 bg-border"/></div>}
+                {(indice === 0 || claveDia(m.timestamp) !== claveDia(mensajes[indice - 1].timestamp)) && <div className="flex items-center gap-3 py-3"><span className="h-px flex-1 bg-border/70"/><span className="rounded-full border border-border/70 bg-card px-3 py-1 text-[10px] font-semibold capitalize text-muted-foreground shadow-soft">{dia(m.timestamp)}</span><span className="h-px flex-1 bg-border/70"/></div>}
                 <div className={`flex ${m.direccion === "saliente" || m.interna ? "justify-end" : "justify-start"}`}>
                   <div
-                    className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                    className={`max-w-[88%] rounded-2xl border px-3.5 py-2.5 text-sm leading-relaxed shadow-soft sm:max-w-[min(72%,36rem)] ${
                       esNotaDelBot(m)
-                        ? "border border-info/30 bg-info/10 text-foreground"
+                        ? "rounded-br-md border-info/25 bg-info/10 text-foreground"
                         : m.interna
-                        ? "border border-warning/30 bg-warning/10 text-foreground"
+                        ? "rounded-br-md border-warning/25 bg-warning/10 text-foreground"
                         : m.direccion === "saliente"
-                        ? "bg-success/10 text-foreground"
-                        : "border border-border/70 bg-card text-foreground"
+                        ? "rounded-br-md border-primary/20 bg-primary/10 text-foreground"
+                        : "rounded-bl-md border-border/70 bg-card text-foreground"
                     }`}
                   >
                     {m.interna && (
@@ -757,27 +791,27 @@ export function ChatCliente({
                       </p>
                     )}
                     {m.tipo === "imagen" && m.mediaUrl ? (
-                      <button type="button" onClick={() => setImagenAbierta(m.mediaUrl)} className="block cursor-zoom-in">
+                      <button type="button" onClick={() => setImagenAbierta(m.mediaUrl)} aria-label="Ampliar imagen" className="mb-2 block max-w-full cursor-zoom-in overflow-hidden rounded-xl border border-border/60 bg-card">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={m.mediaUrl} alt="imagen" loading="lazy" className="mb-1 max-h-60 rounded-lg" />
+                        <img src={m.mediaUrl} alt="Imagen adjunta" loading="lazy" className="max-h-64 max-w-full object-contain" />
                       </button>
                     ) : m.tipo === "audio" && m.mediaUrl ? (
-                      <audio controls src={m.mediaUrl} className="mb-1 h-10 w-56 max-w-full" />
+                      <audio controls src={m.mediaUrl} className="mb-2 h-10 w-56 max-w-full rounded-lg" />
                     ) : m.tipo === "video" && m.mediaUrl ? (
-                      <video controls src={m.mediaUrl} className="mb-1 max-h-60 rounded-lg" />
+                      <video controls src={m.mediaUrl} className="mb-2 max-h-64 max-w-full rounded-xl border border-border/60 bg-card" />
                     ) : m.tipo === "ubicacion" && m.contenido ? (
                       <a href={`https://www.google.com/maps?q=${encodeURIComponent(m.contenido)}`} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-1 text-xs text-primary underline">
                         📍 Ver ubicación en el mapa
                       </a>
                     ) : (
                       m.tipo !== "texto" && m.mediaUrl && (
-                        <a href={m.mediaUrl} target="_blank" className="mb-1 flex items-center gap-1 text-xs text-primary underline">
+                        <a href={m.mediaUrl} target="_blank" rel="noreferrer" className="mb-2 flex items-center gap-2 rounded-xl border border-border/70 bg-card px-3 py-2 text-xs font-medium text-primary hover:bg-muted/70">
                           <IconoAdjuntar className="h-3.5 w-3.5" /> {m.tipo}
                         </a>
                       )
                     )}
                     {m.contenido && <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{m.contenido}</p>}
-                    <p className="mt-0.5 text-right text-[10px] text-muted-foreground">
+                    <p className="tnum mt-1 text-right text-[10px] text-muted-foreground">
                       {hora(m.timestamp)}
                       {m.direccion === "saliente" && !m.interna && ticks(m.status).txt && (
                         <span title={m.status} aria-label={m.status} className={`ml-1 ${ticks(m.status).clase}`}>{ticks(m.status).txt}</span>
@@ -836,8 +870,9 @@ export function ChatCliente({
               </div>
             )}
 
-            {esMensajeriaMeta && mensajes.length > 0 && !cargandoMsgs && !ventana.abierta && <div role="status" className="border-t border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground">
-              Ventana de 24 h cerrada. {puedeHumanAgent ? "Puedes responder como asesor humano hasta 7 días desde el último mensaje del cliente. El bot no puede responder." : humanAgentHabilitado ? "Pasaron 7 días: espera un nuevo mensaje del cliente para responder. Las notas internas siguen disponibles." : "Human Agent aún no está habilitado; espera un nuevo mensaje del cliente. Las notas internas siguen disponibles."}
+            {esMensajeriaMeta && mensajes.length > 0 && !cargandoMsgs && !ventana.abierta && <div role="status" className="mx-3 mt-2 flex items-start gap-2 rounded-xl border border-warning/25 bg-warning/10 px-3 py-2.5 text-xs text-foreground sm:mx-5">
+              <IconoReloj className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+              <span><strong className="font-semibold">Ventana de 24 h cerrada.</strong> {puedeHumanAgent ? "Puedes responder como asesor humano hasta 7 días desde el último mensaje del cliente. El bot no puede responder." : humanAgentHabilitado ? "Pasaron 7 días: espera un nuevo mensaje del cliente para responder. Las notas internas siguen disponibles." : "Human Agent aún no está habilitado; espera un nuevo mensaje del cliente. Las notas internas siguen disponibles."}</span>
             </div>}
             {esWhatsapp && mensajes.length > 0 && !cargandoMsgs && (
               ventanaCerrada ? (
@@ -861,7 +896,7 @@ export function ChatCliente({
               )
             )}
 
-            <form onSubmit={enviar} className="flex flex-wrap items-center gap-2 border-t border-border bg-card p-3 sm:flex-nowrap">
+            <form onSubmit={enviar} className="flex flex-wrap items-end gap-1.5 border-t border-border/70 bg-card p-3 shadow-soft sm:flex-nowrap sm:gap-2 sm:px-5">
               <input
                 ref={archivoRef}
                 type="file"
@@ -872,64 +907,67 @@ export function ChatCliente({
               <button
                 type="button"
                 title="Adjuntar archivo"
- aria-label="Adjuntar archivo"
+                aria-label="Adjuntar archivo"
                 disabled={enviando || notaInterna || ventanaCerrada}
                 onClick={() => archivoRef.current?.click()}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-50"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-50"
               >
                 <IconoAdjuntar />
               </button>
               <button
                 type="button"
                 title="Sugerir respuesta con IA"
- aria-label="Sugerir respuesta con IA"
+                aria-label="Sugerir respuesta con IA"
                 disabled={sugiriendo || enviando}
                 onClick={sugerir}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-50"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-50"
               >
                 {sugiriendo ? <span className="text-xs">…</span> : <IconoIA />}
               </button>
               <button
                 type="button"
                 title={grabando ? "Detener y enviar nota de voz" : "Grabar nota de voz"}
- aria-label={grabando ? "Detener y enviar nota de voz" : "Grabar nota de voz"}
+                aria-label={grabando ? "Detener y enviar nota de voz" : "Grabar nota de voz"}
                 disabled={enviando || notaInterna || ventanaCerrada}
                 onClick={grabarVoz}
-                className={`grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-muted disabled:opacity-50 ${grabando ? "animate-pulse bg-destructive/10 text-destructive" : "text-muted-foreground"}`}
+                className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg hover:bg-muted disabled:opacity-50 ${grabando ? "animate-pulse bg-destructive/10 text-destructive" : "text-muted-foreground"}`}
               >
                 {grabando ? <span className="h-3 w-3 rounded-full bg-destructive" /> : <IconoMicro />}
               </button>
               <button
                 type="button"
                 title="Nota interna (solo para el equipo)"
- aria-label="Nota interna (solo para el equipo)"
+                aria-label="Nota interna (solo para el equipo)"
                 onClick={() => setNotaInterna((v) => !v)}
-                className={`grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-muted ${notaInterna ? "bg-warning/10 text-warning" : "text-muted-foreground"}`}
+                className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg hover:bg-muted ${notaInterna ? "bg-warning/10 text-warning" : "text-muted-foreground"}`}
               >
                 <IconoNota />
               </button>
               <button
                 type="button"
                 title="Programar envío (escribe el mensaje primero)"
- aria-label="Programar envío (escribe el mensaje primero)"
+                aria-label="Programar envío (escribe el mensaje primero)"
                 disabled={enviando || notaInterna || ventanaCerrada || !esWhatsapp || !texto.trim()}
                 onClick={abrirProgramar}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-50"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-50"
               >
                 <IconoReloj />
               </button>
-              <input
+              <textarea
+                ref={textoRef}
+                rows={1}
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } }}
                 disabled={ventanaCerrada && !notaInterna}
                 placeholder={notaInterna ? "Nota interna (solo para el equipo)…" : ventanaCerrada ? esMensajeriaMeta ? "Ventana cerrada: espera un mensaje del cliente" : "Ventana cerrada: envía una plantilla o una nota interna" : "Escribe un mensaje…"}
-                className={`order-first min-w-0 flex-1 basis-[calc(100%-3rem)] rounded-full border px-4 py-2 text-sm outline-none focus:ring-2 sm:order-none sm:basis-auto ${notaInterna ? "border-warning/30 bg-warning/10 focus:ring-warning/40" : "border-input focus:ring-primary/30"}`}
+                className={`order-first min-h-11 min-w-0 flex-1 basis-[calc(100%-3.25rem)] resize-none overflow-y-auto rounded-xl border px-4 py-2.5 text-sm leading-5 outline-none focus:ring-2 sm:order-none sm:basis-auto ${notaInterna ? "border-warning/30 bg-warning/10 focus:ring-warning/40" : "border-input bg-background focus:ring-primary/30"}`}
               />
               <button
                 type="submit"
                 aria-label="Enviar mensaje"
                 disabled={enviando || !texto.trim() || (ventanaCerrada && !notaInterna)}
-                className="order-first grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground disabled:opacity-50 sm:order-none"
+                className="order-first grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-soft transition-colors hover:bg-primary/90 disabled:opacity-50 sm:order-none"
               >
                 <IconoEnviar className="h-5 w-5" />
               </button>
@@ -944,6 +982,8 @@ export function ChatCliente({
           <PanelConversacion
             conversacionId={seleccionada.id}
             proveedor={proveedor}
+            nombreContacto={seleccionada.contacto.nombre}
+            avatarUrl={seleccionada.contacto.avatarUrl}
             usuarios={usuarios}
             embudos={embudos}
             etiquetas={etiquetas}
@@ -1014,6 +1054,8 @@ export function ChatCliente({
           <PanelConversacion
             conversacionId={seleccionada.id}
             proveedor={proveedor}
+            nombreContacto={seleccionada.contacto.nombre}
+            avatarUrl={seleccionada.contacto.avatarUrl}
             usuarios={usuarios}
             embudos={embudos}
             etiquetas={etiquetas}

@@ -16,6 +16,7 @@ import { CitasContacto } from "@/components/citas/CitasContacto";
 import { TarjetaLealtad } from "@/components/lealtad/TarjetaLealtad";
 import { confirmar } from "@/components/Confirmador";
 import { nombreVisibleContacto } from "@/lib/channel/tipo-canal";
+import { AvatarNombre } from "@/components/AvatarNombre";
 
 type Embudo = {
   id: string;
@@ -60,6 +61,8 @@ const SELECT =
 export function PanelConversacion({
   conversacionId,
   proveedor,
+  nombreContacto,
+  avatarUrl,
   usuarios,
   embudos,
   etiquetas = [],
@@ -72,6 +75,8 @@ export function PanelConversacion({
 }: {
   conversacionId: string;
   proveedor?: string | null;
+  nombreContacto?: string;
+  avatarUrl?: string | null;
   usuarios: Usuario[];
   embudos: Embudo[];
   etiquetas?: EtiquetaDef[];
@@ -241,56 +246,55 @@ export function PanelConversacion({
   }
 
   if (!d)
-    return <div className="p-4 text-sm text-muted-foreground">Cargando…</div>;
+    return <div className="space-y-4 p-4" aria-label="Cargando detalles"><div className="skeleton h-16 rounded-xl" /><div className="skeleton h-36 rounded-xl" /><div className="skeleton h-24 rounded-xl" /></div>;
 
   return (
-    <div className="space-y-5 p-4">
-      <CitasContacto
-        contactoId={d.contacto.id}
-        conversacionId={conversacionId}
-      />
-      <TarjetaLealtad contactoId={d.contacto.id} />
-
-      <div>
-        {editandoNombre ? (
-          <input
-            autoFocus
-            value={nombreTmp}
-            onChange={(e) => setNombreTmp(e.target.value)}
-            onBlur={guardarNombre}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") guardarNombre();
-              if (e.key === "Escape") setEditandoNombre(false);
-            }}
-            className={[
-              "w-full rounded-lg border border-primary/40 px-2 py-1",
-              "text-base font-semibold text-foreground outline-none",
-              "focus:ring-2 focus:ring-primary/30",
-            ].join(" ")}
-          />
-        ) : (
-          <button
-            onClick={() => {
-              setNombreTmp(nombreVisibleContacto(d.contacto.nombre, proveedor));
-              setEditandoNombre(true);
-            }}
-            title="Editar nombre"
-            className="group flex items-center gap-1 text-left text-base font-semibold text-foreground"
-          >
-            {nombreVisibleContacto(d.contacto.nombre, proveedor)}
-            <IconoEditar className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />
-          </button>
-        )}
-        <p className="text-xs text-muted-foreground">
-          {d.contacto.telefono ? `+${d.contacto.telefono}` : "sin teléfono"}
-        </p>
-        {(proveedor === "messenger" || proveedor === "instagram") && d.contacto.identificadorExterno && (
-          <p className="mt-1 break-all text-xs text-muted-foreground">ID de {proveedor === "messenger" ? "Messenger" : "Instagram"}: {d.contacto.identificadorExterno}</p>
-        )}
+    <div className="space-y-4 p-4">
+      <h2 className="font-display text-sm font-bold text-foreground">Detalles del contacto</h2>
+      <div className="surface flex items-start gap-3 p-3">
+        <AvatarNombre nombre={nombreVisibleContacto(nombreContacto ?? d.contacto.nombre, proveedor)} url={avatarUrl} className="h-10 w-10" />
+        <div className="min-w-0 flex-1">
+          {editandoNombre ? (
+            <input
+              autoFocus
+              value={nombreTmp}
+              onChange={(e) => setNombreTmp(e.target.value)}
+              onBlur={guardarNombre}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") guardarNombre();
+                if (e.key === "Escape") setEditandoNombre(false);
+              }}
+              className={[
+                "w-full rounded-lg border border-primary/40 px-2 py-1",
+                "text-base font-semibold text-foreground outline-none",
+                "focus:ring-2 focus:ring-primary/30",
+              ].join(" ")}
+            />
+          ) : (
+            <button
+              onClick={() => {
+                setNombreTmp(nombreVisibleContacto(nombreContacto ?? d.contacto.nombre, proveedor));
+                setEditandoNombre(true);
+              }}
+              title="Editar nombre"
+              className="group flex max-w-full items-center gap-1 break-words text-left text-sm font-semibold text-foreground"
+            >
+              {nombreVisibleContacto(nombreContacto ?? d.contacto.nombre, proveedor)}
+              <IconoEditar className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />
+            </button>
+          )}
+          {d.contacto.telefono && <p className="mt-1 text-xs text-muted-foreground">+{d.contacto.telefono}</p>}
+          {(proveedor === "messenger" || proveedor === "instagram") && d.contacto.identificadorExterno && (
+            <p className="mt-1 break-all text-[11px] text-muted-foreground">ID de {proveedor === "messenger" ? "Messenger" : "Instagram"}: {d.contacto.identificadorExterno}</p>
+          )}
+        </div>
       </div>
 
-      <details className="rounded-lg border border-border">
-        <summary className="cursor-pointer px-3 py-2 text-xs font-medium uppercase text-muted-foreground">
+      <CitasContacto contactoId={d.contacto.id} conversacionId={conversacionId} />
+      <TarjetaLealtad contactoId={d.contacto.id} />
+
+      <details className="surface overflow-hidden">
+        <summary className="cursor-pointer px-3 py-2.5 text-xs font-semibold text-foreground hover:bg-muted/50">
           Datos del contacto
         </summary>
         <div className="space-y-2 px-3 pb-3">
@@ -334,7 +338,7 @@ export function PanelConversacion({
         </div>
       </details>
 
-      <label className="block space-y-1">
+      <label className="surface block space-y-2 p-3">
         <span className="text-xs font-medium uppercase text-muted-foreground">
           Responsable
         </span>
@@ -352,7 +356,7 @@ export function PanelConversacion({
         </select>
       </label>
 
-      <div>
+      <div className="surface p-3">
         <span className="mb-1 block text-xs font-medium uppercase text-muted-foreground">
           Etiquetas
         </span>
@@ -395,7 +399,7 @@ export function PanelConversacion({
         )}
       </div>
 
-      <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+      <div className="surface flex items-center justify-between px-3 py-2.5">
         <span className="flex items-center gap-1.5 text-sm text-foreground">
           <IconoBot className="h-4 w-4" /> Bot{" "}
           {d.botActivo ? "activo" : "en pausa"}
@@ -407,7 +411,7 @@ export function PanelConversacion({
             d.botActivo ? "bg-success" : "bg-muted-foreground/40",
           ].join(" ")}
           title={d.botActivo ? "Pausar bot (lo atiendes tu)" : "Reactivar bot"}
- aria-label={d.botActivo ? "Pausar bot (lo atiendes tu)" : "Reactivar bot"}
+          aria-label={d.botActivo ? "Pausar bot (lo atiendes tu)" : "Reactivar bot"}
         >
           <span
             className={[
@@ -418,7 +422,7 @@ export function PanelConversacion({
         </button>
       </div>
 
-      <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+      <div className="surface flex items-center justify-between px-3 py-2.5">
         <span className="text-sm text-foreground">Contacto personal</span>
         <button
           onClick={async () => {
@@ -454,7 +458,7 @@ export function PanelConversacion({
               ? "Quitar de Personal (vuelve a la bandeja principal)"
               : "Marcar como Personal (familia/amigos — el bot no responde)"
           }
- aria-label={
+          aria-label={
             d.contacto.esPersonal
               ? "Quitar de Personal (vuelve a la bandeja principal)"
               : "Marcar como Personal (familia/amigos — el bot no responde)"
@@ -475,7 +479,7 @@ export function PanelConversacion({
         </p>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between rounded-xl bg-muted/50 px-3 py-2.5">
         <span className="text-xs text-muted-foreground">
           Estado: <b className="capitalize text-foreground">{d.estado}</b>
         </span>

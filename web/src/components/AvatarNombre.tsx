@@ -8,6 +8,12 @@ export function claseAvatar(nombre: string) {
   return PALETA[indice];
 }
 
-export function AvatarNombre({ nombre, className = "h-9 w-9" }: { nombre: string; className?: string }) {
-  return <span aria-hidden="true" className={`grid shrink-0 place-items-center rounded-full text-xs font-bold ${claseAvatar(nombre)} ${className}`}>{nombre.trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join("").toUpperCase() || "?"}</span>;
+export function AvatarNombre({ nombre, url, className = "h-9 w-9" }: { nombre: string; url?: string | null; className?: string }) {
+  return <span aria-hidden="true" className={`relative grid shrink-0 place-items-center overflow-hidden rounded-full text-xs font-bold ${claseAvatar(nombre)} ${className}`}>
+    {nombre.trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join("").toUpperCase() || "?"}
+    {url?.startsWith("https://") && (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={url} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+    )}
+  </span>;
 }
