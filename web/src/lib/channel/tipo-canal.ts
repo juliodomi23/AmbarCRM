@@ -19,3 +19,11 @@ export function nombreVisibleCanal(nombre: string, proveedor?: string | null) {
   if (proveedor === "instagram" && !/\binstagram\b/i.test(nombre)) return `Instagram · ${nombre}`;
   return nombre;
 }
+
+export function nombreVisibleContacto(nombre: string, proveedor?: string | null) {
+  if (/^\d+$/.test(nombre.trim())) {
+    if (proveedor === "messenger") return "Contacto de Messenger";
+    if (proveedor === "instagram") return "Contacto de Instagram";
+  }
+  return nombre;
+}

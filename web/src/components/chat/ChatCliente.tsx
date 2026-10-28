@@ -13,7 +13,7 @@ import { EnviarPlantilla } from "@/components/chat/EnviarPlantilla";
 import { estadoVentana, textoRestante } from "@/lib/meta/ventana";
 import { webmAOgg } from "@/lib/audio/webm-a-ogg";
 import { IconoCanal } from "@/components/chat/IconoCanal";
-import { tipoCanal, tiposDeBandeja, nombreVisibleCanal, type TipoCanal } from "@/lib/channel/tipo-canal";
+import { tipoCanal, tiposDeBandeja, nombreVisibleCanal, nombreVisibleContacto, type TipoCanal } from "@/lib/channel/tipo-canal";
 
 type Embudo = { id: string; nombre: string; etapas: { id: string; nombre: string }[] };
 type Usuario = { id: string; nombre: string };
@@ -640,7 +640,7 @@ export function ChatCliente({
                   <span className="flex items-center justify-between">
                     <span className="flex min-w-0 items-center gap-1">
                       {c.fijado && <span className="shrink-0 text-[10px]" title="Chat fijado">📌</span>}
-                      <span className="truncate text-sm font-medium text-foreground">{c.contacto.nombre}</span>
+                      <span className="truncate text-sm font-medium text-foreground">{nombreVisibleContacto(c.contacto.nombre, c.canalProveedor)}</span>
                     </span>
                     <span className="ml-2 shrink-0 text-[10px] text-muted-foreground">{hora(c.ultimoMensajeAt)}</span>
                   </span>
@@ -697,10 +697,10 @@ export function ChatCliente({
                 <IconoFlecha className="h-5 w-5" />
               </button>
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                {seleccionada.contacto.nombre.slice(0, 2).toUpperCase()}
+                {nombreVisibleContacto(seleccionada.contacto.nombre, proveedor).slice(0, 2).toUpperCase()}
               </span>
               <div className="min-w-0 flex-1 leading-tight">
-                <p className="truncate text-sm font-semibold text-foreground">{seleccionada.contacto.nombre}</p>
+                <p className="truncate text-sm font-semibold text-foreground">{nombreVisibleContacto(seleccionada.contacto.nombre, proveedor)}</p>
                 <p className="inline-flex max-w-full items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"><IconoCanal proveedor={proveedor} /><span className="truncate">{etiquetaCanal(seleccionada.canalNombre, proveedor)}</span></p>
                 {seleccionada.contacto.telefono && (
                   <p className="truncate text-xs text-muted-foreground">+{seleccionada.contacto.telefono}</p>
@@ -943,6 +943,7 @@ export function ChatCliente({
         <div className="hidden w-72 shrink-0 overflow-y-auto border-l border-border bg-card lg:block">
           <PanelConversacion
             conversacionId={seleccionada.id}
+            proveedor={proveedor}
             usuarios={usuarios}
             embudos={embudos}
             etiquetas={etiquetas}
@@ -1012,6 +1013,7 @@ export function ChatCliente({
           </div>
           <PanelConversacion
             conversacionId={seleccionada.id}
+            proveedor={proveedor}
             usuarios={usuarios}
             embudos={embudos}
             etiquetas={etiquetas}

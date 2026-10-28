@@ -37,7 +37,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
 
   const conversaciones: ConversacionItem[] = convs.map((c: any) => ({
     id: c.id,
-    contacto: { id: c.contacto.id, nombre: c.contacto.nombre, telefono: c.contacto.telefono },
+    contacto: { id: c.contacto.id, nombre: c.contacto.nombre, telefono: c.contacto.telefono, avatarUrl: c.contacto.avatarUrl },
     esPersonal: c.contacto.esPersonal ?? false,
     fijado: !!c.fijadoAt,
     responsableId: c.responsable?.id ?? null,

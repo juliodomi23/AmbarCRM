@@ -15,6 +15,7 @@ import { CamposPersonalizadosForm } from "@/components/CamposPersonalizadosForm"
 import { CitasContacto } from "@/components/citas/CitasContacto";
 import { TarjetaLealtad } from "@/components/lealtad/TarjetaLealtad";
 import { confirmar } from "@/components/Confirmador";
+import { nombreVisibleContacto } from "@/lib/channel/tipo-canal";
 
 type Embudo = {
   id: string;
@@ -35,6 +36,7 @@ type Oportunidad = {
 type Contacto = {
   id: string;
   nombre: string;
+  identificadorExterno: string | null;
   telefono: string | null;
   email: string | null;
   empresa: string | null;
@@ -57,6 +59,7 @@ const SELECT =
 
 export function PanelConversacion({
   conversacionId,
+  proveedor,
   usuarios,
   embudos,
   etiquetas = [],
@@ -68,6 +71,7 @@ export function PanelConversacion({
   onBorrada,
 }: {
   conversacionId: string;
+  proveedor?: string | null;
   usuarios: Usuario[];
   embudos: Embudo[];
   etiquetas?: EtiquetaDef[];
@@ -267,19 +271,22 @@ export function PanelConversacion({
         ) : (
           <button
             onClick={() => {
-              setNombreTmp(d.contacto.nombre);
+              setNombreTmp(nombreVisibleContacto(d.contacto.nombre, proveedor));
               setEditandoNombre(true);
             }}
             title="Editar nombre"
             className="group flex items-center gap-1 text-left text-base font-semibold text-foreground"
           >
-            {d.contacto.nombre}
+            {nombreVisibleContacto(d.contacto.nombre, proveedor)}
             <IconoEditar className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />
           </button>
         )}
         <p className="text-xs text-muted-foreground">
           {d.contacto.telefono ? `+${d.contacto.telefono}` : "sin teléfono"}
         </p>
+        {(proveedor === "messenger" || proveedor === "instagram") && d.contacto.identificadorExterno && (
+          <p className="mt-1 break-all text-xs text-muted-foreground">ID de {proveedor === "messenger" ? "Messenger" : "Instagram"}: {d.contacto.identificadorExterno}</p>
+        )}
       </div>
 
       <details className="rounded-lg border border-border">

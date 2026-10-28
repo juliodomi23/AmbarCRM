@@ -59,9 +59,14 @@ export async function POST(req: NextRequest) {
       autorizada = true;
       if (payload.object !== "page" || !Array.isArray(entry.messaging)) return;
       const appId = typeof config.appId === "string" ? config.appId : process.env.META_APP_ID?.trim();
+      const perfilesSolicitados = new Set<string>();
       for (const mensaje of normalizarMessenger({ entry: [entry] }, appId)) {
         const existente = await db.contacto.findFirst({ where: { canalId: canal.id, identificadorExterno: mensaje.identificadorExterno } });
-        const perfil = existente ? {} : await perfilMessenger(canal.config as Record<string, unknown>, mensaje.identificadorExterno!);
+        const sinNombre = existente && (/^\d+$/.test(existente.nombre) || existente.nombre === "Contacto de Messenger");
+        const consultarPerfil = (!existente || (mensaje.direccion === "entrante" && sinNombre)) && !perfilesSolicitados.has(mensaje.identificadorExterno!);
+        if (consultarPerfil) perfilesSolicitados.add(mensaje.identificadorExterno!);
+        const perfil = consultarPerfil
+          ? await perfilMessenger(config, mensaje.identificadorExterno!) : {};
         await ingestarEntrante({ ...mensaje, ...perfil }, canal.id);
       }
       for (const evento of entry.messaging) {

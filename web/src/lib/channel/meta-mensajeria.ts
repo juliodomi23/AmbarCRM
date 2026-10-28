@@ -46,7 +46,7 @@ export async function graphMensajeriaMeta(config: Record<string, unknown>, path:
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.error) throw Object.assign(new Error(data.error?.message ?? `Meta HTTP ${res.status}`), {
-    code: data.error?.code, httpStatus: res.status,
+    code: data.error?.code, subcode: data.error?.error_subcode, httpStatus: res.status,
   });
   return data;
 }
@@ -100,11 +100,29 @@ export async function desuscribirPaginaMeta(config: Record<string, unknown>, can
 }
 
 export async function perfilPaginaMeta(config: Record<string, unknown>, psid: string) {
+  const registrarError = (error: unknown, campos: string) => {
+    const datos = error as { httpStatus?: number; code?: number; subcode?: number; message?: string };
+    let token = "";
+    try { token = tokenFromChannelConfig(config); } catch { /* clave local inválida */ }
+    let mensaje = (datos.message ?? "Error de red").replaceAll(psid, "[id]");
+    if (token) mensaje = mensaje.replaceAll(token, "[token]");
+    console.error("[meta-perfil]", { campos, http: datos.httpStatus ?? null, code: datos.code, subcode: datos.subcode, mensaje });
+  };
+  let avatarUrl: string | undefined;
   try {
     const data = await graphMensajeriaMeta(config, `${encodeURIComponent(psid)}?fields=first_name,last_name,profile_pic`);
-    return { nombre: [data.first_name, data.last_name].filter(Boolean).join(" ") || undefined,
-      avatarUrl: typeof data.profile_pic === "string" && data.profile_pic.startsWith("https://") ? data.profile_pic : undefined };
-  } catch { return {}; }
+    avatarUrl = typeof data.profile_pic === "string" && data.profile_pic.startsWith("https://") ? data.profile_pic : undefined;
+    const nombre = [data.first_name, data.last_name].filter((valor): valor is string => typeof valor === "string" && !!valor.trim()).join(" ").trim();
+    if (nombre) return { nombre, avatarUrl };
+  } catch (error) { registrarError(error, "first_name,last_name,profile_pic"); }
+  try {
+    const data = await graphMensajeriaMeta(config, `${encodeURIComponent(psid)}?fields=name,profile_pic`);
+    return { nombre: typeof data.name === "string" ? data.name.trim() || undefined : undefined,
+      avatarUrl: typeof data.profile_pic === "string" && data.profile_pic.startsWith("https://") ? data.profile_pic : avatarUrl };
+  } catch (error) {
+    registrarError(error, "name,profile_pic");
+    return { avatarUrl };
+  }
 }
 
 export function tipoEnvioMeta(contexto?: ContextoEnvio, ahora = Date.now(), humanAgentAprobado = process.env.META_HUMAN_AGENT_APROBADO === "true") {

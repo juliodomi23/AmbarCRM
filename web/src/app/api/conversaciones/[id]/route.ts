@@ -47,6 +47,7 @@ async function manejarGET(
     contacto: {
       id: conv.contacto.id.toString(),
       nombre: conv.contacto.nombre,
+      identificadorExterno: conv.contacto.identificadorExterno,
       telefono: conv.contacto.telefono,
       email: conv.contacto.email,
       empresa: conv.contacto.empresa,

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 function mapearConv(c: any) {
   return {
     id: c.id,
-    contacto: { id: c.contacto.id, nombre: c.contacto.nombre, telefono: c.contacto.telefono },
+    contacto: { id: c.contacto.id, nombre: c.contacto.nombre, telefono: c.contacto.telefono, avatarUrl: c.contacto.avatarUrl },
     esPersonal: c.contacto.esPersonal ?? false,
     fijado: !!c.fijadoAt,
     responsableId: c.responsable?.id ?? null,
