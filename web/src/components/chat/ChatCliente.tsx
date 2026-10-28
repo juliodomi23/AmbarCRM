@@ -13,6 +13,7 @@ import { EnviarPlantilla } from "@/components/chat/EnviarPlantilla";
 import { estadoVentana, textoRestante } from "@/lib/meta/ventana";
 import { webmAOgg } from "@/lib/audio/webm-a-ogg";
 import { IconoCanal } from "@/components/chat/IconoCanal";
+import { TIPOS_CANAL, tipoCanal, type TipoCanal } from "@/lib/channel/tipo-canal";
 
 type Embudo = { id: string; nombre: string; etapas: { id: string; nombre: string }[] };
 type Usuario = { id: string; nombre: string };
@@ -125,6 +126,7 @@ export function ChatCliente({
   embudos = [],
   etiquetas = [],
   canales = [],
+  tipoInicial,
   usuarioId,
   humanAgentHabilitado = false
 }: {
@@ -134,6 +136,7 @@ export function ChatCliente({
   embudos?: Embudo[];
   etiquetas?: EtiquetaDef[];
   canales?: Canal[];
+  tipoInicial?: TipoCanal;
   usuarioId?: string;
   humanAgentHabilitado?: boolean;
 }) {
@@ -157,6 +160,9 @@ export function ChatCliente({
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroEtiqueta, setFiltroEtiqueta] = useState("");
   const colorEtiqueta = new Map(etiquetas.map((e) => [e.nombre, e.color]));
+  const tiposDisponibles = TIPOS_CANAL.filter((tipo) => canales.some((canal) => tipoCanal(canal.proveedor) === tipo));
+  const [filtroTipo, setFiltroTipo] = useState<TipoCanal>(() => tipoInicial ?? tiposDisponibles[0] ?? "whatsapp");
+  const tipoActual = tiposDisponibles.includes(filtroTipo) ? filtroTipo : tiposDisponibles[0] ?? "whatsapp";
   const [filtroCanal, setFiltroCanal] = useState("");
   const [filtroResponsable, setFiltroResponsable] = useState<"" | "mias" | "sinasignar" | "personal">("");
   const [buscandoMensajes, setBuscandoMensajes] = useState(false);
@@ -174,6 +180,8 @@ export function ChatCliente({
   selRef.current = selId;
   const convsRef = useRef<ConversacionItem[]>(convs);
   convsRef.current = convs;
+  const tipoRef = useRef(tipoActual);
+  tipoRef.current = tipoActual;
 
   const seleccionada = convs.find((c) => c.id === selId) ?? null;
 
@@ -192,12 +200,16 @@ export function ChatCliente({
   const ventana = estadoVentana(ultimoEntrante, ahora);
   const puedeHumanAgent = humanAgentHabilitado && !!ultimoEntrante && ahora.getTime() - new Date(ultimoEntrante).getTime() < 7 * 24 * 3600_000;
   const ventanaCerrada = !cargandoMsgs && mensajes.length > 0 && !ventana.abierta && (esWhatsapp || (esMensajeriaMeta && !puedeHumanAgent));
-  const sinAsignarCount = convs.filter((c) => !c.esPersonal && !c.responsableId && c.estado !== "cerrada").length;
-  const misCount = usuarioId ? convs.filter((c) => !c.esPersonal && c.responsableId === usuarioId).length : 0;
-  const personalCount = convs.filter((c) => c.esPersonal).length;
+  const convsDelTipo = tiposDisponibles.length
+    ? convs.filter((c) => tipoCanal(c.canalProveedor ?? canales.find((canal) => canal.id === c.canalId)?.proveedor) === tipoActual)
+    : convs;
+  const canalesDelTipo = canales.filter((canal) => tipoCanal(canal.proveedor) === tipoActual);
+  const sinAsignarCount = convsDelTipo.filter((c) => !c.esPersonal && !c.responsableId && c.estado !== "cerrada").length;
+  const misCount = usuarioId ? convsDelTipo.filter((c) => !c.esPersonal && c.responsableId === usuarioId).length : 0;
+  const personalCount = convsDelTipo.filter((c) => c.esPersonal).length;
 
   const q = busqueda.toLowerCase().trim();
-  const convsFiltradas = convs
+  const convsFiltradas = convsDelTipo
     .filter((c) => {
       // "Personal" (familia/amigos) vive en su propia pestaña; no se mezcla con el trabajo.
       if (filtroResponsable === "personal") { if (!c.esPersonal) return false; }
@@ -233,12 +245,13 @@ export function ChatCliente({
   const refrescarLista = useCallback(() => {
     if (refrescarRef.current) clearTimeout(refrescarRef.current);
     refrescarRef.current = setTimeout(async () => {
-      const res = await fetch("/api/conversaciones");
+      const res = await fetch(tiposDisponibles.length ? `/api/conversaciones?tipo=${tipoActual}` : "/api/conversaciones");
       if (!res.ok) return;
       const data = await res.json();
+      if (tipoRef.current !== tipoActual) return;
       setConvs(data.conversaciones);
     }, 400);
-  }, []);
+  }, [tipoActual, tiposDisponibles.length]);
 
   function abrir(id: string) {
     setSelId(id);
@@ -251,7 +264,7 @@ export function ChatCliente({
   async function buscarEnHistorial() {
     if (busqueda.trim().length < 2) return;
     setBuscandoMensajes(true);
-    const res = await fetch(`/api/conversaciones?q=${encodeURIComponent(busqueda.trim())}`);
+    const res = await fetch(`/api/conversaciones?q=${encodeURIComponent(busqueda.trim())}${tiposDisponibles.length ? `&tipo=${tipoActual}` : ""}`);
     if (res.ok) {
       const data = await res.json();
       setConvs(data.conversaciones);
@@ -504,6 +517,17 @@ export function ChatCliente({
       <div className={`h-full w-full flex-col border-r border-border bg-card md:w-80 ${selId ? "hidden md:flex" : "flex"}`}>
         <div className="shrink-0 border-b border-border px-4 py-3 space-y-2">
           <p className="font-semibold text-primary">Conversaciones</p>
+          {tiposDisponibles.length > 1 && (
+            <div className="flex gap-1" role="group" aria-label="Tipo de canal">
+              {tiposDisponibles.map((tipo) => (
+                <button key={tipo} type="button" onClick={() => {
+                  setFiltroTipo(tipo); setFiltroCanal(""); setSelId(null); setMensajes([]); setPanelMovil(false);
+                }} className={`flex-1 rounded-lg py-1 text-xs font-medium ${tipoActual === tipo ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground transition-colors hover:bg-muted/70"}`}>
+                  {tipo === "whatsapp" ? "WhatsApp" : tipo === "messenger" ? "Messenger" : "Instagram"}
+                </button>
+              ))}
+            </div>
+          )}
           {/* Búsqueda */}
           <div className="flex gap-1">
             <input
@@ -565,11 +589,11 @@ export function ChatCliente({
               </select>
             )}
           </div>
-          {canales.length > 0 && (
+          {canalesDelTipo.length > 0 && (
             <select value={filtroCanal} onChange={(e) => setFiltroCanal(e.target.value)} aria-label="Filtrar por canal"
               className="w-full rounded-lg border border-input px-2 py-1 text-xs">
-              <option value="">Todos los WhatsApp</option>
-              {canales.map((canal) => (
+              <option value="">Todos los canales de {tipoActual === "whatsapp" ? "WhatsApp" : tipoActual === "messenger" ? "Messenger" : "Instagram"}</option>
+              {canalesDelTipo.map((canal) => (
                 <option key={canal.id} value={canal.id}>{canal.nombre}{canal.activo ? "" : " (inactivo)"}</option>
               ))}
             </select>
@@ -580,7 +604,7 @@ export function ChatCliente({
             <p className="p-6 text-center text-sm text-muted-foreground">
               {busqueda || filtroEstado || filtroEtiqueta || filtroCanal || filtroResponsable
                 ? "Ninguna conversación coincide con los filtros."
-                : "Aún no hay conversaciones. Llegarán aquí cuando entre un mensaje de WhatsApp."}
+                : `Aún no hay conversaciones. Llegarán aquí cuando entre un mensaje de ${tipoActual === "whatsapp" ? "WhatsApp" : tipoActual === "messenger" ? "Messenger" : "Instagram"}.`}
             </p>
           )}
           {convsFiltradas.map((c) => (

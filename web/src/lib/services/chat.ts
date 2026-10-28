@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import type { TipoCanal } from "@/lib/channel/tipo-canal";
 
 // Las etiquetas viven en el contacto (las mismas de Contactos, Difusión y el bot).
 const CONTACTO_CON_ETIQUETAS = { include: { etiquetas: { select: { etiqueta: { select: { nombre: true } } } } } } as const;
@@ -9,8 +10,11 @@ export function etiquetasDeContacto(contacto: { etiquetas?: { etiqueta: { nombre
 }
 
 /** Conversaciones para la bandeja: contacto + último mensaje (preview) + no leídos. */
-export function listarConversaciones() {
+export function listarConversaciones(tipo?: TipoCanal) {
   return db.conversacion.findMany({
+    where: tipo === "whatsapp"
+      ? { OR: [{ canal: { proveedor: { in: ["cloud_api", "api"] } } }, { canalId: null }] }
+      : tipo ? { canal: { proveedor: tipo } } : undefined,
     // Fijados (📌) primero, luego lo más reciente.
     orderBy: [{ fijadoAt: { sort: "desc", nulls: "last" } }, { ultimoMensajeAt: "desc" }],
     // ponytail: tope de las 200 más recientes; paginar por cursor si la bandeja necesita ver más viejas.
@@ -25,9 +29,12 @@ export function listarConversaciones() {
 }
 
 /** Busca conversaciones donde algún mensaje contenga el texto (para búsqueda global). */
-export function buscarEnMensajes(q: string) {
+export function buscarEnMensajes(q: string, tipo?: TipoCanal) {
   return db.conversacion.findMany({
     where: {
+      ...(tipo === "whatsapp"
+        ? { OR: [{ canal: { proveedor: { in: ["cloud_api", "api"] } } }, { canalId: null }] }
+        : tipo ? { canal: { proveedor: tipo } } : {}),
       mensajes: {
         some: {
           contenido: { contains: q, mode: "insensitive" },

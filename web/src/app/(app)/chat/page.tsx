@@ -4,17 +4,32 @@ import { listarUsuariosActivos, listarEtiquetas } from "@/lib/services/contactos
 import { serializar } from "@/lib/serialize";
 import { getSesion } from "@/lib/session";
 import { ChatCliente, type ConversacionItem } from "@/components/chat/ChatCliente";
+import { TIPOS_CANAL, tipoCanal } from "@/lib/channel/tipo-canal";
+import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export default async function ChatPage() {
-  const [convsRaw, plantillasRaw, embudosRaw, usuariosRaw, etiquetasRaw, canalesRaw, sesion] = await Promise.all([
-    listarConversaciones(),
+export default async function ChatPage({ searchParams }: { searchParams: Promise<{ conv?: string }> }) {
+  const { conv } = await searchParams;
+  const canalesRaw = await listarCanales();
+  const canales = serializar(canalesRaw).map((c: any) => ({
+    id: c.id,
+    nombre: c.nombre,
+    proveedor: c.proveedor,
+    activo: c.activo
+  }));
+  const directa = conv && /^\d{1,18}$/.test(conv) ? await db.conversacion.findUnique({
+    where: { id: BigInt(conv) }, select: { canal: { select: { proveedor: true } } },
+  }) : null;
+  const tiposDisponibles = TIPOS_CANAL.filter((tipo) => canales.some((canal: { proveedor: string }) => tipoCanal(canal.proveedor) === tipo));
+  const tipoDirecto = directa?.canal?.proveedor ? tipoCanal(directa.canal.proveedor) : undefined;
+  const tipoInicial = tipoDirecto && tiposDisponibles.includes(tipoDirecto) ? tipoDirecto : tiposDisponibles[0];
+  const [convsRaw, plantillasRaw, embudosRaw, usuariosRaw, etiquetasRaw, sesion] = await Promise.all([
+    listarConversaciones(tipoInicial),
     listarPlantillas(),
     getEmbudosConEtapas(),
     listarUsuariosActivos(),
     listarEtiquetas(),
-    listarCanales(),
     getSesion()
   ]);
   const convs = serializar(convsRaw);
@@ -47,13 +62,6 @@ export default async function ChatPage() {
   const usuarios = serializar(usuariosRaw).map((u: any) => ({ id: u.id, nombre: u.nombre }));
   const etiquetas = serializar(etiquetasRaw).map((e: any) => ({ id: e.id, nombre: e.nombre, color: e.color }));
   const usuarioId = sesion?.user?.id ?? undefined;
-  const canales = serializar(canalesRaw).map((c: any) => ({
-    id: c.id,
-    nombre: c.nombre,
-    proveedor: c.proveedor,
-    activo: c.activo
-  }));
-
   return (
     <ChatCliente
       conversaciones={conversaciones}
@@ -62,6 +70,7 @@ export default async function ChatPage() {
       usuarios={usuarios}
       etiquetas={etiquetas}
       canales={canales}
+      tipoInicial={tipoInicial}
       usuarioId={usuarioId}
       humanAgentHabilitado={process.env.META_HUMAN_AGENT_APROBADO === "true"}
     />

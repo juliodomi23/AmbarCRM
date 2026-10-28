@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSesion } from "@/lib/session";
 import { listarConversaciones, buscarEnMensajes, etiquetasDeContacto } from "@/lib/services/chat";
 import { serializar } from "@/lib/serialize";
+import { TIPOS_CANAL, type TipoCanal } from "@/lib/channel/tipo-canal";
 
 export const dynamic = "force-dynamic";
 
@@ -32,12 +33,14 @@ export async function GET(req: NextRequest) {
   if ("error" in s) return s.error;
 
   const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
+  const parametroTipo = req.nextUrl.searchParams.get("tipo");
+  const tipo = TIPOS_CANAL.includes(parametroTipo as TipoCanal) ? parametroTipo as TipoCanal : undefined;
 
   if (q.length >= 2) {
-    const raw = serializar(await buscarEnMensajes(q));
+    const raw = serializar(await buscarEnMensajes(q, tipo));
     return NextResponse.json({ conversaciones: raw.map(mapearConv), esBusqueda: true });
   }
 
-  const convs = serializar(await listarConversaciones());
+  const convs = serializar(await listarConversaciones(tipo));
   return NextResponse.json({ conversaciones: convs.map(mapearConv) });
 }
