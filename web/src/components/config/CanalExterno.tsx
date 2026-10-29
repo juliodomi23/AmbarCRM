@@ -91,6 +91,23 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
     } catch (e) { toast(e instanceof Error ? e.message : "No se pudo guardar", "error"); }
     finally { setGuardando(false); }
   }
+  const formulario = <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void guardar(); }}>
+    <Campo label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required maxLength={150} />
+    {esMeta ? <>
+      {esInstagram && <Campo label="ID de la cuenta de Instagram (instagram_id)" value={instagramId} onChange={(e) => setInstagramId(e.target.value)} required maxLength={40} />}
+      <Campo label="ID de la página (page_id)" value={pageId} onChange={(e) => setPageId(e.target.value)} required />
+      <Campo label={canal ? "Token de la página (vacío para conservar)" : "Token de acceso de la página"} type="password" autoComplete="new-password" value={token} onChange={(e) => setToken(e.target.value)} required={!canal} />
+      <Campo required={esInstagram} label={esInstagram ? "ID de la app de Meta" : "ID de la app de Meta (opcional)"} value={appId} onChange={(e) => setAppId(e.target.value)} maxLength={40} />
+      <Campo required={esInstagram && !canal} label={esInstagram ? "App Secret (vacío para conservar al editar)" : "App Secret (opcional; vacío para conservar)"} type="password" autoComplete="new-password" value={appSecret} onChange={(e) => setAppSecret(e.target.value)} maxLength={8192} />
+      <p className="text-xs text-muted-foreground">{esInstagram
+        ? "Conecta una cuenta profesional enlazada a esta página, con el token de página y la app propia del cliente. Los mensajes libres requieren una entrada del cliente en las últimas 24 h. Human Agent requiere habilitación de Meta."
+        : "Si la página usa otra app de Meta, indica su ID y App Secret. Sin valores propios se usan los del CRM."}</p>
+    </> : <Campo label="Webhook de salida (https)" type="url" value={webhook} onChange={(e) => setWebhook(e.target.value)} required />}
+    <div className="flex flex-wrap gap-2"><Boton type="submit" disabled={guardando}>Guardar</Boton>
+      {canal && esMessenger && (canal.appId || canal.tieneAppSecret) && <Boton type="button" disabled={guardando} onClick={() => void guardar(false, true)}>Quitar app propia</Boton>}
+      {canal && !esMeta && <Boton type="button" disabled={guardando} onClick={() => void guardar(true)}>Regenerar credenciales</Boton>}</div>
+  </form>;
+
   return <section className="surface max-w-2xl space-y-3 p-4">
     <div className="flex flex-wrap items-center gap-2">
       <h3 className="inline-flex min-w-0 items-center gap-2 font-semibold"><IconoCanal proveedor={proveedor} /><span className="break-words">{canal ? esMeta ? nombreVisibleCanal(canal.nombre, proveedor) : `${nombreCanal} · ${canal.nombre}` : `Nuevo canal ${nombreCanal}`}</span></h3>
@@ -104,22 +121,10 @@ export function CanalExterno({ canal, tipo = "api" }: { canal?: CanalExternoDato
       <p className="mt-1 break-words text-sm">{esInstagram && canal.username ? `@${canal.username.replace(/^@/, "")}` : canal.nombre}</p>
     </div> : <p className="rounded-lg border border-border bg-muted p-3 text-center text-sm text-muted-foreground" role="status">Desconectado</p>)}
     {esMeta && <MessengerFacebook proveedor={esInstagram ? "instagram" : "messenger"} canalId={canal?.id} pageId={canal?.pageId} nombre={nombre} login={canal?.login} appPropia={esMessenger && Boolean(appId || appSecret || canal?.tieneAppSecret)} />}
-    {canal?.login !== "instagram" && <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void guardar(); }}>
-      <Campo label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required maxLength={150} />
-      {esMeta ? <>
-        {esInstagram && <Campo label="ID de la cuenta de Instagram (instagram_id)" value={instagramId} onChange={(e) => setInstagramId(e.target.value)} required maxLength={40} />}
-        <Campo label="ID de la página (page_id)" value={pageId} onChange={(e) => setPageId(e.target.value)} required />
-        <Campo label={canal ? "Token de la página (vacío para conservar)" : "Token de acceso de la página"} type="password" autoComplete="new-password" value={token} onChange={(e) => setToken(e.target.value)} required={!canal} />
-        <Campo required={esInstagram} label={esInstagram ? "ID de la app de Meta" : "ID de la app de Meta (opcional)"} value={appId} onChange={(e) => setAppId(e.target.value)} maxLength={40} />
-        <Campo required={esInstagram && !canal} label={esInstagram ? "App Secret (vacío para conservar al editar)" : "App Secret (opcional; vacío para conservar)"} type="password" autoComplete="new-password" value={appSecret} onChange={(e) => setAppSecret(e.target.value)} maxLength={8192} />
-        <p className="text-xs text-muted-foreground">{esInstagram
-          ? "Conecta una cuenta profesional enlazada a esta página, con el token de página y la app propia del cliente. Los mensajes libres requieren una entrada del cliente en las últimas 24 h. Human Agent requiere habilitación de Meta."
-          : "Si la página usa otra app de Meta, indica su ID y App Secret. Sin valores propios se usan los del CRM."}</p>
-      </> : <Campo label="Webhook de salida (https)" type="url" value={webhook} onChange={(e) => setWebhook(e.target.value)} required />}
-      <div className="flex gap-2"><Boton type="submit" disabled={guardando}>Guardar</Boton>
-        {canal && esMessenger && (canal.appId || canal.tieneAppSecret) && <Boton type="button" disabled={guardando} onClick={() => void guardar(false, true)}>Quitar app propia</Boton>}
-        {canal && !esMeta && <Boton type="button" disabled={guardando} onClick={() => void guardar(true)}>Regenerar credenciales</Boton>}</div>
-    </form>}
+    {canal?.login !== "instagram" && (esMeta ? <details className="rounded-lg border border-border bg-background p-3">
+      <summary className="cursor-pointer text-sm font-medium">Conexión manual (avanzado)</summary>
+      <div className="mt-3">{formulario}</div>
+    </details> : formulario)}
     {canal && esMeta && <Boton type="button" variante="danger" disabled={guardando} onClick={() => void desconectar()}>Desconectar</Boton>}
     {secretos && <div className="space-y-2 rounded border border-border p-3 text-sm" role="status">
       <p>Guarda estas credenciales. Se muestran una sola vez.</p>

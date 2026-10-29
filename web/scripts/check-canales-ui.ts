@@ -52,6 +52,8 @@ for (const proveedor of ["messenger", "instagram"] as const) {
   assert.ok(html.includes(`${tipo} · Ámbar Rojo</span></h3>`));
   assert.ok(html.includes("¡Conectado con éxito!"));
   assert.ok(html.includes('role="status"'));
+  assert.ok(html.includes("Conexión manual (avanzado)"));
+  assert.ok(!html.includes("<details open"), "la conexión manual empieza plegada");
   assert.ok(!html.includes(`${tipo} · ${tipo}`));
 }
 console.log("OK · canales UI: selector, datos SSR/SSE, ventanas separadas, rutas públicas exactas y desconexión Messenger solo en configuración admin con confirmación e historial opcional");
