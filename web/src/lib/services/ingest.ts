@@ -88,7 +88,7 @@ export async function ingestarEntrante(m: MensajeEntranteNormalizado, canalId: b
       ? !(await tx.contacto.findFirst({ where: { telefono: m.telefono, ...(contacto ? { id: { not: contacto.id } } : {}) } }))
       : false;
     if (!contacto) contacto = await tx.contacto.create({ data: {
-      nombre: m.nombre ?? m.telefono ?? (canal.proveedor === "messenger" ? "Contacto de Messenger" : canal.proveedor === "instagram" ? "Contacto de Instagram" : m.identificadorExterno!),
+      nombre: m.nombre ?? m.telefono ?? m.identificadorExterno!,
       avatarUrl: m.avatarUrl,
       telefono: esWhatsapp || telefonoDisponible ? m.telefono : null,
       ...(!esWhatsapp ? { canalId: canal.id, identificadorExterno: m.identificadorExterno } : {}),
