@@ -13,6 +13,21 @@ CRM multiempresa para atender conversaciones de WhatsApp, administrar contactos,
 
 Los tokens de Meta se intercambian y almacenan únicamente en el servidor, cifrados con AES-256-GCM. El navegador solo recibe un resumen sanitizado del canal.
 
+## Ramas y despliegue
+
+| Rama | Para qué sirve |
+|---|---|
+| `meta-tech-provider` | **Es la rama real.** Producción se despliega desde aquí (EasyPanel, deploy manual). Todo PR se abre contra esta rama. |
+| `main` | Rama por defecto de GitHub, pero **no se despliega y no se usa para trabajar**. Es solo un espejo de `meta-tech-provider` para que el repo tenga una portada. |
+
+Reglas del equipo:
+
+- Nadie hace push directo a `meta-tech-provider` ni a `main`. Solo Julio fusiona.
+- Una rama por tarea, con prefijo `feat/`, `fix/` o `docs/`, y PR chico contra `meta-tech-provider`.
+- Commits con Conventional Commits (`feat(pagos): ...`, `fix(citas): ...`).
+- Las pruebas se hacen con una base de datos local desechable, nunca contra producción.
+- Los `.env` nunca se suben. Las variables se documentan en `.env.example` y `DESPLIEGUE.md`.
+
 ## Capacidades de WhatsApp
 
 - Conectar uno o más números mediante Embedded Signup.
