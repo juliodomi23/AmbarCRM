@@ -17,9 +17,11 @@ const [chat, pagina, lista, config] = await Promise.all([
 for (const origen of [pagina, lista]) for (const dato of ["canalProveedor", "ultimoEntranteAt"]) assert.ok(origen.includes(dato), `SSR y refresco deben conservar ${dato}`);
 assert.match(chat, /seleccionada && esWhatsapp && \(/, "plantillas oficiales solo en WhatsApp");
 assert.match(chat, /esMensajeriaMeta && mensajes.length > 0 && !cargandoMsgs && !ventana.abierta/);
-for (const tipo of ["cloud_api", "messenger", "instagram", "api"]) assert.ok(config.includes(`value="${tipo}"`));
-assert.match(config, /value="messenger" disabled=\{!metaRevision\}/, "Messenger solo se habilita con META_CANALES_REVISION_ORGS");
-assert.match(config, /value="instagram" disabled=\{!metaRevision\}/, "Instagram solo se habilita con META_CANALES_REVISION_ORGS");
+for (const tipo of ["cloud_api", "messenger", "instagram"]) assert.ok(config.includes(`"${tipo}"`));
+assert.match(config, /role="tablist"/);
+assert.match(config, /aria-selected=\{tipo === opcion\}/);
+assert.match(config, /opcion === "cloud_api" \|\| metaRevision/, "Messenger e Instagram solo se habilitan con META_CANALES_REVISION_ORGS");
+assert.match(config, /<summary[^>]*>Avanzado: canal API<\/summary>/);
 const [externo, configuracion] = await Promise.all([
   readFile("src/components/config/CanalExterno.tsx", "utf8"),
   readFile("src/app/(app)/configuracion/page.tsx", "utf8"),
@@ -48,7 +50,8 @@ for (const proveedor of ["messenger", "instagram"] as const) {
     createElement(CanalExterno, { canal: { id: "9", nombre: "Ámbar Rojo", proveedor, estado: "conectado" } })));
   const tipo = proveedor === "messenger" ? "Messenger" : "Instagram";
   assert.ok(html.includes(`${tipo} · Ámbar Rojo</span></h3>`));
-  assert.ok(html.includes("Conectado</span>"));
+  assert.ok(html.includes("¡Conectado con éxito!"));
+  assert.ok(html.includes('role="status"'));
   assert.ok(!html.includes(`${tipo} · ${tipo}`));
 }
 console.log("OK · canales UI: selector, datos SSR/SSE, ventanas separadas, rutas públicas exactas y desconexión Messenger solo en configuración admin con confirmación e historial opcional");
