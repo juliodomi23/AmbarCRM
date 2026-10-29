@@ -14,10 +14,12 @@ export function CitasContacto({
   const [zona, setZona] = useState(ZONA_CITAS);
   const [error, setError] = useState("");
   const [citas, setCitas] = useState<any[]>([]);
+  const [moduloInactivo, setModuloInactivo] = useState(false);
   const [tipoFicha, setTipoFicha] = useState<"clientes" | "pacientes" | null>(null);
 
   useEffect(() => {
     let vigente = true;
+    setModuloInactivo(false);
     void (async () => {
       try {
         const desde = new Date();
@@ -27,6 +29,10 @@ export function CitasContacto({
           const hasta = new Date(+inicio + 60 * 86400000);
           const res = await fetch(`/api/citas?contactoId=${contactoId}&desde=${inicio.toISOString()}&hasta=${hasta.toISOString()}`);
           const data = await res.json();
+          if (res.status === 404 && data.error === "módulo no activo") {
+            if (vigente) setModuloInactivo(true);
+            return;
+          }
           if (!res.ok) throw new Error(data.error ?? "No se pudieron cargar las citas");
           todas.push(...data.citas.filter((c: { estado: string }) => !["cancelada", "no_asistio", "completada"].includes(c.estado)));
           if (vigente) setZona(data.zona ?? ZONA_CITAS);
@@ -52,6 +58,7 @@ export function CitasContacto({
 
   const query = new URLSearchParams({ contactoId });
   if (conversacionId) query.set("conversacionId", conversacionId);
+  if (moduloInactivo) return null;
   return (
     <section className="space-y-2 rounded-lg border border-border p-3">
       <div className="flex items-center justify-between">

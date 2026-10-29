@@ -68,6 +68,18 @@ function etiquetaCanal(nombre: string, proveedor?: string | null) {
   return tipoCanal(proveedor) === "whatsapp" && !/\bwhatsapp\b/i.test(visible) ? `WhatsApp · ${visible}` : visible;
 }
 
+function nombreCuentaCanal(nombre: string, proveedor?: string | null) {
+  return etiquetaCanal(nombre, proveedor).replace(/^(WhatsApp|Messenger|Instagram)(?:\s*·\s*|\s+)/i, "");
+}
+
+function EstadoConversacion({ estado, botActivo }: { estado: string; botActivo: boolean }) {
+  const color = estado === "abierta" ? "bg-success/10 text-success" : estado === "pendiente" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground";
+  return <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium capitalize ${color}`} title={botActivo ? `${estado} · Bot activo` : estado}>
+    {estado}
+    {botActivo && <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" role="img" aria-label="Bot activo"><rect x="4" y="7" width="16" height="13" rx="3" /><path d="M12 7V4m-2 0h4M2 12v4m20-4v4M8 15h.01M16 15h.01" /></svg>}
+  </span>;
+}
+
 /** Acuse de un mensaje saliente: ✓ enviado · ✓✓ entregado · ✓✓ azul leído. */
 function ticks(status: string): { txt: string; clase: string } {
   switch (status) {
@@ -548,10 +560,10 @@ export function ChatCliente({
               {tiposDisponibles.map((tipo) => (
                 <button key={tipo} type="button" aria-label={`${tipo === "whatsapp" ? "WhatsApp" : tipo === "messenger" ? "Messenger" : "Instagram"}${noLeidosPorTipo[tipo] > 0 ? `, ${noLeidosPorTipo[tipo]} sin leer` : ""}`} onClick={() => {
                   setFiltroTipo(tipo); setFiltroCanal(""); setSelId(null); setMensajes([]); setPanelMovil(false);
-                }} aria-pressed={tipoActual === tipo} className={`flex min-w-0 items-center justify-center gap-1 rounded-lg px-1 py-2 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-[11px] ${tipoActual === tipo ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:bg-card/70 hover:text-foreground"}`}>
+                }} aria-pressed={tipoActual === tipo} className={`flex min-w-0 items-center justify-center gap-1 rounded-lg px-1 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${tipoActual === tipo ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:bg-card/70 hover:text-foreground"}`}>
                   <IconoCanal proveedor={tipo} />
                   <span className="truncate">{tipo === "whatsapp" ? "WhatsApp" : tipo === "messenger" ? "Messenger" : "Instagram"}</span>
-                  {noLeidosPorTipo[tipo] > 0 && <span aria-hidden="true" className="grid h-4 min-w-4 shrink-0 place-items-center rounded-full bg-primary px-1 text-[9px] font-bold leading-none text-primary-foreground">{noLeidosPorTipo[tipo] > 99 ? "99+" : noLeidosPorTipo[tipo]}</span>}
+                  {noLeidosPorTipo[tipo] > 0 && <span aria-hidden="true" className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-primary px-1 text-xs font-bold leading-none text-primary-foreground">{noLeidosPorTipo[tipo] > 99 ? "99+" : noLeidosPorTipo[tipo]}</span>}
                 </button>
               ))}
             </div>
@@ -593,42 +605,38 @@ export function ChatCliente({
                 <button
                   key={v}
                   onClick={() => setFiltroResponsable(v)}
-                  className={`shrink-0 rounded-full px-2.5 py-1.5 text-[11px] font-medium transition-colors ${filtroResponsable === v ? "bg-primary text-primary-foreground shadow-soft" : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground"}`}
+                  className={`shrink-0 rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors ${filtroResponsable === v ? "bg-primary text-primary-foreground shadow-soft" : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground"}`}
                 >
                   {label}
                 </button>
               );
             })}
           </div>
-          {/* Filtros estado / etiqueta */}
+          {/* Filtros estado / canal */}
           <div className="flex gap-2">
             <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} aria-label="Filtrar por estado"
               className="min-w-0 flex-1 rounded-lg border border-input bg-card px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/30">
-              <option value="">Todos</option>
+              <option value="">Todos los estados</option>
               <option value="abierta">Abiertas</option>
               <option value="pendiente">Pendientes</option>
               <option value="cerrada">Cerradas</option>
             </select>
-            {etiquetas.length > 0 && (
-              <select value={filtroEtiqueta} onChange={(e) => setFiltroEtiqueta(e.target.value)} aria-label="Filtrar por etiqueta"
-                className="min-w-0 flex-1 rounded-lg border border-input bg-card px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/30">
-                <option value="">Toda etiqueta</option>
-                {etiquetas.map((et) => <option key={et.id} value={et.nombre}>{et.nombre}</option>)}
-              </select>
-            )}
-          </div>
-          {canalesDelTipo.length > 0 && (
-            <div className="relative">
+            {canalesDelTipo.length > 1 && <div className="relative min-w-0 flex-1">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"><IconoCanal proveedor={tipoActual} /></span>
               <select value={filtroCanal} onChange={(e) => setFiltroCanal(e.target.value)} aria-label="Filtrar por canal"
-              className="w-full rounded-lg border border-input bg-card py-1.5 pl-9 pr-2 text-xs text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/30">
-              <option value="">Todos los canales de {tipoActual === "whatsapp" ? "WhatsApp" : tipoActual === "messenger" ? "Messenger" : "Instagram"}</option>
+              className="w-full min-w-0 rounded-lg border border-input bg-card py-1.5 pl-9 pr-2 text-xs text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/30">
+              <option value="">Todos los canales</option>
               {canalesDelTipo.map((canal) => (
-                <option key={canal.id} value={canal.id}>{etiquetaCanal(canal.nombre, canal.proveedor)}{canal.activo ? "" : " (inactivo)"}</option>
+                <option key={canal.id} value={canal.id}>{nombreCuentaCanal(canal.nombre, canal.proveedor)}{canal.activo ? "" : " (inactivo)"}</option>
               ))}
               </select>
-            </div>
-          )}
+            </div>}
+          </div>
+          {etiquetas.length > 0 && <select value={filtroEtiqueta} onChange={(e) => setFiltroEtiqueta(e.target.value)} aria-label="Filtrar por etiqueta"
+            className="w-full rounded-lg border border-input bg-card px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/30">
+            <option value="">Toda etiqueta</option>
+            {etiquetas.map((et) => <option key={et.id} value={et.nombre}>{et.nombre}</option>)}
+          </select>}
         </div>
         <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
           {cargandoLista && convsFiltradas.length === 0 && [0, 1, 2, 3, 4].map((i) => (
@@ -666,22 +674,21 @@ export function ChatCliente({
                 className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <span className="relative shrink-0">
-                  <AvatarNombre nombre={nombreVisibleContacto(c.contacto.nombre, c.canalProveedor)} url={c.contacto.avatarUrl} className="h-11 w-11 ring-2 ring-card" />
-                  <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full border-2 border-card bg-muted text-primary"><IconoCanal proveedor={c.canalProveedor ?? canales.find((canal) => canal.id === c.canalId)?.proveedor} /></span>
+                  <AvatarNombre nombre={nombreVisibleContacto(c.contacto.nombre, c.canalProveedor)} url={c.contacto.avatarUrl} proveedor={c.canalProveedor ?? canales.find((canal) => canal.id === c.canalId)?.proveedor} className="h-11 w-11 ring-2 ring-card" />
+                  {!/^\d+$/.test(c.contacto.nombre.trim()) && <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full border-2 border-card bg-muted text-primary"><IconoCanal proveedor={c.canalProveedor ?? canales.find((canal) => canal.id === c.canalId)?.proveedor} /></span>}
                 </span>
                 <span className="min-w-0 flex-1 space-y-1">
                   <span className="flex min-w-0 items-center justify-between gap-2">
                     <span className="flex min-w-0 items-center gap-1">
-                      {c.fijado && <span className="shrink-0 text-[10px]" title="Chat fijado">📌</span>}
+                      {c.fijado && <span className="shrink-0 text-xs" title="Chat fijado">📌</span>}
                       <span className="truncate text-sm font-semibold text-foreground">{nombreVisibleContacto(c.contacto.nombre, c.canalProveedor)}</span>
                     </span>
-                    <span className="tnum shrink-0 text-[10px] font-medium text-muted-foreground">{hora(c.ultimoMensajeAt)}</span>
+                    <span className="tnum shrink-0 text-xs font-medium text-muted-foreground">{hora(c.ultimoMensajeAt)}</span>
                   </span>
                   <span className="block truncate text-xs text-muted-foreground">{c.preview || "Sin mensajes todavía"}</span>
-                  <span className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap text-[10px] font-medium text-muted-foreground">
-                    <span className="max-w-28 shrink-0 truncate rounded-full bg-muted px-2 py-0.5">{etiquetaCanal(c.canalNombre, c.canalProveedor ?? canales.find((canal) => canal.id === c.canalId)?.proveedor)}</span>
-                    <span className="shrink-0 capitalize">{c.estado}</span>
-                    {c.botActivo && <span className="shrink-0 text-success">· Bot activo</span>}
+                  <span className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap text-xs font-medium text-muted-foreground">
+                    <span className="inline-flex min-w-0 max-w-[65%] items-center gap-1 rounded-full bg-muted px-2 py-0.5" title={etiquetaCanal(c.canalNombre, c.canalProveedor ?? canales.find((canal) => canal.id === c.canalId)?.proveedor)}><IconoCanal proveedor={c.canalProveedor ?? canales.find((canal) => canal.id === c.canalId)?.proveedor} /><span className="truncate">{nombreCuentaCanal(c.canalNombre, c.canalProveedor ?? canales.find((canal) => canal.id === c.canalId)?.proveedor)}</span></span>
+                    <EstadoConversacion estado={c.estado} botActivo={c.botActivo} />
                     {c.etiquetas.slice(0, 2).map((nombre) => {
                     const color = colorEtiqueta.get(nombre) ?? "#64748b";
                      return <span key={nombre} className="inline-flex max-w-20 shrink-0 items-center gap-1 truncate rounded-full px-1.5 py-0.5" style={{ backgroundColor: `${color}1f`, color }}><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />{nombre}</span>;
@@ -691,7 +698,7 @@ export function ChatCliente({
               </button>
               <div className="flex w-6 shrink-0 flex-col items-center gap-1">
                 {c.noLeidos > 0 && (
-                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground" aria-label={`${c.noLeidos} mensajes sin leer`}>
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-xs font-bold text-primary-foreground" aria-label={`${c.noLeidos} mensajes sin leer`}>
                     {c.noLeidos > 99 ? "99+" : c.noLeidos}
                   </span>
                 )}
@@ -701,7 +708,7 @@ export function ChatCliente({
                   aria-label={c.fijado ? "Quitar de fijados" : "Fijar chat arriba"}
                   className={`h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground ${c.fijado ? "grid" : "grid md:hidden md:group-hover:grid md:group-focus-within:grid"}`}
                 >
-                  <span className={`text-[11px] ${c.fijado ? "" : "opacity-60"}`}>📌</span>
+                  <span className={`text-xs ${c.fijado ? "" : "opacity-60"}`}>📌</span>
                 </button>
                 <button
                   onClick={(e) => cambiarEstadoConv(c.id, c.estado === "cerrada" ? "abierta" : "cerrada", e)}
@@ -737,12 +744,12 @@ export function ChatCliente({
               >
                 <IconoFlecha className="h-5 w-5" />
               </button>
-              <AvatarNombre nombre={nombreVisibleContacto(seleccionada.contacto.nombre, proveedor)} url={seleccionada.contacto.avatarUrl} className="h-10 w-10 ring-2 ring-primary/10" />
+              <AvatarNombre nombre={nombreVisibleContacto(seleccionada.contacto.nombre, proveedor)} url={seleccionada.contacto.avatarUrl} proveedor={proveedor} className="h-10 w-10 ring-2 ring-primary/10" />
               <div className="min-w-0 flex-1 space-y-1 leading-tight">
                 <p className="truncate text-sm font-bold text-foreground sm:text-base">{nombreVisibleContacto(seleccionada.contacto.nombre, proveedor)}</p>
-                <div className="flex min-w-0 items-center gap-1.5 text-[10px] sm:text-[11px]">
-                  <span className="inline-flex max-w-[55%] items-center gap-1 truncate rounded-full bg-muted px-2 py-0.5 text-muted-foreground"><IconoCanal proveedor={proveedor} /><span className="truncate">{etiquetaCanal(seleccionada.canalNombre, proveedor)}</span></span>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 font-medium capitalize ${seleccionada.estado === "abierta" ? "bg-success/10 text-success" : seleccionada.estado === "pendiente" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"}`}>{seleccionada.estado}</span>
+                <div className="flex min-w-0 items-center gap-1.5 text-xs">
+                  <span className="inline-flex min-w-0 max-w-[60%] items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-muted-foreground" title={etiquetaCanal(seleccionada.canalNombre, proveedor)}><IconoCanal proveedor={proveedor} /><span className="truncate">{etiquetaCanal(seleccionada.canalNombre, proveedor)}</span></span>
+                  <EstadoConversacion estado={seleccionada.estado} botActivo={seleccionada.botActivo} />
                 </div>
               </div>
               <Link
@@ -752,11 +759,12 @@ export function ChatCliente({
                 Nueva cotización
               </Link>
               <span
-                className="hidden shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground xl:flex"
+                className="flex shrink-0 items-center text-xs text-muted-foreground"
                 title={enVivo ? "Recibiendo mensajes en tiempo real" : "Sin conexión en vivo, reintentando…"}
+                role="status"
+                aria-label={enVivo ? "En vivo" : "Reconectando"}
               >
                 <span className={`h-2 w-2 rounded-full ${enVivo ? "bg-success" : "animate-pulse bg-warning"}`} />
-                <span className="hidden sm:inline">{enVivo ? "En vivo" : "Reconectando…"}</span>
               </span>
               <button
                 onClick={() => setPanelMovil(true)}
@@ -778,7 +786,7 @@ export function ChatCliente({
               {!cargandoMsgs && mensajes.length === 0 && <div className="grid h-full place-items-center text-center"><div className="space-y-2"><span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-card text-primary shadow-soft"><IconoCanal proveedor={proveedor} /></span><p className="text-sm font-medium text-foreground">Aún no hay mensajes</p><p className="text-xs text-muted-foreground">Los mensajes de este contacto aparecerán aquí.</p></div></div>}
               {mensajes.map((m, indice) => (
                 <Fragment key={m.id}>
-                {(indice === 0 || claveDia(m.timestamp) !== claveDia(mensajes[indice - 1].timestamp)) && <div className="flex items-center gap-3 py-3"><span className="h-px flex-1 bg-border/70"/><span className="rounded-full border border-border/70 bg-card px-3 py-1 text-[10px] font-semibold capitalize text-muted-foreground shadow-soft">{dia(m.timestamp)}</span><span className="h-px flex-1 bg-border/70"/></div>}
+                {(indice === 0 || claveDia(m.timestamp) !== claveDia(mensajes[indice - 1].timestamp)) && <div className="flex items-center gap-3 py-3"><span className="h-px flex-1 bg-border/70"/><span className="rounded-full border border-border/70 bg-card px-3 py-1 text-xs font-semibold capitalize text-muted-foreground shadow-soft">{dia(m.timestamp)}</span><span className="h-px flex-1 bg-border/70"/></div>}
                 <div className={`flex ${m.direccion === "saliente" || m.interna ? "justify-end" : "justify-start"}`}>
                   <div
                     className={`max-w-[88%] rounded-2xl border px-3.5 py-2.5 text-sm leading-relaxed shadow-soft sm:max-w-[min(72%,36rem)] ${
@@ -792,7 +800,7 @@ export function ChatCliente({
                     }`}
                   >
                     {m.interna && (
-                      <p className={`mb-0.5 flex items-center gap-1 text-[10px] font-semibold uppercase ${esNotaDelBot(m) ? "text-info" : "text-warning"}`}>
+                      <p className={`mb-0.5 flex items-center gap-1 text-xs font-semibold uppercase ${esNotaDelBot(m) ? "text-info" : "text-warning"}`}>
                         <IconoNota className="h-3 w-3" /> {esNotaDelBot(m) ? "Acción del bot" : "Nota interna"}
                       </p>
                     )}
@@ -817,7 +825,7 @@ export function ChatCliente({
                       )
                     )}
                     {m.contenido && <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{m.contenido}</p>}
-                    <p className="tnum mt-1 text-right text-[10px] text-muted-foreground">
+                    <p className="tnum mt-1 text-right text-xs text-muted-foreground">
                       {hora(m.timestamp)}
                       {m.direccion === "saliente" && !m.interna && ticks(m.status).txt && (
                         <span title={m.status} aria-label={m.status} className={`ml-1 ${ticks(m.status).clase}`}>{ticks(m.status).txt}</span>
@@ -826,13 +834,13 @@ export function ChatCliente({
                     {m.direccion === "saliente" && !m.interna && m.status === "fallido" && m.tipo === "texto" && m.contenido && (
                       <button
                         onClick={() => reintentar(m.contenido!)}
-                        className="mt-0.5 flex items-center gap-1 text-right text-[10px] font-medium text-destructive hover:underline"
+                        className="mt-0.5 flex items-center gap-1 text-right text-xs font-medium text-destructive hover:underline"
                       >
                         <IconoDeshacer className="h-3 w-3" /> Reintentar
                       </button>
                     )}
                     {m.direccion === "saliente" && m.status === "fallido" && m.errorDetalle && (
-                      <p className="mt-0.5 max-w-xs text-right text-[10px] text-destructive">{m.errorDetalle}</p>
+                      <p className="mt-0.5 max-w-xs text-right text-xs text-destructive">{m.errorDetalle}</p>
                     )}
                   </div>
                 </div>
@@ -892,7 +900,7 @@ export function ChatCliente({
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 border-t border-border bg-card px-3 py-1 text-[11px] text-muted-foreground">
+                <div className="flex items-center gap-2 border-t border-border bg-card px-3 py-1 text-xs text-muted-foreground">
                   <span className="h-1.5 w-1.5 rounded-full bg-success" />
                   <span className="flex-1">Ventana de 24 h abierta · quedan {textoRestante(ventana.restanteMs)}</span>
                   <button type="button" onClick={() => setModalPlantilla(true)} className="font-medium text-primary hover:underline">

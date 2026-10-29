@@ -252,7 +252,7 @@ export function PanelConversacion({
     <div className="space-y-4 p-4">
       <h2 className="font-display text-sm font-bold text-foreground">Detalles del contacto</h2>
       <div className="surface flex items-start gap-3 p-3">
-        <AvatarNombre nombre={nombreVisibleContacto(nombreContacto ?? d.contacto.nombre, proveedor)} url={avatarUrl} className="h-10 w-10" />
+        <AvatarNombre nombre={nombreVisibleContacto(nombreContacto ?? d.contacto.nombre, proveedor)} url={avatarUrl} proveedor={proveedor} className="h-10 w-10" />
         <div className="min-w-0 flex-1">
           {editandoNombre ? (
             <input
@@ -285,7 +285,7 @@ export function PanelConversacion({
           )}
           {d.contacto.telefono && <p className="mt-1 text-xs text-muted-foreground">+{d.contacto.telefono}</p>}
           {(proveedor === "messenger" || proveedor === "instagram") && d.contacto.identificadorExterno && (
-            <p className="mt-1 break-all text-[11px] text-muted-foreground">ID de {proveedor === "messenger" ? "Messenger" : "Instagram"}: {d.contacto.identificadorExterno}</p>
+            <p className="mt-1 break-all text-xs text-muted-foreground">ID de {proveedor === "messenger" ? "Messenger" : "Instagram"}: {d.contacto.identificadorExterno}</p>
           )}
         </div>
       </div>
@@ -375,7 +375,7 @@ export function PanelConversacion({
                   onEtiquetas?.(nuevas);
                   void patch({ etiquetas: nuevas });
                 }}
-                className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                className="rounded-full px-2 py-0.5 text-xs font-medium"
                 style={
                   activa
                     ? { background: et.color, color: "white" }
@@ -392,7 +392,7 @@ export function PanelConversacion({
           <EtiquetaNueva />
         </div>
         {etiquetas.length === 0 && (
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             Crea etiquetas (ej. &quot;Interesado&quot;, &quot;VIP&quot;) para
             clasificar tus chats y filtrarlos en la bandeja.
           </p>
@@ -473,7 +473,7 @@ export function PanelConversacion({
         </button>
       </div>
       {d.contacto.esPersonal && (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Marcado como Personal: el bot no responde, los archivos no se guardan
           y aparece en la bandeja Personal.
         </p>
@@ -543,7 +543,7 @@ export function PanelConversacion({
                     <span
                       className={[
                         "shrink-0 rounded-full px-2 py-0.5",
-                        "text-[10px] font-medium",
+                        "text-xs font-medium",
                         o.estado === "ganado"
                           ? "bg-success/10 text-success"
                           : "bg-destructive/10 text-destructive",
@@ -555,7 +555,7 @@ export function PanelConversacion({
                 </div>
                 <div className="flex gap-2">
                   <label className="flex-1 space-y-0.5">
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       Valor (MXN)
                     </span>
                     <input
@@ -575,7 +575,7 @@ export function PanelConversacion({
                     />
                   </label>
                   <label className="flex-1 space-y-0.5">
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       Etapa
                     </span>
                     <select
@@ -615,7 +615,7 @@ export function PanelConversacion({
                   <p className="truncate text-xs text-muted-foreground">
                     {p.contenido}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {new Date(p.enviarAt).toLocaleString("es-MX", {
                       day: "2-digit",
                       month: "short",

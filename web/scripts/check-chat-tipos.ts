@@ -45,20 +45,20 @@ const renderizar = (canalesVisibles: typeof canales, tipoInicial?: TipoCanal, co
 
 const mixto = renderizar(canales);
 assert.ok(mixto.includes('aria-label="Tipo de canal"'));
-assert.ok(mixto.includes("Todos los canales de WhatsApp"));
+assert.ok(mixto.includes("Todos los estados") && !mixto.includes('aria-label="Filtrar por canal"'));
 assert.ok(mixto.includes("Contacto 1") && !mixto.includes("Contacto 2") && !mixto.includes("Contacto 3"));
 assert.ok(mixto.includes("Mis (1)"));
 assert.ok(!mixto.includes('<option value="2"') && !mixto.includes('<option value="3"'));
 
 const directoMessenger = renderizar(canales, "messenger");
 assert.ok(directoMessenger.includes("Contacto 2") && !directoMessenger.includes("Contacto 1"));
-assert.ok(directoMessenger.includes("Todos los canales de Messenger"));
-assert.ok(directoMessenger.includes("Messenger · Página"));
+assert.ok(!directoMessenger.includes('aria-label="Filtrar por canal"'));
+assert.ok(directoMessenger.includes('title="Messenger · Canal"') && directoMessenger.includes('>Canal</span>'));
 
 const soloInstagram = renderizar(canales.slice(2), undefined, conversaciones.slice(2));
 assert.ok(soloInstagram.includes('aria-label="Tipo de canal"'));
-assert.ok(soloInstagram.includes("Todos los canales de Instagram"));
-assert.ok(soloInstagram.includes("Instagram · Cuenta"));
+assert.ok(!soloInstagram.includes('aria-label="Filtrar por canal"'));
+assert.ok(soloInstagram.includes('title="Instagram · Canal"') && soloInstagram.includes('>Canal</span>'));
 assert.ok(soloInstagram.includes("Contacto 3") && !soloInstagram.includes("Contacto 1"));
 
 const canalesMeta = canales.slice(1);
