@@ -29,7 +29,7 @@ export function Toaster() {
         <div
           key={t.id}
           role={t.tipo === "error" ? "alert" : "status"}
-          className={`animate-toast pointer-events-auto max-w-xs rounded-lg px-4 py-2.5 text-sm shadow-pop ${t.detalle ? "self-center border border-success/30 bg-success/10 text-success text-center" : t.tipo === "error" ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"}`}
+          className={`animate-toast pointer-events-auto max-w-xs rounded-lg px-4 py-2.5 text-sm shadow-pop ${t.detalle ? "self-center border border-success/40 bg-card text-success text-center" : t.tipo === "error" ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"}`}
         >
           {t.detalle ? <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1"><p className="font-semibold">{t.msg}</p><p className="mt-1 break-words">{t.detalle}</p></div>
