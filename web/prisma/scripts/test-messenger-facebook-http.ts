@@ -44,7 +44,7 @@ try {
   assert.match(setCookie, /HttpOnly/i); assert.match(setCookie, /SameSite=strict/i); assert.match(setCookie, /Max-Age=600/);
   const datos = await inicio.json();
   assert.equal(datos.appId, "123");
-  assert.equal(datos.scope, "pages_show_list,pages_messaging,pages_manage_metadata,business_management");
+  assert.equal(datos.scope, "pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,business_management");
   const cookie = `${admin}; ${cookieDe(inicio)}`;
   const codigo = String(Date.now());
   for (const state of [undefined, "0".repeat(64)]) {
