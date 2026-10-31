@@ -2556,12 +2556,15 @@ model TallerOrden {
   version        Int      @default(1)
   aprobadoAt     DateTime? @map("aprobado_at") @db.Timestamptz(6)
   aprobadoMedio  String?  @map("aprobado_medio")
+  aprobacionResultado String? @map("aprobacion_resultado")
+  aprobacionToken String? @unique @map("aprobacion_token")
   creadoPorId    BigInt   @map("creado_por_id")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   vehiculo       TallerVehiculo @relation(fields: [vehiculoId, orgId], references: [id, orgId], onDelete: Restrict)
   conceptos      TallerOrdenConcepto[]
   cambios        TallerOrdenCambio[]
+  fotos          TallerFoto[]
 
   @@unique([id, orgId])
   @@unique([orgId, numero])
@@ -2589,10 +2592,25 @@ model TallerOrdenCambio {
   orgId    BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   ordenId  BigInt   @map("orden_id")
   estado   String
-  userId   BigInt   @map("user_id")
+  userId   BigInt?  @map("user_id")
+  actor    String   @default("equipo")
   creadoAt DateTime @default(now()) @map("creado_at") @db.Timestamptz(6)
   orden    TallerOrden @relation(fields: [ordenId, orgId], references: [id, orgId], onDelete: Cascade)
 
   @@index([orgId, ordenId, creadoAt])
   @@map("taller_orden_cambios")
+}
+
+model TallerFoto {
+  id        BigInt   @id @default(autoincrement())
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  ordenId   BigInt   @map("orden_id")
+  url       String
+  tipo      String
+  userId    BigInt   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  orden     TallerOrden @relation(fields: [ordenId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@index([orgId, ordenId, createdAt])
+  @@map("taller_fotos")
 }

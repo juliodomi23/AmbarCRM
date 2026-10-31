@@ -1,0 +1,23 @@
+import { randomBytes } from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
+import { conModulo } from "@/lib/con-modulo";
+import { db } from "@/lib/db";
+import { transaccionTenant } from "@/lib/retail-db";
+
+export const POST = conModulo("taller", {}, async (sesion, req: NextRequest, props: { params: Promise<{ id: string }> }) => {
+  const id = BigInt((await props.params).id), body = await req.json().catch(() => null), version = Number(body?.version);
+  if (id <= 0n || !Number.isSafeInteger(version) || version < 1) return NextResponse.json({ error: "Orden o versión inválida" }, { status: 400 });
+  const token = randomBytes(24).toString("hex");
+  const result = await transaccionTenant(sesion.orgId!, async (tx) => {
+    const [orden] = await tx.$queryRaw<{ id: bigint; estado: string; version: number }[]>`SELECT id, estado, version FROM taller_ordenes WHERE id = ${id} FOR UPDATE`;
+    if (!orden) return { error: "Orden no encontrada", status: 404 } as const;
+    if (orden.version !== version) return { error: "La orden cambió desde que la abriste", status: 409 } as const;
+    if (orden.estado !== "diagnostico") return { error: "La orden debe estar en diagnóstico para solicitar aprobación", status: 409 } as const;
+    await tx.tallerOrden.update({ where: { id }, data: { estado: "esperando_aprobacion", aprobacionToken: token, aprobacionResultado: null, version: { increment: 1 } } });
+    await tx.tallerOrdenCambio.create({ data: { ordenId: id, estado: "esperando_aprobacion", userId: sesion.userId } });
+    return { ok: true } as const;
+  });
+  if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+  const url = new URL(`/taller-aprobacion/${sesion.orgId}-${token}`, req.url).toString();
+  return NextResponse.json({ url });
+});

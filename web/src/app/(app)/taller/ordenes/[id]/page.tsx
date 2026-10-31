@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function TallerOrdenPage({ params }: { params: Promise<{ id: string }> }) {
   if (!(await moduloActivo("taller"))) redirect("/");
   const id = aBigInt((await params).id); if (!id) notFound();
-  const orden = await db.tallerOrden.findUnique({ where: { id }, include: { vehiculo: { include: { contacto: true } }, conceptos: true, cambios: { orderBy: { creadoAt: "asc" } } } });
+  const orden = await db.tallerOrden.findUnique({ where: { id }, include: { vehiculo: { include: { contacto: true } }, conceptos: true, cambios: { orderBy: { creadoAt: "asc" } }, fotos: { orderBy: { createdAt: "desc" } } } });
   if (!orden) notFound();
   return <TallerOrdenDetalle orden={serializar(orden)} />;
 }

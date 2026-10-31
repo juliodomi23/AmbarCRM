@@ -6,7 +6,7 @@ import { transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
 
 type Props = { params: Promise<{ id: string }> };
-const permitidas: Record<string, string[]> = { recibido: ["diagnostico", "cancelado"], diagnostico: ["esperando_aprobacion", "en_reparacion", "cancelado"], esperando_aprobacion: ["diagnostico", "en_reparacion", "cancelado"], en_reparacion: ["listo", "cancelado"], listo: ["entregado", "en_reparacion"], entregado: [], cancelado: [] };
+const permitidas: Record<string, string[]> = { recibido: ["diagnostico", "cancelado"], diagnostico: ["esperando_aprobacion", "en_reparacion", "cancelado"], esperando_aprobacion: ["diagnostico", "cancelado"], en_reparacion: ["listo", "cancelado"], listo: ["entregado", "en_reparacion"], entregado: [], cancelado: [] };
 const texto = (v: unknown) => String(v ?? "").trim();
 function parseConceptos(value: unknown) {
   if (!Array.isArray(value) || value.length > 100) return null;
@@ -22,7 +22,7 @@ function parseConceptos(value: unknown) {
 export const GET = conModulo("taller", {}, async (_sesion, _req: NextRequest, props: Props) => {
   const id = BigInt((await props.params).id);
   if (id <= 0n) return NextResponse.json({ error: "Orden inválida" }, { status: 400 });
-  const orden = await db.tallerOrden.findUnique({ where: { id }, include: { vehiculo: { include: { contacto: true } }, conceptos: true, cambios: { orderBy: { creadoAt: "asc" } } } });
+  const orden = await db.tallerOrden.findUnique({ where: { id }, include: { vehiculo: { include: { contacto: true } }, conceptos: true, cambios: { orderBy: { creadoAt: "asc" } }, fotos: { orderBy: { createdAt: "desc" } } } });
   return orden ? NextResponse.json(serializar({ orden })) : NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
 });
 
@@ -42,18 +42,17 @@ export const PATCH = conModulo("taller", {}, async (sesion, req: NextRequest, pr
     if (body.diagnostico !== undefined) data.diagnostico = texto(body.diagnostico).slice(0, 5000);
     if (body.mecanicoId !== undefined) data.mecanicoId = body.mecanicoId ? BigInt(String(body.mecanicoId)) : null;
     if (body.fechaPromesa !== undefined) { const f = body.fechaPromesa ? new Date(String(body.fechaPromesa)) : null; if (f && !Number.isFinite(+f)) return { error: "Fecha promesa inválida", status: 400 } as const; data.fechaPromesa = f; }
-    let total: number | undefined;
     if (body.conceptos !== undefined) {
       const conceptos = parseConceptos(body.conceptos);
       if (!conceptos) return { error: "Conceptos inválidos", status: 400 } as const;
-      total = conceptos.reduce((sum, c) => sum + Math.round(c.cantidad * c.precioUnitario * 100) / 100, 0);
+      const total = conceptos.reduce((sum, c) => sum + Math.round(c.cantidad * c.precioUnitario * 100) / 100, 0);
       data.total = new Prisma.Decimal(total);
       await tx.tallerOrdenConcepto.deleteMany({ where: { ordenId: id } });
       if (conceptos.length) await tx.tallerOrdenConcepto.createMany({ data: conceptos.map((c) => ({ ordenId: id, tipo: c.tipo, descripcion: c.descripcion, cantidad: new Prisma.Decimal(c.cantidad), precioUnitario: new Prisma.Decimal(c.precioUnitario) })) });
     }
     await tx.tallerOrden.update({ where: { id }, data: { ...data, version: { increment: 1 } } });
     if (siguiente !== actual.estado) await tx.tallerOrdenCambio.create({ data: { ordenId: id, estado: siguiente, userId: sesion.userId } });
-    const orden = await tx.tallerOrden.findUnique({ where: { id }, include: { vehiculo: { include: { contacto: true } }, conceptos: true, cambios: { orderBy: { creadoAt: "asc" } } } });
+    const orden = await tx.tallerOrden.findUnique({ where: { id }, include: { vehiculo: { include: { contacto: true } }, conceptos: true, cambios: { orderBy: { creadoAt: "asc" } }, fotos: { orderBy: { createdAt: "desc" } } } });
     return { orden } as const;
   });
   return "error" in result ? NextResponse.json({ error: result.error }, { status: result.status }) : NextResponse.json(serializar(result));

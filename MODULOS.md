@@ -125,6 +125,10 @@ El tablero `/taller/ordenes` organiza órdenes recibidas, diagnóstico, aprobaci
 reparación, listas, entregadas y canceladas. Cada orden conserva el historial de
 estados, conceptos de mano de obra/refacciones y total calculado en servidor.
 El control de versión rechaza cambios basados en una orden desactualizada.
+La orden permite crear una liga temporal de aprobación pública; aprobar inicia la
+reparación y solicitar revisión devuelve la orden a diagnóstico. El equipo comparte
+esa liga manualmente: esta entrega no manda WhatsApp. Las fotos se guardan con el
+storage de medios existente; se aceptan JPG, PNG y WebP de hasta 8 MB.
 
 ## Módulo Inmobiliaria
 
