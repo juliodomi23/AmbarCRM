@@ -25,7 +25,7 @@ export function TallerVehiculoDetalle({ vehiculo: inicial }: { vehiculo: Vehicul
   }
   return <main className="mx-auto max-w-5xl space-y-5 p-6">
     <Link className="text-sm text-amber-800 hover:underline" href="/taller">← Volver al taller</Link>
-    <EncabezadoPagina titulo={`${vehiculo.marca} ${vehiculo.modelo}`} descripcion={`Ficha de ${vehiculo.placa}`} acciones={<Link className="rounded-lg border px-3 py-2 text-sm" href={`/clientes/${vehiculo.contacto.id}`}>Abrir ficha del cliente</Link>} />
+    <EncabezadoPagina titulo={`${vehiculo.marca} ${vehiculo.modelo}`} descripcion={`Ficha de ${vehiculo.placa}`} acciones={<><Link className="rounded-lg border px-3 py-2 text-sm" href={`/clientes/${vehiculo.contacto.id}`}>Abrir ficha del cliente</Link><Link className="rounded-lg bg-amber-700 px-3 py-2 text-sm text-white" href={`/taller/ordenes?vehiculoId=${vehiculo.id}`}>Crear orden</Link></>} />
     <section className="rounded-xl border bg-white p-4"><h2 className="font-semibold">Propietario</h2><p className="mt-1">{vehiculo.contacto.nombre}</p><p className="text-sm text-slate-600">{vehiculo.contacto.telefono ?? "Sin teléfono"}{vehiculo.contacto.email ? ` · ${vehiculo.contacto.email}` : ""}</p></section>
     <form onSubmit={guardar} className="grid gap-3 rounded-xl border bg-white p-4 sm:grid-cols-2 lg:grid-cols-3">
       <Campo label="Placa" name="placa" defaultValue={vehiculo.placa} required />

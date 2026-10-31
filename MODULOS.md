@@ -121,6 +121,11 @@ marca, modelo, año, color, kilometraje y notas. Placa y VIN son únicos por
 organización; la información está aislada con RLS. Desde la ficha del cliente se
 puede iniciar el registro de uno de sus vehículos.
 
+El tablero `/taller/ordenes` organiza órdenes recibidas, diagnóstico, aprobación,
+reparación, listas, entregadas y canceladas. Cada orden conserva el historial de
+estados, conceptos de mano de obra/refacciones y total calculado en servidor.
+El control de versión rechaza cambios basados en una orden desactualizada.
+
 ## Módulo Inmobiliaria
 
 Inmobiliaria agrega `/inmobiliaria` con propiedades para venta o renta. Registra
