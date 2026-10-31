@@ -592,6 +592,7 @@ model Contacto {
   solicitudesResena    SolicitudResena[]
   campanasDestinatario CampanaDestinatario[]
   contratos            Contrato[]
+  tallerVehiculos      TallerVehiculo[]
 
   @@unique([orgId, telefono])
   @@unique([id, orgId])
@@ -2512,4 +2513,29 @@ model EventoFactura {
   @@unique([orgId, eventoId])
   @@index([orgId, facturaId, createdAt])
   @@map("eventos_factura")
+}
+
+model TallerVehiculo {
+  id           BigInt   @id @default(autoincrement())
+  orgId        BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contactoId   BigInt   @map("contacto_id")
+  placa        String
+  vin          String?
+  marca        String
+  modelo       String
+  anio         Int?
+  color        String?
+  kilometraje  Int      @default(0)
+  notas        String?
+  version      Int      @default(1)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  contacto     Contacto @relation(fields: [contactoId, orgId], references: [id, orgId], onDelete: Restrict)
+
+  @@unique([id, orgId])
+  @@unique([orgId, placa])
+  @@unique([orgId, vin])
+  @@index([orgId, contactoId])
+  @@index([orgId, marca, modelo])
+  @@map("taller_vehiculos")
 }

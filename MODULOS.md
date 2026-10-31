@@ -111,6 +111,16 @@ del inventario disponible. El seed `seed-demo-automotriz.mjs` crea la
 organización `demo-auto`, activa Automotriz y Citas, carga seis vehículos, dos
 asesores y tres pruebas de manejo.
 
+## Taller mecánico
+
+Taller (`taller`, `/taller`) es un módulo independiente de Automotriz y nace
+apagado por organización. Automotriz mantiene el inventario de unidades en venta;
+Taller registra los vehículos que pertenecen a los clientes y entran a servicio.
+El vehículo de taller usa el contacto existente como cliente y guarda placa, VIN,
+marca, modelo, año, color, kilometraje y notas. Placa y VIN son únicos por
+organización; la información está aislada con RLS. Desde la ficha del cliente se
+puede iniciar el registro de uno de sus vehículos.
+
 ## Módulo Inmobiliaria
 
 Inmobiliaria agrega `/inmobiliaria` con propiedades para venta o renta. Registra
