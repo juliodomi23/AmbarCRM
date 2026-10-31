@@ -119,3 +119,33 @@ uso, cambios de conceptos y aprobación, módulo apagado, cobros y cancelaciones
 pagos, entrega con saldo y folios por organización bajo concurrencia. No simulan una
 foto real de 7 MB; esa verificación sigue pendiente en un entorno con PostgreSQL y
 servidor local disponibles.
+
+## Demo de taller
+
+`web/scripts/seed-demo-taller.mjs` crea la organización `demo-taller` ("Taller Rivera") con los
+módulos Taller y Citas activos: 3 usuarios del equipo, 7 vehículos de 6 clientes, 7 órdenes en
+todos los estados (una con saldo pendiente, una esperando aprobación con enlace público), 6
+refacciones (dos con existencia baja), pagos, recordatorios (uno vencido), 3 citas, y chats,
+oportunidades, tareas y reseñas del perfil `PERFIL_TALLER`.
+
+```bash
+ALLOW_DEMO_SEED=1 node scripts/seed-demo-taller.mjs [correo] [contraseña]
+```
+
+Es idempotente y solo toca `demo-taller`: reinicia pagos, recordatorios, órdenes, vehículos y
+refacciones de esa organización y recalcula las fechas respecto a hoy; conviene correrlo antes de
+cada demo. Imprime el enlace de aprobación de la orden que espera al cliente (`/taller-aprobacion/…`).
+Requiere `actualizaciones.sql` aplicado y se niega a correr con `NODE_ENV=production`.
+
+## Preparar la base de la prueba
+
+`npm run check:taller` espera `taller_test` ya preparada. `actualizaciones.sql` usa valores de
+enum nuevos en el mismo lote, así que `pg` no puede aplicarlo en una sola transacción: cárgalo con
+`psql` (quita el BOM inicial de `actualizaciones.sql`):
+
+```bash
+createdb taller_test
+for f in ../schema.sql prisma/sql/multi-tenant.sql prisma/sql/actualizaciones.sql; do
+  sed 's/^\xEF\xBB\xBF//' "$f" | psql -d taller_test -q
+done
+```

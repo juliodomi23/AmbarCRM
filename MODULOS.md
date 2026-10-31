@@ -895,3 +895,9 @@ novegabienesraices.com y clientes sin contrato (Coparmex es alianza).
 Pruebas: `scripts/check-servidores.ts`, auditoría dinámica ampliada
 `prisma/scripts/test-aislamiento.ts`, y `prisma/scripts/test-servidores-e2e.ts`.
 Las FK compuestas impiden asociar heartbeats o contratos con servidores ajenos.
+
+## Demo del giro taller
+
+`ALLOW_DEMO_SEED=1 node scripts/seed-demo-taller.mjs` crea `demo-taller` (Taller Rivera) con
+Taller y Citas activos y datos de ejemplo en todos los estados de orden. Ver
+[docs/TALLER-MECANICO.md](docs/TALLER-MECANICO.md#demo-de-taller).

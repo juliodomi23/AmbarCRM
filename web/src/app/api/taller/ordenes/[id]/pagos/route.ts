@@ -4,6 +4,7 @@ import { conModulo } from "@/lib/con-modulo";
 import { db } from "@/lib/db";
 import { transaccionTenant } from "@/lib/retail-db";
 import { aBigInt } from "@/lib/ids";
+import { serializar } from "@/lib/serialize";
 
 const metodos = ["efectivo", "tarjeta", "transferencia", "otro"];
 export const GET = conModulo("taller", {}, async (_sesion, _req: NextRequest, props: { params: Promise<{ id: string }> }) => {
@@ -12,7 +13,7 @@ export const GET = conModulo("taller", {}, async (_sesion, _req: NextRequest, pr
   const [orden, pagos] = await Promise.all([db.tallerOrden.findUnique({ where: { id }, select: { total: true } }), db.tallerPago.findMany({ where: { ordenId: id }, orderBy: { createdAt: "asc" } })]);
   if (!orden) return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
   const pagado = pagos.reduce((sum, p) => sum.plus(p.monto), new Prisma.Decimal(0));
-  return NextResponse.json({ pagos, total: orden.total, pagado, saldo: Prisma.Decimal.max(new Prisma.Decimal(0), new Prisma.Decimal(orden.total).minus(pagado)) });
+  return NextResponse.json(serializar({ pagos, total: orden.total, pagado, saldo: Prisma.Decimal.max(new Prisma.Decimal(0), new Prisma.Decimal(orden.total).minus(pagado)) }));
 });
 export const POST = conModulo("taller", {}, async (sesion, req: NextRequest, props: { params: Promise<{ id: string }> }) => {
   if (sesion.userId === null) return NextResponse.json({ error: "Sesión inválida" }, { status: 401 });
@@ -30,5 +31,5 @@ export const POST = conModulo("taller", {}, async (sesion, req: NextRequest, pro
     const nuevo = await tx.tallerPago.create({ data: { ordenId: id, monto: pago, metodo, userId } });
     return { pago: nuevo, saldo: saldo.minus(pago) } as const;
   });
-  return "error" in result ? NextResponse.json({ error: result.error }, { status: result.status }) : NextResponse.json(result, { status: 201 });
+  return "error" in result ? NextResponse.json({ error: result.error }, { status: result.status }) : NextResponse.json(serializar(result), { status: 201 });
 });

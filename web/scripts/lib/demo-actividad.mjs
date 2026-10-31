@@ -123,7 +123,10 @@ export async function sembrarActividadDemo(tx, org, perfil) {
         enviadoPor: tipo === "entrante" || tipo === "nota" ? null : (datos.responsableId ?? admin.id),
         timestamp: hace(minutos),
       };
-      await tx.mensaje.upsert({ where: { waMessageId }, update: datosMensaje, create: { ...datosMensaje, waMessageId } });
+      // La llave única es (canalId, waMessageId) y canalId es null: un upsert no deduplica con null, así que se busca a mano.
+      const mensajeExistente = await tx.mensaje.findFirst({ where: { waMessageId, canalId: null } });
+      if (mensajeExistente) await tx.mensaje.update({ where: { id: mensajeExistente.id }, data: datosMensaje });
+      else await tx.mensaje.create({ data: { ...datosMensaje, waMessageId } });
     }
   }
 

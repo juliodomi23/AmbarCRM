@@ -224,3 +224,33 @@ export const PERFIL_ACADEMIA = {
   ],
   resenas: resenas("demo-academia-faro"),
 };
+
+export const PERFIL_TALLER = {
+  etiquetas: { ...ETIQUETAS_BASE, Garantía: "#0891B2", Flotilla: "#9333EA" },
+  embudo: { nombre: "Servicios", etapas: [["Consulta", "normal", "#94A3B8"], ["Cotización enviada", "normal", "#0891B2"], ["En taller", "normal", "#D97706"], ["Entregado", "ganado", "#16A34A"]] },
+  contactos: [
+    { nombre: "Roberto Salinas", telefono: "5554000001", etiquetas: ["Cliente frecuente"] },
+    { nombre: "Karla Domínguez", telefono: "5554000002", etiquetas: ["Seguimiento", "Interesado"] },
+    { nombre: "Fernando Ibarra", telefono: "5554000003", etiquetas: ["Pendiente de pago"] },
+    { nombre: "Daniela Ochoa", telefono: "5554000004", etiquetas: ["Nuevo"] },
+    { nombre: "Transportes del Sur", telefono: "5554000005", etiquetas: ["Flotilla", "Cliente frecuente"] },
+    { nombre: "Alberto Quiroz", telefono: "5554000006", etiquetas: ["Garantía"] },
+  ],
+  oportunidades: [
+    [3, "Falla al encender · Daniela Ochoa", 1800, 0, 1], [1, "Frenos · Karla Domínguez", 3200, 1, 2],
+    [4, "Servicio de flotilla · Transportes del Sur", 18500, 2, 4], [0, "Servicio mayor · Roberto Salinas", 4350, 2, 3],
+    [5, "Cambio de aceite · Alberto Quiroz", 1450, "ganado", 9], [2, "Suspensión · Fernando Ibarra", 7800, "perdido", 20],
+  ],
+  conversaciones: [
+    { contacto: 3, noLeidos: 2, bot: true, atiende: null, mensajes: [["entrante", "Hola, mi Aveo se apaga en los semáforos, ¿pueden revisarlo hoy?", 35], ["saliente", "Claro, puedes traerlo antes de las 5 pm para revisarlo", 33], ["entrante", "Voy para allá en una hora", 20]] },
+    { contacto: 1, atiende: 0, bot: false, noLeidos: 1, mensajes: [["entrante", "¿Ya quedó la cotización de los frenos de la Hilux?", 80], ["saliente", "Te acabo de mandar el enlace para que la revises y apruebes", 70], ["entrante", "Lo reviso en un momento", 60]] },
+    { contacto: 0, estado: "pendiente", atiende: 0, bot: false, mensajes: [["saliente", "Tu Versa ya está lista, solo falta liquidar el saldo", 150], ["entrante", "Paso por ella mañana temprano", 120]] },
+    { contacto: 5, estado: "cerrada", csat: 5, atiende: 0, mensajes: [["saliente", "Listo, ya entregamos tu Ranger. Te recordamos el próximo servicio en 5,000 km", 5800], ["entrante", "Gracias, quedó perfecta", 5780]] },
+  ],
+  tareas: [
+    ["Llamar a Fernando Ibarra por la autorización de suspensión", "vencida", 5], ["Pedir filtros de aire y batería al proveedor", "hoy", null],
+    ["Revisar cotización de flotilla con Transportes del Sur", "proxima", 2], ["Dar seguimiento a la cotización de frenos de Karla", "proxima", 1],
+    ["Actualizar lista de precios de refacciones", "sinfecha", null], ["Entregar factura del servicio de Alberto", "completada", 4],
+  ],
+  resenas: resenas("demo-taller-rivera"),
+};
