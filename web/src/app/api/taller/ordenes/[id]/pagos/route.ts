@@ -22,7 +22,7 @@ export const POST = conModulo("taller", {}, async (sesion, req: NextRequest, pro
   const result = await transaccionTenant(sesion.orgId!, async (tx) => {
     const [orden] = await tx.$queryRaw<{ id: bigint; estado: string; total: Prisma.Decimal }[]>`SELECT id, estado, total FROM taller_ordenes WHERE id = ${id} FOR UPDATE`;
     if (!orden) return { error: "Orden no encontrada", status: 404 } as const;
-    if (["cancelado", "entregado"].includes(orden.estado)) return { error: "No se puede registrar pago en una orden cerrada", status: 409 } as const;
+    if (orden.estado === "cancelado") return { error: "No se puede registrar pago en una orden cancelada", status: 409 } as const;
     const agregado = await tx.tallerPago.aggregate({ where: { ordenId: id }, _sum: { monto: true } });
     const saldo = new Prisma.Decimal(orden.total).minus(agregado._sum.monto ?? 0);
     const pago = new Prisma.Decimal(monto).toDecimalPlaces(2);
