@@ -17,5 +17,6 @@ export default async function TallerOrdenPage({ params }: { params: Promise<{ id
     getSesion(),
   ]);
   if (!orden) notFound();
-  return <TallerOrdenDetalle orden={serializar(orden)} refacciones={serializar(refacciones)} mecanicos={serializar(mecanicos)} esAdmin={sesion?.user?.rol === "admin"} />;
+  const rutaAprobacion = orden.aprobacionToken && sesion?.user?.orgId ? `/taller-aprobacion/${sesion.user.orgId}-${orden.aprobacionToken}` : "";
+  return <TallerOrdenDetalle orden={serializar(orden)} refacciones={serializar(refacciones)} mecanicos={serializar(mecanicos)} esAdmin={sesion?.user?.rol === "admin"} rutaAprobacion={rutaAprobacion} />;
 }
