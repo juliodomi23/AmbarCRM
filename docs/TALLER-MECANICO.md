@@ -23,10 +23,13 @@ La persona cliente es el contacto existente para conservar su teléfono e histor
 | `entregado` | Vehículo devuelto al cliente. |
 | `cancelado` | Orden cancelada; las refacciones reservadas se regresan al inventario. |
 
-Las transiciones inválidas se rechazan. Cada cambio guarda fecha y actor (miembro
-del equipo o cliente). Las ediciones de orden validan `version`; el servidor vuelve
-a calcular el total desde cantidades y precios de conceptos. Al registrar o editar
-el kilometraje, la ficha del vehículo solo se actualiza si ese valor es mayor.
+Las transiciones inválidas se rechazan. Solo la API de aprobación genera el enlace
+y mueve la orden a `esperando_aprobacion`. Cada cambio de estado guarda fecha y
+actor (miembro del equipo o cliente). Las ediciones validan `version`; el servidor
+recalcula el total desde cantidades y precios. Si se cambian conceptos tras una
+aprobación, la orden vuelve a diagnóstico y requiere una aprobación nueva. El total
+no puede quedar por debajo de los pagos registrados. El kilometraje de la ficha solo
+sube cuando el valor capturado es mayor.
 
 ## Tablas
 
@@ -58,20 +61,61 @@ eventos de calendario automáticamente. La ficha de cliente sí reutiliza el con
 y su teléfono.
 
 Las fotos aceptan JPG, PNG y WebP de hasta 8 MB y se sirven con el storage de medios
-existente, bajo la sesión y organización correspondientes.
+existente, bajo la sesión y organización correspondientes. El proxy de Next admite
+cuerpos de hasta 12 MB para que una foto de 8 MB en base64 llegue completa a la API.
 
 Los pagos se guardan directamente en la orden porque Caja solo cobra ventas de
 mostrador y Cobros requiere un contrato. No crean movimientos en esos módulos.
-Entregar con saldo exige confirmación expresa de un administrador; el sistema no
-permite registrar pagos mayores que el saldo.
+Se pueden registrar pagos después de entregar mientras haya saldo; una orden
+cancelada queda cerrada. Entregar con saldo exige confirmación expresa de un
+administrador. Cancelar una orden con pagos también requiere confirmación de un
+administrador; los pagos quedan visibles y cualquier reembolso se resuelve fuera del
+sistema. No se permiten pagos mayores al saldo.
+
+El folio de orden es consecutivo dentro de cada organización. Un contador por tenant
+se actualiza de forma atómica al crear la orden; la migración lo inicializa desde el
+mayor folio existente y conserva los folios históricos.
 
 La lista `/taller/recordatorios` compara fecha y kilometraje del vehículo y separa
 próximos de vencidos. Crear el recordatorio es manual. No hay cron ni envío de
 WhatsApp; no existe interruptor, plantilla ni opt-in configurado para Taller.
 
+La asignación `mecanico_id` valida que el usuario exista dentro de la organización
+con `referenciaPropia`; no exige que el usuario tenga un puesto específico.
+
 ## Migración y comprobaciones
 
-Las tablas se crean de forma idempotente en `web/prisma/sql/actualizaciones.sql` y
-se reflejan en `web/prisma/schema.prisma`. `npm run check:taller` requiere una base
-PostgreSQL aislada en `localhost/taller_test`, con esas actualizaciones aplicadas;
-el script rechaza otros hosts o bases y limpia las organizaciones de prueba.
+Las tablas se crean en `web/prisma/sql/actualizaciones.sql` y se reflejan en
+`web/prisma/schema.prisma`. La prueba crea `taller_test` si no existe, aplica
+`schema.sql`, `multi-tenant.sql` y `actualizaciones.sql`, y solo acepta conexiones a
+localhost. Requiere PostgreSQL local, permiso de crear bases en `postgres`, el rol
+`crm_app` creado por la migración y el servidor Next local.
+
+En PowerShell, desde `web`, configura las conexiones de prueba (sustituye la clave
+local de administrador):
+
+```powershell
+$env:DATABASE_URL = "postgresql://crm_app:CAMBIA_ESTA_CLAVE@127.0.0.1:5432/taller_test?schema=public"
+$env:ADMIN_DATABASE_URL = "postgresql://postgres:TU_CLAVE_LOCAL@127.0.0.1:5432/postgres?schema=public"
+$env:NEXTAUTH_SECRET = "secreto-local-solo-para-pruebas"
+$env:APP_URL = "http://127.0.0.1:3011"
+npm run dev -- --port 3011
+```
+
+En otra terminal PowerShell, dentro de `web`, define las mismas variables y corre:
+
+```powershell
+$env:DATABASE_URL = "postgresql://crm_app:CAMBIA_ESTA_CLAVE@127.0.0.1:5432/taller_test?schema=public"
+$env:ADMIN_DATABASE_URL = "postgresql://postgres:TU_CLAVE_LOCAL@127.0.0.1:5432/postgres?schema=public"
+$env:NEXTAUTH_SECRET = "secreto-local-solo-para-pruebas"
+$env:APP_URL = "http://127.0.0.1:3011"
+npm run check:taller
+```
+
+El script rechaza URLs fuera de `localhost/taller_test` (app) y `localhost/postgres`
+(admin). No elimina una base existente. Limpia sus organizaciones de fixture al
+finalizar. Las peticiones HTTP cubren página/API pública sin sesión, token de un solo
+uso, cambios de conceptos y aprobación, módulo apagado, cobros y cancelaciones con
+pagos, entrega con saldo y folios por organización bajo concurrencia. No simulan una
+foto real de 7 MB; esa verificación sigue pendiente en un entorno con PostgreSQL y
+servidor local disponibles.

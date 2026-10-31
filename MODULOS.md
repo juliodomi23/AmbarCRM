@@ -125,16 +125,21 @@ El tablero `/taller/ordenes` organiza órdenes recibidas, diagnóstico, aprobaci
 reparación, listas, entregadas y canceladas. Cada orden conserva el historial de
 estados, conceptos de mano de obra/refacciones y total calculado en servidor.
 El control de versión rechaza cambios basados en una orden desactualizada.
-La orden permite crear una liga de un solo uso para aprobación pública; aprobar inicia la
-reparación y solicitar revisión devuelve la orden a diagnóstico. El equipo comparte
-esa liga manualmente: esta entrega no manda WhatsApp. Las fotos se guardan con el
-storage de medios existente; se aceptan JPG, PNG y WebP de hasta 8 MB.
+La orden permite crear una liga de un solo uso para aprobación pública; cambiar
+conceptos después de aprobarla la regresa a diagnóstico y exige una aprobación nueva.
+El equipo comparte esa liga manualmente: esta entrega no manda WhatsApp. Las fotos
+se guardan con el storage de medios existente; se aceptan JPG, PNG y WebP de hasta
+8 MB (cuerpo máximo del proxy: 12 MB).
 El catálogo de Refacciones muestra existencias bajas; agregar una pieza desde el
 catálogo consume stock bajo bloqueo transaccional, y cancelar una orden lo repone.
 Los pagos quedan ligados directamente a la orden. No se conectan a Caja/Cobros:
 Caja cobra ventas y Cobros exige un contrato, así que ninguno admite actualmente
 una orden de reparación como origen. Entregar con saldo pendiente exige que un
-administrador confirme esa excepción.
+administrador confirme esa excepción. Se permiten pagos posteriores a la entrega
+mientras quede saldo. Cancelar con pagos requiere confirmación administrativa; los
+reembolsos se resuelven fuera del sistema y los pagos quedan visibles. Los folios son
+consecutivos por organización; asignar un mecánico valida que el usuario pertenezca
+a la organización, sin filtrar por puesto.
 La etapa de recordatorios aparece en `/taller/recordatorios` como lista de próximos
 y vencidos, comparando fecha y kilometraje actual. Al entregar una orden, se puede
 crear manualmente un recordatorio para el vehículo. No se envían mensajes ni se
