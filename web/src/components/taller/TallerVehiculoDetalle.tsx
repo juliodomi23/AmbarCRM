@@ -38,6 +38,6 @@ export function TallerVehiculoDetalle({ vehiculo: inicial }: { vehiculo: Vehicul
       <label className="space-y-1 text-sm sm:col-span-2"><span className="font-medium text-slate-600">Notas</span><textarea name="notas" className="w-full rounded-lg border p-2" rows={3} defaultValue={vehiculo.notas ?? ""} /></label>
       <div className="flex items-end"><Boton type="submit" disabled={busy}>{busy ? "Guardando…" : "Guardar cambios"}</Boton></div>
     </form>
-    <section className="rounded-xl border bg-white p-4"><h2 className="font-semibold">Historial de órdenes</h2><p className="mt-2 text-sm text-slate-500">Aún no hay órdenes de servicio.</p></section>
+    <section className="rounded-xl border bg-white p-4"><h2 className="font-semibold">Historial de órdenes</h2>{vehiculo.ordenes.length ? <ul className="mt-2 divide-y">{vehiculo.ordenes.map((orden) => <li key={orden.id} className="py-2"><Link className="font-medium text-amber-800 hover:underline" href={`/taller/ordenes/${orden.id}`}>Orden #{orden.numero}</Link><span className="ml-2 text-sm capitalize text-slate-600">{orden.estado.replaceAll("_", " ")}</span><span className="ml-2 text-sm text-slate-500">{new Date(orden.createdAt).toLocaleDateString("es-MX")}</span></li>)}</ul> : <p className="mt-2 text-sm text-slate-500">Aún no hay órdenes de servicio.</p>}</section>
   </main>;
 }
