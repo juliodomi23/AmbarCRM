@@ -30,7 +30,7 @@ export function TallerVehiculos({ iniciales, contactos, contactoInicial = "" }: 
     finally { setBusy(false); }
   }
   return <main className="mx-auto max-w-6xl space-y-5 p-6">
-    <EncabezadoPagina titulo="Taller mecánico" descripcion="Vehículos de tus clientes y su historial de servicio." acciones={<Boton onClick={() => setOpen(!open)}>{open ? "Cerrar" : "Agregar vehículo"}</Boton>} />
+    <EncabezadoPagina titulo="Taller mecánico" descripcion="Vehículos de tus clientes y su historial de servicio." acciones={<><Link href="/taller/ordenes" className="rounded-lg border px-3 py-2 text-sm">Órdenes</Link><Link href="/taller/refacciones" className="rounded-lg border px-3 py-2 text-sm">Refacciones</Link><Link href="/taller/recordatorios" className="rounded-lg border px-3 py-2 text-sm">Recordatorios</Link><Boton onClick={() => setOpen(!open)}>{open ? "Cerrar" : "Agregar vehículo"}</Boton></>} />
     {open && <form onSubmit={crear} className="grid gap-3 rounded-xl border bg-white p-4 sm:grid-cols-2 lg:grid-cols-3">
       <label className="text-sm">Cliente<select className="mt-1 w-full rounded-lg border p-2" required value={form.contactoId} onChange={(e) => setForm({ ...form, contactoId: e.target.value })}><option value="">Selecciona un cliente</option>{contactos.map((c) => <option key={c.id} value={c.id}>{c.nombre}{c.telefono ? ` · ${c.telefono}` : ""}</option>)}</select></label>
       {([["placa", "Placa"], ["marca", "Marca"], ["modelo", "Modelo"], ["anio", "Año"], ["vin", "VIN"], ["color", "Color"], ["kilometraje", "Kilometraje"]] as const).map(([key, label]) => <Campo key={key} label={label} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} required={key === "placa" || key === "marca" || key === "modelo"} />)}

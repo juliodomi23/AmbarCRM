@@ -28,8 +28,10 @@ export const PATCH = conModulo("taller", {}, async (_sesion, req: NextRequest, p
   if (!placa || !marca || !modelo || !Number.isSafeInteger(kilometraje) || kilometraje < 0) return error("Placa, marca, modelo y kilometraje válido son obligatorios");
   const anio = body.anio === "" || body.anio == null ? null : Number(body.anio);
   if (anio !== null && (!Number.isInteger(anio) || anio < 1886 || anio > new Date().getFullYear() + 1)) return error("Año inválido");
+  const vin = String(body.vin ?? "").trim().toUpperCase();
+  if (vin && (vin.length > 40 || !/^[A-Z0-9]+$/.test(vin))) return error("VIN inválido");
   try {
-    const result = await db.tallerVehiculo.updateMany({ where: { id, version }, data: { placa, marca, modelo, anio, vin: String(body.vin ?? "").trim().toUpperCase() || null, color: String(body.color ?? "").trim() || null, kilometraje, notas: String(body.notas ?? "").trim() || null, version: { increment: 1 } } });
+    const result = await db.tallerVehiculo.updateMany({ where: { id, version }, data: { placa, marca, modelo, anio, vin: vin || null, color: String(body.color ?? "").trim() || null, kilometraje, notas: String(body.notas ?? "").trim() || null, version: { increment: 1 } } });
     if (!result.count) return error("El vehículo cambió desde que lo abriste. Recarga y vuelve a intentar.", 409);
     const vehiculo = await db.tallerVehiculo.findUnique({ where: { id }, include: { contacto: true, ordenes: { orderBy: { createdAt: "desc" }, take: 50 } } });
     return NextResponse.json(serializar({ vehiculo }));

@@ -1,0 +1,22 @@
+"use client";
+
+import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Boton, Campo, EncabezadoPagina } from "@/components/ui";
+import { toast } from "@/components/Toaster";
+
+type Refaccion = { id: string; nombre: string; codigo: string; existencia: number; costo: string; precio: string; minimo: number; version: number };
+const vacia = { nombre: "", codigo: "", existencia: "0", costo: "0", precio: "0", minimo: "0" };
+export function TallerRefacciones({ iniciales }: { iniciales: Refaccion[] }) {
+  const [lista, setLista] = useState(iniciales), [form, setForm] = useState(vacia), [open, setOpen] = useState(false), [busy, setBusy] = useState(false); const router = useRouter();
+  async function crear(e: React.FormEvent<HTMLFormElement>) { e.preventDefault(); setBusy(true); try { const r = await fetch("/api/taller/refacciones", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) }); const d = await r.json(); if (!r.ok) throw new Error(d.error); setLista([d.refaccion, ...lista]); setForm(vacia); setOpen(false); toast("Refacción agregada"); router.refresh(); } catch (e) { toast(e instanceof Error ? e.message : "No se pudo guardar", "error"); } finally { setBusy(false); } }
+  async function guardar(ref: Refaccion, existencia: number) { const r = await fetch(`/api/taller/refacciones/${ref.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...ref, existencia }) }); const d = await r.json(); if (!r.ok) { toast(d.error, "error"); return; } setLista(lista.map((x) => x.id === ref.id ? d.refaccion : x)); toast("Existencia actualizada"); }
+  const bajas = lista.filter((r) => r.existencia <= r.minimo);
+  return <main className="mx-auto max-w-6xl space-y-5 p-6"><EncabezadoPagina titulo="Refacciones" descripcion="Existencias descontadas al agregarse a una orden de servicio." acciones={<><Link className="rounded-lg border px-3 py-2 text-sm" href="/taller">Taller</Link><Boton onClick={() => setOpen(!open)}>{open ? "Cerrar" : "Agregar refacción"}</Boton></>} />
+    {bajas.length > 0 && <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm"><b>Existencia baja:</b> {bajas.map((x) => `${x.nombre} (${x.existencia})`).join(" · ")}</div>}
+    {open && <form onSubmit={crear} className="grid gap-3 rounded-xl border bg-white p-4 sm:grid-cols-3">{([["nombre", "Nombre"], ["codigo", "Código"], ["existencia", "Existencia"], ["costo", "Costo"], ["precio", "Precio"], ["minimo", "Mínimo"]] as const).map(([k, label]) => <Campo key={k} label={label} type={k === "existencia" || k === "minimo" ? "number" : k === "costo" || k === "precio" ? "number" : "text"} step={k === "costo" || k === "precio" ? "0.01" : undefined} min={k === "existencia" || k === "minimo" || k === "costo" || k === "precio" ? "0" : undefined} value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} required={k !== "minimo" && k !== "existencia"} />)}<Boton disabled={busy}>{busy ? "Guardando…" : "Guardar"}</Boton></form>}
+    <div className="overflow-hidden rounded-xl border bg-white"><table className="w-full text-left text-sm"><thead className="bg-slate-50"><tr><th className="p-3">Refacción</th><th className="p-3">Código</th><th className="p-3">Costo / precio</th><th className="p-3">Existencia</th><th className="p-3">Mínimo</th><th className="p-3">Acción</th></tr></thead><tbody>{lista.map((r) => <Fila key={r.id} refaccion={r} guardar={guardar} />)}</tbody></table></div>
+  </main>;
+}
+function Fila({ refaccion, guardar }: { refaccion: Refaccion; guardar: (r: Refaccion, cantidad: number) => Promise<void> }) { const [cantidad, setCantidad] = useState(String(refaccion.existencia)); return <tr className="border-t"><td className="p-3">{refaccion.nombre}</td><td className="p-3">{refaccion.codigo}</td><td className="p-3">${Number(refaccion.costo).toFixed(2)} / ${Number(refaccion.precio).toFixed(2)}</td><td className={`p-3 ${refaccion.existencia <= refaccion.minimo ? "font-bold text-amber-800" : ""}`}><input className="w-24 rounded border p-1" type="number" min="0" value={cantidad} onChange={(e) => setCantidad(e.target.value)} /></td><td className="p-3">{refaccion.minimo}</td><td className="p-3"><Boton variante="ghost" onClick={() => guardar(refaccion, Number(cantidad))}>Actualizar</Boton></td></tr>; }

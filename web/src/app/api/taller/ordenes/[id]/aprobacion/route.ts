@@ -3,10 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { conModulo } from "@/lib/con-modulo";
 import { db } from "@/lib/db";
 import { transaccionTenant } from "@/lib/retail-db";
+import { aBigInt } from "@/lib/ids";
 
 export const POST = conModulo("taller", {}, async (sesion, req: NextRequest, props: { params: Promise<{ id: string }> }) => {
-  const id = BigInt((await props.params).id), body = await req.json().catch(() => null), version = Number(body?.version);
-  if (id <= 0n || !Number.isSafeInteger(version) || version < 1) return NextResponse.json({ error: "Orden o versión inválida" }, { status: 400 });
+  const id = aBigInt((await props.params).id), body = await req.json().catch(() => null), version = Number(body?.version);
+  if (!id || id <= 0n || !Number.isSafeInteger(version) || version < 1) return NextResponse.json({ error: "Orden o versión inválida" }, { status: 400 });
   const token = randomBytes(24).toString("hex");
   const result = await transaccionTenant(sesion.orgId!, async (tx) => {
     const [orden] = await tx.$queryRaw<{ id: bigint; estado: string; version: number }[]>`SELECT id, estado, version FROM taller_ordenes WHERE id = ${id} FOR UPDATE`;

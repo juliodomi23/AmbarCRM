@@ -16,12 +16,12 @@ async function cargar(value: string) {
 }
 export async function GET(_req: NextRequest, props: { params: Promise<{ token: string }> }) {
   const data = await cargar((await props.params).token);
-  if (!data) return NextResponse.json({ error: "Aprobación no encontrada o vencida" }, { status: 404 });
+  if (!data) return NextResponse.json({ error: "Aprobación no disponible" }, { status: 404 });
   return NextResponse.json({ orden: { numero: data.orden.numero, estado: data.orden.estado, vehiculo: data.orden.vehiculo, conceptos: data.orden.conceptos, total: data.orden.total } });
 }
 export async function POST(req: NextRequest, props: { params: Promise<{ token: string }> }) {
   const data = await cargar((await props.params).token), body = await req.json().catch(() => null);
-  if (!data) return NextResponse.json({ error: "Aprobación no encontrada o vencida" }, { status: 404 });
+  if (!data) return NextResponse.json({ error: "Aprobación no disponible" }, { status: 404 });
   if (!body || !["aprobar", "rechazar"].includes(String(body.decision))) return NextResponse.json({ error: "Decisión inválida" }, { status: 400 });
   const nuevoEstado = body.decision === "aprobar" ? "en_reparacion" : "diagnostico";
   return runWithOrg(data.parsed.orgId, async () => {
