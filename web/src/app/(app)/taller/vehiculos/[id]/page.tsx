@@ -11,7 +11,7 @@ export default async function TallerVehiculoPage({ params }: { params: Promise<{
   if (!(await moduloActivo("taller"))) redirect("/");
   const id = aBigInt((await params).id);
   if (!id) notFound();
-  const vehiculo = await db.tallerVehiculo.findUnique({ where: { id }, include: { contacto: true, ordenes: { orderBy: { createdAt: "desc" }, take: 100 } } });
+  const vehiculo = await db.tallerVehiculo.findUnique({ where: { id }, include: { contacto: true, ordenes: { orderBy: { createdAt: "desc" }, take: 100 }, recordatorios: { where: { estado: "pendiente" }, orderBy: [{ proximaFecha: "asc" }, { proximoKm: "asc" }], take: 3 } } });
   if (!vehiculo) notFound();
   return <TallerVehiculoDetalle vehiculo={serializar(vehiculo)} />;
 }

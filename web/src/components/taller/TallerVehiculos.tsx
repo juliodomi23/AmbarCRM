@@ -3,22 +3,27 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Boton, Campo, EncabezadoPagina } from "@/components/ui";
+import { Boton } from "@/components/ui";
 import { toast } from "@/components/Toaster";
+import { TallerCampo } from "@/components/taller/TallerCampo";
+import { TallerIcono } from "@/components/taller/TallerIcono";
+import { TallerNavegacion } from "@/components/taller/TallerNavegacion";
+import { EstadoTaller, numeroTaller, PlacaVehiculo, VacioTaller } from "@/components/taller/TallerVisuales";
 
 type Contacto = { id: string; nombre: string; telefono: string | null };
-type Vehiculo = { id: string; placa: string; vin: string | null; marca: string; modelo: string; anio: number | null; color: string | null; kilometraje: number; version: number; contacto: Contacto };
+type Vehiculo = { id: string; placa: string; vin: string | null; marca: string; modelo: string; anio: number | null; color: string | null; kilometraje: number; version: number; contacto: Contacto; ordenes?: { estado: string; createdAt: string }[] };
 
 export function TallerVehiculos({ iniciales, contactos, contactoInicial = "" }: { iniciales: Vehiculo[]; contactos: Contacto[]; contactoInicial?: string }) {
   const router = useRouter();
   const [q, setQ] = useState("");
+  const [contactoFiltro, setContactoFiltro] = useState("");
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ contactoId: contactoInicial, placa: "", vin: "", marca: "", modelo: "", anio: "", color: "", kilometraje: "0", notas: "" });
   const lista = useMemo(() => {
     const needle = q.trim().toLocaleLowerCase("es-MX");
-    return iniciales.filter((v) => `${v.placa} ${v.marca} ${v.modelo} ${v.contacto.nombre}`.toLocaleLowerCase("es-MX").includes(needle));
-  }, [iniciales, q]);
+    return iniciales.filter((v) => (!contactoFiltro || v.contacto.id === contactoFiltro) && `${v.placa} ${v.marca} ${v.modelo} ${v.contacto.nombre}`.toLocaleLowerCase("es-MX").includes(needle));
+  }, [iniciales, q, contactoFiltro]);
   async function crear(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true);
     try {
@@ -29,14 +34,27 @@ export function TallerVehiculos({ iniciales, contactos, contactoInicial = "" }: 
     } catch (error) { toast(error instanceof Error ? error.message : "No se pudo guardar el vehículo", "error"); }
     finally { setBusy(false); }
   }
-  return <main className="mx-auto max-w-6xl space-y-5 p-6">
-    <EncabezadoPagina titulo="Taller mecánico" descripcion="Vehículos de tus clientes y su historial de servicio." acciones={<><Link href="/taller/ordenes" className="rounded-lg border px-3 py-2 text-sm">Órdenes</Link><Link href="/taller/refacciones" className="rounded-lg border px-3 py-2 text-sm">Refacciones</Link><Link href="/taller/recordatorios" className="rounded-lg border px-3 py-2 text-sm">Recordatorios</Link><Boton onClick={() => setOpen(!open)}>{open ? "Cerrar" : "Agregar vehículo"}</Boton></>} />
-    {open && <form onSubmit={crear} className="grid gap-3 rounded-xl border bg-white p-4 sm:grid-cols-2 lg:grid-cols-3">
-      <label className="text-sm">Cliente<select className="mt-1 w-full rounded-lg border p-2" required value={form.contactoId} onChange={(e) => setForm({ ...form, contactoId: e.target.value })}><option value="">Selecciona un cliente</option>{contactos.map((c) => <option key={c.id} value={c.id}>{c.nombre}{c.telefono ? ` · ${c.telefono}` : ""}</option>)}</select></label>
-      {([["placa", "Placa"], ["marca", "Marca"], ["modelo", "Modelo"], ["anio", "Año"], ["vin", "VIN"], ["color", "Color"], ["kilometraje", "Kilometraje"]] as const).map(([key, label]) => <Campo key={key} label={label} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} required={key === "placa" || key === "marca" || key === "modelo"} />)}
-      <div className="flex items-end"><Boton type="submit" disabled={busy}>{busy ? "Guardando…" : "Guardar vehículo"}</Boton></div>
+  return <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+    <TallerNavegacion actual="vehiculos" titulo="Vehículos" descripcion="La ficha de servicio de cada unidad y su historial en el taller." acciones={<Boton className="min-h-11" onClick={() => setOpen(!open)}><span className="inline-flex items-center gap-2"><TallerIcono nombre="mas" className="h-4 w-4" />{open ? "Cerrar formulario" : "Registrar vehículo"}</span></Boton>} />
+    {open && <form onSubmit={crear} className="surface animate-fade-up grid gap-4 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
+      <label className="block space-y-1 text-sm"><span className="font-medium text-muted-foreground">Cliente propietario</span><select className="min-h-11 w-full rounded-lg border border-input bg-card px-3 text-foreground" required value={form.contactoId} onChange={(e) => setForm({ ...form, contactoId: e.target.value })}><option value="">Selecciona un cliente</option>{contactos.map((c) => <option key={c.id} value={c.id}>{c.nombre}{c.telefono ? ` · ${c.telefono}` : ""}</option>)}</select></label>
+      {([["placa", "Placa"], ["marca", "Marca"], ["modelo", "Modelo"], ["anio", "Año"], ["vin", "VIN"], ["color", "Color"], ["kilometraje", "Kilometraje"]] as const).map(([key, label]) => <TallerCampo key={key} label={label} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} required={key === "placa" || key === "marca" || key === "modelo"} />)}
+      <div className="flex items-end"><Boton className="min-h-11 w-full sm:w-auto" type="submit" disabled={busy}>{busy ? "Guardando…" : "Guardar vehículo"}</Boton></div>
     </form>}
-    <Campo label="Buscar por placa, cliente o marca" value={q} onChange={(e) => setQ(e.target.value)} />
-    <div className="overflow-hidden rounded-xl border bg-white"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-600"><tr><th className="p-3">Placa</th><th className="p-3">Vehículo</th><th className="p-3">Cliente</th><th className="p-3">Kilometraje</th></tr></thead><tbody>{lista.map((v) => <tr key={v.id} className="border-t"><td className="p-3 font-semibold"><Link className="text-amber-800 hover:underline" href={`/taller/vehiculos/${v.id}`}>{v.placa}</Link></td><td className="p-3">{v.marca} {v.modelo}{v.anio ? ` ${v.anio}` : ""}</td><td className="p-3"><Link className="hover:underline" href={`/clientes/${v.contacto.id}`}>{v.contacto.nombre}</Link></td><td className="p-3">{v.kilometraje.toLocaleString("es-MX")} km</td></tr>)}{lista.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-slate-500">No se encontraron vehículos.</td></tr>}</tbody></table></div>
+    <section className="surface space-y-4 p-4 sm:p-5" aria-label="Buscar vehículos">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_16rem]">
+        <label className="relative block"><span className="sr-only">Buscar por placa, cliente o marca</span><TallerIcono nombre="busqueda" className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" /><input className="min-h-12 w-full rounded-lg border border-input bg-background pl-11 pr-3 text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Buscar placa, cliente o vehículo" value={q} onChange={(e) => setQ(e.target.value)} /></label>
+        <label className="block space-y-1 text-xs font-medium text-muted-foreground"><span>Filtrar por cliente</span><select className="min-h-12 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground" value={contactoFiltro} onChange={(e) => setContactoFiltro(e.target.value)}><option value="">Todos los clientes</option>{contactos.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select></label>
+      </div>
+      <div className="flex items-center justify-between text-sm"><p className="text-muted-foreground">{lista.length} {lista.length === 1 ? "vehículo" : "vehículos"}</p><p className="hidden text-xs text-muted-foreground sm:block">Selecciona una unidad para abrir su ficha</p></div>
+    </section>
+    {lista.length ? <div className="stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{lista.map((v) => {
+      const ultimoEstado = v.ordenes?.[0]?.estado;
+      return <Link key={v.id} href={`/taller/vehiculos/${v.id}`} className="surface surface-interactiva group flex min-h-48 flex-col justify-between gap-4 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:p-5">
+        <div className="flex items-start justify-between gap-3"><PlacaVehiculo placa={v.placa} /><span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">{v.color || "Unidad de servicio"}</span></div>
+        <div><h2 className="text-lg font-semibold text-foreground">{v.marca} {v.modelo}{v.anio ? ` · ${v.anio}` : ""}</h2><p className="mt-1 text-sm text-muted-foreground">{v.contacto.nombre}</p><p className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground"><span className="tnum font-semibold text-foreground">{numeroTaller(v.kilometraje)} km</span><span aria-hidden="true">·</span><span>{v.ordenes?.length ? "Último servicio" : "Sin servicios"}</span></p></div>
+        <div className="flex items-center justify-between border-t border-border/60 pt-3"><EstadoTaller estado={ultimoEstado ?? "sin_servicios"} /><span className="inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-primary">Abrir ficha<TallerIcono nombre="flecha" className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span></div>
+      </Link>;
+    })}</div> : <VacioTaller titulo={q || contactoFiltro ? "No encontramos unidades" : "Empieza con el primer vehículo"} detalle={q || contactoFiltro ? "Prueba con otra placa o selecciona un cliente diferente." : "Registra un vehículo para abrir su ficha e iniciar su historial de servicio."} accion={!q && !contactoFiltro ? <Boton className="mt-2 min-h-11" onClick={() => setOpen(true)}>Registrar vehículo</Boton> : undefined} />}
   </main>;
 }

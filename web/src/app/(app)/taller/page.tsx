@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function TallerPage({ searchParams }: { searchParams: Promise<{ contactoId?: string }> }) {
   if (!(await moduloActivo("taller"))) redirect("/");
   const [vehiculos, contactos] = await Promise.all([
-    db.tallerVehiculo.findMany({ include: { contacto: { select: { id: true, nombre: true, telefono: true } } }, orderBy: { updatedAt: "desc" }, take: 200 }),
+    db.tallerVehiculo.findMany({ include: { contacto: { select: { id: true, nombre: true, telefono: true } }, ordenes: { select: { estado: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 } }, orderBy: { updatedAt: "desc" }, take: 200 }),
     db.contacto.findMany({ select: { id: true, nombre: true, telefono: true }, orderBy: { nombre: "asc" }, take: 500 }),
   ]);
   const contactoId = (await searchParams).contactoId ?? "";
