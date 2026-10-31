@@ -2546,7 +2546,7 @@ model TallerOrden {
   id             BigInt   @id @default(autoincrement())
   orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
   vehiculoId     BigInt   @map("vehiculo_id")
-  numero         BigInt   @default(autoincrement())
+  numero         BigInt
   estado         String   @default("recibido")
   kmEntrada      Int      @map("km_entrada")
   fallaReportada String   @map("falla_reportada")

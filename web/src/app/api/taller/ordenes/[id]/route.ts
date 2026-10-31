@@ -10,6 +10,7 @@ import { referenciaPropia } from "@/lib/referencias";
 import { aBigInt } from "@/lib/ids";
 
 type Props = { params: Promise<{ id: string }> };
+class ErrorTotalMenorPagado extends Error {}
 const texto = (v: unknown) => String(v ?? "").trim();
 function parseConceptos(value: unknown) {
   if (!Array.isArray(value) || value.length > 100) return null;
@@ -39,16 +40,21 @@ export const PATCH = conModulo("taller", {}, async (sesion, req: NextRequest, pr
   if (!Number.isSafeInteger(version) || version < 1) return NextResponse.json({ error: "Versión inválida" }, { status: 400 });
   try {
   const result = await transaccionTenant(sesion.orgId!, async (tx) => {
-    const [actual] = await tx.$queryRaw<{ id: bigint; estado: string; version: number; vehiculoId: bigint; total: Prisma.Decimal }[]>`SELECT id, estado, version, vehiculo_id AS "vehiculoId", total FROM taller_ordenes WHERE id = ${id} FOR UPDATE`;
+    const [actual] = await tx.$queryRaw<{ id: bigint; estado: string; version: number; vehiculoId: bigint; total: Prisma.Decimal; aprobadoAt: Date | null }[]>`SELECT id, estado, version, vehiculo_id AS "vehiculoId", total, aprobado_at AS "aprobadoAt" FROM taller_ordenes WHERE id = ${id} FOR UPDATE`;
     if (!actual) return { error: "Orden no encontrada", status: 404 } as const;
     if (actual.version !== version) return { error: "La orden cambió desde que la abriste. Recarga y vuelve a intentar.", status: 409 } as const;
-    const siguiente = body.estado === undefined ? actual.estado : texto(body.estado);
+    let siguiente = body.estado === undefined ? actual.estado : texto(body.estado);
     if (!transicionTallerValida(actual.estado, siguiente)) return { error: `No se permite cambiar de ${actual.estado} a ${siguiente}`, status: 409 } as const;
     if (siguiente === "entregado") {
       const pagado = await tx.tallerPago.aggregate({ where: { ordenId: id }, _sum: { monto: true } });
       const saldo = new Prisma.Decimal(actual.total).minus(pagado._sum.monto ?? 0);
       if (!puedeEntregarConSaldo(sesion.rol, body.confirmarSaldoPendiente === true, Number(saldo))) return { error: "Hay saldo pendiente. Solo un administrador puede confirmar la entrega con saldo.", status: 409 } as const;
     }
+    if (siguiente === "cancelado" && actual.estado !== "cancelado") {
+      const pagos = await tx.tallerPago.aggregate({ where: { ordenId: id }, _sum: { monto: true } });
+      if ((pagos._sum.monto ?? new Prisma.Decimal(0)).greaterThan(0) && (sesion.rol !== "admin" || body.confirmarCancelacionConPagos !== true)) return { error: "La orden tiene pagos registrados. Solo un administrador puede confirmar la cancelación; los reembolsos se resuelven fuera del sistema.", status: 409 } as const;
+    }
+    if (body.conceptos !== undefined && actual.estado === "esperando_aprobacion") return { error: "La orden espera la respuesta del cliente. Regrésala a diagnóstico para cambiar conceptos", status: 409 } as const;
     if (body.conceptos !== undefined && ["cancelado", "entregado"].includes(actual.estado)) return { error: "No se pueden cambiar conceptos de una orden cerrada", status: 409 } as const;
     const data: Prisma.TallerOrdenUpdateInput = {};
     if (body.estado !== undefined) data.estado = siguiente;
@@ -73,16 +79,32 @@ export const PATCH = conModulo("taller", {}, async (sesion, req: NextRequest, pr
       if (refs.length !== refIds.length) return { error: "Una refacción no existe en esta organización", status: 400 } as const;
       const precioRef = new Map(refs.map((r) => [String(r.id), Number(r.precio)]));
       const normalizados = conceptos.map((c) => ({ ...c, precioUnitario: c.refaccionId ? precioRef.get(String(c.refaccionId))! : c.precioUnitario }));
-      const existentes = await tx.tallerOrdenConcepto.findMany({ where: { ordenId: id }, select: { refaccionId: true, cantidad: true } });
+      const existentes = await tx.tallerOrdenConcepto.findMany({ where: { ordenId: id }, select: { tipo: true, descripcion: true, refaccionId: true, cantidad: true, precioUnitario: true } });
+      const canon = (items: typeof normalizados | typeof existentes) => items.map((c) => [c.tipo, c.descripcion, String(c.refaccionId ?? ""), Number(c.cantidad), Number(c.precioUnitario)].join("\u001f")).sort().join("\u001e");
+      const conceptosCambiaron = canon(existentes) !== canon(normalizados);
+      if (conceptosCambiaron && actual.aprobadoAt && ["en_reparacion", "listo"].includes(actual.estado)) {
+        siguiente = "diagnostico";
+        data.estado = "diagnostico";
+        data.aprobadoAt = null;
+        data.aprobadoMedio = null;
+        data.aprobacionResultado = null;
+        data.aprobacionToken = null;
+      }
+      const total = calcularTotalTaller(normalizados);
+      const pagos = await tx.tallerPago.aggregate({ where: { ordenId: id }, _sum: { monto: true } });
+      if (new Prisma.Decimal(total).lessThan(pagos._sum.monto ?? 0)) throw new ErrorTotalMenorPagado();
       const anteriores = cantidadesRefacciones(existentes);
       const nuevos = cantidadesRefacciones(normalizados.map((c) => ({ refaccionId: c.refaccionId, cantidad: c.cantidad })));
       const cambiosStock = new Map<string, Prisma.Decimal>();
       for (const key of new Set([...anteriores.keys(), ...nuevos.keys()])) cambiosStock.set(key, (nuevos.get(key) ?? new Prisma.Decimal(0)).minus(anteriores.get(key) ?? 0));
       await ajustarExistenciasTaller(tx, cambiosStock);
-      const total = calcularTotalTaller(normalizados);
       data.total = new Prisma.Decimal(total);
       await tx.tallerOrdenConcepto.deleteMany({ where: { ordenId: id } });
       if (normalizados.length) await tx.tallerOrdenConcepto.createMany({ data: normalizados.map((c) => ({ ordenId: id, tipo: c.tipo, descripcion: c.descripcion, cantidad: new Prisma.Decimal(c.cantidad), precioUnitario: new Prisma.Decimal(c.precioUnitario), ...(c.refaccionId ? { refaccionId: c.refaccionId } : {}) })) });
+    }
+    if ((siguiente === "diagnostico" && actual.estado === "esperando_aprobacion") || (siguiente === "cancelado" && actual.estado === "esperando_aprobacion")) {
+      data.aprobacionToken = null;
+      if (siguiente === "diagnostico") { data.aprobadoAt = null; data.aprobadoMedio = null; data.aprobacionResultado = null; }
     }
     if (siguiente === "cancelado" && actual.estado !== "cancelado") {
       const existentes = await tx.tallerOrdenConcepto.findMany({ where: { ordenId: id }, select: { refaccionId: true, cantidad: true } });
@@ -96,6 +118,7 @@ export const PATCH = conModulo("taller", {}, async (sesion, req: NextRequest, pr
   });
   return "error" in result ? NextResponse.json({ error: result.error }, { status: result.status }) : NextResponse.json(serializar(result));
   } catch (error) {
+    if (error instanceof ErrorTotalMenorPagado) return NextResponse.json({ error: "El total no puede ser menor a lo pagado" }, { status: 409 });
     if (error instanceof ErrorStockTaller) return NextResponse.json({ error: error.message }, { status: 409 });
     throw error;
   }

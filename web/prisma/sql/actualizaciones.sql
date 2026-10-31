@@ -2668,3 +2668,17 @@ DROP POLICY IF EXISTS org_isolation ON taller_recordatorios;
 CREATE POLICY org_isolation ON taller_recordatorios USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint) WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
 GRANT SELECT, INSERT, UPDATE, DELETE ON taller_recordatorios TO crm_app;
 GRANT USAGE, SELECT ON SEQUENCE taller_recordatorios_id_seq TO crm_app;
+
+CREATE TABLE IF NOT EXISTS taller_folios (
+  org_id BIGINT PRIMARY KEY REFERENCES orgs(id) ON DELETE CASCADE,
+  ultimo_numero BIGINT NOT NULL CHECK (ultimo_numero >= 0)
+);
+ALTER TABLE taller_ordenes ALTER COLUMN numero DROP IDENTITY IF EXISTS;
+ALTER TABLE taller_ordenes ALTER COLUMN numero DROP DEFAULT;
+INSERT INTO taller_folios (org_id, ultimo_numero)
+SELECT org_id, MAX(numero) FROM taller_ordenes GROUP BY org_id
+ON CONFLICT (org_id) DO UPDATE SET ultimo_numero = GREATEST(taller_folios.ultimo_numero, EXCLUDED.ultimo_numero);
+ALTER TABLE taller_folios ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_isolation ON taller_folios;
+CREATE POLICY org_isolation ON taller_folios USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint) WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
+GRANT SELECT, INSERT, UPDATE, DELETE ON taller_folios TO crm_app;

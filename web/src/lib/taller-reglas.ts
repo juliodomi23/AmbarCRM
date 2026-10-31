@@ -2,7 +2,7 @@ export type ConceptoTallerImporte = { cantidad: number; precioUnitario: number }
 
 const transiciones: Record<string, readonly string[]> = {
   recibido: ["diagnostico", "cancelado"],
-  diagnostico: ["esperando_aprobacion", "en_reparacion", "cancelado"],
+  diagnostico: ["en_reparacion", "cancelado"],
   esperando_aprobacion: ["diagnostico", "cancelado"],
   en_reparacion: ["listo", "cancelado"],
   listo: ["entregado", "en_reparacion"],

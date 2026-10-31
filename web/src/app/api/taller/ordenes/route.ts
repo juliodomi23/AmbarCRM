@@ -58,7 +58,8 @@ export const POST = conModulo("taller", {}, async (sesion, req: NextRequest) => 
     const deltas = new Map<string, Prisma.Decimal>();
     for (const c of normalizados) if (c.refaccionId) deltas.set(String(c.refaccionId), (deltas.get(String(c.refaccionId)) ?? new Prisma.Decimal(0)).plus(c.cantidad));
     await ajustarExistenciasTaller(tx, deltas);
-    const orden = await tx.tallerOrden.create({ data: { vehiculoId, kmEntrada, fallaReportada, diagnostico: "", fechaPromesa, creadoPorId: userId, total: new Prisma.Decimal(totalConceptos(normalizados)) } });
+    const [folio] = await tx.$queryRaw<{ ultimoNumero: bigint }[]>`INSERT INTO taller_folios (org_id, ultimo_numero) VALUES (${sesion.orgId!}, 1) ON CONFLICT (org_id) DO UPDATE SET ultimo_numero = taller_folios.ultimo_numero + 1 RETURNING ultimo_numero AS "ultimoNumero"`;
+    const orden = await tx.tallerOrden.create({ data: { numero: folio.ultimoNumero, vehiculoId, kmEntrada, fallaReportada, diagnostico: "", fechaPromesa, creadoPorId: userId, total: new Prisma.Decimal(totalConceptos(normalizados)) } });
     if (normalizados.length) await tx.tallerOrdenConcepto.createMany({ data: normalizados.map((c) => ({ ordenId: orden.id, tipo: c.tipo, descripcion: c.descripcion, cantidad: new Prisma.Decimal(c.cantidad), precioUnitario: new Prisma.Decimal(c.precioUnitario), ...(c.refaccionId ? { refaccionId: c.refaccionId } : {}) })) });
     await tx.tallerOrdenCambio.create({ data: { ordenId: orden.id, estado: "recibido", userId } });
     if (kmEntrada > vehiculo.kilometraje) await tx.tallerVehiculo.update({ where: { id: vehiculoId }, data: { kilometraje: kmEntrada, version: { increment: 1 } } });
