@@ -2559,6 +2559,7 @@ model TallerOrden {
   aprobadoMedio  String?  @map("aprobado_medio")
   aprobacionResultado String? @map("aprobacion_resultado")
   aprobacionToken String? @unique @map("aprobacion_token")
+  seguimientoToken String? @unique @map("seguimiento_token")
   creadoPorId    BigInt   @map("creado_por_id")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -2567,6 +2568,7 @@ model TallerOrden {
   cambios        TallerOrdenCambio[]
   fotos          TallerFoto[]
   pagos          TallerPago[]
+  notificaciones TallerNotificacion[]
   recordatorios  TallerRecordatorio[]
 
   @@unique([id, orgId])
@@ -2574,6 +2576,23 @@ model TallerOrden {
   @@index([orgId, estado, updatedAt])
   @@index([orgId, vehiculoId, createdAt])
   @@map("taller_ordenes")
+}
+
+model TallerNotificacion {
+  id        BigInt   @id @default(autoincrement())
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  ordenId   BigInt   @map("orden_id")
+  tipo      String
+  forma     String
+  estado    String
+  error     String?
+  userId    BigInt?  @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  orden     TallerOrden @relation(fields: [ordenId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@index([orgId, ordenId, createdAt])
+  @@index([orgId, tipo, createdAt])
+  @@map("taller_notificaciones")
 }
 
 model TallerOrdenConcepto {

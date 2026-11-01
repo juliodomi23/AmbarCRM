@@ -7,6 +7,7 @@ import { transaccionTenant } from "@/lib/retail-db";
 import { serializar } from "@/lib/serialize";
 import { ajustarExistenciasTaller, cantidadesRefacciones, ErrorStockTaller } from "@/lib/taller-inventario";
 import { calcularTotalTaller, puedeEntregarConSaldo, transicionTallerValida } from "@/lib/taller-reglas";
+import { configTaller, enviarMensajeTaller } from "@/lib/taller-whatsapp";
 import { referenciaPropia } from "@/lib/referencias";
 import { aBigInt } from "@/lib/ids";
 
@@ -30,7 +31,7 @@ function parseConceptos(value: unknown) {
 export const GET = conModulo("taller", {}, async (_sesion, _req: NextRequest, props: Props) => {
   const id = aBigInt((await props.params).id);
   if (!id || id <= 0n) return NextResponse.json({ error: "Orden inválida" }, { status: 400 });
-  const orden = await db.tallerOrden.findUnique({ where: { id }, include: { vehiculo: { include: { contacto: true } }, conceptos: true, cambios: { orderBy: { creadoAt: "asc" } }, fotos: { orderBy: { createdAt: "desc" } }, pagos: { orderBy: { createdAt: "asc" } } } });
+  const orden = await db.tallerOrden.findUnique({ where: { id }, include: { vehiculo: { include: { contacto: true } }, conceptos: true, cambios: { orderBy: { creadoAt: "asc" } }, fotos: { orderBy: { createdAt: "desc" } }, pagos: { orderBy: { createdAt: "asc" } }, notificaciones: { orderBy: { createdAt: "desc" }, take: 20 } } });
   return orden ? NextResponse.json(serializar({ orden })) : NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
 });
 
@@ -114,16 +115,29 @@ export const PATCH = conModulo("taller", {}, async (sesion, req: NextRequest, pr
     }
     await tx.tallerOrden.update({ where: { id }, data: { ...data, version: { increment: 1 } } });
     if (siguiente !== actual.estado) await tx.tallerOrdenCambio.create({ data: { ordenId: id, estado: siguiente, userId: sesion.userId } });
-    const orden = await tx.tallerOrden.findUnique({ where: { id }, include: { vehiculo: { include: { contacto: true } }, conceptos: true, cambios: { orderBy: { creadoAt: "asc" } }, fotos: { orderBy: { createdAt: "desc" } }, pagos: { orderBy: { createdAt: "asc" } } } });
-    return { orden } as const;
+    const orden = await tx.tallerOrden.findUnique({ where: { id }, include: { vehiculo: { include: { contacto: true } }, conceptos: true, cambios: { orderBy: { creadoAt: "asc" } }, fotos: { orderBy: { createdAt: "desc" } }, pagos: { orderBy: { createdAt: "asc" } }, notificaciones: { orderBy: { createdAt: "desc" }, take: 20 } } });
+    return { orden, avisarListo: siguiente === "listo" && siguiente !== actual.estado } as const;
   });
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   revalidatePath("/taller/ordenes", "page");
   revalidatePath(`/taller/ordenes/${id}`, "page");
-  return NextResponse.json(serializar(result));
+  const aviso = result.avisarListo ? await avisarClienteListo(id, sesion.userId) : null;
+  return NextResponse.json(serializar({ orden: result.orden, aviso }));
   } catch (error) {
     if (error instanceof ErrorTotalMenorPagado) return NextResponse.json({ error: "El total no puede ser menor a lo pagado" }, { status: 409 });
     if (error instanceof ErrorStockTaller) return NextResponse.json({ error: error.message }, { status: 409 });
     throw error;
   }
 });
+
+/** Aviso automático al marcar la orden como lista; nunca tumba el cambio de estado. */
+async function avisarClienteListo(ordenId: bigint, usuarioId: bigint | null) {
+  const modulo = await db.moduloOrg.findFirst({ where: { clave: "taller", activo: true }, select: { config: true } });
+  if (!configTaller(modulo?.config).avisarAlMarcarListo) return null;
+  try {
+    const resultado = await enviarMensajeTaller(ordenId, "listo", usuarioId);
+    return { ok: true, ...resultado };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "No se pudo avisar al cliente" };
+  }
+}

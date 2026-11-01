@@ -25,5 +25,5 @@ export default async function proxy(req: NextRequest, event: NextFetchEvent) {
 
 // Protege todo menos login, api/auth y las rutas que validan su propio token.
 export const config = {
-  matcher: ["/((?!login|recuperar(?:/|$)|restablecer/|demo(?:/|$)|opinion/|cotizacion/|taller-aprobacion(?:/|$)|api/taller-aprobacion(?:/|$)|tienda/|reservar/|privacidad|terminos|eliminacion-datos|api/auth(?:/|$)|api/movil/login(?:/|$)|api/meta/webhook(?:/|$)|api/canal-api/|api/messenger/webhook(?:/|$)|api/instagram/webhook(?:/|$)|api/public|api/v1|api/cron|api/servidores/heartbeat(?:/|$)|api/panel-ar/alertas(?:/|$)|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icon.png|icon-192.png|icon-512.png|apple-icon.png).*)"]
+  matcher: ["/((?!login|recuperar(?:/|$)|restablecer/|demo(?:/|$)|opinion/|cotizacion/|taller-aprobacion(?:/|$)|api/taller-aprobacion(?:/|$)|taller-estado/|api/taller-estado(?:/|$)|tienda/|reservar/|privacidad|terminos|eliminacion-datos|api/auth(?:/|$)|api/movil/login(?:/|$)|api/meta/webhook(?:/|$)|api/canal-api/|api/messenger/webhook(?:/|$)|api/instagram/webhook(?:/|$)|api/public|api/v1|api/cron|api/servidores/heartbeat(?:/|$)|api/panel-ar/alertas(?:/|$)|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icon.png|icon-192.png|icon-512.png|apple-icon.png).*)"]
 };
