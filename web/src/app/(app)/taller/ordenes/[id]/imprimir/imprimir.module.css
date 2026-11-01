@@ -176,4 +176,26 @@
   .firmas {
     break-inside: avoid;
   }
+
+  /* Compacto: un servicio típico (10 conceptos) debe caber en una hoja carta. */
+  .documento .tabla {
+    font-size: 0.75rem;
+  }
+
+  .documento .tabla th,
+  .documento .tabla td {
+    padding: 0.25rem 0.4rem;
+  }
+
+  .documento .bloque {
+    padding: 0.4rem 0.7rem;
+  }
+
+  .documento .encabezado {
+    padding-bottom: 0.5rem;
+  }
+
+  .documento .firmas {
+    margin-top: 1.25rem;
+  }
 }

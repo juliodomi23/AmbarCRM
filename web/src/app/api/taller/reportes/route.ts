@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export const GET = conModulo("taller", { admin: true }, async (_sesion, req: NextRequest) => {
   const { searchParams } = new URL(req.url);
   const { desde, hasta } = periodoReporte(searchParams.get("desde"), searchParams.get("hasta"));
-  const reporte = await reportesTaller(desde, hasta);
+  const reporte = await reportesTaller(desde, hasta, { incluirOrdenes: searchParams.get("formato") === "csv" });
   if (searchParams.get("formato") !== "csv") {
     return Response.json(reporte, { headers: { "Cache-Control": "no-store" } });
   }

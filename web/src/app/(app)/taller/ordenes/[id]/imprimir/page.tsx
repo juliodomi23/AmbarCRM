@@ -75,7 +75,7 @@ export default async function TallerImprimirPage({
   const saldo = Math.max(0, Number(orden.total) - pagado);
 
   return (
-    <main style={estilo as CSSProperties} className="min-h-svh bg-background px-4 py-6 sm:px-6">
+    <div style={estilo as CSSProperties} className="min-h-svh bg-background px-4 py-6 sm:px-6">
       <div className={`${estilos.acciones} mx-auto mb-4 flex max-w-[52rem] flex-wrap items-center justify-between gap-3`}>
         <Link
           href={`/taller/ordenes/${orden.id}`}
@@ -258,6 +258,6 @@ export default async function TallerImprimirPage({
           </>
         )}
       </article>
-    </main>
+    </div>
   );
 }

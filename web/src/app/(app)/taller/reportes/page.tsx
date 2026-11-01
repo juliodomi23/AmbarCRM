@@ -5,6 +5,7 @@ import { moduloActivo } from "@/lib/modulos";
 import { hoyTaller, periodoReporte, reportesTaller } from "@/lib/taller-reportes";
 import { monedaTallerTexto, textoEstadoTaller } from "@/lib/taller-mensajes";
 import { sumarDias } from "@/lib/reservas/horarios";
+import { TallerNavegacion } from "@/components/taller/TallerNavegacion";
 
 export const dynamic = "force-dynamic";
 
@@ -54,21 +55,8 @@ export default async function TallerReportesPage({
   ];
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Reportes del taller</h1>
-          <p className="text-sm text-muted-foreground">
-            Del {periodo.desde} al {periodo.hasta} · hora de Ciudad de México
-          </p>
-        </div>
-        <Link
-          href={`/api/taller/reportes?${consultaCsv.toString()}`}
-          className="inline-flex min-h-11 items-center rounded-lg border border-border bg-card px-4 text-sm font-semibold hover:bg-muted"
-        >
-          Exportar CSV
-        </Link>
-      </header>
+    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+      <TallerNavegacion actual="reportes" esAdmin titulo="Reportes del taller" descripcion={`Del ${periodo.desde} al ${periodo.hasta} · hora de Ciudad de México`} acciones={<Link href={`/api/taller/reportes?${consultaCsv.toString()}`} className="inline-flex min-h-11 items-center rounded-lg border border-border bg-card px-4 text-sm font-semibold hover:bg-muted">Exportar CSV</Link>} />
 
       <div className="flex flex-wrap gap-2">
         {presets.map((preset) => {

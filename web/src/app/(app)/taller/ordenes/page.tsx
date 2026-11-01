@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function TallerOrdenesPage({ searchParams }: { searchParams: Promise<{ vehiculoId?: string }> }) {
   if (!(await moduloActivo("taller"))) redirect("/");
   const [ordenes, vehiculos, mecanicos] = await Promise.all([
-    db.tallerOrden.findMany({ include: { vehiculo: { include: { contacto: { select: { nombre: true, telefono: true } } } }, conceptos: true }, orderBy: { updatedAt: "desc" }, take: 1500 }),
+    db.tallerOrden.findMany({ select: { id: true, numero: true, estado: true, total: true, fallaReportada: true, createdAt: true, updatedAt: true, fechaPromesa: true, mecanicoId: true, vehiculo: { select: { placa: true, marca: true, modelo: true, contacto: { select: { nombre: true } } } } }, orderBy: { updatedAt: "desc" }, take: 1500 }),
     db.tallerVehiculo.findMany({ select: { id: true, placa: true, marca: true, modelo: true, kilometraje: true }, orderBy: { placa: "asc" }, take: 500 }),
     db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true, puesto: true }, orderBy: { nombre: "asc" } }),
   ]);
