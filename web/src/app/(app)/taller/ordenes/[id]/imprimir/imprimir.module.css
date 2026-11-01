@@ -1,0 +1,179 @@
+.documento {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  margin: 0 auto;
+  max-width: 52rem;
+  padding: 2rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 1rem;
+}
+
+.encabezado {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+  padding-bottom: 1rem;
+}
+
+.titulo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.folio {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.grilla {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .grillaDos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.bloque {
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.etiqueta {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.tabla th,
+.tabla td {
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.tabla th {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+}
+
+.numero {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.casillas {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .casillas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.casilla {
+  border: 1px dashed hsl(var(--border));
+  border-radius: 0.5rem;
+  min-height: 4.5rem;
+  padding: 0.5rem;
+}
+
+.firmas {
+  display: grid;
+  gap: 2.5rem;
+  margin-top: 2.5rem;
+}
+
+@media (min-width: 640px) {
+  .firmas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.firma {
+  border-top: 1px solid hsl(var(--foreground));
+  padding-top: 0.5rem;
+  font-size: 0.75rem;
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+}
+
+.leyenda {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+  border-top: 1px solid hsl(var(--border));
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+}
+
+@media print {
+  @page {
+    size: letter portrait;
+    margin: 12mm;
+  }
+
+  .acciones {
+    display: none !important;
+  }
+
+  .documento {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    max-width: none;
+    padding: 0;
+    background: white;
+    color: black;
+  }
+
+  .documento p,
+  .documento span,
+  .documento td,
+  .documento th,
+  .documento strong {
+    color: #111 !important;
+  }
+
+  .documento .etiqueta,
+  .documento .leyenda {
+    color: #444 !important;
+  }
+
+  .documento .bloque,
+  .documento .casilla,
+  .documento .tabla th,
+  .documento .tabla td,
+  .documento .firma {
+    border-color: #999 !important;
+  }
+
+  .bloque,
+  .casilla {
+    break-inside: avoid;
+  }
+
+  .firmas {
+    break-inside: avoid;
+  }
+}

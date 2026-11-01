@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { moduloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
+import { getSesion } from "@/lib/session";
 import { TallerOrdenes } from "@/components/taller/TallerOrdenes";
 
 export const dynamic = "force-dynamic";
@@ -13,5 +14,5 @@ export default async function TallerOrdenesPage({ searchParams }: { searchParams
     db.tallerVehiculo.findMany({ select: { id: true, placa: true, marca: true, modelo: true, kilometraje: true }, orderBy: { placa: "asc" }, take: 500 }),
     db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true, puesto: true }, orderBy: { nombre: "asc" } }),
   ]);
-  return <TallerOrdenes ordenes={serializar(ordenes)} vehiculos={serializar(vehiculos)} mecanicos={serializar(mecanicos)} vehiculoInicial={(await searchParams).vehiculoId ?? ""} />;
+  return <TallerOrdenes ordenes={serializar(ordenes)} vehiculos={serializar(vehiculos)} mecanicos={serializar(mecanicos)} vehiculoInicial={(await searchParams).vehiculoId ?? ""} esAdmin={(await getSesion())?.user?.rol === "admin"} />;
 }

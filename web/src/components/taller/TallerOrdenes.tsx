@@ -38,7 +38,7 @@ function fechaPromesa(fecha: string | null) {
 
 function iniciales(nombre: string) { return nombre.split(/\s+/).filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toLocaleUpperCase("es-MX"); }
 
-export function TallerOrdenes({ ordenes, vehiculos, mecanicos, vehiculoInicial }: { ordenes: Orden[]; vehiculos: Vehiculo[]; mecanicos: Mecanico[]; vehiculoInicial: string }) {
+export function TallerOrdenes({ ordenes, vehiculos, mecanicos, vehiculoInicial, esAdmin = false }: { ordenes: Orden[]; vehiculos: Vehiculo[]; mecanicos: Mecanico[]; vehiculoInicial: string; esAdmin?: boolean }) {
   const router = useRouter(); const [open, setOpen] = useState(Boolean(vehiculoInicial)); const [busy, setBusy] = useState(false); const [vista, setVista] = useState<"tablero" | "lista">("tablero");
   const [busqueda, setBusqueda] = useState(""); const [mecanicoFiltro, setMecanicoFiltro] = useState("todos"); const [verAntiguas, setVerAntiguas] = useState<Record<string, boolean>>({});
   const [form, setForm] = useState({ vehiculoId: vehiculoInicial, kmEntrada: String(vehiculos.find((v) => v.id === vehiculoInicial)?.kilometraje ?? 0), fallaReportada: "", fechaPromesa: "" });
@@ -82,7 +82,7 @@ export function TallerOrdenes({ ordenes, vehiculos, mecanicos, vehiculoInicial }
   }
 
   return <div className="mx-auto max-w-[88rem] space-y-6 p-4 sm:p-6">
-    <TallerNavegacion actual="ordenes" titulo="Órdenes de servicio" descripcion="Recepción, diagnóstico y avance de cada reparación." acciones={<Boton className="min-h-11" onClick={() => setOpen(!open)}><span className="inline-flex items-center gap-2"><TallerIcono nombre="mas" className="h-4 w-4" />{open ? "Cerrar formulario" : "Nueva orden"}</span></Boton>} />
+    <TallerNavegacion actual="ordenes" titulo="Órdenes de servicio" descripcion="Recepción, diagnóstico y avance de cada reparación." acciones={<Boton className="min-h-11" onClick={() => setOpen(!open)}><span className="inline-flex items-center gap-2"><TallerIcono nombre="mas" className="h-4 w-4" />{open ? "Cerrar formulario" : "Nueva orden"}</span></Boton>} esAdmin={esAdmin} />
     {open && <form onSubmit={crear} className="surface animate-fade-up grid gap-4 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-4">
       <label className="block space-y-1"><span className="text-xs font-semibold text-muted-foreground">Vehículo</span><select className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground" required value={form.vehiculoId} onChange={(e) => { const elegido = vehiculos.find((v) => v.id === e.target.value); setForm({ ...form, vehiculoId: e.target.value, kmEntrada: elegido ? String(elegido.kilometraje) : form.kmEntrada }); }}><option value="">Selecciona vehículo</option>{vehiculos.map((v) => <option key={v.id} value={v.id}>{v.placa} · {v.marca} {v.modelo}</option>)}</select></label>
       <TallerCampo label="Km de entrada" type="number" min="0" value={form.kmEntrada} onChange={(e) => setForm({ ...form, kmEntrada: e.target.value })} required />

@@ -13,7 +13,7 @@ import { EstadoTaller, numeroTaller, PlacaVehiculo, VacioTaller } from "@/compon
 type Contacto = { id: string; nombre: string; telefono: string | null };
 type Vehiculo = { id: string; placa: string; vin: string | null; marca: string; modelo: string; anio: number | null; color: string | null; kilometraje: number; version: number; contacto: Contacto; ordenes?: { estado: string; createdAt: string }[] };
 
-export function TallerVehiculos({ iniciales, contactos, contactoInicial = "" }: { iniciales: Vehiculo[]; contactos: Contacto[]; contactoInicial?: string }) {
+export function TallerVehiculos({ iniciales, contactos, contactoInicial = "", esAdmin = false }: { iniciales: Vehiculo[]; contactos: Contacto[]; contactoInicial?: string; esAdmin?: boolean }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [contactoFiltro, setContactoFiltro] = useState("");
@@ -35,7 +35,7 @@ export function TallerVehiculos({ iniciales, contactos, contactoInicial = "" }: 
     finally { setBusy(false); }
   }
   return <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
-    <TallerNavegacion actual="vehiculos" titulo="Vehículos" descripcion="La ficha de servicio de cada unidad y su historial en el taller." acciones={<Boton className="min-h-11" onClick={() => setOpen(!open)}><span className="inline-flex items-center gap-2"><TallerIcono nombre="mas" className="h-4 w-4" />{open ? "Cerrar formulario" : "Registrar vehículo"}</span></Boton>} />
+    <TallerNavegacion actual="vehiculos" titulo="Vehículos" descripcion="La ficha de servicio de cada unidad y su historial en el taller." acciones={<Boton className="min-h-11" onClick={() => setOpen(!open)}><span className="inline-flex items-center gap-2"><TallerIcono nombre="mas" className="h-4 w-4" />{open ? "Cerrar formulario" : "Registrar vehículo"}</span></Boton>} esAdmin={esAdmin} />
     {open && <form onSubmit={crear} className="surface animate-fade-up grid gap-4 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
       <label className="block space-y-1 text-sm"><span className="font-medium text-muted-foreground">Cliente propietario</span><select className="min-h-11 w-full rounded-lg border border-input bg-card px-3 text-foreground" required value={form.contactoId} onChange={(e) => setForm({ ...form, contactoId: e.target.value })}><option value="">Selecciona un cliente</option>{contactos.map((c) => <option key={c.id} value={c.id}>{c.nombre}{c.telefono ? ` · ${c.telefono}` : ""}</option>)}</select></label>
       {([["placa", "Placa"], ["marca", "Marca"], ["modelo", "Modelo"], ["anio", "Año"], ["vin", "VIN"], ["color", "Color"], ["kilometraje", "Kilometraje"]] as const).map(([key, label]) => <TallerCampo key={key} label={label} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} required={key === "placa" || key === "marca" || key === "modelo"} />)}

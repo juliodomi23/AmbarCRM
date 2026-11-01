@@ -11,7 +11,7 @@ export default async function TallerOrdenPage({ params }: { params: Promise<{ id
   if (!(await moduloActivo("taller"))) redirect("/");
   const id = aBigInt((await params).id); if (!id) notFound();
   const [orden, refacciones, mecanicos, sesion] = await Promise.all([
-    db.tallerOrden.findUnique({ where: { id }, include: { vehiculo: { include: { contacto: true } }, conceptos: true, cambios: { orderBy: { creadoAt: "asc" } }, fotos: { orderBy: { createdAt: "desc" } }, pagos: { orderBy: { createdAt: "asc" } } } }),
+    db.tallerOrden.findUnique({ where: { id }, include: { vehiculo: { include: { contacto: true } }, conceptos: true, cambios: { orderBy: { creadoAt: "asc" } }, fotos: { orderBy: { createdAt: "desc" } }, pagos: { orderBy: { createdAt: "asc" } }, notificaciones: { orderBy: { createdAt: "desc" }, take: 20 } } }),
     db.tallerRefaccion.findMany({ orderBy: { nombre: "asc" }, take: 500 }),
     db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true, puesto: true }, orderBy: { nombre: "asc" } }),
     getSesion(),
