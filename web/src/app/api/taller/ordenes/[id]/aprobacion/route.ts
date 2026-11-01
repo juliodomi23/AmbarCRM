@@ -19,6 +19,8 @@ export const POST = conModulo("taller", {}, async (sesion, req: NextRequest, pro
     return { ok: true } as const;
   });
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
-  const url = new URL(`/taller-aprobacion/${sesion.orgId}-${token}`, req.url).toString();
+  // req.url trae el host interno del contenedor (localhost:3000); el enlace público se arma con NEXTAUTH_URL como el resto del CRM.
+  const base = (process.env.NEXTAUTH_URL ?? new URL(req.url).origin).replace(/\/+$/, "");
+  const url = `${base}/taller-aprobacion/${sesion.orgId}-${token}`;
   return NextResponse.json({ url });
 });
