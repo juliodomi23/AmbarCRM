@@ -13,7 +13,7 @@ export function numeroTaller(valor: number | string) { return Number(valor).toLo
 
 export function EstadoTaller({ estado }: { estado: string }) {
   const tono = estado === "sin_servicios" ? "border-border bg-muted text-muted-foreground" : estado === "cancelado" ? "border-destructive/30 bg-destructive/10 text-destructive" : estado === "entregado" ? "border-success/30 bg-success/10 text-success" : estado === "esperando_aprobacion" ? "border-warning/40 bg-warning/10 text-warning" : estado === "en_reparacion" || estado === "listo" ? "border-info/30 bg-info/10 text-info" : "border-primary/20 bg-primary/10 text-primary";
-  return <span className={`inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold ${tono}`}><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />{nombreEstadoTaller(estado)}</span>;
+  return <span className={`inline-flex min-h-7 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-xs font-semibold tracking-normal ${tono}`}><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />{nombreEstadoTaller(estado)}</span>;
 }
 
 export function PlacaVehiculo({ placa, grande = false }: { placa: string; grande?: boolean }) {
