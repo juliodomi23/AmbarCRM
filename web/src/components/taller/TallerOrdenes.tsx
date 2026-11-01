@@ -26,12 +26,13 @@ const tonosColumna: Record<string, string> = {
 };
 const puntosColumna: Record<string, string> = { recibido: "bg-primary", diagnostico: "bg-info", esperando_aprobacion: "bg-warning", en_reparacion: "bg-primary", listo: "bg-success", entregado: "bg-success", cancelado: "bg-muted-foreground" };
 
+const ZONA_TALLER = "America/Mexico_City";
 function fechaPromesa(fecha: string | null) {
   if (!fecha) return { texto: "Sin fecha promesa", tono: "text-muted-foreground", icono: "calendario" as const };
-  const dia = new Date(fecha); const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-  const diaLocal = new Date(dia); diaLocal.setHours(0, 0, 0, 0);
-  const dias = Math.round((diaLocal.getTime() - hoy.getTime()) / 86_400_000);
-  return { texto: dias < 0 ? `Vencida · ${dia.toLocaleDateString("es-MX", { day: "numeric", month: "short" })}` : dias === 0 ? "Vence hoy" : dia.toLocaleDateString("es-MX", { day: "numeric", month: "short" }), tono: dias < 0 ? "text-destructive" : dias === 0 ? "text-warning" : "text-muted-foreground", icono: "calendario" as const };
+  // Zona fija: el servidor (UTC) y el navegador deben calcular el mismo día o React falla al hidratar.
+  const dia = new Date(fecha); const aDia = (d: Date) => Date.parse(d.toLocaleDateString("en-CA", { timeZone: ZONA_TALLER }));
+  const dias = Math.round((aDia(dia) - aDia(new Date())) / 86_400_000);
+  return { texto: dias < 0 ? `Vencida · ${dia.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: ZONA_TALLER })}` : dias === 0 ? "Vence hoy" : dia.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: ZONA_TALLER }), tono: dias < 0 ? "text-destructive" : dias === 0 ? "text-warning" : "text-muted-foreground", icono: "calendario" as const };
 }
 
 function iniciales(nombre: string) { return nombre.split(/\s+/).filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toLocaleUpperCase("es-MX"); }
