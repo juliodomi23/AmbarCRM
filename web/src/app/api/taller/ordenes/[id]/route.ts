@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { conModulo } from "@/lib/con-modulo";
 import { db } from "@/lib/db";
@@ -116,7 +117,10 @@ export const PATCH = conModulo("taller", {}, async (sesion, req: NextRequest, pr
     const orden = await tx.tallerOrden.findUnique({ where: { id }, include: { vehiculo: { include: { contacto: true } }, conceptos: true, cambios: { orderBy: { creadoAt: "asc" } }, fotos: { orderBy: { createdAt: "desc" } }, pagos: { orderBy: { createdAt: "asc" } } } });
     return { orden } as const;
   });
-  return "error" in result ? NextResponse.json({ error: result.error }, { status: result.status }) : NextResponse.json(serializar(result));
+  if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+  revalidatePath("/taller/ordenes", "page");
+  revalidatePath(`/taller/ordenes/${id}`, "page");
+  return NextResponse.json(serializar(result));
   } catch (error) {
     if (error instanceof ErrorTotalMenorPagado) return NextResponse.json({ error: "El total no puede ser menor a lo pagado" }, { status: 409 });
     if (error instanceof ErrorStockTaller) return NextResponse.json({ error: error.message }, { status: 409 });

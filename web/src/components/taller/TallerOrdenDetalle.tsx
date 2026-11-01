@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton } from "@/components/ui";
 import { toast } from "@/components/Toaster";
@@ -13,7 +13,7 @@ import { EstadoTaller, monedaTaller, nombreEstadoTaller, numeroTaller, PlacaVehi
 
 type Concepto = { id?: string; tipo: string; descripcion: string; cantidad: string; precioUnitario: string; refaccionId?: string | null };
 type Pago = { id: string; monto: string; metodo: string; createdAt: string };
-type Orden = { id: string; numero: string; estado: string; version: number; aprobadoAt: string | null; aprobacionToken: string | null; kmEntrada: number; mecanicoId: string | null; fallaReportada: string; diagnostico: string; total: string; fechaPromesa: string | null; conceptos: Concepto[]; pagos: Pago[]; fotos: { id: string; url: string; tipo: string; createdAt: string }[]; cambios: { estado: string; userId: string | null; actor: string; creadoAt: string }[]; vehiculo: { id: string; placa: string; marca: string; modelo: string; anio: number | null; kilometraje: number; contacto: { id: string; nombre: string; telefono: string | null } } };
+type Orden = { id: string; numero: string; estado: string; version: number; aprobadoAt: string | null; aprobacionToken: string | null; aprobacionResultado?: string | null; kmEntrada: number; mecanicoId: string | null; fallaReportada: string; diagnostico: string; total: string; fechaPromesa: string | null; conceptos: Concepto[]; pagos: Pago[]; fotos: { id: string; url: string; tipo: string; createdAt: string }[]; cambios: { estado: string; userId: string | null; actor: string; creadoAt: string }[]; vehiculo: { id: string; placa: string; marca: string; modelo: string; anio: number | null; kilometraje: number; contacto: { id: string; nombre: string; telefono: string | null } } };
 type Refaccion = { id: string; nombre: string; codigo: string; precio: string; existencia: number; minimo: number };
 type Mecanico = { id: string; nombre: string; puesto: string };
 
@@ -22,23 +22,54 @@ const siguientes: Record<string, string[]> = { recibido: ["diagnostico", "cancel
 const textoMetodo: Record<string, string> = { efectivo: "Efectivo", tarjeta: "Tarjeta", transferencia: "Transferencia", otro: "Otro método" };
 
 function horaFecha(valor: string) { return new Date(valor).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Mexico_City" }); }
+function canonConceptos(items: Concepto[]) { return items.map((c) => [c.tipo, c.descripcion.trim(), c.refaccionId ?? "", Number(c.cantidad), Number(c.precioUnitario)].join("\u001f")).sort().join("\u001e"); }
 
 export function TallerOrdenDetalle({ orden: inicial, refacciones, mecanicos, esAdmin, rutaAprobacion = "" }: { orden: Orden; refacciones: Refaccion[]; mecanicos: Mecanico[]; esAdmin: boolean; rutaAprobacion?: string }) {
   const router = useRouter();
   const [orden, setOrden] = useState(inicial); const [diagnostico, setDiagnostico] = useState(inicial.diagnostico); const [kmEntrada, setKmEntrada] = useState(String(inicial.kmEntrada)); const [mecanicoId, setMecanicoId] = useState(inicial.mecanicoId ?? ""); const [conceptos, setConceptos] = useState(inicial.conceptos.map((c) => ({ ...c })));
+  const ordenRemota = useRef(inicial); const borrador = useRef({ diagnostico, kmEntrada, mecanicoId, conceptos }); borrador.current = { diagnostico, kmEntrada, mecanicoId, conceptos };
   const [busy, setBusy] = useState(false); const [approvalUrl, setApprovalUrl] = useState(""); const [fotoBusy, setFotoBusy] = useState(false); const [arrastrandoFoto, setArrastrandoFoto] = useState(false); const [tipoFoto, setTipoFoto] = useState("evidencia"); const [montoPago, setMontoPago] = useState(""); const [metodoPago, setMetodoPago] = useState("efectivo"); const [recordatorio, setRecordatorio] = useState({ tipo: "Servicio general", proximoKm: String(inicial.vehiculo.kilometraje + 5000), proximaFecha: "" }); const [recordatorioGuardado, setRecordatorioGuardado] = useState(false);
   const pagado = orden.pagos.reduce((suma, pago) => suma + Number(pago.monto), 0); const saldo = Math.max(0, Number(orden.total) - pagado);
   const actual = pasos.indexOf(orden.estado); const ligaAprobacion = approvalUrl || rutaAprobacion;
   const mecPorId = useMemo(() => new Map(mecanicos.map((m) => [m.id, m])), [mecanicos]); const mecanico = orden.mecanicoId ? mecPorId.get(orden.mecanicoId) : undefined;
   const subtotalManoObra = conceptos.filter((c) => c.tipo === "mano_obra").reduce((suma, c) => suma + Number(c.cantidad) * Number(c.precioUnitario), 0);
   const subtotalRefacciones = conceptos.filter((c) => c.tipo === "refaccion").reduce((suma, c) => suma + Number(c.cantidad) * Number(c.precioUnitario), 0);
-  const canonConceptos = (items: Concepto[]) => items.map((c) => [c.tipo, c.descripcion.trim(), c.refaccionId ?? "", Number(c.cantidad), Number(c.precioUnitario)].join("\u001f")).sort().join("\u001e");
+  function aplicarOrdenRemota(nueva: Orden) {
+    const anterior = ordenRemota.current;
+    if (borrador.current.diagnostico === anterior.diagnostico) setDiagnostico(nueva.diagnostico);
+    if (borrador.current.kmEntrada === String(anterior.kmEntrada)) setKmEntrada(String(nueva.kmEntrada));
+    if (borrador.current.mecanicoId === (anterior.mecanicoId ?? "")) setMecanicoId(nueva.mecanicoId ?? "");
+    if (canonConceptos(borrador.current.conceptos) === canonConceptos(anterior.conceptos)) setConceptos(nueva.conceptos.map((c) => ({ ...c })));
+    if (anterior.estado === "esperando_aprobacion" && nueva.estado !== "esperando_aprobacion") {
+      toast(nueva.aprobacionResultado === "aprobar" ? "El cliente aprobó la cotización" : nueva.aprobacionResultado === "rechazar" ? "El cliente rechazó la cotización" : "La orden recibió una respuesta del cliente");
+    }
+    ordenRemota.current = nueva;
+    setOrden(nueva);
+  }
+
+  useEffect(() => { if (inicial.version !== ordenRemota.current.version) aplicarOrdenRemota(inicial); }, [inicial]);
+  useEffect(() => {
+    if (orden.estado !== "esperando_aprobacion") return;
+    let activo = true;
+    const consultar = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const response = await fetch(`/api/taller/ordenes/${orden.id}`, { cache: "no-store" });
+        if (!response.ok || !activo) return;
+        const data = await response.json();
+        if (activo && data.orden && data.orden.version !== ordenRemota.current.version) aplicarOrdenRemota(data.orden);
+      } catch { /* El próximo sondeo reintentará si hay un fallo de red. */ }
+    };
+    const temporizador = window.setInterval(() => { void consultar(); }, 8000);
+    document.addEventListener("visibilitychange", consultar);
+    return () => { activo = false; window.clearInterval(temporizador); document.removeEventListener("visibilitychange", consultar); };
+  }, [orden.estado, orden.id]);
 
   async function guardar(extra: Record<string, unknown> = {}) {
     const incluyeConceptos = !("estado" in extra); const cambiaronConceptos = incluyeConceptos && canonConceptos(orden.conceptos) !== canonConceptos(conceptos);
     if (cambiaronConceptos && orden.aprobadoAt && ["en_reparacion", "listo"].includes(orden.estado) && !window.confirm("Cambiar conceptos exige nueva aprobación del cliente")) return;
     setBusy(true);
-    try { const body = { version: orden.version, ...extra, ...( "estado" in extra ? {} : { diagnostico, conceptos, kmEntrada, mecanicoId }) }; const response = await fetch(`/api/taller/ordenes/${orden.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setOrden(data.orden); setDiagnostico(data.orden.diagnostico); setKmEntrada(String(data.orden.kmEntrada)); setMecanicoId(data.orden.mecanicoId ?? ""); setConceptos(data.orden.conceptos); toast("Orden actualizada"); router.refresh(); }
+    try { const body = { version: orden.version, ...extra, ...( "estado" in extra ? {} : { diagnostico, conceptos, kmEntrada, mecanicoId }) }; const response = await fetch(`/api/taller/ordenes/${orden.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); aplicarOrdenRemota(data.orden); toast("Orden actualizada"); router.refresh(); }
     catch (error) { toast(error instanceof Error ? error.message : "No se pudo actualizar", "error"); } finally { setBusy(false); }
   }
 

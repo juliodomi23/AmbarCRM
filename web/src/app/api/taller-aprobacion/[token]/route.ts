@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { db, runWithOrg } from "@/lib/db";
 
 function tokenPart(value: string) {
@@ -29,6 +30,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ token: s
     const result = await db.tallerOrden.updateMany({ where: { id: data.orden.id, estado: "esperando_aprobacion", aprobacionToken: data.parsed.token }, data: { estado: nuevoEstado, aprobacionResultado: String(body.decision), aprobadoAt: new Date(), aprobadoMedio: "enlace_publico", version: { increment: 1 } } });
     if (!result.count) return NextResponse.json({ error: "Esta aprobación ya fue respondida" }, { status: 409 });
     await db.tallerOrdenCambio.create({ data: { ordenId: data.orden.id, estado: nuevoEstado, actor: "cliente" } });
+    revalidatePath("/taller/ordenes", "page");
+    revalidatePath(`/taller/ordenes/${data.orden.id}`, "page");
     return NextResponse.json({ ok: true, estado: nuevoEstado });
   });
 }
