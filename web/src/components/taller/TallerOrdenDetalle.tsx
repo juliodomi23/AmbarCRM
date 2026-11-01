@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton } from "@/components/ui";
 import { toast } from "@/components/Toaster";
+import { confirmar } from "@/components/Confirmador";
 import { TallerCampo } from "@/components/taller/TallerCampo";
 import { TallerIcono } from "@/components/taller/TallerIcono";
 import { TallerNavegacion } from "@/components/taller/TallerNavegacion";
@@ -67,7 +68,7 @@ export function TallerOrdenDetalle({ orden: inicial, refacciones, mecanicos, esA
 
   async function guardar(extra: Record<string, unknown> = {}) {
     const incluyeConceptos = !("estado" in extra); const cambiaronConceptos = incluyeConceptos && canonConceptos(orden.conceptos) !== canonConceptos(conceptos);
-    if (cambiaronConceptos && orden.aprobadoAt && ["en_reparacion", "listo"].includes(orden.estado) && !window.confirm("Cambiar conceptos exige nueva aprobación del cliente")) return;
+    if (cambiaronConceptos && orden.aprobadoAt && ["en_reparacion", "listo"].includes(orden.estado) && !await confirmar({ titulo: "Se pedirá nueva aprobación", mensaje: "Cambiar los conceptos reabrirá la aprobación del cliente.", confirmar: "Guardar y reabrir aprobación", peligro: false })) return;
     setBusy(true);
     try { const body = { version: orden.version, ...extra, ...( "estado" in extra ? {} : { diagnostico, conceptos, kmEntrada, mecanicoId }) }; const response = await fetch(`/api/taller/ordenes/${orden.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); aplicarOrdenRemota(data.orden); toast("Orden actualizada"); router.refresh(); }
     catch (error) { toast(error instanceof Error ? error.message : "No se pudo actualizar", "error"); } finally { setBusy(false); }
@@ -91,11 +92,15 @@ export function TallerOrdenDetalle({ orden: inicial, refacciones, mecanicos, esA
     catch (error) { toast(error instanceof Error ? error.message : "No se pudo crear la aprobación", "error"); } finally { setBusy(false); }
   }
 
-  function avanzar(estado: string) {
+  async function avanzar(estado: string) {
     const extra: Record<string, unknown> = { estado };
-    if (estado === "entregado" && saldo > 0) { if (!window.confirm(esAdmin ? `Hay saldo de ${monedaTaller(saldo)}. ¿Confirmas la entrega con saldo pendiente?` : `Hay saldo pendiente de ${monedaTaller(saldo)}.`)) return; if (esAdmin) extra.confirmarSaldoPendiente = true; }
-    if (estado === "cancelado" && pagado > 0) { if (!esAdmin) { toast("Solo un administrador puede cancelar una orden con pagos", "error"); return; } if (!window.confirm("La orden tiene pagos registrados. Los reembolsos deben resolverse fuera del sistema y los pagos seguirán visibles. ¿Confirmas la cancelación?")) return; extra.confirmarCancelacionConPagos = true; }
-    void guardar(extra);
+    if (estado === "entregado" && saldo > 0) {
+      if (!esAdmin) { toast("Solo un administrador puede entregar con saldo", "error"); return; }
+      if (!await confirmar({ titulo: "Entregar con saldo pendiente", mensaje: `Queda un saldo de ${monedaTaller(saldo)}. ¿Deseas entregar el vehículo de todos modos?`, confirmar: "Entregar de todos modos", peligro: true })) return;
+      extra.confirmarSaldoPendiente = true;
+    }
+    if (estado === "cancelado" && pagado > 0) { if (!esAdmin) { toast("Solo un administrador puede cancelar una orden con pagos", "error"); return; } if (!await confirmar({ titulo: "Cancelar orden con pagos", mensaje: "La orden tiene pagos registrados. Los reembolsos deben resolverse fuera del sistema; los pagos seguirán visibles.", confirmar: "Cancelar orden", peligro: true })) return; extra.confirmarCancelacionConPagos = true; }
+    await guardar(extra);
   }
 
   async function guardarFoto(archivo?: File) {
