@@ -2581,7 +2581,7 @@ DO $$ DECLARE t TEXT; BEGIN
   END LOOP;
 END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON taller_ordenes,taller_orden_conceptos,taller_orden_cambios TO crm_app;
-GRANT USAGE, SELECT ON SEQUENCE taller_ordenes_id_seq,taller_ordenes_numero_seq,taller_orden_conceptos_id_seq,taller_orden_cambios_id_seq TO crm_app;
+GRANT USAGE, SELECT ON SEQUENCE taller_ordenes_id_seq,taller_orden_conceptos_id_seq,taller_orden_cambios_id_seq TO crm_app;
 
 ALTER TABLE taller_ordenes ADD COLUMN IF NOT EXISTS aprobacion_token TEXT;
 ALTER TABLE taller_ordenes ADD COLUMN IF NOT EXISTS aprobacion_resultado TEXT;
