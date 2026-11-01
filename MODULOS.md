@@ -127,9 +127,13 @@ estados, conceptos de mano de obra/refacciones y total calculado en servidor.
 El control de versión rechaza cambios basados en una orden desactualizada.
 La orden permite crear una liga de un solo uso para aprobación pública; cambiar
 conceptos después de aprobarla la regresa a diagnóstico y exige una aprobación nueva.
-El equipo comparte esa liga manualmente: esta entrega no manda WhatsApp. Las fotos
+Desde el detalle se envía la aprobación, el aviso de listo o el estado por WhatsApp:
+modo simulado, canal oficial o enlace manual `wa.me`. La configuración permite simular
+sin escribir a Meta, elegir el canal y ajustar las plantillas aprobadas. Las fotos
 se guardan con el storage de medios existente; se aceptan JPG, PNG y WebP de hasta
-8 MB (cuerpo máximo del proxy: 12 MB).
+8 MB (cuerpo máximo del proxy: 12 MB). La orden también genera un token de seguimiento
+público (`/taller-estado/…`) sin precios por concepto ni teléfonos, que caduca a los 30
+días de la entrega; un bot con permiso `consultar_taller` puede consultar ese estado.
 El catálogo de Refacciones muestra existencias bajas; agregar una pieza desde el
 catálogo consume stock bajo bloqueo transaccional, y cancelar una orden lo repone.
 Los pagos quedan ligados directamente a la orden. No se conectan a Caja/Cobros:
@@ -142,8 +146,11 @@ consecutivos por organización; asignar un mecánico valida que el usuario perte
 a la organización, sin filtrar por puesto.
 La etapa de recordatorios aparece en `/taller/recordatorios` como lista de próximos
 y vencidos, comparando fecha y kilometraje actual. Al entregar una orden, se puede
-crear manualmente un recordatorio para el vehículo. No se envían mensajes ni se
-ejecutan tareas automáticas de WhatsApp.
+crear manualmente un recordatorio para el vehículo. No hay cron ni tareas automáticas:
+el estado se manda a mano desde la orden. El detalle imprime recepción y cotización
+listas para guardar como PDF, y `/taller/reportes` (solo administradores) resume
+ingresos, saldo por cobrar, tiempos, embudo, mecánicos y refacciones, con exportación
+CSV.
 
 ## Módulo Inmobiliaria
 

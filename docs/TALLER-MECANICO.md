@@ -36,13 +36,15 @@ sube cuando el valor capturado es mayor.
 - `taller_vehiculos`: propietario, placa, VIN opcional, marca, modelo, año, color,
   kilometraje, notas y versión. Placa y VIN son únicos por organización.
 - `taller_ordenes`: vehículo, folio, estado, km de entrada, falla, diagnóstico,
-  responsable mecánico, fecha promesa, total, versión y aprobación.
+  responsable mecánico, fecha promesa, total, versión, aprobación y token de seguimiento público.
 - `taller_orden_conceptos`: mano de obra y refacciones con cantidad y precio.
 - `taller_orden_cambios`: historial de estado, actor y fecha.
 - `taller_fotos`: referencia a medios de ingreso, daños o evidencia.
 - `taller_refacciones`: código, existencia, costo, precio y mínimo.
 - `taller_pagos`: anticipos y liquidaciones ligados a una orden.
 - `taller_recordatorios`: servicio próximo por kilometraje y/o fecha.
+- `taller_notificaciones`: avisos de WhatsApp al cliente (`tipo`, `forma`, `estado`,
+  error, usuario y fecha) para el historial de la orden.
 
 Todas las tablas tienen `org_id` por defecto desde `app.current_org`, RLS con la
 política `org_isolation`, permisos de `crm_app` e índices por organización. Las
@@ -53,7 +55,7 @@ relaciones a contactos, vehículos, órdenes y refacciones comprueban el mismo t
 Las órdenes se cotizan con sus propios conceptos. El módulo Cotizaciones actual
 genera partidas comerciales y no enlaza una orden de taller. La aprobación propia
 muestra el importe y permite aprobar o solicitar revisión. El enlace solo funciona
-una vez y se comparte manualmente; el módulo no envía mensajes de WhatsApp.
+una vez. El aviso al cliente por WhatsApp se describe en la sección siguiente.
 
 Citas se revisó como alternativa de agenda. La fecha promesa de entrega no incluye
 hora ni duración y no representa por sí sola una cita; por eso el módulo no crea
@@ -77,11 +79,52 @@ se actualiza de forma atómica al crear la orden; la migración lo inicializa de
 mayor folio existente y conserva los folios históricos.
 
 La lista `/taller/recordatorios` compara fecha y kilometraje del vehículo y separa
-próximos de vencidos. Crear el recordatorio es manual. No hay cron ni envío de
-WhatsApp; no existe interruptor, plantilla ni opt-in configurado para Taller.
+próximos de vencidos. Crear el recordatorio es manual. No hay cron ni envío automático:
+el estado de la orden se manda a mano desde el detalle.
 
 La asignación `mecanico_id` valida que el usuario exista dentro de la organización
 con `referenciaPropia`; no exige que el usuario tenga un puesto específico.
+
+## WhatsApp al cliente y seguimiento público
+
+Desde el detalle de la orden se puede enviar la aprobación, el aviso de «listo» o el
+estado actual. El orden de decisión es: **simulado** (config `simularEnvio`), **oficial**
+por el canal de WhatsApp del contacto y, si no hay canal, **manual** con un enlace
+`wa.me`. Nunca se envía a Meta en modo simulado ni desde la demo.
+
+- **Oficial:** con la ventana de 24 h abierta se manda texto; cerrada se usa la plantilla
+  aprobada configurada (`plantillaAprobacion`, `plantillaListo`, `plantillaEstado`),
+  cada una con `name` y `language`. Sin plantilla responde `409 ventana_cerrada_sin_plantilla`.
+- **Variables en orden fijo:** aprobación `{{1}}` nombre, `{{2}}` marca, `{{3}}` modelo,
+  `{{4}}` placa, `{{5}}` enlace; listo `{{1}}`…`{{4}}` y `{{5}}` saldo; estado `{{1}}`…`{{4}}`
+  y `{{5}}` fecha promesa, `{{6}}` enlace de seguimiento.
+- **Límite:** máximo un aviso del mismo tipo por orden cada 10 minutos (`409 limite_reenvio`).
+- Configuración en el módulo (solo admin): `simularEnvio`, `avisarAlMarcarListo`,
+  `canalId`, las tres plantillas y `leyendaRecepcion` (hasta 2000 caracteres).
+
+El token de seguimiento (`taller_ordenes.seguimiento_token`, 48 hex con prefijo de la
+organización) alimenta `/taller-estado/[token]`: página pública sin sesión, sin precios
+por concepto, sin teléfonos ni mecánicos, con la línea de 6 pasos, la fecha promesa y el
+saldo. Deja de responder (404 genérico) al cancelar la orden o 30 días después de la
+entrega. Los bots de n8n pueden consultar las órdenes activas y las entregadas de los
+últimos 7 días con `GET /api/v1/accounts/{accountId}/conversations/{conversationId}/taller/ordenes`
+y el permiso `consultar_taller`; ver [api-bot.md](api-bot.md).
+
+## Impresión y reportes
+
+`/taller/ordenes/[id]/imprimir?doc=recepcion|cotizacion` genera dos hojas imprimibles
+(A4/Carta) con la marca de la organización: recepción con datos del cliente, vehículo,
+falla, recuadros en blanco para combustible/observaciones, firmas y la leyenda editable;
+cotización con conceptos, subtotales, total, pagos y saldo. El menú «Imprimir» del detalle
+abre cada hoja en otra pestaña y `window.print()` permite guardar como PDF.
+
+`/taller/reportes` (solo administradores) resume órdenes ingresadas, entregadas y
+canceladas, cobrado, por cobrar, ticket promedio, tiempo promedio de entrega, embudo,
+serie diaria de pagos, entregas por mecánico, refacciones usadas con margen, piezas bajo
+mínimo, clientes con saldo y recordatorios vencidos. El periodo usa la zona de
+`America/Mexico_City` y admite atajos de hoy, 7 días, mes actual y mes anterior. La API
+`GET /api/taller/reportes?desde=&hasta=` responde JSON (403 para no administradores) y
+con `&formato=csv` descarga las órdenes del periodo en UTF-8 con BOM.
 
 ## Migración y comprobaciones
 
@@ -116,9 +159,11 @@ El script rechaza URLs fuera de `localhost/taller_test` (app) y `localhost/postg
 (admin). No elimina una base existente. Limpia sus organizaciones de fixture al
 finalizar. Las peticiones HTTP cubren página/API pública sin sesión, token de un solo
 uso, cambios de conceptos y aprobación, módulo apagado, cobros y cancelaciones con
-pagos, entrega con saldo y folios por organización bajo concurrencia. No simulan una
-foto real de 7 MB; esa verificación sigue pendiente en un entorno con PostgreSQL y
-servidor local disponibles.
+pagos, entrega con saldo, folios por organización bajo concurrencia, seguimiento público
+(sin teléfonos ni precios por concepto) y reportes (403 a no-admin, aislamiento y CSV con
+BOM). También valida sin base los textos y variables de plantilla, el enlace `wa.me` y el
+recorte de periodos. La consulta de bot `consultar_taller` y la vista previa de impresión
+quedan pendientes de un entorno con PostgreSQL y servidor local.
 
 ## Demo de taller
 
@@ -126,7 +171,10 @@ servidor local disponibles.
 módulos Taller y Citas activos: 3 usuarios del equipo, 7 vehículos de 6 clientes, 7 órdenes en
 todos los estados (una con saldo pendiente, una esperando aprobación con enlace público), 6
 refacciones (dos con existencia baja), pagos, recordatorios (uno vencido), 3 citas, y chats,
-oportunidades, tareas y reseñas del perfil `PERFIL_TALLER`.
+oportunidades, tareas y reseñas del perfil `PERFIL_TALLER`. Además activa `simularEnvio`, deja
+notificaciones simuladas en el historial, añade 40 órdenes entregadas repartidas en los últimos
+60 días (conceptos, pagos en fechas distintas y un par con saldo) para que Reportes se vea vivo,
+y genera un token de seguimiento activo para la orden en estado `listo`.
 
 ```bash
 ALLOW_DEMO_SEED=1 node scripts/seed-demo-taller.mjs [correo] [contraseña]
@@ -134,8 +182,9 @@ ALLOW_DEMO_SEED=1 node scripts/seed-demo-taller.mjs [correo] [contraseña]
 
 Es idempotente y solo toca `demo-taller`: reinicia pagos, recordatorios, órdenes, vehículos y
 refacciones de esa organización y recalcula las fechas respecto a hoy; conviene correrlo antes de
-cada demo. Imprime el enlace de aprobación de la orden que espera al cliente (`/taller-aprobacion/…`).
-Requiere `actualizaciones.sql` aplicado y se niega a correr con `NODE_ENV=production`.
+cada demo. Imprime el enlace de aprobación (`/taller-aprobacion/…`) y el de seguimiento
+(`/taller-estado/…`). Requiere `actualizaciones.sql` aplicado y se niega a correr con
+`NODE_ENV=production`.
 
 ## Preparar la base de la prueba
 
