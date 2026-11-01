@@ -154,6 +154,8 @@ export function AppShell({
   const [paleta, setPaleta] = useState(false);
   const [contadores, setContadores] = useState(contadoresIniciales);
   const [modulos, setModulos] = useState<NavItem[]>([]);
+  const modulosTaller = modulos.filter((m) => m.href.startsWith("/taller"));
+  const otrosModulos = modulos.filter((m) => !m.href.startsWith("/taller"));
   const visible = (item: NavItem) => !item.soloAdmin || usuario.rol === "admin";
 
   // Zona fija: el servidor corre en UTC y el navegador en hora local; si no coinciden,
@@ -278,8 +280,10 @@ export function AppShell({
       </div>
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
         {[
-          ...GRUPOS,
-          ...(modulos.length ? [{ titulo: "Módulos", items: modulos }] : []),
+          GRUPOS[0],
+          ...(modulosTaller.length ? [{ titulo: "Taller", items: modulosTaller }] : []),
+          ...GRUPOS.slice(1),
+          ...(otrosModulos.length ? [{ titulo: "Módulos", items: otrosModulos }] : []),
         ].map((grupo, gi) => (
           <div key={gi} className="space-y-1">
             {grupo.titulo && (!colapsada || movil) && (

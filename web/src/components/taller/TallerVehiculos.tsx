@@ -34,7 +34,7 @@ export function TallerVehiculos({ iniciales, contactos, contactoInicial = "" }: 
     } catch (error) { toast(error instanceof Error ? error.message : "No se pudo guardar el vehículo", "error"); }
     finally { setBusy(false); }
   }
-  return <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+  return <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
     <TallerNavegacion actual="vehiculos" titulo="Vehículos" descripcion="La ficha de servicio de cada unidad y su historial en el taller." acciones={<Boton className="min-h-11" onClick={() => setOpen(!open)}><span className="inline-flex items-center gap-2"><TallerIcono nombre="mas" className="h-4 w-4" />{open ? "Cerrar formulario" : "Registrar vehículo"}</span></Boton>} />
     {open && <form onSubmit={crear} className="surface animate-fade-up grid gap-4 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
       <label className="block space-y-1 text-sm"><span className="font-medium text-muted-foreground">Cliente propietario</span><select className="min-h-11 w-full rounded-lg border border-input bg-card px-3 text-foreground" required value={form.contactoId} onChange={(e) => setForm({ ...form, contactoId: e.target.value })}><option value="">Selecciona un cliente</option>{contactos.map((c) => <option key={c.id} value={c.id}>{c.nombre}{c.telefono ? ` · ${c.telefono}` : ""}</option>)}</select></label>
@@ -56,5 +56,5 @@ export function TallerVehiculos({ iniciales, contactos, contactoInicial = "" }: 
         <div className="flex items-center justify-between border-t border-border/60 pt-3"><EstadoTaller estado={ultimoEstado ?? "sin_servicios"} /><span className="inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-primary">Abrir ficha<TallerIcono nombre="flecha" className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span></div>
       </Link>;
     })}</div> : <VacioTaller titulo={q || contactoFiltro ? "No encontramos unidades" : "Empieza con el primer vehículo"} detalle={q || contactoFiltro ? "Prueba con otra placa o selecciona un cliente diferente." : "Registra un vehículo para abrir su ficha e iniciar su historial de servicio."} accion={!q && !contactoFiltro ? <Boton className="mt-2 min-h-11" onClick={() => setOpen(true)}>Registrar vehículo</Boton> : undefined} />}
-  </main>;
+  </div>;
 }

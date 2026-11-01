@@ -27,7 +27,7 @@ export function TallerVehiculoDetalle({ vehiculo: inicial }: { vehiculo: Vehicul
     } catch (error) { toast(error instanceof Error ? error.message : "No se pudo actualizar", "error"); }
     finally { setBusy(false); }
   }
-  return <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+  return <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
     <TallerNavegacion actual="vehiculos" titulo={`${vehiculo.marca} ${vehiculo.modelo}`} descripcion="Ficha del vehículo, propietario y actividad de servicio." acciones={<><Link className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-muted" href={`/clientes/${vehiculo.contacto.id}`}>Ficha del cliente</Link><Link className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90" href={`/taller/ordenes?vehiculoId=${vehiculo.id}`}><TallerIcono nombre="mas" className="h-4 w-4" />Crear orden</Link></>} />
     <section className="surface grid gap-5 p-4 sm:grid-cols-[minmax(0,1fr)_15rem] sm:p-6">
       <div className="space-y-4"><PlacaVehiculo placa={vehiculo.placa} grande /><div><h2 className="text-xl font-semibold">{vehiculo.marca} {vehiculo.modelo}{vehiculo.anio ? ` · ${vehiculo.anio}` : ""}</h2><p className="mt-1 text-sm text-muted-foreground">{vehiculo.color || "Color no registrado"}{vehiculo.vin ? ` · VIN ${vehiculo.vin}` : ""}</p></div><div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm"><span className="inline-flex items-center gap-2 text-muted-foreground"><TallerIcono nombre="usuario" className="h-4 w-4" />{vehiculo.contacto.nombre}</span>{vehiculo.contacto.telefono ? <a className="inline-flex min-h-10 items-center gap-2 text-primary hover:underline" href={`tel:${vehiculo.contacto.telefono}`}><TallerIcono nombre="telefono" className="h-4 w-4" />{vehiculo.contacto.telefono}</a> : <span className="text-muted-foreground">Sin teléfono registrado</span>}</div></div>
@@ -56,5 +56,5 @@ export function TallerVehiculoDetalle({ vehiculo: inicial }: { vehiculo: Vehicul
         </section>
       </div>
     </div>
-  </main>;
+  </div>;
 }

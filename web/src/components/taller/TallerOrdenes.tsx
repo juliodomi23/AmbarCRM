@@ -12,7 +12,7 @@ import { EstadoTaller, monedaTaller, nombreEstadoTaller, numeroTaller, PlacaVehi
 
 const columnas = ["recibido", "diagnostico", "esperando_aprobacion", "en_reparacion", "listo", "entregado", "cancelado"];
 type Orden = { id: string; numero: string; estado: string; total: string; fallaReportada: string; fechaPromesa: string | null; mecanicoId: string | null; vehiculo: { placa: string; marca: string; modelo: string; contacto: { nombre: string } } };
-type Vehiculo = { id: string; placa: string; marca: string; modelo: string };
+type Vehiculo = { id: string; placa: string; marca: string; modelo: string; kilometraje: number };
 type Mecanico = { id: string; nombre: string; puesto: string };
 
 const tonosColumna: Record<string, string> = {
@@ -38,7 +38,7 @@ function iniciales(nombre: string) { return nombre.split(/\s+/).filter(Boolean).
 
 export function TallerOrdenes({ ordenes, vehiculos, mecanicos, vehiculoInicial }: { ordenes: Orden[]; vehiculos: Vehiculo[]; mecanicos: Mecanico[]; vehiculoInicial: string }) {
   const router = useRouter(); const [open, setOpen] = useState(Boolean(vehiculoInicial)); const [busy, setBusy] = useState(false); const [vista, setVista] = useState<"tablero" | "lista">("tablero");
-  const [form, setForm] = useState({ vehiculoId: vehiculoInicial, kmEntrada: "0", fallaReportada: "", fechaPromesa: "" });
+  const [form, setForm] = useState({ vehiculoId: vehiculoInicial, kmEntrada: String(vehiculos.find((v) => v.id === vehiculoInicial)?.kilometraje ?? 0), fallaReportada: "", fechaPromesa: "" });
   const mecanicoPorId = useMemo(() => new Map(mecanicos.map((m) => [m.id, m])), [mecanicos]);
 
   async function crear(e: React.FormEvent<HTMLFormElement>) {
@@ -63,10 +63,10 @@ export function TallerOrdenes({ ordenes, vehiculos, mecanicos, vehiculoInicial }
     </Link>;
   }
 
-  return <main className="mx-auto max-w-[88rem] space-y-6 p-4 sm:p-6">
+  return <div className="mx-auto max-w-[88rem] space-y-6 p-4 sm:p-6">
     <TallerNavegacion actual="ordenes" titulo="Órdenes de servicio" descripcion="Recepción, diagnóstico y avance de cada reparación." acciones={<Boton className="min-h-11" onClick={() => setOpen(!open)}><span className="inline-flex items-center gap-2"><TallerIcono nombre="mas" className="h-4 w-4" />{open ? "Cerrar formulario" : "Nueva orden"}</span></Boton>} />
     {open && <form onSubmit={crear} className="surface animate-fade-up grid gap-4 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-4">
-      <label className="block space-y-1"><span className="text-xs font-semibold text-muted-foreground">Vehículo</span><select className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground" required value={form.vehiculoId} onChange={(e) => setForm({ ...form, vehiculoId: e.target.value })}><option value="">Selecciona vehículo</option>{vehiculos.map((v) => <option key={v.id} value={v.id}>{v.placa} · {v.marca} {v.modelo}</option>)}</select></label>
+      <label className="block space-y-1"><span className="text-xs font-semibold text-muted-foreground">Vehículo</span><select className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground" required value={form.vehiculoId} onChange={(e) => { const elegido = vehiculos.find((v) => v.id === e.target.value); setForm({ ...form, vehiculoId: e.target.value, kmEntrada: elegido ? String(elegido.kilometraje) : form.kmEntrada }); }}><option value="">Selecciona vehículo</option>{vehiculos.map((v) => <option key={v.id} value={v.id}>{v.placa} · {v.marca} {v.modelo}</option>)}</select></label>
       <TallerCampo label="Km de entrada" type="number" min="0" value={form.kmEntrada} onChange={(e) => setForm({ ...form, kmEntrada: e.target.value })} required />
       <TallerCampo label="Falla reportada" value={form.fallaReportada} onChange={(e) => setForm({ ...form, fallaReportada: e.target.value })} required />
       <TallerCampo label="Promesa de entrega" type="datetime-local" value={form.fechaPromesa} onChange={(e) => setForm({ ...form, fechaPromesa: e.target.value })} />
@@ -89,5 +89,5 @@ export function TallerOrdenes({ ordenes, vehiculos, mecanicos, vehiculoInicial }
           </section>;
         })}
       </div> : <div className="surface overflow-hidden"><div className="overflow-x-auto"><table className="tabla"><thead><tr><th>Orden</th><th>Vehículo</th><th>Cliente</th><th>Estado</th><th>Mecánico</th><th>Promesa</th><th className="text-right">Total</th><th><span className="sr-only">Abrir</span></th></tr></thead><tbody>{ordenes.map((o) => { const mecanico = o.mecanicoId ? mecanicoPorId.get(o.mecanicoId) : undefined; const promesa = fechaPromesa(o.fechaPromesa); return <tr key={o.id} className="fila-lista"><td className="tnum font-bold">#{o.numero}</td><td><PlacaVehiculo placa={o.vehiculo.placa} /></td><td className="min-w-40">{o.vehiculo.contacto.nombre}<span className="block text-xs text-muted-foreground">{o.vehiculo.marca} {o.vehiculo.modelo}</span></td><td><EstadoTaller estado={o.estado} /></td><td>{mecanico?.nombre ?? "Sin asignar"}</td><td><span className={`inline-flex min-h-8 items-center gap-1 text-xs font-semibold ${promesa.tono}`}><TallerIcono nombre="calendario" className="h-3.5 w-3.5" />{promesa.texto}</span></td><td className="tnum text-right font-semibold">{monedaTaller(o.total)}</td><td><Link href={`/taller/ordenes/${o.id}`} aria-label={`Abrir orden ${o.numero}`} className="inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-primary hover:bg-primary/5">Abrir<TallerIcono nombre="flecha" className="h-4 w-4" /></Link></td></tr>; })}</tbody></table></div></div>}
-  </main>;
+  </div>;
 }
