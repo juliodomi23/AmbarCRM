@@ -2,7 +2,7 @@ export type OrdenFiltrable = {
   id: string;
   numero: string;
   estado: string;
-  createdAt: string;
+  updatedAt: string;
   fallaReportada: string;
   mecanicoId: string | null;
   vehiculo: { placa: string; marca: string; modelo: string; contacto: { nombre: string } };
@@ -29,7 +29,7 @@ export function separarOrdenesCerradas<T extends OrdenFiltrable>(ordenes: readon
   const hace30Dias = ahora.getTime() - 30 * 24 * 60 * 60 * 1000;
   const delEstado = ordenes.filter((orden) => orden.estado === estado);
   return {
-    recientes: delEstado.filter((orden) => new Date(orden.createdAt).getTime() >= hace30Dias),
-    antiguas: delEstado.filter((orden) => new Date(orden.createdAt).getTime() < hace30Dias),
+    recientes: delEstado.filter((orden) => new Date(orden.updatedAt).getTime() >= hace30Dias),
+    antiguas: delEstado.filter((orden) => new Date(orden.updatedAt).getTime() < hace30Dias),
   };
 }

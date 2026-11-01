@@ -12,7 +12,7 @@ import { EstadoTaller, monedaTaller, nombreEstadoTaller, PlacaVehiculo, VacioTal
 import { filtrarOrdenes, separarOrdenesCerradas } from "@/lib/taller-orden-filtros";
 
 const columnas = ["recibido", "diagnostico", "esperando_aprobacion", "en_reparacion", "listo", "entregado", "cancelado"];
-type Orden = { id: string; numero: string; estado: string; total: string; fallaReportada: string; createdAt: string; fechaPromesa: string | null; mecanicoId: string | null; vehiculo: { placa: string; marca: string; modelo: string; contacto: { nombre: string } } };
+type Orden = { id: string; numero: string; estado: string; total: string; fallaReportada: string; createdAt: string; updatedAt: string; fechaPromesa: string | null; mecanicoId: string | null; vehiculo: { placa: string; marca: string; modelo: string; contacto: { nombre: string } } };
 type Vehiculo = { id: string; placa: string; marca: string; modelo: string; kilometraje: number };
 type Mecanico = { id: string; nombre: string; puesto: string };
 

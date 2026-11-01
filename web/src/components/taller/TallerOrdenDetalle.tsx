@@ -35,12 +35,12 @@ export function TallerOrdenDetalle({ orden: inicial, refacciones, mecanicos, esA
   const mecPorId = useMemo(() => new Map(mecanicos.map((m) => [m.id, m])), [mecanicos]); const mecanico = orden.mecanicoId ? mecPorId.get(orden.mecanicoId) : undefined;
   const subtotalManoObra = conceptos.filter((c) => c.tipo === "mano_obra").reduce((suma, c) => suma + Number(c.cantidad) * Number(c.precioUnitario), 0);
   const subtotalRefacciones = conceptos.filter((c) => c.tipo === "refaccion").reduce((suma, c) => suma + Number(c.cantidad) * Number(c.precioUnitario), 0);
-  function aplicarOrdenRemota(nueva: Orden) {
+  function aplicarOrdenRemota(nueva: Orden, sincronizarBorrador = false) {
     const anterior = ordenRemota.current;
-    if (borrador.current.diagnostico === anterior.diagnostico) setDiagnostico(nueva.diagnostico);
-    if (borrador.current.kmEntrada === String(anterior.kmEntrada)) setKmEntrada(String(nueva.kmEntrada));
-    if (borrador.current.mecanicoId === (anterior.mecanicoId ?? "")) setMecanicoId(nueva.mecanicoId ?? "");
-    if (canonConceptos(borrador.current.conceptos) === canonConceptos(anterior.conceptos)) setConceptos(nueva.conceptos.map((c) => ({ ...c })));
+    if (sincronizarBorrador || borrador.current.diagnostico === anterior.diagnostico) setDiagnostico(nueva.diagnostico);
+    if (sincronizarBorrador || borrador.current.kmEntrada === String(anterior.kmEntrada)) setKmEntrada(String(nueva.kmEntrada));
+    if (sincronizarBorrador || borrador.current.mecanicoId === (anterior.mecanicoId ?? "")) setMecanicoId(nueva.mecanicoId ?? "");
+    if (sincronizarBorrador || canonConceptos(borrador.current.conceptos) === canonConceptos(anterior.conceptos)) setConceptos(nueva.conceptos.map((c) => ({ ...c })));
     if (anterior.estado === "esperando_aprobacion" && nueva.estado !== "esperando_aprobacion") {
       toast(nueva.aprobacionResultado === "aprobar" ? "El cliente aprobó la cotización" : nueva.aprobacionResultado === "rechazar" ? "El cliente rechazó la cotización" : "La orden recibió una respuesta del cliente");
     }
@@ -70,7 +70,7 @@ export function TallerOrdenDetalle({ orden: inicial, refacciones, mecanicos, esA
     const incluyeConceptos = !("estado" in extra); const cambiaronConceptos = incluyeConceptos && canonConceptos(orden.conceptos) !== canonConceptos(conceptos);
     if (cambiaronConceptos && orden.aprobadoAt && ["en_reparacion", "listo"].includes(orden.estado) && !await confirmar({ titulo: "Se pedirá nueva aprobación", mensaje: "Cambiar los conceptos reabrirá la aprobación del cliente.", confirmar: "Guardar y reabrir aprobación", peligro: false })) return;
     setBusy(true);
-    try { const body = { version: orden.version, ...extra, ...( "estado" in extra ? {} : { diagnostico, conceptos, kmEntrada, mecanicoId }) }; const response = await fetch(`/api/taller/ordenes/${orden.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); aplicarOrdenRemota(data.orden); toast("Orden actualizada"); router.refresh(); }
+    try { const body = { version: orden.version, ...extra, ...( "estado" in extra ? {} : { diagnostico, conceptos, kmEntrada, mecanicoId }) }; const response = await fetch(`/api/taller/ordenes/${orden.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); aplicarOrdenRemota(data.orden, !("estado" in extra)); toast("Orden actualizada"); router.refresh(); }
     catch (error) { toast(error instanceof Error ? error.message : "No se pudo actualizar", "error"); } finally { setBusy(false); }
   }
 
@@ -96,7 +96,7 @@ export function TallerOrdenDetalle({ orden: inicial, refacciones, mecanicos, esA
     const extra: Record<string, unknown> = { estado };
     if (estado === "entregado" && saldo > 0) {
       if (!esAdmin) { toast("Solo un administrador puede entregar con saldo", "error"); return; }
-      if (!await confirmar({ titulo: "Entregar con saldo pendiente", mensaje: `Queda un saldo de ${monedaTaller(saldo)}. ¿Deseas entregar el vehículo de todos modos?`, confirmar: "Entregar de todos modos", peligro: true })) return;
+      if (!await confirmar({ titulo: "Entregar con saldo pendiente", mensaje: `Queda un saldo de ${monedaTaller(saldo)}. ¿Deseas entregar el vehículo de todos modos?`, confirmar: "Entregar de todos modos", peligro: false })) return;
       extra.confirmarSaldoPendiente = true;
     }
     if (estado === "cancelado" && pagado > 0) { if (!esAdmin) { toast("Solo un administrador puede cancelar una orden con pagos", "error"); return; } if (!await confirmar({ titulo: "Cancelar orden con pagos", mensaje: "La orden tiene pagos registrados. Los reembolsos deben resolverse fuera del sistema; los pagos seguirán visibles.", confirmar: "Cancelar orden", peligro: true })) return; extra.confirmarCancelacionConPagos = true; }
