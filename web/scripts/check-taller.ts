@@ -11,6 +11,10 @@ import { ajustarExistenciasTaller, ErrorStockTaller } from "../src/lib/taller-in
 import { calcularTotalTaller, puedeEntregarConSaldo, transicionTallerValida } from "../src/lib/taller-reglas";
 import { transaccionTenant } from "../src/lib/retail-db";
 import { filtrarOrdenes, separarOrdenesCerradas } from "../src/lib/taller-orden-filtros";
+import { periodoReporte, reportesTaller } from "../src/lib/taller-reportes";
+import { enlaceWhatsappManual, mensajeTaller, variablesPlantillaTaller } from "../src/lib/taller-whatsapp";
+import { partesTokenSeguimiento } from "../src/lib/taller-estado";
+import { toCSV } from "../src/lib/csv";
 
 const appUrl = process.env.DATABASE_URL, adminUrl = process.env.ADMIN_DATABASE_URL, httpUrl = process.env.APP_URL;
 for (const [label, value, dbName] of [["DATABASE_URL", appUrl, "taller_test"], ["ADMIN_DATABASE_URL", adminUrl, "postgres"]] as const) {
@@ -46,6 +50,23 @@ async function main() {
   const largaEntregadaAyer = { ...ordenesFiltro[0], id: "3", createdAt: "2026-08-01T12:00:00.000Z", updatedAt: "2026-10-31T12:00:00.000Z" };
   assert.equal(separarOrdenesCerradas([largaEntregadaAyer], "entregado", new Date("2026-11-01T12:00:00.000Z")).recientes.length, 1, "el corte de 30 días usa la última actualización, no la creación");
   assert.equal(separarOrdenesCerradas(ordenesFiltro, "cancelado", new Date("2026-11-01T12:00:00.000Z")).antiguas.length, 1, "separa órdenes canceladas anteriores a 30 días");
+  const datosMensaje = {
+    nombre: "Ana", marcaVehiculo: "Nissan", modelo: "Versa", placa: "ABC123", saldo: 1250,
+    enlaceAprobacion: "https://x/aprobar", enlaceSeguimiento: "https://x/estado", fechaPromesa: "2026-11-02",
+    estado: "en_reparacion", taller: "Taller Rivera",
+  };
+  assert.match(mensajeTaller("aprobacion", datosMensaje), /Revisa y aprueba la cotización aquí: https:\/\/x\/aprobar/);
+  assert.match(mensajeTaller("listo", datosMensaje), /Saldo por liquidar: \$1,250\.00/);
+  assert.match(mensajeTaller("estado", datosMensaje), /Seguimiento: https:\/\/x\/estado/);
+  assert.deepEqual(variablesPlantillaTaller("listo", datosMensaje), ["Ana", "Nissan", "Versa", "ABC123", "$1,250.00"], "las variables de plantilla van en orden fijo");
+  assert.equal(enlaceWhatsappManual("55 1234 5678", "Hola mundo"), "https://wa.me/525512345678?text=Hola%20mundo");
+  assert.equal(enlaceWhatsappManual("", "Hola"), null);
+  assert.deepEqual(partesTokenSeguimiento(`91-${"a".repeat(48)}`), { orgId: 91n, valor: "a".repeat(48) });
+  assert.equal(partesTokenSeguimiento("91-abc"), null);
+  assert.equal(partesTokenSeguimiento(`91-${"a".repeat(47)}`), null);
+  assert.equal(periodoReporte("2026-10-31", "2026-10-01").desde, "2026-10-01", "el periodo invierte fechas mal enviadas");
+  assert.equal(periodoReporte("2025-01-01", "2026-10-31").desde, "2025-10-31", "el periodo se acota a 366 días");
+  assert.ok(toCSV(["a"], [["b"]]).startsWith("\uFEFF"), "CSV incluye BOM para Excel");
   await prepararBase();
   const existentes = await admin.query("SELECT id FROM orgs WHERE id IN (91,92)");
   if (existentes.rowCount) throw new Error("La base aislada debe estar vacía para esta prueba");
@@ -196,7 +217,43 @@ async function main() {
     const folioOtraOrg = await crearOrden(orgSinModulo, vehiculoB.id);
     assert.equal(folioOtraOrg.status, 201);
     assert.equal(String((await folioOtraOrg.json()).orden.numero), "1", "cada organización comienza su propia secuencia");
-    console.log("taller: módulo apagado, aislamiento, placa por org, versión, total, estados, concurrencia/inventario y aprobación HTTP pública OK");
+
+    // Seguimiento público: sin cookie, sin teléfonos, sin precios por concepto ni mecánicos.
+    const tokenSeguimiento = "d".repeat(48);
+    const ordenSeguimiento = await runWithOrg(orgA, () => db.tallerOrden.create({
+      data: {
+        numero: 90n, vehiculoId: vehiculoA.id, kmEntrada: 50000, fallaReportada: "Seguimiento", creadoPorId: usuarioA.id,
+        estado: "listo", total: new Prisma.Decimal(500), seguimientoToken: tokenSeguimiento,
+        createdAt: new Date("2020-01-10T15:00:00.000Z"),
+        conceptos: { create: [{ tipo: "refaccion", descripcion: "Pieza", cantidad: new Prisma.Decimal(1), precioUnitario: new Prisma.Decimal(500) }] },
+      },
+    }));
+    await runWithOrg(orgA, () => db.tallerPago.create({
+      data: { ordenId: ordenSeguimiento.id, monto: new Prisma.Decimal(200), metodo: "efectivo", userId: usuarioA.id, createdAt: new Date("2020-01-15T18:00:00.000Z") },
+    }));
+    const seguimiento = await request(`/api/taller-estado/${orgA}-${tokenSeguimiento}`);
+    assert.equal(seguimiento.status, 200, "el seguimiento público no exige sesión");
+    const cuerpoSeguimiento = await seguimiento.text();
+    assert.equal(/telefono|precioUnitario|mecanico/i.test(cuerpoSeguimiento), false, "el seguimiento no expone teléfonos, precios por concepto ni mecánicos");
+    assert.match(cuerpoSeguimiento, /"saldo":300/, "el seguimiento muestra el saldo pendiente");
+    assert.equal((await request(`/api/taller-estado/${orgA}-${"e".repeat(48)}`)).status, 404, "un token desconocido responde 404");
+
+    // Reportes: periodo fijo en 2020 para no mezclar pagos creados con now() en otras pruebas.
+    const reporte = await runWithOrg(orgA, () => reportesTaller("2020-01-01", "2020-01-31"));
+    assert.equal(reporte.resumen.ingresosCobrados, 200, "los ingresos suman solo pagos dentro del periodo");
+    assert.equal(reporte.serieDiaria.find((dia) => dia.fecha === "2020-01-15")?.monto, 200, "la serie agrupa en zona de México");
+    assert.ok(reporte.resumen.ordenesAbiertas >= 1);
+    const reporteB = await runWithOrg(orgB, () => reportesTaller("2020-01-01", "2020-01-31"));
+    assert.equal(reporteB.resumen.ingresosCobrados, 0, "los reportes aíslan por organización");
+    assert.equal((await request("/api/taller/reportes", { headers: { Cookie: `next-auth.session-token=${agente}` } })).status, 403, "reportes exige administrador");
+    const reporteJson = await request("/api/taller/reportes?desde=2020-01-01&hasta=2020-01-31", { headers: { Cookie: `next-auth.session-token=${signed}` } });
+    assert.equal(reporteJson.status, 200);
+    assert.equal((await reporteJson.json()).resumen.ingresosCobrados, 200);
+    const csv = await request("/api/taller/reportes?desde=2020-01-01&hasta=2020-01-31&formato=csv", { headers: { Cookie: `next-auth.session-token=${signed}` } });
+    assert.equal(csv.status, 200);
+    const bytesCsv = [...new Uint8Array(await csv.arrayBuffer()).slice(0, 3)];
+    assert.deepEqual(bytesCsv, [0xef, 0xbb, 0xbf], "el CSV lleva BOM UTF-8 para Excel");
+    console.log("taller: módulo apagado, aislamiento, placa por org, versión, total, estados, concurrencia/inventario, aprobación HTTP pública, seguimiento y reportes OK");
   } finally {
     // Varias FKs a orgs no tienen cascade: se borran las filas de fixture de cada tabla con org_id sin disparar FKs (base aislada, rol superusuario).
     await admin.query(`SET session_replication_role = replica;

@@ -38,6 +38,7 @@ const VEHICULOS = [
 
 const hex48 = () => randomBytes(24).toString("hex");
 let urlAprobacion = "";
+let urlSeguimiento = "";
 
 await prisma.$transaction(async (tx) => {
   await tx.$executeRawUnsafe("SELECT set_config('app.current_org', $1, true)", String(org.id));
@@ -74,6 +75,20 @@ await prisma.$transaction(async (tx) => {
       create: { clave, activo: true, config: {} },
     });
   }
+  // La demo nunca manda nada real a Meta: todo el WhatsApp del taller se simula.
+  const moduloTaller = await tx.moduloOrg.findUniqueOrThrow({ where: { orgId_clave: { orgId: org.id, clave: "taller" } } });
+  await tx.moduloOrg.update({
+    where: { id: moduloTaller.id },
+    data: {
+      config: {
+        ...(moduloTaller.config ?? {}),
+        simularEnvio: true,
+        avisarAlMarcarListo: true,
+        leyendaRecepcion:
+          "El vehículo se entrega en el horario del taller. Las refacciones especiales pueden variar el tiempo de entrega; te avisaremos por WhatsApp. Gracias por tu confianza.",
+      },
+    },
+  });
 
   await sembrarActividadDemo(tx, org, PERFIL_TALLER);
   const contactos = [];
@@ -130,22 +145,74 @@ await prisma.$transaction(async (tx) => {
     const total = conceptos.reduce((suma, c) => suma + Number(c.cantidad) * Number(c.precioUnitario), 0);
     const aprobar = ["en_reparacion", "listo", "entregado"].includes(estado) || aprobada;
     const token = estado === "esperando_aprobacion" ? hex48() : null;
+    const seguimiento = estado === "listo" ? hex48() : null;
     const orden = await tx.tallerOrden.create({
       data: {
         vehiculoId: vehiculos[v].id, numero: folio, estado, kmEntrada: vehiculos[v].kilometraje, fallaReportada: falla, diagnostico,
         mecanicoId: mecanico?.id ?? null, fechaPromesa: promesa === null ? null : fechaMexico(promesa, 18), total,
         creadoPorId: admin.id, createdAt: hace(dias, 9),
         aprobadoAt: aprobar ? hace(Math.max(dias - 1, 0), 12) : null, aprobadoMedio: aprobar ? "enlace_publico" : null,
-        aprobacionResultado: aprobar ? "aprobar" : null, aprobacionToken: token,
+        aprobacionResultado: aprobar ? "aprobar" : null, aprobacionToken: token, seguimientoToken: seguimiento,
       },
     });
     if (token) urlAprobacion = `/taller-aprobacion/${org.id}-${token}`;
+    if (seguimiento) urlSeguimiento = `/taller-estado/${org.id}-${seguimiento}`;
     if (conceptos.length) await tx.tallerOrdenConcepto.createMany({ data: conceptos.map((c) => ({ ...c, ordenId: orden.id })) });
     for (const [e, d] of historial) {
       await tx.tallerOrdenCambio.create({ data: { ordenId: orden.id, estado: e, userId: e === "esperando_aprobacion" || e === "en_reparacion" ? null : admin.id, actor: e === "en_reparacion" && aprobar ? "cliente" : "equipo", creadoAt: hace(d, 11) } });
     }
     for (const [monto, metodo, d] of pagos) await tx.tallerPago.create({ data: { ordenId: orden.id, monto, metodo, userId: admin.id, createdAt: hace(d, 13) } });
   }
+  // Historial de WhatsApp simulado: la demo nunca llamó a Meta.
+  const ordenListo = await tx.tallerOrden.findFirst({ where: { estado: "listo" }, orderBy: { numero: "desc" } });
+  const ordenAprobacion = await tx.tallerOrden.findFirst({ where: { estado: "esperando_aprobacion" } });
+  if (ordenListo) {
+    await tx.tallerNotificacion.create({ data: { ordenId: ordenListo.id, tipo: "listo", forma: "simulado", estado: "simulado", userId: admin.id, createdAt: hace(1, 18) } });
+  }
+  if (ordenAprobacion) {
+    await tx.tallerNotificacion.create({ data: { ordenId: ordenAprobacion.id, tipo: "aprobacion", forma: "simulado", estado: "simulado", userId: admin.id, createdAt: hace(1, 10) } });
+  }
+
+  // Histórico de 40 órdenes entregadas en los últimos 60 días para que los reportes se vean vivos.
+  const codigosRefaccion = Object.keys(refs);
+  const servicios = ["Afinación", "Cambio de aceite", "Revisión de frenos", "Servicio de suspensión"];
+  for (let i = 0; i < 40; i += 1) {
+    folio += 1;
+    const dias = 2 + ((i * 57) % 58);
+    const vehiculo = vehiculos[i % vehiculos.length];
+    const mecanico = equipo[i % equipo.length];
+    const conceptos = [
+      pieza(codigosRefaccion[i % codigosRefaccion.length], 1 + (i % 3)),
+      pieza(codigosRefaccion[(i + 2) % codigosRefaccion.length], 1),
+      mo(servicios[i % servicios.length], 480 + (i % 5) * 120),
+    ];
+    const total = conceptos.reduce((suma, c) => suma + Number(c.cantidad) * Number(c.precioUnitario), 0);
+    const orden = await tx.tallerOrden.create({
+      data: {
+        vehiculoId: vehiculo.id, numero: folio, estado: "entregado", kmEntrada: vehiculo.kilometraje,
+        fallaReportada: "Servicio programado", diagnostico: "", mecanicoId: mecanico.id,
+        fechaPromesa: fechaMexico(-Math.max(dias - 1, 0), 18), total, creadoPorId: admin.id, createdAt: hace(dias, 9),
+        aprobadoAt: hace(dias, 10), aprobadoMedio: "enlace_publico", aprobacionResultado: "aprobar", aprobacionToken: hex48(),
+      },
+    });
+    await tx.tallerOrdenConcepto.createMany({ data: conceptos.map((c) => ({ ...c, ordenId: orden.id })) });
+    for (const [estado, d] of [["recibido", dias], ["diagnostico", dias], ["en_reparacion", dias - 1], ["listo", dias - 1], ["entregado", dias - 2]]) {
+      await tx.tallerOrdenCambio.create({
+        data: { ordenId: orden.id, estado, userId: admin.id, actor: estado === "en_reparacion" ? "cliente" : "equipo", creadoAt: hace(Math.max(d, 0), estado === "entregado" ? 15 : 11) },
+      });
+    }
+    const anticipo = Math.round(total * 0.5);
+    const pagar = (monto, d) => tx.tallerPago.create({ data: { ordenId: orden.id, monto, metodo: ["efectivo", "tarjeta", "transferencia"][i % 3], userId: admin.id, createdAt: hace(Math.max(d, 0), 13 + (i % 3)) } });
+    if (i % 4 === 0) {
+      await pagar(anticipo, dias - 1);
+      await pagar(total - anticipo, dias - 2);
+    } else if (i % 6 === 0) {
+      await pagar(Math.round(total * 0.4), dias - 2);
+    } else {
+      await pagar(total, dias - 2);
+    }
+  }
+
   await tx.$executeRawUnsafe(
     "INSERT INTO taller_folios (org_id, ultimo_numero) VALUES ($1, $2) ON CONFLICT (org_id) DO UPDATE SET ultimo_numero = EXCLUDED.ultimo_numero",
     org.id, folio,
@@ -173,4 +240,5 @@ await prisma.$transaction(async (tx) => {
 
 imprimirCredencialesDemo({ nombre: "taller", slug: "demo-taller", email, password, passwordGenerada });
 if (urlAprobacion) console.log(`Enlace de aprobación (orden esperando al cliente): ${urlAprobacion}`);
+if (urlSeguimiento) console.log(`Enlace de seguimiento (orden lista): ${urlSeguimiento}`);
 await prisma.$disconnect();
