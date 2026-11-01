@@ -1,17 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import { TallerCampo } from "@/components/taller/TallerCampo";
 import { TallerIcono } from "@/components/taller/TallerIcono";
 import { TallerNavegacion } from "@/components/taller/TallerNavegacion";
-import { EstadoTaller, monedaTaller, nombreEstadoTaller, numeroTaller, PlacaVehiculo, VacioTaller } from "@/components/taller/TallerVisuales";
+import { EstadoTaller, monedaTaller, nombreEstadoTaller, PlacaVehiculo, VacioTaller } from "@/components/taller/TallerVisuales";
+import { filtrarOrdenes, separarOrdenesCerradas } from "@/lib/taller-orden-filtros";
 
 const columnas = ["recibido", "diagnostico", "esperando_aprobacion", "en_reparacion", "listo", "entregado", "cancelado"];
-type Orden = { id: string; numero: string; estado: string; total: string; fallaReportada: string; fechaPromesa: string | null; mecanicoId: string | null; vehiculo: { placa: string; marca: string; modelo: string; contacto: { nombre: string } } };
+type Orden = { id: string; numero: string; estado: string; total: string; fallaReportada: string; createdAt: string; fechaPromesa: string | null; mecanicoId: string | null; vehiculo: { placa: string; marca: string; modelo: string; contacto: { nombre: string } } };
 type Vehiculo = { id: string; placa: string; marca: string; modelo: string; kilometraje: number };
 type Mecanico = { id: string; nombre: string; puesto: string };
 
@@ -39,8 +40,24 @@ function iniciales(nombre: string) { return nombre.split(/\s+/).filter(Boolean).
 
 export function TallerOrdenes({ ordenes, vehiculos, mecanicos, vehiculoInicial }: { ordenes: Orden[]; vehiculos: Vehiculo[]; mecanicos: Mecanico[]; vehiculoInicial: string }) {
   const router = useRouter(); const [open, setOpen] = useState(Boolean(vehiculoInicial)); const [busy, setBusy] = useState(false); const [vista, setVista] = useState<"tablero" | "lista">("tablero");
+  const [busqueda, setBusqueda] = useState(""); const [mecanicoFiltro, setMecanicoFiltro] = useState("todos"); const [verAntiguas, setVerAntiguas] = useState<Record<string, boolean>>({});
   const [form, setForm] = useState({ vehiculoId: vehiculoInicial, kmEntrada: String(vehiculos.find((v) => v.id === vehiculoInicial)?.kilometraje ?? 0), fallaReportada: "", fechaPromesa: "" });
   const mecanicoPorId = useMemo(() => new Map(mecanicos.map((m) => [m.id, m])), [mecanicos]);
+  useEffect(() => { router.refresh(); }, [router]);
+  const filtradas = useMemo(() => filtrarOrdenes(ordenes, { busqueda, mecanicoId: mecanicoFiltro }), [ordenes, busqueda, mecanicoFiltro]);
+  const recientes = useMemo(() => {
+    if (busqueda.trim()) return filtradas;
+    return filtradas.filter((orden) => {
+      if (orden.estado !== "entregado" && orden.estado !== "cancelado") return true;
+      const grupos = separarOrdenesCerradas(filtradas, orden.estado);
+      if (grupos.antiguas.some((antigua) => antigua.id === orden.id)) {
+        return verAntiguas[orden.estado];
+      }
+      return true;
+    });
+  }, [filtradas, busqueda, verAntiguas]);
+  const sinFiltros = !busqueda.trim() && mecanicoFiltro === "todos";
+  const coincidenciasTexto = `${filtradas.length} de ${ordenes.length} ${ordenes.length === 1 ? "orden" : "órdenes"}`;
 
   async function crear(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setBusy(true);
@@ -73,22 +90,32 @@ export function TallerOrdenes({ ordenes, vehiculos, mecanicos, vehiculoInicial }
       <TallerCampo label="Promesa de entrega" type="datetime-local" value={form.fechaPromesa} onChange={(e) => setForm({ ...form, fechaPromesa: e.target.value })} />
       <div className="sm:col-span-2 xl:col-span-4"><Boton className="min-h-11" type="submit" disabled={busy}>{busy ? "Guardando…" : "Crear orden"}</Boton></div>
     </form>}
+    <section className="surface space-y-3 p-3 sm:p-4" aria-label="Buscar y filtrar órdenes">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_16rem]">
+        <form role="search" onSubmit={(event) => event.preventDefault()}>
+          <label className="relative block"><span className="sr-only">Buscar por placa, cliente, vehículo o folio</span><TallerIcono nombre="busqueda" className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" /><input className="min-h-11 w-full rounded-lg border border-input bg-background pl-11 pr-3 text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" placeholder="Buscar por placa, cliente, vehículo o folio" value={busqueda} onChange={(event) => setBusqueda(event.target.value)} /></label>
+        </form>
+        <label className="block space-y-1 text-xs font-medium text-muted-foreground"><span>Filtrar por mecánico</span><select className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" value={mecanicoFiltro} onChange={(event) => setMecanicoFiltro(event.target.value)}><option value="todos">Todos</option><option value="sin-asignar">Sin asignar</option>{mecanicos.map((mecanico) => <option key={mecanico.id} value={mecanico.id}>{mecanico.nombre}</option>)}</select></label>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm"><p aria-live="polite" className="text-muted-foreground">{coincidenciasTexto}</p>{!sinFiltros && <button type="button" onClick={() => { setBusqueda(""); setMecanicoFiltro("todos"); }} className="inline-flex min-h-10 items-center rounded-lg px-3 font-semibold text-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">Limpiar filtros</button>}</div>
+    </section>
     <div className="surface flex flex-col justify-between gap-3 p-3 sm:flex-row sm:items-center sm:p-4">
-      <div><p className="text-sm font-semibold text-foreground">Flujo de trabajo</p><p className="text-xs text-muted-foreground">{ordenes.length} {ordenes.length === 1 ? "orden activa o cerrada" : "órdenes en el taller"}</p></div>
+      <div><p className="text-sm font-semibold text-foreground">Flujo de trabajo</p><p className="text-xs text-muted-foreground">{coincidenciasTexto}</p></div>
       <div className="inline-flex min-h-11 self-start rounded-lg bg-muted p-1 sm:self-auto" role="group" aria-label="Vista de órdenes">
         <button type="button" aria-pressed={vista === "tablero"} onClick={() => setVista("tablero")} className={`inline-flex min-h-9 items-center gap-2 rounded-md px-3 text-sm font-semibold ${vista === "tablero" ? "bg-card text-primary shadow-soft" : "text-muted-foreground hover:text-foreground"}`}><TallerIcono nombre="orden" className="h-4 w-4" />Tablero</button>
         <button type="button" aria-pressed={vista === "lista"} onClick={() => setVista("lista")} className={`inline-flex min-h-9 items-center gap-2 rounded-md px-3 text-sm font-semibold ${vista === "lista" ? "bg-card text-primary shadow-soft" : "text-muted-foreground hover:text-foreground"}`}><TallerIcono nombre="menu" className="h-4 w-4" />Lista</button>
       </div>
     </div>
-    {!ordenes.length ? <VacioTaller titulo="Todavía no hay órdenes" detalle="Registra una recepción para dar seguimiento al diagnóstico, aprobación, reparación y entrega." accion={<Boton className="mt-2 min-h-11" onClick={() => setOpen(true)}>Crear primera orden</Boton>} /> : vista === "tablero" ?
+    {!ordenes.length ? <VacioTaller titulo="Todavía no hay órdenes" detalle="Registra una recepción para dar seguimiento al diagnóstico, aprobación, reparación y entrega." accion={<Boton className="mt-2 min-h-11" onClick={() => setOpen(true)}>Crear primera orden</Boton>} /> : !filtradas.length ? <VacioTaller titulo="No encontramos órdenes" detalle="Prueba con otra búsqueda o selecciona otro mecánico." accion={<Boton className="mt-2 min-h-11" variante="ghost" onClick={() => { setBusqueda(""); setMecanicoFiltro("todos"); }}>Limpiar filtros</Boton>} /> : vista === "tablero" ?
       <div aria-label="Tablero de órdenes por estado" className="grid snap-x auto-cols-[minmax(17rem,19rem)] grid-flow-col gap-3 overflow-x-auto pb-4 xl:auto-cols-[minmax(15rem,1fr)]">
         {columnas.map((estado) => {
-          const items = ordenes.filter((o) => o.estado === estado);
+          const gruposCerrados = estado === "entregado" || estado === "cancelado" ? separarOrdenesCerradas(filtradas, estado) : null;
+          const items = gruposCerrados ? (busqueda.trim() || verAntiguas[estado] ? [...gruposCerrados.recientes, ...gruposCerrados.antiguas] : gruposCerrados.recientes) : filtradas.filter((o) => o.estado === estado);
           return <section key={estado} aria-label={`${nombreEstadoTaller(estado)}: ${items.length}`} className={`min-h-64 snap-start rounded-2xl border p-2.5 ${tonosColumna[estado]}`}>
             <header className="mb-3 flex min-h-10 items-center justify-between gap-2 px-1"><div className="flex min-w-0 items-center gap-2"><span className={`h-2.5 w-2.5 shrink-0 rounded-full ${puntosColumna[estado]}`} aria-hidden="true"/><h2 className="truncate text-sm font-semibold">{nombreEstadoTaller(estado)}</h2></div><span className="tnum grid h-7 min-w-7 place-items-center rounded-full bg-card px-2 text-xs font-bold text-muted-foreground">{items.length}</span></header>
-            <div className="space-y-2.5">{items.length ? items.map(tarjeta) : <p className="rounded-xl border border-dashed border-border/80 bg-card/60 px-3 py-5 text-center text-xs text-muted-foreground">Las órdenes en este paso aparecerán aquí.</p>}</div>
+            <div className="space-y-2.5">{items.length ? items.map(tarjeta) : <p className="rounded-xl border border-dashed border-border/80 bg-card/60 px-3 py-5 text-center text-xs text-muted-foreground">Las órdenes en este paso aparecerán aquí.</p>}{gruposCerrados && !busqueda.trim() && gruposCerrados.antiguas.length > 0 && <button type="button" onClick={() => setVerAntiguas((prev) => ({ ...prev, [estado]: !prev[estado] }))} className="inline-flex min-h-10 w-full items-center justify-center rounded-lg px-3 text-sm font-semibold text-primary hover:bg-card/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">{verAntiguas[estado] ? "Ocultar antiguas" : `Ver todas (${gruposCerrados.antiguas.length})`}</button>}</div>
           </section>;
         })}
-      </div> : <div className="surface overflow-hidden"><div className="overflow-x-auto"><table className="tabla"><thead><tr><th>Orden</th><th>Vehículo</th><th>Cliente</th><th>Estado</th><th>Mecánico</th><th>Promesa</th><th className="text-right">Total</th><th><span className="sr-only">Abrir</span></th></tr></thead><tbody>{ordenes.map((o) => { const mecanico = o.mecanicoId ? mecanicoPorId.get(o.mecanicoId) : undefined; const promesa = fechaPromesa(o.fechaPromesa); return <tr key={o.id} className="fila-lista"><td className="tnum font-bold">#{o.numero}</td><td><PlacaVehiculo placa={o.vehiculo.placa} /></td><td className="min-w-40">{o.vehiculo.contacto.nombre}<span className="block text-xs text-muted-foreground">{o.vehiculo.marca} {o.vehiculo.modelo}</span></td><td><EstadoTaller estado={o.estado} /></td><td>{mecanico?.nombre ?? "Sin asignar"}</td><td><span className={`inline-flex min-h-8 items-center gap-1 text-xs font-semibold ${promesa.tono}`}><TallerIcono nombre="calendario" className="h-3.5 w-3.5" />{promesa.texto}</span></td><td className="tnum text-right font-semibold">{monedaTaller(o.total)}</td><td><Link href={`/taller/ordenes/${o.id}`} aria-label={`Abrir orden ${o.numero}`} className="inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-primary hover:bg-primary/5">Abrir<TallerIcono nombre="flecha" className="h-4 w-4" /></Link></td></tr>; })}</tbody></table></div></div>}
+      </div> : <div className="surface overflow-hidden"><div className="overflow-x-auto"><table className="tabla"><thead><tr><th>Orden</th><th>Vehículo</th><th>Cliente</th><th>Estado</th><th>Mecánico</th><th>Promesa</th><th className="text-right">Total</th><th><span className="sr-only">Abrir</span></th></tr></thead><tbody>{recientes.map((o) => { const mecanico = o.mecanicoId ? mecanicoPorId.get(o.mecanicoId) : undefined; const promesa = fechaPromesa(o.fechaPromesa); return <tr key={o.id} className="fila-lista"><td className="tnum font-bold">#{o.numero}</td><td><PlacaVehiculo placa={o.vehiculo.placa} /></td><td className="min-w-40">{o.vehiculo.contacto.nombre}<span className="block text-xs text-muted-foreground">{o.vehiculo.marca} {o.vehiculo.modelo}</span></td><td><EstadoTaller estado={o.estado} /></td><td>{mecanico?.nombre ?? "Sin asignar"}</td><td><span className={`inline-flex min-h-8 items-center gap-1 text-xs font-semibold ${promesa.tono}`}><TallerIcono nombre="calendario" className="h-3.5 w-3.5" />{promesa.texto}</span></td><td className="tnum text-right font-semibold">{monedaTaller(o.total)}</td><td><Link href={`/taller/ordenes/${o.id}`} aria-label={`Abrir orden ${o.numero}`} className="inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-primary hover:bg-primary/5">Abrir<TallerIcono nombre="flecha" className="h-4 w-4" /></Link></td></tr>; })}</tbody></table></div></div>}
   </div>;
 }

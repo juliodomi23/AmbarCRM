@@ -10,6 +10,7 @@ import { requireModuloActivo } from "../src/lib/modulos";
 import { ajustarExistenciasTaller, ErrorStockTaller } from "../src/lib/taller-inventario";
 import { calcularTotalTaller, puedeEntregarConSaldo, transicionTallerValida } from "../src/lib/taller-reglas";
 import { transaccionTenant } from "../src/lib/retail-db";
+import { filtrarOrdenes, separarOrdenesCerradas } from "../src/lib/taller-orden-filtros";
 
 const appUrl = process.env.DATABASE_URL, adminUrl = process.env.ADMIN_DATABASE_URL, httpUrl = process.env.APP_URL;
 for (const [label, value, dbName] of [["DATABASE_URL", appUrl, "taller_test"], ["ADMIN_DATABASE_URL", adminUrl, "postgres"]] as const) {
@@ -33,6 +34,16 @@ async function prepararBase() {
 }
 
 async function main() {
+  const ordenesFiltro = [
+    { id: "1", numero: "12", estado: "entregado", createdAt: "2026-10-20T12:00:00.000Z", fallaReportada: "Frenos delanteros", mecanicoId: "m1", vehiculo: { placa: "ABC-123", marca: "Toyota", modelo: "Corolla", contacto: { nombre: "José Álvarez" } } },
+    { id: "2", numero: "2", estado: "cancelado", createdAt: "2026-09-01T12:00:00.000Z", fallaReportada: "Batería", mecanicoId: null, vehiculo: { placa: "XYZ-456", marca: "Ford", modelo: "Fiesta", contacto: { nombre: "Ana López" } } },
+  ];
+  assert.equal(filtrarOrdenes(ordenesFiltro, { busqueda: "jose", mecanicoId: "todos" }).length, 1, "búsqueda omite acentos");
+  assert.equal(filtrarOrdenes(ordenesFiltro, { busqueda: "#12", mecanicoId: "todos" })[0].id, "1", "búsqueda acepta folio con numeral");
+  assert.equal(filtrarOrdenes(ordenesFiltro, { busqueda: "", mecanicoId: "sin-asignar" })[0].id, "2", "filtro identifica órdenes sin mecánico");
+  const cerradas = separarOrdenesCerradas(ordenesFiltro, "entregado", new Date("2026-11-01T12:00:00.000Z"));
+  assert.equal(cerradas.recientes.length, 1, "incluye órdenes entregadas en los últimos 30 días");
+  assert.equal(separarOrdenesCerradas(ordenesFiltro, "cancelado", new Date("2026-11-01T12:00:00.000Z")).antiguas.length, 1, "separa órdenes canceladas anteriores a 30 días");
   await prepararBase();
   const existentes = await admin.query("SELECT id FROM orgs WHERE id IN (91,92)");
   if (existentes.rowCount) throw new Error("La base aislada debe estar vacía para esta prueba");
