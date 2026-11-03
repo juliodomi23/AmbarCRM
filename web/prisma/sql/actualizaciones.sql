@@ -2709,3 +2709,11 @@ CREATE POLICY org_isolation ON taller_notificaciones
   WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
 GRANT SELECT, INSERT, UPDATE, DELETE ON taller_notificaciones TO crm_app;
 GRANT USAGE, SELECT ON SEQUENCE taller_notificaciones_id_seq TO crm_app;
+
+ALTER TABLE taller_pagos ADD COLUMN IF NOT EXISTS tipo TEXT NOT NULL DEFAULT 'abono';
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'taller_pagos_tipo_check') THEN
+    ALTER TABLE taller_pagos ADD CONSTRAINT taller_pagos_tipo_check CHECK (tipo IN ('anticipo','abono','liquidacion'));
+  END IF;
+END $$;

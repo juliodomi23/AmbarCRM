@@ -40,6 +40,11 @@ export const PATCH = conModulo("taller", {}, async (sesion, req: NextRequest, pr
   if (!id || id <= 0n || !body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
   const version = Number(body.version);
   if (!Number.isSafeInteger(version) || version < 1) return NextResponse.json({ error: "Versión inválida" }, { status: 400 });
+  const pagoFinal = body.pagoFinal === undefined ? null : (body.pagoFinal as Record<string, unknown> | null);
+  const montoFinal = pagoFinal ? Number(pagoFinal.monto) : 0;
+  const metodoFinal = pagoFinal ? texto(pagoFinal.metodo) : "";
+  if (pagoFinal && (!Number.isFinite(montoFinal) || montoFinal <= 0 || montoFinal > 100000000 || !["efectivo", "tarjeta", "transferencia", "otro"].includes(metodoFinal))) return NextResponse.json({ error: "Pago final inválido" }, { status: 400 });
+  if (pagoFinal && body.estado !== "entregado") return NextResponse.json({ error: "El pago final solo se registra al entregar", status: 400 });
   try {
   const result = await transaccionTenant(sesion.orgId!, async (tx) => {
     const [actual] = await tx.$queryRaw<{ id: bigint; estado: string; version: number; vehiculoId: bigint; total: Prisma.Decimal; aprobadoAt: Date | null }[]>`SELECT id, estado, version, vehiculo_id AS "vehiculoId", total, aprobado_at AS "aprobadoAt" FROM taller_ordenes WHERE id = ${id} FOR UPDATE`;
@@ -49,7 +54,14 @@ export const PATCH = conModulo("taller", {}, async (sesion, req: NextRequest, pr
     if (!transicionTallerValida(actual.estado, siguiente)) return { error: `No se permite cambiar de ${actual.estado} a ${siguiente}`, status: 409 } as const;
     if (siguiente === "entregado") {
       const pagado = await tx.tallerPago.aggregate({ where: { ordenId: id }, _sum: { monto: true } });
-      const saldo = new Prisma.Decimal(actual.total).minus(pagado._sum.monto ?? 0);
+      let saldo = new Prisma.Decimal(actual.total).minus(pagado._sum.monto ?? 0);
+      if (pagoFinal) {
+        if (sesion.userId === null) return { error: "Sesión inválida", status: 401 } as const;
+        const pago = new Prisma.Decimal(montoFinal).toDecimalPlaces(2);
+        if (pago.greaterThan(saldo)) return { error: "El pago final supera el saldo pendiente", status: 409 } as const;
+        await tx.tallerPago.create({ data: { ordenId: id, monto: pago, metodo: metodoFinal, tipo: pago.greaterThanOrEqualTo(saldo) ? "liquidacion" : "abono", userId: sesion.userId } });
+        saldo = saldo.minus(pago);
+      }
       if (!puedeEntregarConSaldo(sesion.rol, body.confirmarSaldoPendiente === true, Number(saldo))) return { error: "Hay saldo pendiente. Solo un administrador puede confirmar la entrega con saldo.", status: 409 } as const;
     }
     if (siguiente === "cancelado" && actual.estado !== "cancelado") {

@@ -122,8 +122,11 @@ organización; la información está aislada con RLS. Desde la ficha del cliente
 puede iniciar el registro de uno de sus vehículos.
 
 El tablero `/taller/ordenes` organiza órdenes recibidas, diagnóstico, aprobación,
-reparación, listas, entregadas y canceladas. Cada orden conserva el historial de
-estados, conceptos de mano de obra/refacciones y total calculado en servidor.
+reparación, listas, entregadas y canceladas, con filtro por periodo (semana, mes,
+mes anterior, año o mes elegido) sobre ingreso o promesa de entrega. Cada orden
+conserva el historial de estados, conceptos de mano de obra/refacciones y total
+calculado en servidor; en la tabla se puede cambiar el tipo de cada concepto,
+elegir la pieza del catálogo o quitar la fila (con confirmación si ya estaba guardada).
 El control de versión rechaza cambios basados en una orden desactualizada.
 La orden permite crear una liga de un solo uso para aprobación pública; cambiar
 conceptos después de aprobarla la regresa a diagnóstico y exige una aprobación nueva.
@@ -138,8 +141,12 @@ El catálogo de Refacciones muestra existencias bajas; agregar una pieza desde e
 catálogo consume stock bajo bloqueo transaccional, y cancelar una orden lo repone.
 Los pagos quedan ligados directamente a la orden. No se conectan a Caja/Cobros:
 Caja cobra ventas y Cobros exige un contrato, así que ninguno admite actualmente
-una orden de reparación como origen. Entregar con saldo pendiente exige que un
-administrador confirme esa excepción. Se permiten pagos posteriores a la entrega
+una orden de reparación como origen. La configuración sugiere un porcentaje de
+anticipo (0 lo desactiva): el detalle muestra sugerido/recibido/pendiente y permite
+registrarlo, sin bloquear nunca el avance. Al entregar con saldo, el panel cobra y
+entrega en una sola transacción (`pagoFinal`); el pago se marca como `liquidacion`
+si cubre el saldo. Entregar sin cobrar exige que un administrador confirme esa
+excepción. Se permiten pagos posteriores a la entrega
 mientras quede saldo. Cancelar con pagos requiere confirmación administrativa; los
 reembolsos se resuelven fuera del sistema y los pagos quedan visibles. Los folios son
 consecutivos por organización; asignar un mecánico valida que el usuario pertenezca

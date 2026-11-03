@@ -49,6 +49,8 @@ type EntregaFila = { id: bigint; mecanico_id: bigint | null; total: number; crea
 type ImporteMecanico = { mecanico_id: bigint | null; tipo: string; importe: number };
 type RefaccionFila = { refaccion_id: bigint; nombre: string; cantidad: number; importe: number; costo: number };
 type PagoDia = { dia: string; monto: number; pagos: number };
+type MetodoCobro = { metodo: string; monto: number; pagos: number };
+type AnticipoResumen = { monto: number; pagos: number };
 type OrdenCsv = {
   id: bigint; numero: bigint; created_at: Date; estado: string; total: number; mecanico_id: bigint | null;
   marca: string; modelo: string; placa: string; cliente: string; pagado: number;
@@ -102,6 +104,16 @@ export async function reportesTaller(desde: string, hasta: string, opciones: { i
       SELECT to_char((created_at AT TIME ZONE ${ZONA_TALLER})::date, 'YYYY-MM-DD') AS dia,
              SUM(monto)::float8 AS monto, count(*)::int AS pagos
       FROM taller_pagos WHERE created_at >= ${gte} AND created_at < ${lt} GROUP BY 1`;
+    const [anticipos] = await tx.$queryRaw<AnticipoResumen[]>`
+      SELECT COALESCE(SUM(monto), 0)::float8 AS monto, count(*)::int AS pagos
+      FROM taller_pagos WHERE tipo = 'anticipo' AND created_at >= ${gte} AND created_at < ${lt}`;
+    const porMetodo = await tx.$queryRaw<MetodoCobro[]>`
+      SELECT metodo, SUM(monto)::float8 AS monto, count(*)::int AS pagos
+      FROM taller_pagos WHERE created_at >= ${gte} AND created_at < ${lt} GROUP BY metodo ORDER BY monto DESC`;
+    const [{ n: enReparacionSinAnticipo }] = await tx.$queryRaw<{ n: number }[]>`
+      SELECT count(*)::int AS n FROM taller_ordenes o
+      WHERE o.estado = 'en_reparacion' AND NOT EXISTS (
+        SELECT 1 FROM taller_pagos p WHERE p.orden_id = o.id AND p.tipo = 'anticipo')`;
     const ordenes = opciones.incluirOrdenes
       ? await tx.$queryRaw<OrdenCsv[]>`
           SELECT o.id, o.numero, o.created_at, o.estado, o.total::float8 AS total, o.mecanico_id,
@@ -125,7 +137,7 @@ export async function reportesTaller(desde: string, hasta: string, opciones: { i
       (await tx.usuario.findMany({ where: { id: { in: [...idsMecanicos].map(BigInt) } }, select: { id: true, nombre: true } }))
         .map((usuario) => [String(usuario.id), usuario.nombre]),
     );
-    return { ingresadas, canceladas, entregas, importesMecanico, refacciones, pagosPorDia, ordenes, saldos, recordatorios, embudo, refaccionesStock, nombres };
+    return { ingresadas, canceladas, entregas, importesMecanico, refacciones, pagosPorDia, ordenes, saldos, recordatorios, embudo, refaccionesStock, nombres, anticipos, porMetodo, enReparacionSinAnticipo };
   });
 
   const { entregas, nombres } = datos;
@@ -190,7 +202,11 @@ export async function reportesTaller(desde: string, hasta: string, opciones: { i
       tiempoPromedioEntregaDias,
       recordatoriosVencidos,
       piezasBajoMinimo: datos.refaccionesStock.filter((refaccion) => refaccion.existencia < refaccion.minimo).length,
+      anticiposRecibidos: redondear(datos.anticipos.monto),
+      anticiposPagos: datos.anticipos.pagos,
+      ordenesSinAnticipo: datos.enReparacionSinAnticipo,
     },
+    cobradoPorMetodo: datos.porMetodo.map((fila) => ({ metodo: fila.metodo, monto: redondear(fila.monto), pagos: fila.pagos })),
     embudo: datos.embudo.map((fila) => ({ estado: fila.estado, total: fila._count._all })).sort((a, b) => b.total - a.total),
     serieDiaria: [...serie.entries()].map(([fecha, fila]) => ({ fecha, monto: redondear(fila.monto), pagos: fila.pagos })),
     porMecanico: [...mecanicos.entries()]

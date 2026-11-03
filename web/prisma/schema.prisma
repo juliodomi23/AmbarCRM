@@ -2663,6 +2663,7 @@ model TallerPago {
   ordenId   BigInt   @map("orden_id")
   monto     Decimal  @db.Decimal(12, 2)
   metodo    String
+  tipo        String   @default("abono")
   userId    BigInt   @map("user_id")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   orden     TallerOrden @relation(fields: [ordenId, orgId], references: [id, orgId], onDelete: Restrict)

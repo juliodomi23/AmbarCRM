@@ -15,7 +15,7 @@ import { TallerWhatsappAcciones } from "@/components/taller/TallerWhatsappAccion
 import { EstadoTaller, monedaTaller, nombreEstadoTaller, numeroTaller, PlacaVehiculo, VacioTaller } from "@/components/taller/TallerVisuales";
 
 type Concepto = { id?: string; tipo: string; descripcion: string; cantidad: string; precioUnitario: string; refaccionId?: string | null };
-type Pago = { id: string; monto: string; metodo: string; createdAt: string };
+type Pago = { id: string; monto: string; metodo: string; tipo?: string; createdAt: string };
 type Orden = { id: string; numero: string; estado: string; version: number; aprobadoAt: string | null; aprobacionToken: string | null; aprobacionResultado?: string | null; kmEntrada: number; mecanicoId: string | null; fallaReportada: string; diagnostico: string; total: string; fechaPromesa: string | null; conceptos: Concepto[]; pagos: Pago[]; notificaciones: { id: string; tipo: string; forma: string; estado: string; error: string | null; createdAt: string }[]; fotos: { id: string; url: string; tipo: string; createdAt: string }[]; cambios: { estado: string; userId: string | null; actor: string; creadoAt: string }[]; vehiculo: { id: string; placa: string; marca: string; modelo: string; anio: number | null; kilometraje: number; contacto: { id: string; nombre: string; telefono: string | null } } };
 type Refaccion = { id: string; nombre: string; codigo: string; precio: string; existencia: number; minimo: number };
 type Mecanico = { id: string; nombre: string; puesto: string };
@@ -44,12 +44,17 @@ function useFijarSiCabe<T extends HTMLElement>() {
   return { ref, fijar };
 }
 
-export function TallerOrdenDetalle({ orden: inicial, refacciones, mecanicos, esAdmin, rutaAprobacion = "" }: { orden: Orden; refacciones: Refaccion[]; mecanicos: Mecanico[]; esAdmin: boolean; rutaAprobacion?: string }) {
+export function TallerOrdenDetalle({ orden: inicial, refacciones, mecanicos, esAdmin, rutaAprobacion = "", anticipoPorcentaje = 0 }: { orden: Orden; refacciones: Refaccion[]; mecanicos: Mecanico[]; esAdmin: boolean; rutaAprobacion?: string; anticipoPorcentaje?: number }) {
   const router = useRouter();
   const [orden, setOrden] = useState(inicial); const [diagnostico, setDiagnostico] = useState(inicial.diagnostico); const [kmEntrada, setKmEntrada] = useState(String(inicial.kmEntrada)); const [mecanicoId, setMecanicoId] = useState(inicial.mecanicoId ?? ""); const [conceptos, setConceptos] = useState(inicial.conceptos.map((c) => ({ ...c })));
   const ordenRemota = useRef(inicial); const borrador = useRef({ diagnostico, kmEntrada, mecanicoId, conceptos }); borrador.current = { diagnostico, kmEntrada, mecanicoId, conceptos };
   const [busy, setBusy] = useState(false); const [approvalUrl, setApprovalUrl] = useState(""); const [fotoBusy, setFotoBusy] = useState(false); const [arrastrandoFoto, setArrastrandoFoto] = useState(false); const [tipoFoto, setTipoFoto] = useState("evidencia"); const [montoPago, setMontoPago] = useState(""); const [metodoPago, setMetodoPago] = useState("efectivo"); const [recordatorio, setRecordatorio] = useState({ tipo: "Servicio general", proximoKm: String(inicial.vehiculo.kilometraje + 5000), proximaFecha: "" }); const [recordatorioGuardado, setRecordatorioGuardado] = useState(false);
   const pagado = orden.pagos.reduce((suma, pago) => suma + Number(pago.monto), 0); const saldo = Math.max(0, Number(orden.total) - pagado);
+  const [montoAnticipo, setMontoAnticipo] = useState(""); const [metodoAnticipo, setMetodoAnticipo] = useState("efectivo");
+  const [cobroFinal, setCobroFinal] = useState<{ monto: string; metodo: string } | null>(null);
+  const anticipoSugerido = Math.round(Number(orden.total) * anticipoPorcentaje) / 100;
+  const anticipoRecibido = orden.pagos.filter((pago) => pago.tipo === "anticipo").reduce((suma, pago) => suma + Number(pago.monto), 0);
+  const anticipoPendiente = Math.max(0, Math.round((anticipoSugerido - anticipoRecibido) * 100) / 100);
   const actual = pasos.indexOf(orden.estado); const ligaAprobacion = approvalUrl || rutaAprobacion;
   const mecPorId = useMemo(() => new Map(mecanicos.map((m) => [m.id, m])), [mecanicos]); const mecanico = orden.mecanicoId ? mecPorId.get(orden.mecanicoId) : undefined;
   const subtotalManoObra = conceptos.filter((c) => c.tipo === "mano_obra").reduce((suma, c) => suma + Number(c.cantidad) * Number(c.precioUnitario), 0);
@@ -108,6 +113,12 @@ export function TallerOrdenDetalle({ orden: inicial, refacciones, mecanicos, esA
     catch (error) { toast(error instanceof Error ? error.message : "No se pudo registrar el pago", "error"); } finally { setBusy(false); }
   }
 
+  async function registrarAnticipo(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setBusy(true);
+    try { const response = await fetch(`/api/taller/ordenes/${orden.id}/pagos`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ monto: montoAnticipo || String(anticipoPendiente), metodo: metodoAnticipo, tipo: "anticipo" }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setOrden((prev) => ({ ...prev, pagos: [...prev.pagos, data.pago] })); setMontoAnticipo(""); toast("Anticipo registrado"); }
+    catch (error) { toast(error instanceof Error ? error.message : "No se pudo registrar el anticipo", "error"); } finally { setBusy(false); }
+  }
+
   async function crearRecordatorio(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true);
     try { const response = await fetch("/api/taller/recordatorios", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ vehiculoId: orden.vehiculo.id, ordenId: orden.id, ...recordatorio }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setRecordatorioGuardado(true); toast("Recordatorio creado"); }
@@ -122,11 +133,7 @@ export function TallerOrdenDetalle({ orden: inicial, refacciones, mecanicos, esA
 
   async function avanzar(estado: string) {
     const extra: Record<string, unknown> = { estado };
-    if (estado === "entregado" && saldo > 0) {
-      if (!esAdmin) { toast("Solo un administrador puede entregar con saldo", "error"); return; }
-      if (!await confirmar({ titulo: "Entregar con saldo pendiente", mensaje: `Queda un saldo de ${monedaTaller(saldo)}. ¿Deseas entregar el vehículo de todos modos?`, confirmar: "Entregar de todos modos", peligro: false })) return;
-      extra.confirmarSaldoPendiente = true;
-    }
+    if (estado === "entregado" && saldo > 0) { setCobroFinal({ monto: String(saldo), metodo: "efectivo" }); return; }
     if (estado === "cancelado" && pagado > 0) { if (!esAdmin) { toast("Solo un administrador puede cancelar una orden con pagos", "error"); return; } if (!await confirmar({ titulo: "Cancelar orden con pagos", mensaje: "La orden tiene pagos registrados. Los reembolsos deben resolverse fuera del sistema; los pagos seguirán visibles.", confirmar: "Cancelar orden", peligro: true })) return; extra.confirmarCancelacionConPagos = true; }
     await guardar(extra);
   }
@@ -173,6 +180,15 @@ export function TallerOrdenDetalle({ orden: inicial, refacciones, mecanicos, esA
       </div>
 
       <aside ref={panelResumen.ref} className={`space-y-5 ${panelResumen.fijar ? "xl:sticky xl:top-5" : ""}`}>
+        {cobroFinal && saldo > 0 && <section className="surface overflow-hidden border-2 border-primary/30">
+          <header className="bg-primary/10 p-4 sm:p-5"><p className="text-xs font-semibold uppercase tracking-wide text-primary">Entrega</p><h2 className="mt-1 text-lg font-semibold">Saldo por cobrar</h2><p className="mt-1 text-sm text-muted-foreground">Queda un saldo de {monedaTaller(saldo)}. Registra el cobro para entregar el vehículo.</p></header>
+          <div className="space-y-3 p-4 sm:p-5"><TallerCampo label="Monto a cobrar" type="number" min="0.01" max={saldo} step="0.01" value={cobroFinal.monto} onChange={(e) => setCobroFinal({ ...cobroFinal, monto: e.target.value })} /><label className="block space-y-1"><span className="text-xs font-semibold text-muted-foreground">Método</span><select className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm" value={cobroFinal.metodo} onChange={(e) => setCobroFinal({ ...cobroFinal, metodo: e.target.value })}><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="transferencia">Transferencia</option><option value="otro">Otro método</option></select></label><Boton className="min-h-11 w-full" disabled={busy} onClick={() => { setCobroFinal(null); void guardar({ estado: "entregado", pagoFinal: { monto: cobroFinal.monto, metodo: cobroFinal.metodo } }); }}>Cobrar y entregar</Boton>{esAdmin && <Boton className="min-h-11 w-full" variante="ghost" disabled={busy} onClick={async () => { if (!await confirmar({ titulo: "Entregar con saldo pendiente", mensaje: `Queda un saldo de ${monedaTaller(saldo)}. ¿Deseas entregar el vehículo de todos modos?`, confirmar: "Entregar de todos modos", peligro: false })) return; setCobroFinal(null); void guardar({ estado: "entregado", confirmarSaldoPendiente: true }); }}>Entregar con saldo pendiente</Boton>}<button type="button" className="min-h-10 w-full text-sm font-semibold text-muted-foreground hover:text-foreground" onClick={() => setCobroFinal(null)}>Cancelar</button></div>
+        </section>}
+        {anticipoPorcentaje > 0 && !["entregado", "cancelado"].includes(orden.estado) && <section className="surface overflow-hidden">
+          <header className="bg-primary/5 p-4 sm:p-5"><p className="text-xs font-semibold uppercase tracking-wide text-primary">Anticipo</p><h2 className="mt-1 text-lg font-semibold">Anticipo sugerido</h2></header>
+          <div className="space-y-2 p-4 text-sm sm:p-5"><div className="flex justify-between gap-4"><span className="text-muted-foreground">Sugerido ({anticipoPorcentaje}%)</span><span className="tnum font-semibold">{monedaTaller(anticipoSugerido)}</span></div><div className="flex justify-between gap-4"><span className="text-muted-foreground">Recibido</span><span className={`tnum font-semibold ${anticipoRecibido > 0 ? "text-success" : "text-muted-foreground"}`}>{monedaTaller(anticipoRecibido)}</span></div><div className="flex justify-between gap-4"><span className="text-muted-foreground">Pendiente</span><span className={`tnum font-bold ${anticipoPendiente > 0 ? "text-warning" : "text-success"}`}>{monedaTaller(anticipoPendiente)}</span></div></div>
+          {saldo > 0 && anticipoPendiente > 0 && <form onSubmit={registrarAnticipo} className="space-y-3 border-t border-border/70 p-4 pt-3 sm:px-5"><h3 className="text-sm font-semibold">Registrar anticipo</h3><TallerCampo label="Monto" type="number" min="0.01" max={saldo} step="0.01" value={montoAnticipo || String(anticipoPendiente)} onChange={(e) => setMontoAnticipo(e.target.value)} required /><label className="block space-y-1"><span className="text-xs font-semibold text-muted-foreground">Método</span><select className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm" value={metodoAnticipo} onChange={(e) => setMetodoAnticipo(e.target.value)}><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="transferencia">Transferencia</option><option value="otro">Otro método</option></select></label><Boton className="min-h-11 w-full" disabled={busy}>Registrar anticipo</Boton></form>}
+        </section>}
         <section className="surface overflow-hidden"><header className="bg-primary/5 p-4 sm:p-5"><p className="text-xs font-semibold uppercase tracking-wide text-primary">Resumen de cobro</p><h2 className="mt-1 text-lg font-semibold">Saldo de la orden</h2></header><div className="space-y-3 p-4 sm:p-5"><div className="flex justify-between gap-4 text-sm"><span className="text-muted-foreground">Mano de obra</span><span className="tnum font-medium">{monedaTaller(subtotalManoObra)}</span></div><div className="flex justify-between gap-4 text-sm"><span className="text-muted-foreground">Refacciones</span><span className="tnum font-medium">{monedaTaller(subtotalRefacciones)}</span></div><div className="flex justify-between gap-4 border-t border-border/70 pt-3 text-sm font-semibold"><span>Total</span><span className="tnum">{monedaTaller(orden.total)}</span></div><div className="flex justify-between gap-4 text-sm"><span className="text-muted-foreground">Pagado</span><span className="tnum font-medium">{monedaTaller(pagado)}</span></div><div className={`rounded-xl border p-3 ${saldo > 0 ? "border-warning/30 bg-warning/10" : "border-success/25 bg-success/10"}`}><span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Saldo pendiente</span><p className={`tnum mt-1 text-2xl font-bold ${saldo > 0 ? "text-warning" : "text-success"}`}>{monedaTaller(saldo)}</p><span className={`text-xs font-semibold ${saldo > 0 ? "text-warning" : "text-success"}`}>{saldo > 0 ? "Por cobrar" : Number(orden.total) > 0 ? "Cuenta liquidada" : "Aún sin conceptos"}</span></div></div></section>
 
         <div className="flex justify-end"><TallerImprimirMenu ordenId={orden.id} /></div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db, runWithOrg } from "@/lib/db";
+import { configTaller } from "@/lib/taller-mensajes";
 
 function tokenPart(value: string) {
   const match = /^(\d+)-([a-f0-9]{48})$/.exec(value);
@@ -9,16 +10,22 @@ function tokenPart(value: string) {
 async function cargar(value: string, incluirRespondidas = false) {
   const parsed = tokenPart(value); if (!parsed) return null;
   return runWithOrg(parsed.orgId, async () => {
-    const modulo = await db.moduloOrg.findFirst({ where: { clave: "taller", activo: true }, select: { id: true } });
+    const modulo = await db.moduloOrg.findFirst({ where: { clave: "taller", activo: true }, select: { id: true, config: true } });
     if (!modulo) return null;
-    const orden = await db.tallerOrden.findFirst({ where: { aprobacionToken: parsed.token, ...(incluirRespondidas ? {} : { estado: "esperando_aprobacion" }) }, include: { vehiculo: { select: { placa: true, marca: true, modelo: true } }, conceptos: true } });
-    return orden ? { parsed, orden } : null;
+    const orden = await db.tallerOrden.findFirst({ where: { aprobacionToken: parsed.token, ...(incluirRespondidas ? {} : { estado: "esperando_aprobacion" }) }, include: { vehiculo: { select: { placa: true, marca: true, modelo: true } }, conceptos: true, pagos: { select: { tipo: true, monto: true } } } });
+    return orden ? { parsed, orden, config: modulo.config } : null;
   });
 }
 export async function GET(_req: NextRequest, props: { params: Promise<{ token: string }> }) {
   const data = await cargar((await props.params).token);
   if (!data) return NextResponse.json({ error: "Aprobación no disponible" }, { status: 404 });
-  return NextResponse.json({ orden: { numero: data.orden.numero.toString(), estado: data.orden.estado, vehiculo: data.orden.vehiculo, conceptos: data.orden.conceptos.map(({ descripcion, cantidad, precioUnitario }) => ({ descripcion, cantidad, precioUnitario })), total: data.orden.total } });
+  const porcentaje = configTaller(data.config).anticipoPorcentaje;
+  const anticipo = porcentaje > 0 ? {
+    porcentaje,
+    sugerido: Math.round(Number(data.orden.total) * porcentaje) / 100,
+    recibido: data.orden.pagos.filter((pago) => pago.tipo === "anticipo").reduce((suma, pago) => suma + Number(pago.monto), 0),
+  } : null;
+  return NextResponse.json({ orden: { numero: data.orden.numero.toString(), estado: data.orden.estado, vehiculo: data.orden.vehiculo, conceptos: data.orden.conceptos.map(({ descripcion, cantidad, precioUnitario }) => ({ descripcion, cantidad, precioUnitario })), total: data.orden.total, anticipo } });
 }
 export async function POST(req: NextRequest, props: { params: Promise<{ token: string }> }) {
   const data = await cargar((await props.params).token, true), body = await req.json().catch(() => null);

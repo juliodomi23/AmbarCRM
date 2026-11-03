@@ -178,6 +178,12 @@ async function manejarPATCH(req: NextRequest) {
         );
       }
     }
+    if (Object.hasOwn(taller, "anticipoPorcentaje") && (typeof taller.anticipoPorcentaje !== "number" || !Number.isFinite(taller.anticipoPorcentaje) || taller.anticipoPorcentaje < 0 || taller.anticipoPorcentaje > 100)) {
+      return NextResponse.json(
+        { error: "El anticipo sugerido debe ser un porcentaje entre 0 y 100" },
+        { status: 400 },
+      );
+    }
     if (
       Object.hasOwn(taller, "leyendaRecepcion") &&
       (typeof taller.leyendaRecepcion !== "string" || taller.leyendaRecepcion.length > 2000)

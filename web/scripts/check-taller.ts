@@ -13,6 +13,7 @@ import { transaccionTenant } from "../src/lib/retail-db";
 import { filtrarOrdenes, rangoPeriodo, separarOrdenesCerradas } from "../src/lib/taller-orden-filtros";
 import { periodoReporte, reportesTaller } from "../src/lib/taller-reportes";
 import { enlaceWhatsappManual, mensajeTaller, variablesPlantillaTaller } from "../src/lib/taller-whatsapp";
+import { configTaller } from "../src/lib/taller-mensajes";
 import { partesTokenSeguimiento } from "../src/lib/taller-estado";
 import { toCSV } from "../src/lib/csv";
 
@@ -68,6 +69,10 @@ async function main() {
   assert.equal(filtrarOrdenes(ordenesPeriodo, { busqueda: "", mecanicoId: "todos", periodo: "personalizado", mes: "2026-09", ahora: ahoraPeriodo })[0].id, "b", "el mes elegido acota las órdenes");
   assert.equal(filtrarOrdenes(ordenesPeriodo, { busqueda: "jose", mecanicoId: "todos", periodo: "mes", ahora: ahoraPeriodo }).length, 1, "periodo y búsqueda se combinan");
   assert.equal(filtrarOrdenes(ordenesPeriodo, { busqueda: "", mecanicoId: "todos", periodo: "personalizado", mes: "", ahora: ahoraPeriodo }).length, 2, "un mes elegido vacío no acota");
+  assert.equal(configTaller({}).anticipoPorcentaje, 0, "sin configuración no se sugiere anticipo");
+  assert.equal(configTaller({ anticipoPorcentaje: 50 }).anticipoPorcentaje, 50, "el porcentaje de anticipo se conserva");
+  assert.equal(configTaller({ anticipoPorcentaje: 150 }).anticipoPorcentaje, 0, "un porcentaje fuera de rango se descarta");
+  assert.equal(configTaller({ anticipoPorcentaje: "30" }).anticipoPorcentaje, 30, "el porcentaje acepta texto numérico");
   const datosMensaje = {
     nombre: "Ana", marcaVehiculo: "Nissan", modelo: "Versa", placa: "ABC123", saldo: 1250,
     enlaceAprobacion: "https://x/aprobar", enlaceSeguimiento: "https://x/estado", fechaPromesa: "2026-11-02",

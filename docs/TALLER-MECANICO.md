@@ -31,6 +31,39 @@ aprobación, la orden vuelve a diagnóstico y requiere una aprobación nueva. El
 no puede quedar por debajo de los pagos registrados. El kilometraje de la ficha solo
 sube cuando el valor capturado es mayor.
 
+Los conceptos se editan en la misma tabla: cada fila permite cambiar el tipo entre
+mano de obra y refacción, elegir la pieza del catálogo (el precio se toma del
+catálogo y la cantidad se descuenta del inventario al guardar) y quitar la fila.
+Quitar una fila ya guardada pide confirmación. No se editan conceptos en
+`esperando_aprobacion`, `entregado` ni `cancelado`.
+
+El panel derecho del detalle solo se fija al hacer scroll cuando su contenido cabe
+en la ventana; si es más alto, se desplaza con la página. Así se evita un panel
+recortado e inmóvil en escritorio.
+
+## Filtro por periodo
+
+La lista de órdenes se puede filtrar por «Todo», «Esta semana» (lunes a domingo),
+«Este mes», «Mes anterior», «Este año» o un mes elegido con el selector de mes.
+El filtro se aplica sobre la fecha de ingreso y puede cambiarse a la fecha promesa.
+Se combina con la búsqueda y el filtro por mecánico; mientras hay periodo activo,
+las órdenes entregadas o canceladas de más de 30 días también se muestran, porque
+el periodo manda. Todos los rangos se calculan en `America/Mexico_City` (UTC-6
+todo el año).
+
+## Anticipos y cobro al entregar
+
+La configuración del taller acepta un porcentaje de anticipo sugerido (0–100; 0
+lo desactiva). El detalle muestra «sugerido · recibido · pendiente» y permite
+registrar un anticipo con monto y método. El anticipo es informativo: nunca
+bloquea el avance de la orden, ni la aprobación pública.
+
+Cuando se entrega una orden con saldo, el detalle abre un panel para cobrar el
+monto y entregar en una sola operación atómica (`pagoFinal`): el pago se guarda
+como `liquidacion` si cubre el saldo o como `abono` si es parcial. Un administrador
+puede entregar con saldo pendiente previa confirmación. Los pagos guardan su tipo
+(`anticipo`, `abono`, `liquidacion`) en `taller_pagos.tipo`.
+
 ## Tablas
 
 - `taller_vehiculos`: propietario, placa, VIN opcional, marca, modelo, año, color,
@@ -41,7 +74,7 @@ sube cuando el valor capturado es mayor.
 - `taller_orden_cambios`: historial de estado, actor y fecha.
 - `taller_fotos`: referencia a medios de ingreso, daños o evidencia.
 - `taller_refacciones`: código, existencia, costo, precio y mínimo.
-- `taller_pagos`: anticipos y liquidaciones ligados a una orden.
+- `taller_pagos`: anticipos, abonos y liquidaciones ligados a una orden, con método y tipo.
 - `taller_recordatorios`: servicio próximo por kilometraje y/o fecha.
 - `taller_notificaciones`: avisos de WhatsApp al cliente (`tipo`, `forma`, `estado`,
   error, usuario y fecha) para el historial de la orden.

@@ -35,6 +35,7 @@ export function TallerConfig({ modulo, canales }: { modulo: any; canales: any[] 
   const [avisarAlMarcarListo, setAvisarAlMarcarListo] = useState(inicial.avisarAlMarcarListo);
   const [canalId, setCanalId] = useState(String(inicial.canalId ?? canales[0]?.id ?? ""));
   const [leyenda, setLeyenda] = useState(inicial.leyendaRecepcion);
+  const [anticipoPorcentaje, setAnticipoPorcentaje] = useState(String(inicial.anticipoPorcentaje));
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
   const [elegidas, setElegidas] = useState<Record<TipoNotificacionTaller, string>>({
     aprobacion: clavePlantilla(inicial.plantillas.aprobacion),
@@ -71,6 +72,7 @@ export function TallerConfig({ modulo, canales }: { modulo: any; canales: any[] 
       simularEnvio,
       avisarAlMarcarListo,
       leyendaRecepcion: leyenda.trim(),
+      anticipoPorcentaje: Number(anticipoPorcentaje) || 0,
       canalId: canalId || null,
     };
     for (const tipo of TIPOS_NOTIFICACION_TALLER) {
@@ -153,6 +155,12 @@ export function TallerConfig({ modulo, canales }: { modulo: any; canales: any[] 
           <p className="rounded-lg bg-muted p-2 font-mono text-xs whitespace-pre-wrap">{PLANTILLAS_SUGERIDAS[tipo]}</p>
         </div>
       ))}
+
+      <label className="block space-y-1">
+        <span className="font-medium">Anticipo sugerido</span>
+        <input type="number" min={0} max={100} step={5} value={anticipoPorcentaje} onChange={(e) => setAnticipoPorcentaje(e.target.value)} className="w-full rounded-lg border p-2" />
+        <span className="text-xs text-muted-foreground">Porcentaje del total que se sugiere cobrar como anticipo (0 = no sugerir). Nunca bloquea el avance de la orden.</span>
+      </label>
 
       <label className="block space-y-1">
         <span className="font-medium">Leyenda de la orden de recepción</span>

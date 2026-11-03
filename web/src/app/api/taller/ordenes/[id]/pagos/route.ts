@@ -7,6 +7,7 @@ import { aBigInt } from "@/lib/ids";
 import { serializar } from "@/lib/serialize";
 
 const metodos = ["efectivo", "tarjeta", "transferencia", "otro"];
+const tipos = ["anticipo", "abono", "liquidacion"];
 export const GET = conModulo("taller", {}, async (_sesion, _req: NextRequest, props: { params: Promise<{ id: string }> }) => {
   const id = aBigInt((await props.params).id);
   if (!id || id <= 0n) return NextResponse.json({ error: "Orden inválida" }, { status: 400 });
@@ -18,8 +19,8 @@ export const GET = conModulo("taller", {}, async (_sesion, _req: NextRequest, pr
 export const POST = conModulo("taller", {}, async (sesion, req: NextRequest, props: { params: Promise<{ id: string }> }) => {
   if (sesion.userId === null) return NextResponse.json({ error: "Sesión inválida" }, { status: 401 });
   const userId = sesion.userId;
-  const id = aBigInt((await props.params).id), body = await req.json().catch(() => null), monto = Number(body?.monto), metodo = String(body?.metodo ?? "");
-  if (!id || id <= 0n || !/^\d+(?:\.\d{1,2})?$/.test(String(body?.monto ?? "")) || !Number.isFinite(monto) || monto <= 0 || monto > 100000000 || !metodos.includes(metodo)) return NextResponse.json({ error: "Monto o método de pago inválido" }, { status: 400 });
+  const id = aBigInt((await props.params).id), body = await req.json().catch(() => null), monto = Number(body?.monto), metodo = String(body?.metodo ?? ""), tipo = body?.tipo === undefined ? "abono" : String(body.tipo);
+  if (!id || id <= 0n || !/^\d+(?:\.\d{1,2})?$/.test(String(body?.monto ?? "")) || !Number.isFinite(monto) || monto <= 0 || monto > 100000000 || !metodos.includes(metodo) || !tipos.includes(tipo)) return NextResponse.json({ error: "Monto o método de pago inválido" }, { status: 400 });
   const result = await transaccionTenant(sesion.orgId!, async (tx) => {
     const [orden] = await tx.$queryRaw<{ id: bigint; estado: string; total: Prisma.Decimal }[]>`SELECT id, estado, total FROM taller_ordenes WHERE id = ${id} FOR UPDATE`;
     if (!orden) return { error: "Orden no encontrada", status: 404 } as const;
@@ -28,7 +29,7 @@ export const POST = conModulo("taller", {}, async (sesion, req: NextRequest, pro
     const saldo = new Prisma.Decimal(orden.total).minus(agregado._sum.monto ?? 0);
     const pago = new Prisma.Decimal(monto).toDecimalPlaces(2);
     if (pago.greaterThan(saldo)) return { error: "El pago supera el saldo pendiente", status: 409 } as const;
-    const nuevo = await tx.tallerPago.create({ data: { ordenId: id, monto: pago, metodo, userId } });
+    const nuevo = await tx.tallerPago.create({ data: { ordenId: id, monto: pago, metodo, tipo, userId } });
     return { pago: nuevo, saldo: saldo.minus(pago) } as const;
   });
   return "error" in result ? NextResponse.json({ error: result.error }, { status: result.status }) : NextResponse.json(serializar(result), { status: 201 });

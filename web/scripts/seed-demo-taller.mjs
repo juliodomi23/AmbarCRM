@@ -84,6 +84,7 @@ await prisma.$transaction(async (tx) => {
         ...(moduloTaller.config ?? {}),
         simularEnvio: true,
         avisarAlMarcarListo: true,
+        anticipoPorcentaje: 50,
         leyendaRecepcion:
           "El vehículo se entrega en el horario del taller. Las refacciones especiales pueden variar el tiempo de entrega; te avisaremos por WhatsApp. Gracias por tu confianza.",
       },
@@ -126,10 +127,10 @@ await prisma.$transaction(async (tx) => {
       [[1815, "tarjeta", 9]], [["recibido", 12], ["diagnostico", 12], ["en_reparacion", 11], ["listo", 10], ["entregado", 9]]],
     [0, "listo", "Servicio mayor y ruido en la rueda trasera", "Se cambió aceite, bujías y se rectificó balero trasero.", luis, 4, 0,
       [pieza("ACE-5W30", 4), pieza("FIL-ACE", 1), pieza("BUJ-IR", 4), mo("Afinación mayor", 780), mo("Cambio de balero trasero", 500)],
-      [[1500, "efectivo", 4]], [["recibido", 4], ["diagnostico", 4], ["en_reparacion", 3], ["listo", 1]]],
+      [[1500, "efectivo", 4, "anticipo"]], [["recibido", 4], ["diagnostico", 4], ["en_reparacion", 3], ["listo", 1]]],
     [2, "en_reparacion", "Pierde potencia y vibra en carretera", "Bujías y filtro de aire saturados; se cambia kit de afinación.", pedro, 2, 1,
       [pieza("BUJ-IR", 4), pieza("FIL-AIR", 1), mo("Afinación", 700)],
-      [[1000, "transferencia", 1]], [["recibido", 2], ["diagnostico", 2], ["en_reparacion", 1]], true],
+      [[1000, "transferencia", 1, "anticipo"]], [["recibido", 2], ["diagnostico", 2], ["en_reparacion", 1]], true],
     [1, "esperando_aprobacion", "Ruido metálico al frenar", "Balatas desgastadas al límite; discos aún en rango.", luis, 1, 2,
       [pieza("BAL-DEL", 1), mo("Cambio de balatas y ajuste de frenos", 600)], [], [["recibido", 1], ["diagnostico", 1], ["esperando_aprobacion", 0]]],
     [4, "diagnostico", "Testigo de motor encendido", "Pendiente lectura de códigos con escáner.", pedro, 1, 3,
@@ -161,7 +162,7 @@ await prisma.$transaction(async (tx) => {
     for (const [e, d] of historial) {
       await tx.tallerOrdenCambio.create({ data: { ordenId: orden.id, estado: e, userId: e === "esperando_aprobacion" || e === "en_reparacion" ? null : admin.id, actor: e === "en_reparacion" && aprobar ? "cliente" : "equipo", creadoAt: hace(d, 11) } });
     }
-    for (const [monto, metodo, d] of pagos) await tx.tallerPago.create({ data: { ordenId: orden.id, monto, metodo, userId: admin.id, createdAt: hace(d, 13) } });
+    for (const [monto, metodo, d, tipo] of pagos) await tx.tallerPago.create({ data: { ordenId: orden.id, monto, metodo, tipo: tipo ?? "abono", userId: admin.id, createdAt: hace(d, 13) } });
   }
   // Historial de WhatsApp simulado: la demo nunca llamó a Meta.
   const ordenListo = await tx.tallerOrden.findFirst({ where: { estado: "listo" }, orderBy: { numero: "desc" } });

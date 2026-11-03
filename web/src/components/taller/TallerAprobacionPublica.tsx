@@ -9,6 +9,7 @@ type Cotizacion = {
   total: string;
   vehiculo: { placa: string; marca: string; modelo: string };
   conceptos: { tipo: string; descripcion: string; cantidad: string; precioUnitario: string }[];
+  anticipo?: { porcentaje: number; sugerido: number; recibido: number } | null;
 };
 type EstadoRespuesta = "aprobada" | "rechazada" | "respondida" | "no-disponible" | "error";
 
@@ -118,6 +119,7 @@ export function TallerAprobacionPublica({ token, marca }: { token: string; marca
         <p className="text-sm text-muted-foreground">Total de la reparación</p>
         <p className="tnum mt-1 font-display text-3xl font-bold tracking-tight">{formatoDinero.format(Number(orden.total))}</p>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">Al aprobar, autorizas que el taller inicie los trabajos descritos.</p>
+        {orden.anticipo && orden.anticipo.porcentaje > 0 && <p className="mt-2 text-sm leading-6 text-muted-foreground">Anticipo sugerido: {formatoDinero.format(orden.anticipo.sugerido)}{orden.anticipo.recibido > 0 ? `. Ya recibido: ${formatoDinero.format(orden.anticipo.recibido)}.` : "."} Se paga directamente en el taller y no bloquea la aprobación.</p>}
       </div>
       <div className="grid gap-3 p-5 sm:p-6 sm:pt-4">
         <button type="button" disabled={busy} onClick={() => void responder("aprobar")} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-base font-semibold text-primary-foreground shadow-soft transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:cursor-wait disabled:opacity-60">

@@ -49,6 +49,7 @@ export type ConfigTaller = {
   canalId: bigint | null;
   plantillas: Record<TipoNotificacionTaller, PlantillaWhatsapp | null>;
   leyendaRecepcion: string;
+  anticipoPorcentaje: number;
 };
 
 const texto = (valor: unknown, maximo: number) => {
@@ -83,6 +84,7 @@ export function configTaller(config: unknown): ConfigTaller {
       estado: plantillaDe(valor.plantillaEstado),
     },
     leyendaRecepcion: texto(valor.leyendaRecepcion, 2000) ?? LEYENDA_RECEPCION_POR_DEFECTO,
+    anticipoPorcentaje: (() => { const numero = Number(valor.anticipoPorcentaje); return Number.isFinite(numero) && numero >= 0 && numero <= 100 ? Math.round(numero) : 0; })(),
   };
 }
 

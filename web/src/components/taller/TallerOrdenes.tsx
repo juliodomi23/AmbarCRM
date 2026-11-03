@@ -92,8 +92,8 @@ export function TallerOrdenes({ ordenes, vehiculos, mecanicos, vehiculoInicial, 
       <div className="sm:col-span-2 xl:col-span-4"><Boton className="min-h-11" type="submit" disabled={busy}>{busy ? "Guardando…" : "Crear orden"}</Boton></div>
     </form>}
     <section className="surface space-y-3 p-3 sm:p-4" aria-label="Buscar y filtrar órdenes">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <form role="search" className="sm:col-span-2 xl:col-span-1" onSubmit={(event) => event.preventDefault()}>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <form role="search" className="sm:col-span-2" onSubmit={(event) => event.preventDefault()}>
           <label className="relative block"><span className="sr-only">Buscar por placa, cliente, vehículo o folio</span><TallerIcono nombre="busqueda" className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" /><input className="min-h-11 w-full rounded-lg border border-input bg-background pl-11 pr-3 text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" placeholder="Buscar por placa, cliente, vehículo o folio" value={busqueda} onChange={(event) => setBusqueda(event.target.value)} /></label>
         </form>
         <label className="block space-y-1 text-xs font-medium text-muted-foreground"><span>Filtrar por mecánico</span><select className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" value={mecanicoFiltro} onChange={(event) => setMecanicoFiltro(event.target.value)}><option value="todos">Todos</option><option value="sin-asignar">Sin asignar</option>{mecanicos.map((mecanico) => <option key={mecanico.id} value={mecanico.id}>{mecanico.nombre}</option>)}</select></label>
