@@ -27,6 +27,23 @@ const textoMetodo: Record<string, string> = { efectivo: "Efectivo", tarjeta: "Ta
 function horaFecha(valor: string) { return new Date(valor).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Mexico_City" }); }
 function canonConceptos(items: Concepto[]) { return items.map((c) => [c.tipo, c.descripcion.trim(), c.refaccionId ?? "", Number(c.cantidad), Number(c.precioUnitario)].join("\u001f")).sort().join("\u001e"); }
 
+/** Fija el panel lateral solo cuando su contenido cabe en la ventana; si es más alto, se desplaza con la página. */
+function useFijarSiCabe<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [fijar, setFijar] = useState(false);
+  useEffect(() => {
+    const elemento = ref.current;
+    if (!elemento) return;
+    const medir = () => setFijar(elemento.offsetHeight <= window.innerHeight - 40);
+    medir();
+    const observador = new ResizeObserver(medir);
+    observador.observe(elemento);
+    window.addEventListener("resize", medir);
+    return () => { observador.disconnect(); window.removeEventListener("resize", medir); };
+  }, []);
+  return { ref, fijar };
+}
+
 export function TallerOrdenDetalle({ orden: inicial, refacciones, mecanicos, esAdmin, rutaAprobacion = "" }: { orden: Orden; refacciones: Refaccion[]; mecanicos: Mecanico[]; esAdmin: boolean; rutaAprobacion?: string }) {
   const router = useRouter();
   const [orden, setOrden] = useState(inicial); const [diagnostico, setDiagnostico] = useState(inicial.diagnostico); const [kmEntrada, setKmEntrada] = useState(String(inicial.kmEntrada)); const [mecanicoId, setMecanicoId] = useState(inicial.mecanicoId ?? ""); const [conceptos, setConceptos] = useState(inicial.conceptos.map((c) => ({ ...c })));
@@ -37,6 +54,7 @@ export function TallerOrdenDetalle({ orden: inicial, refacciones, mecanicos, esA
   const mecPorId = useMemo(() => new Map(mecanicos.map((m) => [m.id, m])), [mecanicos]); const mecanico = orden.mecanicoId ? mecPorId.get(orden.mecanicoId) : undefined;
   const subtotalManoObra = conceptos.filter((c) => c.tipo === "mano_obra").reduce((suma, c) => suma + Number(c.cantidad) * Number(c.precioUnitario), 0);
   const subtotalRefacciones = conceptos.filter((c) => c.tipo === "refaccion").reduce((suma, c) => suma + Number(c.cantidad) * Number(c.precioUnitario), 0);
+  const panelResumen = useFijarSiCabe<HTMLElement>();
   function aplicarOrdenRemota(nueva: Orden, sincronizarBorrador = false) {
     const anterior = ordenRemota.current;
     if (sincronizarBorrador || borrador.current.diagnostico === anterior.diagnostico) setDiagnostico(nueva.diagnostico);
@@ -146,7 +164,7 @@ export function TallerOrdenDetalle({ orden: inicial, refacciones, mecanicos, esA
         </section>
       </div>
 
-      <aside className="space-y-5 xl:sticky xl:top-5">
+      <aside ref={panelResumen.ref} className={`space-y-5 ${panelResumen.fijar ? "xl:sticky xl:top-5" : ""}`}>
         <section className="surface overflow-hidden"><header className="bg-primary/5 p-4 sm:p-5"><p className="text-xs font-semibold uppercase tracking-wide text-primary">Resumen de cobro</p><h2 className="mt-1 text-lg font-semibold">Saldo de la orden</h2></header><div className="space-y-3 p-4 sm:p-5"><div className="flex justify-between gap-4 text-sm"><span className="text-muted-foreground">Mano de obra</span><span className="tnum font-medium">{monedaTaller(subtotalManoObra)}</span></div><div className="flex justify-between gap-4 text-sm"><span className="text-muted-foreground">Refacciones</span><span className="tnum font-medium">{monedaTaller(subtotalRefacciones)}</span></div><div className="flex justify-between gap-4 border-t border-border/70 pt-3 text-sm font-semibold"><span>Total</span><span className="tnum">{monedaTaller(orden.total)}</span></div><div className="flex justify-between gap-4 text-sm"><span className="text-muted-foreground">Pagado</span><span className="tnum font-medium">{monedaTaller(pagado)}</span></div><div className={`rounded-xl border p-3 ${saldo > 0 ? "border-warning/30 bg-warning/10" : "border-success/25 bg-success/10"}`}><span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Saldo pendiente</span><p className={`tnum mt-1 text-2xl font-bold ${saldo > 0 ? "text-warning" : "text-success"}`}>{monedaTaller(saldo)}</p><span className={`text-xs font-semibold ${saldo > 0 ? "text-warning" : "text-success"}`}>{saldo > 0 ? "Por cobrar" : Number(orden.total) > 0 ? "Cuenta liquidada" : "Aún sin conceptos"}</span></div></div></section>
 
         <div className="flex justify-end"><TallerImprimirMenu ordenId={orden.id} /></div>
