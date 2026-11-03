@@ -216,6 +216,25 @@ async function main() {
     assert.equal((await patchConSesion(signed, entregaConSaldo.id, { estado: "entregado" })).status, 409);
     assert.equal((await patchConSesion(signed, entregaConSaldo.id, { estado: "entregado", confirmarSaldoPendiente: true })).status, 200);
     assert.equal((await postPago(entregaConSaldo.id, 50)).status, 201);
+    // Cobro al entregar (pagoFinal): atómico, con permiso y validaciones.
+    const listaParaCobrar = (numero: bigint) => runWithOrg(orgA, () => db.tallerOrden.create({ data: { numero, vehiculoId: vehiculoA.id, kmEntrada: 50000, fallaReportada: "Cobro final", creadoPorId: 1n, estado: "listo", total: new Prisma.Decimal(1000) } }));
+    const [cobroParcialAgente, cobroInvalido, cobroCompleto] = [await listaParaCobrar(30n), await listaParaCobrar(31n), await listaParaCobrar(32n)];
+    const pagosDe = (ordenId: bigint) => runWithOrg(orgA, () => db.tallerPago.findMany({ where: { ordenId } }));
+    const estadoDe = (ordenId: bigint) => runWithOrg(orgA, async () => (await db.tallerOrden.findUniqueOrThrow({ where: { id: ordenId } })).estado);
+    const parcialAgente = await patchConSesion(agente, cobroParcialAgente.id, { estado: "entregado", pagoFinal: { monto: 400, metodo: "efectivo" } });
+    assert.equal(parcialAgente.status, 409, "un agente no entrega con saldo restante aunque cobre una parte");
+    assert.equal((await pagosDe(cobroParcialAgente.id)).length, 0, "si la entrega se rechaza no queda pago huérfano (atomicidad)");
+    assert.equal(await estadoDe(cobroParcialAgente.id), "listo");
+    assert.equal((await patchConSesion(signed, cobroInvalido.id, { estado: "entregado", pagoFinal: { monto: 0, metodo: "efectivo" } })).status, 400, "monto cero");
+    assert.equal((await patchConSesion(signed, cobroInvalido.id, { estado: "entregado", pagoFinal: { monto: 100, metodo: "cheque" } })).status, 400, "método desconocido");
+    assert.equal((await patchConSesion(signed, cobroInvalido.id, { estado: "entregado", pagoFinal: { monto: 1500, metodo: "efectivo" } })).status, 409, "monto mayor al saldo");
+    assert.equal((await patchConSesion(signed, cobroInvalido.id, { pagoFinal: { monto: 100, metodo: "efectivo" } })).status, 400, "pagoFinal sin entregar es 400 real, no 200 con error");
+    assert.equal((await pagosDe(cobroInvalido.id)).length, 0, "ningún pago inválido se registra");
+    const cobroOk = await patchConSesion(signed, cobroCompleto.id, { estado: "entregado", pagoFinal: { monto: 1000, metodo: "tarjeta" } });
+    assert.equal(cobroOk.status, 200);
+    const pagosCobroOk = await pagosDe(cobroCompleto.id);
+    assert.deepEqual(pagosCobroOk.map((p) => [p.tipo, p.metodo, Number(p.monto)]), [["liquidacion", "tarjeta", 1000]], "cobrar y entregar registra una liquidación");
+    assert.equal(await estadoDe(cobroCompleto.id), "entregado");
     const pagoCancelacion = await postPago(conPagoCancelada.id, 50);
     assert.equal(pagoCancelacion.status, 201);
     const totalMenor = await patchConSesion(signed, conPagoCancelada.id, { conceptos: [{ tipo: "mano_obra", descripcion: "Importe reducido", cantidad: 1, precioUnitario: 20 }] });
