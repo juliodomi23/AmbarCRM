@@ -1,6 +1,6 @@
 import type { ReactNode, SVGProps } from "react";
 
-type NombreIcono = "vehiculo" | "orden" | "refaccion" | "recordatorio" | "busqueda" | "herramienta" | "reloj" | "check" | "telefono" | "calendario" | "usuario" | "flecha" | "mas" | "vacio" | "dinero" | "subir" | "menu" | "whatsapp" | "reporte";
+type NombreIcono = "vehiculo" | "orden" | "refaccion" | "recordatorio" | "busqueda" | "herramienta" | "reloj" | "check" | "telefono" | "calendario" | "usuario" | "flecha" | "mas" | "vacio" | "dinero" | "subir" | "menu" | "whatsapp" | "reporte" | "basura";
 
 const trazos: Record<NombreIcono, ReactNode> = {
   vehiculo: <><path d="m3 11 2-5h14l2 5"/><path d="M5 11h14a2 2 0 0 1 2 2v5H3v-5a2 2 0 0 1 2-2Z"/><path d="M6 18v2m12-2v2M6 14h.01M18 14h.01"/></>,
@@ -21,6 +21,7 @@ const trazos: Record<NombreIcono, ReactNode> = {
   subir: <><path d="M12 16V4m-5 5 5-5 5 5"/><path d="M4 20h16"/></>,
   menu: <><path d="M4 7h16M4 12h16M4 17h16"/></>,
   whatsapp: <><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.1-5.4A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8.5 9.2c0 3 2.3 5.3 5.3 5.3l1.2-1.2-1.7-.9-.8.8a4.7 4.7 0 0 1-2.6-2.6l.8-.8-.9-1.7-1.3 1.1Z"/></>,
+  basura: <><path d="M4 7h16M9 7V4h6v3m-9 0 1 14h10l1-14"/><path d="M10 11v6m4-6v6"/></>,
   reporte: <><path d="M4 20V4m0 16h16"/><path d="M8 16v-4m4 4V8m4 8v-6"/></>,
 };
 
