@@ -10,7 +10,7 @@ import { requireModuloActivo } from "../src/lib/modulos";
 import { ajustarExistenciasTaller, ErrorStockTaller } from "../src/lib/taller-inventario";
 import { calcularTotalTaller, puedeEntregarConSaldo, transicionTallerValida } from "../src/lib/taller-reglas";
 import { transaccionTenant } from "../src/lib/retail-db";
-import { filtrarOrdenes, separarOrdenesCerradas } from "../src/lib/taller-orden-filtros";
+import { filtrarOrdenes, rangoPeriodo, separarOrdenesCerradas } from "../src/lib/taller-orden-filtros";
 import { periodoReporte, reportesTaller } from "../src/lib/taller-reportes";
 import { enlaceWhatsappManual, mensajeTaller, variablesPlantillaTaller } from "../src/lib/taller-whatsapp";
 import { partesTokenSeguimiento } from "../src/lib/taller-estado";
@@ -50,6 +50,24 @@ async function main() {
   const largaEntregadaAyer = { ...ordenesFiltro[0], id: "3", createdAt: "2026-08-01T12:00:00.000Z", updatedAt: "2026-10-31T12:00:00.000Z" };
   assert.equal(separarOrdenesCerradas([largaEntregadaAyer], "entregado", new Date("2026-11-01T12:00:00.000Z")).recientes.length, 1, "el corte de 30 días usa la última actualización, no la creación");
   assert.equal(separarOrdenesCerradas(ordenesFiltro, "cancelado", new Date("2026-11-01T12:00:00.000Z")).antiguas.length, 1, "separa órdenes canceladas anteriores a 30 días");
+  // Periodo: rangos calculados en la zona del taller (UTC-6), sin horario de verano.
+  const ahoraPeriodo = new Date("2026-11-04T18:00:00.000Z"); // miércoles 12:00 en México
+  assert.equal(rangoPeriodo("todo", ahoraPeriodo), null, "el periodo todo no acota fechas");
+  assert.deepEqual(rangoPeriodo("semana", ahoraPeriodo), { desde: Date.parse("2026-11-02T06:00:00.000Z"), hasta: Date.parse("2026-11-09T06:00:00.000Z") }, "la semana empieza el lunes en hora de México");
+  assert.deepEqual(rangoPeriodo("mes", ahoraPeriodo), { desde: Date.parse("2026-11-01T06:00:00.000Z"), hasta: Date.parse("2026-12-01T06:00:00.000Z") }, "el mes actual usa la zona del taller");
+  assert.deepEqual(rangoPeriodo("mes-anterior", ahoraPeriodo), { desde: Date.parse("2026-10-01T06:00:00.000Z"), hasta: Date.parse("2026-11-01T06:00:00.000Z") }, "el mes anterior cierra con el inicio del actual");
+  assert.deepEqual(rangoPeriodo("anio", ahoraPeriodo), { desde: Date.parse("2026-01-01T06:00:00.000Z"), hasta: Date.parse("2027-01-01T06:00:00.000Z") }, "el año usa la zona del taller");
+  assert.deepEqual(rangoPeriodo("personalizado", ahoraPeriodo, "2026-02"), { desde: Date.parse("2026-02-01T06:00:00.000Z"), hasta: Date.parse("2026-03-01T06:00:00.000Z") }, "el mes elegido respeta la zona del taller");
+  assert.equal(rangoPeriodo("personalizado", ahoraPeriodo, "2026-13"), null, "un mes inválido no acota fechas");
+  const ordenesPeriodo = [
+    { ...ordenesFiltro[0], id: "a", createdAt: "2026-11-03T18:00:00.000Z", fechaPromesa: "2026-10-05T18:00:00.000Z" },
+    { ...ordenesFiltro[1], id: "b", createdAt: "2026-09-15T18:00:00.000Z", fechaPromesa: "2026-11-20T18:00:00.000Z" },
+  ];
+  assert.equal(filtrarOrdenes(ordenesPeriodo, { busqueda: "", mecanicoId: "todos", periodo: "mes", ahora: ahoraPeriodo }).length, 1, "el periodo filtra por fecha de ingreso");
+  assert.equal(filtrarOrdenes(ordenesPeriodo, { busqueda: "", mecanicoId: "todos", periodo: "mes", campoFecha: "promesa", ahora: ahoraPeriodo })[0].id, "b", "el periodo puede filtrar por promesa de entrega");
+  assert.equal(filtrarOrdenes(ordenesPeriodo, { busqueda: "", mecanicoId: "todos", periodo: "personalizado", mes: "2026-09", ahora: ahoraPeriodo })[0].id, "b", "el mes elegido acota las órdenes");
+  assert.equal(filtrarOrdenes(ordenesPeriodo, { busqueda: "jose", mecanicoId: "todos", periodo: "mes", ahora: ahoraPeriodo }).length, 1, "periodo y búsqueda se combinan");
+  assert.equal(filtrarOrdenes(ordenesPeriodo, { busqueda: "", mecanicoId: "todos", periodo: "personalizado", mes: "", ahora: ahoraPeriodo }).length, 2, "un mes elegido vacío no acota");
   const datosMensaje = {
     nombre: "Ana", marcaVehiculo: "Nissan", modelo: "Versa", placa: "ABC123", saldo: 1250,
     enlaceAprobacion: "https://x/aprobar", enlaceSeguimiento: "https://x/estado", fechaPromesa: "2026-11-02",

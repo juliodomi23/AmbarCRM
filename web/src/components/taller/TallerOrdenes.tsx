@@ -9,7 +9,7 @@ import { TallerCampo } from "@/components/taller/TallerCampo";
 import { TallerIcono } from "@/components/taller/TallerIcono";
 import { TallerNavegacion } from "@/components/taller/TallerNavegacion";
 import { EstadoTaller, monedaTaller, nombreEstadoTaller, PlacaVehiculo, VacioTaller } from "@/components/taller/TallerVisuales";
-import { filtrarOrdenes, separarOrdenesCerradas } from "@/lib/taller-orden-filtros";
+import { CampoFechaOrden, filtrarOrdenes, PeriodoOrdenes, separarOrdenesCerradas } from "@/lib/taller-orden-filtros";
 
 const columnas = ["recibido", "diagnostico", "esperando_aprobacion", "en_reparacion", "listo", "entregado", "cancelado"];
 type Orden = { id: string; numero: string; estado: string; total: string; fallaReportada: string; createdAt: string; updatedAt: string; fechaPromesa: string | null; mecanicoId: string | null; vehiculo: { placa: string; marca: string; modelo: string; contacto: { nombre: string } } };
@@ -41,12 +41,13 @@ function iniciales(nombre: string) { return nombre.split(/\s+/).filter(Boolean).
 export function TallerOrdenes({ ordenes, vehiculos, mecanicos, vehiculoInicial, esAdmin = false }: { ordenes: Orden[]; vehiculos: Vehiculo[]; mecanicos: Mecanico[]; vehiculoInicial: string; esAdmin?: boolean }) {
   const router = useRouter(); const [open, setOpen] = useState(Boolean(vehiculoInicial)); const [busy, setBusy] = useState(false); const [vista, setVista] = useState<"tablero" | "lista">("tablero");
   const [busqueda, setBusqueda] = useState(""); const [mecanicoFiltro, setMecanicoFiltro] = useState("todos"); const [verAntiguas, setVerAntiguas] = useState<Record<string, boolean>>({});
+  const [periodo, setPeriodo] = useState<PeriodoOrdenes>("todo"); const [mesElegido, setMesElegido] = useState(""); const [campoFecha, setCampoFecha] = useState<CampoFechaOrden>("ingreso");
   const [form, setForm] = useState({ vehiculoId: vehiculoInicial, kmEntrada: String(vehiculos.find((v) => v.id === vehiculoInicial)?.kilometraje ?? 0), fallaReportada: "", fechaPromesa: "" });
   const mecanicoPorId = useMemo(() => new Map(mecanicos.map((m) => [m.id, m])), [mecanicos]);
   useEffect(() => { router.refresh(); }, [router]);
-  const filtradas = useMemo(() => filtrarOrdenes(ordenes, { busqueda, mecanicoId: mecanicoFiltro }), [ordenes, busqueda, mecanicoFiltro]);
+  const filtradas = useMemo(() => filtrarOrdenes(ordenes, { busqueda, mecanicoId: mecanicoFiltro, periodo, mes: mesElegido, campoFecha }), [ordenes, busqueda, mecanicoFiltro, periodo, mesElegido, campoFecha]);
   const recientes = useMemo(() => {
-    if (busqueda.trim()) return filtradas;
+    if (busqueda.trim() || periodo !== "todo") return filtradas;
     return filtradas.filter((orden) => {
       if (orden.estado !== "entregado" && orden.estado !== "cancelado") return true;
       const grupos = separarOrdenesCerradas(filtradas, orden.estado);
@@ -55,8 +56,8 @@ export function TallerOrdenes({ ordenes, vehiculos, mecanicos, vehiculoInicial, 
       }
       return true;
     });
-  }, [filtradas, busqueda, verAntiguas]);
-  const sinFiltros = !busqueda.trim() && mecanicoFiltro === "todos";
+  }, [filtradas, busqueda, verAntiguas, periodo]);
+  const sinFiltros = !busqueda.trim() && mecanicoFiltro === "todos" && periodo === "todo";
   const coincidenciasTexto = `${filtradas.length} de ${ordenes.length} ${ordenes.length === 1 ? "orden" : "órdenes"}`;
 
   async function crear(e: React.FormEvent<HTMLFormElement>) {
@@ -91,13 +92,16 @@ export function TallerOrdenes({ ordenes, vehiculos, mecanicos, vehiculoInicial, 
       <div className="sm:col-span-2 xl:col-span-4"><Boton className="min-h-11" type="submit" disabled={busy}>{busy ? "Guardando…" : "Crear orden"}</Boton></div>
     </form>}
     <section className="surface space-y-3 p-3 sm:p-4" aria-label="Buscar y filtrar órdenes">
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_16rem]">
-        <form role="search" onSubmit={(event) => event.preventDefault()}>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <form role="search" className="sm:col-span-2 xl:col-span-1" onSubmit={(event) => event.preventDefault()}>
           <label className="relative block"><span className="sr-only">Buscar por placa, cliente, vehículo o folio</span><TallerIcono nombre="busqueda" className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" /><input className="min-h-11 w-full rounded-lg border border-input bg-background pl-11 pr-3 text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" placeholder="Buscar por placa, cliente, vehículo o folio" value={busqueda} onChange={(event) => setBusqueda(event.target.value)} /></label>
         </form>
         <label className="block space-y-1 text-xs font-medium text-muted-foreground"><span>Filtrar por mecánico</span><select className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" value={mecanicoFiltro} onChange={(event) => setMecanicoFiltro(event.target.value)}><option value="todos">Todos</option><option value="sin-asignar">Sin asignar</option>{mecanicos.map((mecanico) => <option key={mecanico.id} value={mecanico.id}>{mecanico.nombre}</option>)}</select></label>
+        <label className="block space-y-1 text-xs font-medium text-muted-foreground"><span>Periodo</span><select aria-label="Filtrar por periodo" className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" value={periodo} onChange={(event) => setPeriodo(event.target.value as PeriodoOrdenes)}><option value="todo">Todo</option><option value="semana">Esta semana</option><option value="mes">Este mes</option><option value="mes-anterior">Mes anterior</option><option value="anio">Este año</option><option value="personalizado">Elegir mes…</option></select></label>
+        {periodo === "personalizado" && <label className="block space-y-1 text-xs font-medium text-muted-foreground"><span>Mes a consultar</span><input type="month" aria-label="Mes a consultar" className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" value={mesElegido} onChange={(event) => setMesElegido(event.target.value)} /></label>}
+        {periodo !== "todo" && <label className="block space-y-1 text-xs font-medium text-muted-foreground"><span>Fecha de referencia</span><select aria-label="Fecha de referencia del periodo" className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" value={campoFecha} onChange={(event) => setCampoFecha(event.target.value as CampoFechaOrden)}><option value="ingreso">Ingreso</option><option value="promesa">Promesa de entrega</option></select></label>}
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm"><p aria-live="polite" className="text-muted-foreground">{coincidenciasTexto}</p>{!sinFiltros && <button type="button" onClick={() => { setBusqueda(""); setMecanicoFiltro("todos"); }} className="inline-flex min-h-10 items-center rounded-lg px-3 font-semibold text-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">Limpiar filtros</button>}</div>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm"><p aria-live="polite" className="text-muted-foreground">{coincidenciasTexto}</p>{!sinFiltros && <button type="button" onClick={() => { setBusqueda(""); setMecanicoFiltro("todos"); setPeriodo("todo"); setMesElegido(""); setCampoFecha("ingreso"); }} className="inline-flex min-h-10 items-center rounded-lg px-3 font-semibold text-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">Limpiar filtros</button>}</div>
     </section>
     <div className="surface flex flex-col justify-between gap-3 p-3 sm:flex-row sm:items-center sm:p-4">
       <div><p className="text-sm font-semibold text-foreground">Flujo de trabajo</p><p className="text-xs text-muted-foreground">{coincidenciasTexto}</p></div>
@@ -106,7 +110,7 @@ export function TallerOrdenes({ ordenes, vehiculos, mecanicos, vehiculoInicial, 
         <button type="button" aria-pressed={vista === "lista"} onClick={() => setVista("lista")} className={`inline-flex min-h-9 items-center gap-2 rounded-md px-3 text-sm font-semibold ${vista === "lista" ? "bg-card text-primary shadow-soft" : "text-muted-foreground hover:text-foreground"}`}><TallerIcono nombre="menu" className="h-4 w-4" />Lista</button>
       </div>
     </div>
-    {!ordenes.length ? <VacioTaller titulo="Todavía no hay órdenes" detalle="Registra una recepción para dar seguimiento al diagnóstico, aprobación, reparación y entrega." accion={<Boton className="mt-2 min-h-11" onClick={() => setOpen(true)}>Crear primera orden</Boton>} /> : !filtradas.length ? <VacioTaller titulo="No encontramos órdenes" detalle="Prueba con otra búsqueda o selecciona otro mecánico." accion={<Boton className="mt-2 min-h-11" variante="ghost" onClick={() => { setBusqueda(""); setMecanicoFiltro("todos"); }}>Limpiar filtros</Boton>} /> : vista === "tablero" ?
+    {!ordenes.length ? <VacioTaller titulo="Todavía no hay órdenes" detalle="Registra una recepción para dar seguimiento al diagnóstico, aprobación, reparación y entrega." accion={<Boton className="mt-2 min-h-11" onClick={() => setOpen(true)}>Crear primera orden</Boton>} /> : !filtradas.length ? <VacioTaller titulo="No encontramos órdenes" detalle="Prueba con otra búsqueda o selecciona otro mecánico." accion={<Boton className="mt-2 min-h-11" variante="ghost" onClick={() => { setBusqueda(""); setMecanicoFiltro("todos"); setPeriodo("todo"); setMesElegido(""); setCampoFecha("ingreso"); }}>Limpiar filtros</Boton>} /> : vista === "tablero" ?
       <div aria-label="Tablero de órdenes por estado" className="grid snap-x auto-cols-[minmax(17rem,19rem)] grid-flow-col gap-3 overflow-x-auto pb-4 xl:auto-cols-[minmax(15rem,1fr)]">
         {columnas.map((estado) => {
           const gruposCerrados = estado === "entregado" || estado === "cancelado" ? separarOrdenesCerradas(filtradas, estado) : null;
