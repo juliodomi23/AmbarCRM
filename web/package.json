@@ -16,6 +16,10 @@
     "check:pagos-online": "tsx scripts/check-pagos-online.ts",
     "check:cfdi": "tsx scripts/check-cfdi.ts",
     "check:iva-producto": "tsx scripts/check-iva-producto.ts",
+    "check:odontograma": "tsx scripts/check-odontograma.ts",
+    "check:plantillas-botones": "tsx scripts/check-plantillas-botones.ts",
+    "alta:serenica": "tsx scripts/alta-serenica.ts",
+    "verificar:serenica": "tsx scripts/verificar-serenica.ts",
     "check:calendario": "tsx scripts/check-calendario.ts",
     "test:calendario:e2e": "tsx prisma/scripts/test-calendario-e2e.ts",
     "seed:admin": "node scripts/seed-admin.mjs"

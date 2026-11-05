@@ -89,7 +89,7 @@ El administrador debe activarlos por cliente en Configuración → Bots.
 | Permiso | Rutas |
 |---|---|
 | `leer_perfil` | `GET …/{id}` |
-| `enviar_mensaje` | `POST …/messages` (mensaje al cliente) |
+| `enviar_mensaje` | `POST …/messages` y `POST …/messages/template` (texto, adjunto o plantilla aprobada) |
 | `notas_internas` | `POST …/messages` con `private: true` |
 | `mover_embudo` | `POST …/funnel` |
 | `editar_oportunidad` | `PATCH …/opportunity` |
@@ -144,6 +144,29 @@ Opcionalmente se acepta un adjunto: `{ "content": "Pie", "attachments": [{ "file
 si hay adjunto. La URL debe ser HTTPS, pública, sin credenciales y de hasta 2048 caracteres; notas privadas con
 adjuntos responden 400. En Cloud API, el CRM entrega la URL a Meta para que descargue el archivo; el servidor
 del CRM no la descarga. Se comprueba la ventana de 24 horas antes de enviar media.
+
+### `POST …/{id}/messages/template` — enviar plantilla aprobada
+
+Requiere `enviar_mensaje` y una conversación de WhatsApp Cloud. Consulta las plantillas de la WABA del canal y solo envía una que Meta reporte como `APPROVED` para el idioma indicado. Puede usarse fuera de la ventana de 24 h. Los valores de cada componente se validan contra la plantilla aprobada y deben coincidir con sus variables `{{n}}`.
+
+```json
+{
+  "name": "recordatorio_cita",
+  "language": "es_MX",
+  "header": { "type": "text", "variables": ["Ana"] },
+  "variables": ["miércoles", "10:00"],
+  "buttons": [
+    { "index": 0, "type": "quick_reply", "payload": "confirmar-cita-42" },
+    { "index": 1, "type": "quick_reply", "payload": "cancelar-cita-42" }
+  ]
+}
+```
+
+`variables` sigue siendo el arreglo de texto del cuerpo, opcional (`[]` por defecto), hasta 50 valores de 2000 caracteres. `header` también es opcional y admite `{ "type": "text", "variables": ["Ana"] }` o `{ "type": "image" | "document" | "video", "link": "https://…" }`; los encabezados multimedia requieren URL HTTPS pública. `buttons` es opcional: admite hasta 10 entradas con índice de plantilla de 0 a 9, `quick_reply` con `payload` de hasta 256 caracteres, o `url` con `text` como valor dinámico (hasta 2000 caracteres). Los tipos e índices deben existir en `plantilla.components`; encabezado/cuerpo y botones URL deben aportar la cantidad de variables que marca su componente. Una entrada inválida responde `400` con `motivo` como `variables_no_coinciden`, `boton_no_existe` o `encabezado_tipo_no_coincide`.
+
+El body anterior `{ "name": "recordatorio_cita", "language": "es_MX", "variables": ["Ana"] }` conserva su contrato para plantillas de cuerpo. Respuesta `200`:
+`{ "id", "template_name", "language", "status": "enviado", "conversation_id" }`.
+Errores: `400` datos inválidos · `403` falta `enviar_mensaje` · `409` canal no compatible, WABA ausente o plantilla no aprobada · `422` sin teléfono · `502` rechazo de Meta · `503` Meta no disponible.
 
 ### `PATCH …/{id}/status` — cambiar estado
 Body: `{ "status": "open" | "resolved" | "pending" }`; responde `{ "id", "status", "status_anterior" }`.

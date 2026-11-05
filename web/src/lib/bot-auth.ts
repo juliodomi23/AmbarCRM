@@ -116,7 +116,7 @@ export async function conversacionDelBot(bot: BotAutenticado, conversationId: st
   if (modulo && !(await moduloHabilitado(modulo))) return error("módulo no activo", 404);
   const id = aBigInt(conversationId);
   if (id === null) return error("conversationId inválido", 400);
-  const conv = await db.conversacion.findUnique({ where: { id }, include: { contacto: true } });
+  const conv = await db.conversacion.findUnique({ where: { id }, include: { contacto: true, canal: true } });
   if (!conv) return error("conversación inexistente", 404);
   if (!botAutorizado(bot, conv)) return error("el bot no opera en este canal", 403);
   return { bot, conv, respuesta: null } as const;

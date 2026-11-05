@@ -9,6 +9,12 @@
 - `conversaciones`: relación entre un contacto y un canal.
 - `mensajes`: historial normalizado de entradas, salidas y estados.
 
+## Expediente clínico
+
+- `expedientes_paciente`: ficha clínica vinculada a un contacto.
+- `evoluciones_clinicas`: notas clínicas asociadas al expediente, con autor y referencias opcionales a cita y doctor.
+- `odontograma_zonas`: una fila por zona dental registrada; se relaciona con el expediente y guarda diente FDI, zona, estado, autor de la última actualización y fecha de cambio. La combinación expediente, diente y zona es única; marcar una zona como sana elimina su fila.
+
 ## Operación comercial
 
 - `leads` y entidades de embudo: seguimiento de oportunidades.

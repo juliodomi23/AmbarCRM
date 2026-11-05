@@ -87,6 +87,16 @@ export interface PlantillaOficial {
   rejectedReason?: string;
 }
 
+export type ParametrosPlantilla = {
+  encabezado?:
+    | { type: "text"; variables: string[] }
+    | { type: "image" | "document" | "video"; link: string };
+  botones?: Array<
+    | { index: number; type: "quick_reply"; payload: string }
+    | { index: number; type: "url"; text: string }
+  >;
+};
+
 export type EstadoConexion = "conectado" | "conectando" | "desconectado";
 
 /** Resultado de pedir vincular el número (QR / código de emparejamiento). */
@@ -106,7 +116,7 @@ export interface ChannelProvider {
   enviarTexto(destinatario: string, texto: string, contexto?: ContextoEnvio): Promise<ResultadoEnvio>;
 
   /** Envía una plantilla oficial previamente aprobada por WhatsApp. */
-  enviarPlantilla?(telefono: string, plantilla: PlantillaOficial, variables?: string[]): Promise<ResultadoEnvio>;
+  enviarPlantilla?(telefono: string, plantilla: PlantillaOficial, variables?: string[], parametros?: ParametrosPlantilla): Promise<ResultadoEnvio>;
 
   /** Lista las plantillas oficiales disponibles en el proveedor ([] si no se pudo consultar). */
   listarPlantillas?(): Promise<PlantillaOficial[]>;

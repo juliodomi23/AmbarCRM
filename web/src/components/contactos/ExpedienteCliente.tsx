@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { DatosPersonalesFicha } from "@/components/clientes/DatosPersonalesFicha";
 import { DatosFiscalesFicha, type DatosFiscalesVista } from "@/components/contactos/DatosFiscalesFicha";
+import { Odontograma, type Diente } from "@/components/contactos/Odontograma";
 import { Badge, Boton, CLASE_CAMPO, type TonoBadge } from "@/components/ui";
 import { IconoAlerta, IconoEditar, IconoInfo, IconoNota, IconoReloj } from "@/components/icons";
 import { ZONA_CITAS } from "@/components/citas/fecha";
@@ -275,6 +276,7 @@ export function ExpedienteCliente({
   soloBasico = false,
   datosFiscales = null,
   facturacionActivo = false,
+  odontograma,
 }: {
   contacto: {
     id: string;
@@ -291,6 +293,7 @@ export function ExpedienteCliente({
   soloBasico?: boolean;
   datosFiscales?: DatosFiscalesVista | null;
   facturacionActivo?: boolean;
+  odontograma?: Diente[];
 }) {
   const esClinica = modo === "pacientes";
   const expedienteInicial = contacto.expediente;
@@ -504,6 +507,12 @@ export function ExpedienteCliente({
             <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-foreground">{formulario.alergias}</p>
           </div>
         </aside>
+      )}
+
+      {esClinica && !soloBasico && odontograma && (
+        <Tarjeta titulo="Odontograma" descripcion="Elige un estado y toca la zona del diente para marcarla." icono={<IconoInfo className="h-4 w-4" />}>
+          <Odontograma contactoId={contacto.id} dientes={odontograma} />
+        </Tarjeta>
       )}
 
       {soloBasico ? (

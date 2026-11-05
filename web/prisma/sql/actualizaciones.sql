@@ -226,6 +226,22 @@ CREATE INDEX IF NOT EXISTS evoluciones_expediente_created_idx
   ON evoluciones_clinicas(expediente_id, created_at);
 CREATE INDEX IF NOT EXISTS evoluciones_clinicas_org_idx ON evoluciones_clinicas(org_id);
 
+CREATE TABLE IF NOT EXISTS odontograma_zonas (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
+  expediente_id BIGINT NOT NULL REFERENCES expedientes_paciente(id) ON DELETE CASCADE,
+  diente SMALLINT NOT NULL CHECK (
+    diente BETWEEN 11 AND 18 OR diente BETWEEN 21 AND 28 OR
+    diente BETWEEN 31 AND 38 OR diente BETWEEN 41 AND 48
+  ),
+  zona TEXT NOT NULL CHECK (zona IN ('vestibular', 'lingual', 'mesial', 'distal', 'oclusal')),
+  estado TEXT NOT NULL CHECK (estado IN ('sano', 'caries', 'restaurado', 'extraido', 'corona', 'endodoncia')),
+  actualizado_por_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (expediente_id, diente, zona)
+);
+CREATE INDEX IF NOT EXISTS odontograma_zonas_org_idx ON odontograma_zonas(org_id);
+
 DO $$
 BEGIN
   CREATE TYPE estado_vehiculo AS ENUM (
@@ -838,6 +854,7 @@ DO $$ DECLARE t TEXT; BEGIN
     'doctores',
     'expedientes_paciente',
     'evoluciones_clinicas',
+    'odontograma_zonas',
     'vehiculos',
     'propiedades',
     'productos',
@@ -886,6 +903,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   doctores,
   expedientes_paciente,
   evoluciones_clinicas,
+  odontograma_zonas,
   vehiculos,
   propiedades,
   productos,

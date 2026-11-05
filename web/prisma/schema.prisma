@@ -475,6 +475,7 @@ model Usuario {
   citas                     Cita[]
   conexionesCalendario      CalendarioConectado[]
   evoluciones               EvolucionClinica[]
+  odontogramasActualizados  OdontogramaZona[]
   botsAsesor                Bot[]                      @relation("BotAsesor")
   ventasCreadas             Venta[]                    @relation("VentaCreadoPor")
   movimientos               MovimientoInventario[]     @relation("MovimientoUsuario")
@@ -1192,6 +1193,7 @@ model ExpedientePaciente {
 
   contacto    Contacto           @relation(fields: [contactoId], references: [id], onDelete: Cascade)
   evoluciones EvolucionClinica[]
+  odontogramaZonas OdontogramaZona[]
 
   @@index([orgId])
   @@map("expedientes_paciente")
@@ -1215,6 +1217,24 @@ model EvolucionClinica {
   @@index([expedienteId, createdAt])
   @@index([orgId])
   @@map("evoluciones_clinicas")
+}
+
+model OdontogramaZona {
+  id               BigInt   @id @default(autoincrement())
+  orgId            BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  expedienteId     BigInt   @map("expediente_id")
+  diente           Int      @db.SmallInt
+  zona             String
+  estado           String
+  actualizadoPorId BigInt?  @map("actualizado_por_id")
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  expediente    ExpedientePaciente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  actualizadoPor Usuario?          @relation(fields: [actualizadoPorId], references: [id], onDelete: SetNull)
+
+  @@unique([expedienteId, diente, zona])
+  @@index([orgId])
+  @@map("odontograma_zonas")
 }
 
 model Vehiculo {
