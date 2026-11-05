@@ -14,6 +14,7 @@ export const PERMISOS_BOT = [
   "cambiar_estado",
   "asignar",
   "editar_contacto",
+  "consultar_taller",
 ] as const;
 
 export type PermisoBot = (typeof PERMISOS_BOT)[number];
@@ -36,6 +37,7 @@ export const ETIQUETAS_PERMISO: Record<PermisoBot, string> = {
   cambiar_estado: "Cambiar estado de conversación",
   asignar: "Asignar o quitar responsable",
   editar_contacto: "Editar contacto de conversación",
+  consultar_taller: "Consultar el estado de las órdenes del taller",
 };
 
 /** Lista de permisos válida (sin repetidos) o null si trae algo que no existe. */

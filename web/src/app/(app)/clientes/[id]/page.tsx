@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
 import { moduloActivo, moduloHabilitado } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
+import { LinkModuloTaller } from "@/components/taller/LinkModuloTaller";
 
 export const dynamic = "force-dynamic";
 
@@ -18,9 +19,10 @@ export default async function ClientePage({
   const acceso = await accesoAgendaActual();
   const id = aBigInt((await params).id);
   if (id === null) notFound();
-  const [pacientesHabilitado, pacientesAccesible] = await Promise.all([
+  const [pacientesHabilitado, pacientesAccesible, tallerActivo] = await Promise.all([
     moduloHabilitado("pacientes"),
     moduloActivo("pacientes"),
+    moduloActivo("taller"),
   ]);
   const soloBasico = pacientesHabilitado && !pacientesAccesible;
   const [contacto, doctores, citas, citasActivo, datosFiscales, facturacionActivo] = await Promise.all([
@@ -55,6 +57,8 @@ export default async function ClientePage({
   ]);
   if (!contacto) notFound();
   return (
+    <>
+    {tallerActivo && <LinkModuloTaller contactoId={String(id)} />}
     <ExpedienteCliente
       zona={(await configReservasEmpresa()).zona}
       contacto={serializar(contacto)}
@@ -66,5 +70,6 @@ export default async function ClientePage({
       datosFiscales={serializar(datosFiscales)}
       facturacionActivo={facturacionActivo}
     />
+    </>
   );
 }

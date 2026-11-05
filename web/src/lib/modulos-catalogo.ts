@@ -146,6 +146,12 @@ export const MODULOS = [
     ruta: "/automotriz",
   },
   {
+    clave: "taller", area: "Taller mecánico", nombre: "Taller mecánico",
+    descripcion: "Vehículos de clientes, órdenes de servicio y refacciones.",
+    acceso: { puestosPorDefecto: ["Administrador", "Recepcionista", "Mecánico"] },
+    icono: "M3 17h18M5 17l1-6h12l1 6M8 17v2m8-2v2M7 11l2-4h6l2 4M12 3v3m-3-3h6", ruta: "/taller",
+  },
+  {
     clave: "inmobiliaria",
     area: "Inmobiliaria",
     nombre: "Inmobiliaria",

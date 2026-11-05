@@ -111,6 +111,54 @@ del inventario disponible. El seed `seed-demo-automotriz.mjs` crea la
 organización `demo-auto`, activa Automotriz y Citas, carga seis vehículos, dos
 asesores y tres pruebas de manejo.
 
+## Taller mecánico
+
+Taller (`taller`, `/taller`) es un módulo independiente de Automotriz y nace
+apagado por organización. Automotriz mantiene el inventario de unidades en venta;
+Taller registra los vehículos que pertenecen a los clientes y entran a servicio.
+El vehículo de taller usa el contacto existente como cliente y guarda placa, VIN,
+marca, modelo, año, color, kilometraje y notas. Placa y VIN son únicos por
+organización; la información está aislada con RLS. Desde la ficha del cliente se
+puede iniciar el registro de uno de sus vehículos.
+
+El tablero `/taller/ordenes` organiza órdenes recibidas, diagnóstico, aprobación,
+reparación, listas, entregadas y canceladas, con filtro por periodo (semana, mes,
+mes anterior, año o mes elegido) sobre ingreso o promesa de entrega. Cada orden
+conserva el historial de estados, conceptos de mano de obra/refacciones y total
+calculado en servidor; en la tabla se puede cambiar el tipo de cada concepto,
+elegir la pieza del catálogo o quitar la fila (con confirmación si ya estaba guardada).
+El control de versión rechaza cambios basados en una orden desactualizada.
+La orden permite crear una liga de un solo uso para aprobación pública; cambiar
+conceptos después de aprobarla la regresa a diagnóstico y exige una aprobación nueva.
+Desde el detalle se envía la aprobación, el aviso de listo o el estado por WhatsApp:
+modo simulado, canal oficial o enlace manual `wa.me`. La configuración permite simular
+sin escribir a Meta, elegir el canal y ajustar las plantillas aprobadas. Las fotos
+se guardan con el storage de medios existente; se aceptan JPG, PNG y WebP de hasta
+8 MB (cuerpo máximo del proxy: 12 MB). La orden también genera un token de seguimiento
+público (`/taller-estado/…`) sin precios por concepto ni teléfonos, que caduca a los 30
+días de la entrega; un bot con permiso `consultar_taller` puede consultar ese estado.
+El catálogo de Refacciones muestra existencias bajas; agregar una pieza desde el
+catálogo consume stock bajo bloqueo transaccional, y cancelar una orden lo repone.
+Los pagos quedan ligados directamente a la orden. No se conectan a Caja/Cobros:
+Caja cobra ventas y Cobros exige un contrato, así que ninguno admite actualmente
+una orden de reparación como origen. La configuración sugiere un porcentaje de
+anticipo (0 lo desactiva): el detalle muestra sugerido/recibido/pendiente y permite
+registrarlo, sin bloquear nunca el avance. Al entregar con saldo, el panel cobra y
+entrega en una sola transacción (`pagoFinal`); el pago se marca como `liquidacion`
+si cubre el saldo. Entregar sin cobrar exige que un administrador confirme esa
+excepción. Se permiten pagos posteriores a la entrega
+mientras quede saldo. Cancelar con pagos requiere confirmación administrativa; los
+reembolsos se resuelven fuera del sistema y los pagos quedan visibles. Los folios son
+consecutivos por organización; asignar un mecánico valida que el usuario pertenezca
+a la organización, sin filtrar por puesto.
+La etapa de recordatorios aparece en `/taller/recordatorios` como lista de próximos
+y vencidos, comparando fecha y kilometraje actual. Al entregar una orden, se puede
+crear manualmente un recordatorio para el vehículo. No hay cron ni tareas automáticas:
+el estado se manda a mano desde la orden. El detalle imprime recepción y cotización
+listas para guardar como PDF, y `/taller/reportes` (solo administradores) resume
+ingresos, saldo por cobrar, tiempos, embudo, mecánicos y refacciones, con exportación
+CSV.
+
 ## Módulo Inmobiliaria
 
 Inmobiliaria agrega `/inmobiliaria` con propiedades para venta o renta. Registra
@@ -861,3 +909,9 @@ novegabienesraices.com y clientes sin contrato (Coparmex es alianza).
 Pruebas: `scripts/check-servidores.ts`, auditoría dinámica ampliada
 `prisma/scripts/test-aislamiento.ts`, y `prisma/scripts/test-servidores-e2e.ts`.
 Las FK compuestas impiden asociar heartbeats o contratos con servidores ajenos.
+
+## Demo del giro taller
+
+`ALLOW_DEMO_SEED=1 node scripts/seed-demo-taller.mjs` crea `demo-taller` (Taller Rivera) con
+Taller y Citas activos y datos de ejemplo en todos los estados de orden. Ver
+[docs/TALLER-MECANICO.md](docs/TALLER-MECANICO.md#demo-de-taller).

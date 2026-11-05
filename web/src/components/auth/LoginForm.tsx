@@ -7,6 +7,17 @@ import { BrandRuntime } from "@/components/BrandRuntime";
 import { DEFAULT_BRAND, BrandConfig } from "@/lib/brand";
 import Link from "next/link";
 
+// Un taller mecánico empieza en su tablero de órdenes; el resto de organizaciones, en Embudos.
+async function pantallaInicial() {
+  try {
+    const res = await fetch("/api/modulos");
+    const datos = res.ok ? await res.json() : null;
+    return datos?.modulos?.some((m: { clave: string; activo: boolean }) => m.clave === "taller" && m.activo) ? "/taller/ordenes" : "/embudos";
+  } catch {
+    return "/embudos";
+  }
+}
+
 export function LoginForm({ recuperarHabilitado }: { recuperarHabilitado: boolean }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,8 +54,7 @@ export function LoginForm({ recuperarHabilitado }: { recuperarHabilitado: boolea
     setCargando(false);
     if (res?.error) setError("Credenciales incorrectas");
     // Carga completa: el layout raíz se vuelve a renderizar con la sesión y aplica la marca de la org.
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- recarga completa a propósito
-    else window.location.assign("/embudos");
+    else window.location.assign(await pantallaInicial());
   }
 
   return (

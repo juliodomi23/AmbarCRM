@@ -99,6 +99,7 @@ El administrador debe activarlos por cliente en Configuración → Bots.
 | `cotizar` | `GET` y `POST …/quotes`, `POST …/quotes/{quoteId}/send` |
 | `ver_productos` | `GET …/products` |
 | `gestionar_contactos` | `GET` y `POST …/contacts` |
+| `consultar_taller` | `GET …/taller/ordenes` |
 | `cambiar_estado` | `PATCH …/{id}/status` |
 | `asignar` | `POST …/{id}/assignments` |
 | `editar_contacto` | `PATCH …/{id}/contacts` |
@@ -311,6 +312,36 @@ Dentro de la ventana de 24 h va como texto libre; fuera de ella, como plantilla 
 Últimas 50 del contacto. `estado` es el efectivo: una `borrador`/`enviada` fuera de vigencia se reporta `vencida`
 aunque el cron aún no la haya marcado (`estado_guardado` es el de la base). Filtros: `borrador`, `enviada`,
 `aceptada`, `rechazada`, `vencida`.
+
+## Taller
+
+### `GET …/{id}/taller/ordenes` — permiso `consultar_taller`
+Órdenes del contacto de esa conversación: todas las activas y las entregadas en los últimos 7 días,
+máximo 10, la más reciente primero. Solo lectura; **no expone conceptos ni precios**. El permiso está
+apagado por defecto: actívalo en Configuración → Bots.
+
+```json
+{ "ordenes": [
+  { "id": "12", "numero": "34", "estado": "en_reparacion", "estadoTexto": "Tu vehículo está en reparación",
+    "vehiculo": { "marca": "Nissan", "modelo": "Versa", "anio": 2018, "placa": "ABC-123-A" },
+    "fechaPromesa": "2026-11-02T00:00:00.000Z", "saldo": 0,
+    "enlaceSeguimiento": "https://crm.ejemplo.com/taller-estado/1-6f…" }
+] }
+```
+
+- `enlaceSeguimiento` se genera la primera vez que se consulta y funciona hasta 30 días después de
+  la entrega. Si el servidor no tiene `NEXTAUTH_URL`, llega `null`; estado y promesa siguen siendo útiles.
+- `200` con `{ "ordenes": [] }` si el contacto no tiene órdenes.
+- `403 permiso_faltante` si el bot no tiene `consultar_taller`; `404` si la conversación no existe o es de otra empresa.
+
+```bash
+curl -H "api_access_token: $TOKEN" \
+  "$CRM/api/v1/accounts/1/conversations/$C/taller/ordenes"
+```
+
+Herramienta sugerida para el agente de n8n: «consultar_estado_taller» (sin parámetros: usa el contacto de
+la conversación actual). Respuesta sugerida al cliente: «Tu Versa va en reparación, la promesa es mañana.
+Seguimiento: …». Si la lista viene vacía, ofrece tomar los datos para una cita en lugar de inventar un estado.
 
 ## Productos, oportunidad y contactos
 

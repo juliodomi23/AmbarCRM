@@ -17,6 +17,8 @@ const BUSCAR = {
   reserva: (id: bigint) => db.reservaTour.findFirst({ where: { id }, select: { id: true } }),
   doctor: (id: bigint) => db.doctor.findFirst({ where: { id }, select: { id: true } }),
   producto: (id: bigint) => db.producto.findFirst({ where: { id }, select: { id: true } }),
+  tallerVehiculo: (id: bigint) => db.tallerVehiculo.findFirst({ where: { id }, select: { id: true } }),
+  tallerOrden: (id: bigint) => db.tallerOrden.findFirst({ where: { id }, select: { id: true } }),
 };
 
 export type TablaReferencia = keyof typeof BUSCAR;
