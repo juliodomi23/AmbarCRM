@@ -1,6 +1,7 @@
 import { configReservasEmpresa } from "@/lib/reservas/servidor";
 import { notFound, redirect } from "next/navigation";
 import { ExpedienteCliente } from "@/components/contactos/ExpedienteCliente";
+import type { Diente, EstadoDiente, ZonaDiente } from "@/components/contactos/Odontograma";
 import { accesoAgendaActual } from "@/lib/citas-acceso";
 import { db } from "@/lib/db";
 import { aBigInt } from "@/lib/ids";
@@ -29,6 +30,7 @@ export default async function PacientePage({
               include: { doctor: true, cita: true, registradoPor: true },
               orderBy: { createdAt: "desc" },
             },
+            odontogramaZonas: { orderBy: [{ diente: "asc" }, { zona: "asc" }] },
           },
         },
       },
@@ -45,6 +47,13 @@ export default async function PacientePage({
     moduloActivo("facturacion"),
   ]);
   if (!contacto) notFound();
+  const dientes = new Map<number, Diente>();
+  for (const zona of contacto.expediente!.odontogramaZonas) {
+    const diente = dientes.get(zona.diente) ?? { numero: zona.diente, zonas: {} };
+    diente.zonas[zona.zona as ZonaDiente] = zona.estado as EstadoDiente;
+    dientes.set(zona.diente, diente);
+  }
+  const odontograma = Array.from(dientes.values());
   return (
     <ExpedienteCliente
       zona={(await configReservasEmpresa()).zona}
@@ -53,6 +62,7 @@ export default async function PacientePage({
       citas={serializar(citas)}
       citasActivo={citasActivo}
       modo="pacientes"
+      odontograma={odontograma}
       datosFiscales={serializar(datosFiscales)}
       facturacionActivo={facturacionActivo}
     />

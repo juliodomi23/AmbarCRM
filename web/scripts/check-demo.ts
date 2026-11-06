@@ -48,7 +48,7 @@ const { almacen } = await import("../src/lib/demo/almacen");
 const { BRAND_PRESETS } = await import("../src/lib/brand");
 const { atender } = await import("../src/lib/demo/api");
 almacen.restablecer("clinica");
-assert.equal(almacen.datos.marca.nombre, "Clínica Horizonte");
+assert.equal(almacen.datos.marca.nombre, "Serénica Health Center");
 almacen.reiniciar("retail"); // sin personalizar: toma lo del giro
 assert.equal(almacen.datos.marca.nombre, "Casa Ámbar Boutique");
 assert.equal(almacen.datos.marca.preset, "retail");
@@ -58,7 +58,7 @@ assert.equal(almacen.datos.marca.nombre, "Mi Negocio");
 assert.equal(almacen.datos.marca.preset, "belleza");
 assert.equal(almacen.datos.giro, "legal");
 almacen.restablecer("clinica"); // «Restablecer demo» borra la personalización
-assert.equal(almacen.datos.marca.nombre, "Clínica Horizonte");
+assert.equal(almacen.datos.marca.nombre, "Serénica Health Center");
 almacen.marcarPersonalizado({ color: true });
 almacen.datos.marca.preset = "legal";
 almacen.reiniciar("retail"); // solo el color se personalizó: el nombre sí toma el del giro

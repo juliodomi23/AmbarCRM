@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CitasConfig } from "@/components/config/CitasConfig";
 import { LealtadConfig } from "@/components/lealtad/LealtadConfig";
 import { PagosConfig } from "@/components/config/PagosConfig";
+import { TallerConfig } from "@/components/config/TallerConfig";
 import { toast } from "@/components/Toaster";
 import { Boton } from "@/components/ui";
 import { api, PUESTOS } from "@/components/config/tabs/shared";
@@ -16,6 +17,7 @@ const CONFIG_PROPIA = new Set([
   "marketing",
   "meta_ads",
   "pagos_en_linea",
+  "taller",
 ]);
 
 export function TabModulos({
@@ -156,6 +158,9 @@ export function TabModulos({
               )}
               {m.clave === "lealtad" && (
                 <LealtadConfig modulo={m} canales={canales} />
+              )}
+              {m.clave === "taller" && (
+                <TallerConfig modulo={m} canales={canales} />
               )}
               {m.clave === "pagos_en_linea" && <PagosConfig modulo={m} />}
               {m.clave === "ventas" && (

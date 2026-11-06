@@ -72,7 +72,7 @@ export function MessengerFacebook({ canalId, pageId, nombre, appPropia, proveedo
       setPaginas(null); setInicio(null);
       setConexionCompleta(true);
       const pagina = paginas?.find((item) => item.id === id);
-      toast(`${canalNombre} conectado${pagina ? `: ${pagina.nombre}` : ""}.`, "ok");
+      toast("¡Conectado con éxito!", "ok", pagina?.nombre || nombre.trim() || canalNombre);
       router.refresh();
     } catch (e) { mostrarError(e); }
     finally { setOcupado(false); }

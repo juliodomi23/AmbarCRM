@@ -154,6 +154,8 @@ export function AppShell({
   const [paleta, setPaleta] = useState(false);
   const [contadores, setContadores] = useState(contadoresIniciales);
   const [modulos, setModulos] = useState<NavItem[]>([]);
+  const modulosTaller = modulos.filter((m) => m.href.startsWith("/taller"));
+  const otrosModulos = modulos.filter((m) => !m.href.startsWith("/taller"));
   const visible = (item: NavItem) => !item.soloAdmin || usuario.rol === "admin";
 
   // Zona fija: el servidor corre en UTC y el navegador en hora local; si no coinciden,
@@ -278,8 +280,10 @@ export function AppShell({
       </div>
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
         {[
-          ...GRUPOS,
-          ...(modulos.length ? [{ titulo: "Módulos", items: modulos }] : []),
+          GRUPOS[0],
+          ...(modulosTaller.length ? [{ titulo: "Taller", items: modulosTaller }] : []),
+          ...GRUPOS.slice(1),
+          ...(otrosModulos.length ? [{ titulo: "Módulos", items: otrosModulos }] : []),
         ].map((grupo, gi) => (
           <div key={gi} className="space-y-1">
             {grupo.titulo && (!colapsada || movil) && (
@@ -387,8 +391,8 @@ export function AppShell({
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <div className="hidden md:block">{renderSidebar()}</div>
+    <div className="flex h-screen overflow-hidden bg-background print:block print:h-auto print:overflow-visible">
+      <div className="hidden md:block print:hidden">{renderSidebar()}</div>
       {drawer && (
         <div className="fixed inset-0 z-50 md:hidden">
           <button
@@ -399,8 +403,8 @@ export function AppShell({
           <div className="absolute inset-y-0 left-0">{renderSidebar(true)}</div>
         </div>
       )}
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-card/95 px-4 backdrop-blur md:px-6">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden print:block print:overflow-visible">
+        <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-card/95 px-4 backdrop-blur md:px-6 print:hidden">
           <button
             onClick={() => setDrawer(true)}
             className="grid h-10 w-10 place-items-center rounded-lg hover:bg-muted md:hidden"
@@ -444,14 +448,14 @@ export function AppShell({
             Nueva oportunidad
           </Link>
         </header>
-        <main className="flex-1 overflow-auto pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+        <main className="flex-1 overflow-auto pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 print:overflow-visible print:pb-0">
           {children}
         </main>
         <nav
           className={[
             "fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t",
             "bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur",
-            "md:hidden",
+            "md:hidden print:hidden",
           ].join(" ")}
         >
           {(modulos.length ? [...MOVIL.slice(0, 3), modulos[0]] : MOVIL).map(

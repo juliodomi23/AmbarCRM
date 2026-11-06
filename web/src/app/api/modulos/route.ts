@@ -168,6 +168,55 @@ async function manejarPATCH(req: NextRequest) {
       );
     }
   }
+  if (clave === "taller") {
+    const taller = config as Record<string, unknown>;
+    for (const bandera of ["simularEnvio", "avisarAlMarcarListo"]) {
+      if (Object.hasOwn(taller, bandera) && typeof taller[bandera] !== "boolean") {
+        return NextResponse.json(
+          { error: "La configuración del taller debe usar valores booleanos" },
+          { status: 400 },
+        );
+      }
+    }
+    if (Object.hasOwn(taller, "anticipoPorcentaje") && (typeof taller.anticipoPorcentaje !== "number" || !Number.isFinite(taller.anticipoPorcentaje) || taller.anticipoPorcentaje < 0 || taller.anticipoPorcentaje > 100)) {
+      return NextResponse.json(
+        { error: "El anticipo sugerido debe ser un porcentaje entre 0 y 100" },
+        { status: 400 },
+      );
+    }
+    if (
+      Object.hasOwn(taller, "leyendaRecepcion") &&
+      (typeof taller.leyendaRecepcion !== "string" || taller.leyendaRecepcion.length > 2000)
+    ) {
+      return NextResponse.json(
+        { error: "La leyenda de recepción admite hasta 2000 caracteres" },
+        { status: 400 },
+      );
+    }
+    for (const clavePlantilla of ["plantillaAprobacion", "plantillaListo", "plantillaEstado"]) {
+      if (!Object.hasOwn(taller, clavePlantilla) || taller[clavePlantilla] === null) continue;
+      const valor = taller[clavePlantilla];
+      const plantilla =
+        valor && typeof valor === "object" && !Array.isArray(valor)
+          ? (valor as Record<string, unknown>)
+          : null;
+      if (
+        !plantilla ||
+        typeof plantilla.name !== "string" ||
+        !plantilla.name.trim() ||
+        plantilla.name.length > 120 ||
+        typeof plantilla.language !== "string" ||
+        !plantilla.language.trim() ||
+        plantilla.language.length > 20
+      ) {
+        return NextResponse.json(
+          { error: "Las plantillas del taller necesitan nombre e idioma válidos" },
+          { status: 400 },
+        );
+      }
+      taller[clavePlantilla] = { name: plantilla.name.trim(), language: plantilla.language.trim() };
+    }
+  }
   delete (config as Record<string, unknown>).aurum;
   const puestos = normalizarPuestos(
     (config as Record<string, unknown>).puestosPermitidos,

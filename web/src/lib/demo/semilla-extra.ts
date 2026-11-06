@@ -11,72 +11,183 @@ const nuevoContacto = (a: AyudasSemilla, nombre: string, telefono: string, respo
   esCliente: false, etiquetaIds: [], campos: {}, createdAt: fechaMexico(-20, 10), ...extra,
 });
 
+// Agenda de Serénica Health Center (semana actual y siguiente, lunes = 0). Calendarios de Ricardo y Paloma.
+// [día desde lunes, hora, minutos, paciente, tratamiento, estado]
+type CitaSerenica = [number, string, number, string, string, "confirmada" | "programada"];
+const AGENDA_RICARDO: CitaSerenica[] = [
+  [0, "16:00", 60, "Teresa Domínguez Pérez", "Extracciones", "confirmada"],
+  [0, "17:30", 60, "Rosa Medina", "Implantes", "programada"],
+  [1, "10:00", 90, "Elisa Montalvo", "Valoración inicial", "confirmada"],
+  [1, "11:30", 90, "Beatriz Cetina", "Endodoncia", "confirmada"],
+  [1, "13:00", 90, "Gabriela Sosa", "Limpieza", "confirmada"],
+  [1, "14:30", 60, "Fernando Albert", "Valoración inicial", "programada"],
+  [1, "18:00", 90, "Leticia Cárdenas", "Endodoncia", "confirmada"],
+  [3, "11:30", 90, "Mauricio Herrera", "Endodoncia", "confirmada"],
+  [3, "13:30", 60, "Octavio Ruiz Canto", "Valoración inicial", "programada"],
+  [3, "16:30", 60, "Leticia Cárdenas", "Implantes", "confirmada"],
+  [4, "10:00", 60, "Daniela Ponce", "Endodoncia", "programada"],
+  [4, "11:00", 90, "Fabiola Lugo", "Endodoncia", "programada"],
+  [4, "12:30", 60, "Renata Pech", "Limpieza", "programada"],
+  [2, "15:30", 60, "Hugo Peniche", "Extracciones", "programada"],
+  [2, "17:00", 60, "Karina Briceño", "Implantes", "programada"],
+  [9, "11:00", 60, "Alma Quintal", "Valoración inicial", "programada"],
+  [4, "14:00", 60, "Carlos Mendoza", "Limpieza", "programada"],
+  [7, "10:00", 90, "Naomi Brown", "Endodoncia", "programada"],
+  [7, "16:00", 60, "Iván Chan Poot", "Valoración inicial", "programada"],
+  [8, "11:30", 90, "Ximena Peraza", "Endodoncia", "programada"],
+  [10, "10:00", 90, "Héctor Solís", "Endodoncia", "programada"],
+  [11, "16:00", 90, "Arturo Bastos", "Endodoncia", "programada"],
+];
+const AGENDA_PALOMA: CitaSerenica[] = [
+  [0, "14:00", 60, "Emilio Barrera", "Ortodoncia", "programada"],
+  [1, "08:00", 60, "Camila Ortega", "Limpieza", "confirmada"],
+  [1, "09:00", 60, "Itzel Moguel", "Limpieza", "confirmada"],
+  [1, "10:00", 30, "Rodolfo Tun", "Ortodoncia", "confirmada"],
+  [1, "11:00", 30, "Valentina Rivas", "Ortodoncia", "confirmada"],
+  [1, "12:00", 60, "Gael Acosta", "Limpieza", "confirmada"],
+  [1, "13:00", 60, "Lourdes Pacheco", "Limpieza", "confirmada"],
+  [1, "14:00", 30, "Bruno Escalante", "Limpieza", "confirmada"],
+  [2, "15:30", 30, "Regina Canul", "Ortodoncia", "programada"],
+  [2, "16:00", 30, "Aurora Dzib", "Ortodoncia", "programada"],
+  [2, "16:30", 30, "Itzel Moguel", "Ortodoncia", "programada"],
+  [2, "17:00", 30, "Leonel Aké", "Ortodoncia", "programada"],
+  [3, "15:00", 120, "Samuel Vela", "Ortodoncia", "confirmada"],
+  [4, "16:00", 30, "Kevin Montejo", "Ortodoncia", "programada"],
+  [4, "16:30", 30, "Paulina Cab", "Ortodoncia", "programada"],
+  [4, "17:00", 30, "Guadalupe Euán", "Ortodoncia", "programada"],
+  [3, "13:00", 30, "Ana Paula Ek", "Ortodoncia", "programada"],
+  [4, "12:00", 60, "Cecilia Rendón", "Limpieza", "programada"],
+  [5, "11:00", 30, "Tomás Villanueva", "Ortodoncia", "programada"],
+  [8, "12:00", 30, "Jimena Salazar", "Ortodoncia", "programada"],
+  [8, "12:30", 30, "Mariana Pat", "Ortodoncia", "programada"],
+  [8, "16:00", 30, "Ariadna Moo", "Ortodoncia", "programada"],
+  [8, "16:30", 30, "Sandra Lizama", "Ortodoncia", "programada"],
+  [8, "17:00", 30, "Marisol Cen", "Ortodoncia", "programada"],
+  [8, "17:30", 30, "Andrés Cetina", "Extracciones", "programada"],
+];
+
+const ZONAS_DIENTE = ["vestibular", "lingual", "mesial", "distal", "oclusal"];
+const zonas = (lista: string[], estado: string) => Object.fromEntries(lista.map((zona) => [zona, estado]));
+
+/** Odontograma de demostración según el tratamiento del paciente (numeración FDI). */
+function dientesPara(tratamiento: string, i: number) {
+  const [principal, segundo, tercero] = i % 2 === 0 ? [46, 16, 17] : [36, 26, 27];
+  switch (tratamiento) {
+    case "Endodoncia":
+      return [{ numero: principal, zonas: zonas(["oclusal", "mesial", "distal"], "endodoncia") }, { numero: segundo, zonas: zonas(["oclusal"], "restaurado") }, { numero: 18, zonas: zonas(["oclusal"], "caries") }];
+    case "Implantes":
+      return [{ numero: principal, zonas: zonas(ZONAS_DIENTE, "extraido") }, { numero: segundo, zonas: zonas(ZONAS_DIENTE, "corona") }, { numero: tercero, zonas: zonas(["distal"], "caries") }];
+    case "Extracciones":
+      return [{ numero: 48, zonas: zonas(ZONAS_DIENTE, "extraido") }, { numero: tercero, zonas: zonas(["oclusal", "mesial"], "caries") }];
+    case "Ortodoncia":
+      return [{ numero: principal, zonas: zonas(["oclusal"], "restaurado") }];
+    case "Limpieza":
+      return [{ numero: segundo, zonas: zonas(["oclusal"], "restaurado") }, { numero: tercero, zonas: zonas(["distal"], "caries") }];
+    default:
+      return [{ numero: tercero, zonas: zonas(["oclusal", "distal"], "caries") }, { numero: principal, zonas: zonas(["oclusal"], "restaurado") }];
+  }
+}
+
 function sembrarClinica(d: Datos, a: AyudasSemilla) {
   const definiciones: Array<[string, string, string, string[]]> = [
-    ["tipo_tratamiento", "Tipo de tratamiento", "opcion", ["Consulta", "Limpieza", "Ortodoncia"]],
+    ["tipo_tratamiento", "Tratamiento", "opcion", ["Valoración inicial", "Limpieza", "Ortodoncia", "Implantes", "Extracciones", "Endodoncia"]],
+    ["motivo_consulta", "Motivo de consulta", "texto", []],
     ["alergias", "Alergias", "texto", []],
+    ["ultima_limpieza", "Última limpieza", "fecha", []],
     ["primera_visita", "Primera visita", "si_no", []],
   ];
   definiciones.forEach(([clave, etiqueta, tipo, opciones], orden) =>
     d.camposPersonalizados.push({ id: a.id(), entidad: "contacto", clave, etiqueta, tipo, opciones, activo: true, orden }),
   );
-  const pacientes: Array<[string, string, string, string, boolean]> = [
-    ["Ana García", "5551000001", "Consulta", "Penicilina", true],
+  const motivos: Record<string, string> = {
+    "Valoración inicial": "Primera revisión y plan de tratamiento",
+    Limpieza: "Profilaxis y control de sarro",
+    Ortodoncia: "Control de brackets / alineadores",
+    Implantes: "Reposición de pieza perdida",
+    Extracciones: "Pieza con movilidad o sin posibilidad de restauración",
+    Endodoncia: "Dolor y sensibilidad en pieza tratada",
+  };
+  const admin = d.usuarios[0];
+  const pacientesBase: Array<[string, string, string, string, boolean]> = [
+    ["Ana García", "5551000001", "Valoración inicial", "Penicilina", true],
     ["Carlos Mendoza", "5551000002", "Limpieza", "Ninguna", false],
     ["Sofía Ramírez", "5551000003", "Ortodoncia", "Látex", true],
-    ["Luis Hernández", "5551000004", "Consulta", "Ibuprofeno", false],
-    ["Mariana López", "5551000005", "Limpieza", "Ninguna", true],
+    ["Luis Hernández", "5551000004", "Extracciones", "Ibuprofeno", false],
+    ["Mariana López", "5551000005", "Implantes", "Ninguna", true],
     ["Diego Castro", "5551000006", "Ortodoncia", "Ninguna", false],
-    ["Valeria Ruiz", "5551000007", "Consulta", "Sulfas", true],
+    ["Valeria Ruiz", "5551000007", "Valoración inicial", "Sulfas", true],
     ["Jorge Navarro", "5551000008", "Limpieza", "Ninguna", false],
   ];
-  const admin = d.usuarios[0];
-  const contactos = pacientes.map(([nombre, telefono, tratamiento, alergias, primera]) => {
-    const campos = { tipo_tratamiento: tratamiento, alergias, primera_visita: primera };
+  const porNombre = new Map<string, ContactoD>();
+  const registrar = (nombre: string, telefono: string, tratamiento: string, alergias: string, primera: boolean) => {
+    const campos = { tipo_tratamiento: tratamiento, motivo_consulta: motivos[tratamiento], alergias, ultima_limpieza: fechaMexico(-120, 12).slice(0, 10), primera_visita: primera };
     const existente = d.contactos.find((c) => c.telefono === telefono);
-    if (existente) {
-      Object.assign(existente, { campos, esCliente: true });
-      return existente;
-    }
-    const nuevo = nuevoContacto(a, nombre, telefono, admin.id, { campos, esCliente: true });
-    d.contactos.push(nuevo);
-    return nuevo;
+    if (existente) Object.assign(existente, { campos, esCliente: true });
+    const contacto = existente ?? nuevoContacto(a, nombre, telefono, admin.id, { campos, esCliente: true });
+    if (!existente) d.contactos.push(contacto);
+    porNombre.set(nombre, contacto);
+  };
+  pacientesBase.forEach((p) => registrar(...p));
+  [...AGENDA_RICARDO, ...AGENDA_PALOMA].forEach(([, , , nombre, tratamiento]) => {
+    if (porNombre.has(nombre)) return;
+    registrar(nombre, `55590${String(porNombre.size).padStart(5, "0")}`, tratamiento, "Ninguna reportada", tratamiento === "Valoración inicial");
   });
+  const contactos = [...porNombre.values()];
   d.extra.expedientes = contactos.map((c, i) => ({
-    contactoId: c.id, fechaNacimiento: `${1988 + i}-05-12`, sexo: i % 2 === 0 ? "Femenino" : "Masculino", alergias: pacientes[i][3],
-    antecedentes: i % 3 === 0 ? "Sin enfermedades crónicas conocidas" : "Sin antecedentes relevantes", medicamentos: "Ninguno reportado",
-    observaciones: "Expediente inicial de demostración.", evoluciones: [] as any[],
+    contactoId: c.id, fechaNacimiento: `${1965 + ((i * 7) % 40)}-0${(i % 9) + 1}-1${i % 9}`, sexo: i % 2 === 0 ? "Femenino" : "Masculino",
+    alergias: String(c.campos.alergias), antecedentes: i % 3 === 0 ? "Hipertensión controlada" : "Sin antecedentes relevantes",
+    medicamentos: "Ninguno reportado", observaciones: "Expediente de demostración.", evoluciones: [] as any[],
   }));
+  d.extra.odontogramas = contactos.map((c, i) => ({ contactoId: c.id, dientes: dientesPara(String(c.campos.tipo_tratamiento), i) }));
   d.extra.doctores = [
-    { id: a.id(), nombre: "Dra. Elena Torres", especialidad: "Odontología general", cedula: "PROF-102938", color: "#0EA5E9", activo: true },
-    { id: a.id(), nombre: "Dr. Mateo Salas", especialidad: "Ortodoncia", cedula: "PROF-564738", color: "#8B5CF6", activo: true },
+    { id: a.id(), nombre: "Dr. Ricardo Azcorra", especialidad: "Odontología general y endodoncia", cedula: "PROF-102938", color: "#0EA5E9", activo: true },
+    { id: a.id(), nombre: "Dra. Paloma", especialidad: "Ortodoncia", cedula: "PROF-564738", color: "#8B5CF6", activo: true },
   ];
-  const dias = [indiceDiaHoy(), indiceDiaHoy(), 0, 1, 2, 3, 4, 5];
-  const horas = [9, 11, 10, 14, 16, 12, 15, 17];
-  d.extra.citas = contactos.map((c, i) => {
-    const inicio = fechaEstaSemana(dias[i], horas[i]);
+  const [ricardo, paloma] = d.extra.doctores;
+  const citaDe = (fila: CitaSerenica, doctorId: string) => {
+    const [dia, hora, minutos, nombre, tratamiento, estado] = fila;
+    const [h, m] = hora.split(":").map(Number);
+    const inicio = new Date(new Date(fechaEstaSemana(dia, h)).getTime() + m * 60_000).toISOString();
     return {
-      id: a.id(), contactoId: c.id, responsableId: admin.id, doctorId: d.extra.doctores[i % 2].id,
-      titulo: `${pacientes[i][2]} de ${pacientes[i][0]}`, notas: null, inicio, fin: new Date(new Date(inicio).getTime() + 45 * 60_000).toISOString(),
-      estado: "programada",
+      id: a.id(), contactoId: porNombre.get(nombre)!.id, responsableId: admin.id, doctorId, titulo: `${tratamiento} · ${nombre}`, notas: null,
+      inicio, fin: new Date(new Date(inicio).getTime() + minutos * 60_000).toISOString(), estado,
     };
-  });
+  };
+  d.extra.citas = [...AGENDA_RICARDO.map((f) => citaDe(f, ricardo.id)), ...AGENDA_PALOMA.map((f) => citaDe(f, paloma.id))];
   d.extra.citas.slice(0, 2).forEach((c, i) => void (c.tokenGestion = `demo-cita-${i + 1}`));
   d.extra.serviciosReserva = [
-    { id: a.id(), nombre: "Consulta general", descripcion: "Valoración y plan de tratamiento.", duracionMin: 30, bufferMin: 0, precio: 0, activo: true, doctorIds: d.extra.doctores.map((x: any) => x.id) },
-    { id: a.id(), nombre: "Limpieza dental", descripcion: null, duracionMin: 45, bufferMin: 15, precio: 650, activo: true, doctorIds: [d.extra.doctores[0].id] },
-    { id: a.id(), nombre: "Revisión de ortodoncia", descripcion: null, duracionMin: 30, bufferMin: 0, precio: 400, activo: true, doctorIds: [d.extra.doctores[1].id] },
+    { id: a.id(), nombre: "Valoración inicial", descripcion: "Revisión y plan de tratamiento personalizado.", duracionMin: 60, bufferMin: 0, precio: 700, activo: true, doctorIds: [ricardo.id] },
+    { id: a.id(), nombre: "Limpieza dental", descripcion: "El costo se define en la valoración.", duracionMin: 60, bufferMin: 0, precio: 0, activo: true, doctorIds: [ricardo.id, paloma.id] },
+    { id: a.id(), nombre: "Ortodoncia", descripcion: "Brackets y alineadores.", duracionMin: 60, bufferMin: 0, precio: 0, activo: true, doctorIds: [paloma.id] },
+    { id: a.id(), nombre: "Implantes", descripcion: "El costo se define en la valoración.", duracionMin: 60, bufferMin: 0, precio: 0, activo: true, doctorIds: [ricardo.id] },
+    { id: a.id(), nombre: "Extracciones", descripcion: "El costo se define en la valoración.", duracionMin: 60, bufferMin: 0, precio: 0, activo: true, doctorIds: [ricardo.id] },
   ];
-  d.extra.horariosDoctor = d.extra.doctores.flatMap((doc: any) =>
-    [1, 2, 3, 4, 5].flatMap((dia) => [
-      { id: a.id(), doctorId: doc.id, diaSemana: dia, inicioMin: 9 * 60, finMin: 14 * 60 },
-      { id: a.id(), doctorId: doc.id, diaSemana: dia, inicioMin: 16 * 60, finMin: 19 * 60 },
+  d.extra.horariosDoctor = [
+    ...[1, 2, 3, 4, 5].flatMap((dia) => [
+      { id: a.id(), doctorId: ricardo.id, diaSemana: dia, inicioMin: 10 * 60, finMin: 18 * 60 },
+      { id: a.id(), doctorId: paloma.id, diaSemana: dia, inicioMin: 11 * 60, finMin: 18 * 60 },
     ]),
-  );
-  d.extra.excepcionesHorario = [{ id: a.id(), doctorId: d.extra.doctores[0].id, fecha: fechaMexico(12, 12), inicioMin: null, finMin: null, motivo: "Congreso de odontología" }];
+    { id: a.id(), doctorId: ricardo.id, diaSemana: 6, inicioMin: 10 * 60, finMin: 13 * 60 },
+    { id: a.id(), doctorId: paloma.id, diaSemana: 6, inicioMin: 11 * 60, finMin: 13 * 60 },
+  ];
+  const bloqueo = (doctorId: string, dia: number, inicioMin: number | null, finMin: number | null, motivo: string) =>
+    ({ id: a.id(), doctorId, fecha: fechaEstaSemana(dia, 12), inicioMin, finMin, motivo });
+  d.extra.excepcionesHorario = [
+    bloqueo(ricardo.id, 2, 9 * 60, 15 * 60, "Curso"),
+    bloqueo(ricardo.id, 5, 10 * 60, 14 * 60, "Bloqueado / no citar"),
+    bloqueo(ricardo.id, 12, 10 * 60, 14 * 60, "Bloqueado / no citar"),
+    bloqueo(paloma.id, 2, 9 * 60, 15 * 60, "Curso de experiencia del cliente"),
+    ...[9, 10, 11].map((dia) => bloqueo(paloma.id, dia, null, null, "Clearcorrect experience")),
+  ];
   d.modulos.reservas_en_linea.config = { anticipacionMin: 120, ventanaDias: 30, granularidadMin: 30, maxPorTelefono: 3 };
-  d.extra.expedientes.slice(0, 3).forEach((e, i) => {
-    e.evoluciones.push({ id: a.id(), contenido: "Valoración inicial: paciente estable y apto para continuar el tratamiento.", createdAt: fechaMexico(-3 - i, 11), doctorId: d.extra.doctores[i % 2].id, citaId: null, registradoPorId: d.usuarios[0].id });
+  const notas = [
+    "Endodoncia: conductos instrumentados y obturados. Se indica restauración definitiva.",
+    "Profilaxis completa. Se refuerza técnica de cepillado e hilo dental.",
+    "Control de ortodoncia: arcos cambiados, sin molestias reportadas.",
+    "Valoración inicial: se entrega plan de tratamiento por etapas.",
+  ];
+  d.extra.expedientes.slice(0, 8).forEach((e, i) => {
+    e.evoluciones.push({ id: a.id(), contenido: notas[i % notas.length], createdAt: fechaMexico(-3 - i, 11), doctorId: d.extra.doctores[i % 2].id, citaId: null, registradoPorId: d.usuarios[0].id });
   });
 }
 

@@ -17,13 +17,13 @@ export type GiroConfig = {
 export const GIROS: GiroConfig[] = [
   {
     id: "clinica",
-    etiqueta: "Clínica",
-    marca: "Clínica Horizonte",
+    etiqueta: "Dental",
+    marca: "Serénica Health Center",
     preset: "salud",
     usuarios: [
-      { nombre: "Dra. Elena Torres", puesto: "Doctor", rol: "admin" },
-      { nombre: "Recepción Horizonte", puesto: "Recepcionista" },
-      { nombre: "Dr. Mateo Salas", puesto: "Doctor" },
+      { nombre: "Dr. Ricardo Azcorra", puesto: "Odontólogo", rol: "admin" },
+      { nombre: "Recepción Serénica", puesto: "Recepcionista" },
+      { nombre: "Dra. Paloma", puesto: "Ortodoncista" },
     ],
     modulos: { citas: { anticipacionHoras: 24 }, pacientes: {}, reservas_en_linea: {}, resenas: {}, lealtad: { aurum: { slug: "demo-aurum", estado: "ok" } } },
   },

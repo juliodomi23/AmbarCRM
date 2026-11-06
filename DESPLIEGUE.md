@@ -134,7 +134,7 @@ gunzip -c /backups/ambarcrm-AAAA-MM-DD-HHMM.sql.gz | psql -v ON_ERROR_STOP=1
 
 ## 7. Sembrar la demo
 
-Carga las siete empresas de demostración (clínica, autos, inmobiliaria, retail, legal, viajes y
+Carga las ocho empresas de demostración (clínica, autos, inmobiliaria, retail, legal, viajes, taller y
 academia) con datos ficticios "vivos": chats con mensajes recientes y etiquetas de contacto de
 colores, oportunidades en varias etapas, tareas vencidas / de hoy / próximas / sin fecha /
 completadas, reseñas con distintas calificaciones y orígenes y, en retail, caja con turno abierto
@@ -145,7 +145,7 @@ Requisito: la BD ya tiene `schema.sql`, `multi-tenant.sql` y `actualizaciones.sq
 En EasyPanel: servicio **app** → **Console** (el directorio de trabajo ya es `/app`):
 
 ```bash
-for giro in clinica automotriz inmobiliaria retail legal viajes academia; do
+for giro in clinica automotriz inmobiliaria retail legal viajes academia taller; do
   ALLOW_DEMO_SEED=1 node scripts/seed-demo-$giro.mjs
 done
 ```
@@ -153,7 +153,7 @@ done
 - Cada seed imprime `Demo <giro> lista: /login?org=<slug>`, el correo y una **contraseña
   aleatoria que solo se muestra esa vez**: cópiala al terminar. Para fijarla, pasa correo y
   contraseña: `ALLOW_DEMO_SEED=1 node scripts/seed-demo-retail.mjs retail@ejemplo.com 'Clave-Segura-1!'`.
-- Empresas que crea: `demo-clinica`, `demo-auto`, `demo-inmobiliaria`, `demo-retail`,
+- Empresas que crea: `demo-clinica`, `demo-auto`, `demo-taller`, `demo-inmobiliaria`, `demo-retail`,
   `demo-legal`, `demo-viajes`, `demo-academia`. Solo toca esas; no modifica otras empresas.
 - Es idempotente: se puede repetir. Cada corrida vuelve a calcular las fechas respecto a "hoy"
   (mensajes recientes, tareas vencidas y de hoy), así que conviene correrlo antes de cada demo.

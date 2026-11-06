@@ -1,8 +1,8 @@
 # Despliegue de la API del bot en una base existente
 
-## Canales Messenger y API (rama `canales-messenger-api`, pendiente de revisión)
+## Canales Messenger y API
 
-No se aplicó nada a producción. En una futura migración autorizada, ejecutar como dueño
+El código ya incluye estos canales; no se aplicó nada a producción. En una migración autorizada, ejecutar como dueño
 `web/prisma/sql/actualizaciones.sql`, sin `prisma db push`. Añade `messenger` y `api` al enum sin
 reclasificarlos al repetir el archivo; agrega `contactos.canal_id`, `identificador_externo` y su
 UNIQUE parcial; agrega `mensajes.canal_id`, reemplaza la UNIQUE global de `wa_message_id` por la
@@ -43,7 +43,7 @@ devuelve al crear, editar ni listar canales, ni se registra en bitácora. Al edi
 o dejarlos vacíos conserva los valores existentes; para cambiarlos, escribe los nuevos valores.
 Este ajuste no necesita SQL ni variables globales nuevas.
 
-### Conectar con Facebook (rama `messenger-login-facebook`, solo local hasta revisión)
+### Conectar con Facebook (requiere configuración y validación en Meta)
 
 El formulario conserva el alta y edición manual. «Conectar con Facebook» prepara el intento;
 «Iniciar sesión en Facebook» abre el popup. Después se elige una página. Si ya existe en esa
@@ -112,13 +112,15 @@ completo del bot: seguridad, auditoría, citas y cotizaciones. Todo el SQL es ad
 
 | Dependencia | Detalle |
 |---|---|
-| **Fase 2 en producción** | El bot de citas y cotizaciones usa tablas y código que solo existen en la rama de fase 2 (`cotizaciones`, `cotizacion_partidas`, `servicios_reserva`, `horarios_doctor`, módulos por empresa…). `meta-tech-provider` no los tiene. Desplegar este código **es** desplegar fase 2: `actualizaciones.sql` es acumulativo. |
+| **Código y esquema de fase 2** | El bot de citas y cotizaciones usa `cotizaciones`, `cotizacion_partidas`, `servicios_reserva`, `horarios_doctor` y módulos por empresa. El despliegue debe incluir el código que contiene esas rutas y el `actualizaciones.sql` acumulativo correspondiente. |
 | **Módulos activos por empresa** | `citas` (agendar y confirmar/cancelar), `reservas_en_linea` (aporta servicios, profesionales y horarios; sin servicios activos la disponibilidad responde 404) y `cotizaciones`. Se activan en Configuración → Módulos. Sin el módulo, las rutas responden `404 módulo no activo`. |
 | **Servicios y horarios cargados** | Al menos un servicio activo con profesional y horario semanal (Reservas en línea). |
 | **Plantilla de cotización aprobada en Meta** | Necesaria para enviar la cotización **fuera de la ventana de 24 h**. Se configura como `plantillaCotizacion` (`name` y `language`) en el módulo Cotizaciones y debe estar `APPROVED` en la WABA del canal. Cuerpo con 3 variables: nombre, folio y enlace. Dentro de las 24 h se manda texto libre y no hace falta. Mientras Meta no la apruebe, el envío fuera de ventana responde `409 ventana_cerrada_sin_plantilla` o `plantilla_no_aprobada`. |
 | **`wabaId` en el canal** | Sin él no se puede consultar el estado de la plantilla: `409 canal_sin_waba`. |
 | **`META_TOKEN_ENCRYPTION_KEY`** | Obligatoria: cifra los tokens de Meta y el secreto de firma de cada bot. Si se pierde, no se pueden descifrar. |
-| **`NEXTAUTH_URL`** | URL pública del CRM: forma los enlaces de cotización y de gestión de citas. |
+| **`NEXTAUTH_URL`** | URL pública HTTPS del CRM: forma enlaces de cotización y gestión de citas y permite validar destinos de adjuntos. |
+| **`NEXTAUTH_SECRET`** | Secreto de sesión requerido por la autenticación de la aplicación; mantener el valor de producción existente. |
+| **`NEXT_PUBLIC_META_APP_ID`, `NEXT_PUBLIC_META_GRAPH_VERSION`** | Variables públicas incluidas durante el build si se usa el SDK Meta en el navegador; alinear la versión de Graph con `META_GRAPH_VERSION`. |
 | **Rol de la app sin BYPASSRLS** | Sin esto el aislamiento entre empresas no existe (ver paso 1). |
 
 ## 1. Antes de tocar nada
@@ -135,8 +137,7 @@ Todo el SQL se corre con el usuario **dueño** (no `crm_app`) y con `-v ON_ERROR
 |---|---|---|
 | 1 | `psql "$DATABASE_URL_DUENO" -v ON_ERROR_STOP=1 -f web/prisma/sql/multi-tenant.sql` | **Solo** si la base aún no es multi-tenant (PARTES A→B→C; ver `MULTI-TENANT.md`). Una producción que ya corre con `crm_app` **no** lo necesita: sáltalo. |
 | 2 | `psql "$DATABASE_URL_DUENO" -v ON_ERROR_STOP=1 -f web/prisma/sql/actualizaciones.sql` | Siempre. Crea `bots.signing_secret`, `bots.asesor_id`, `auditoria_bot` y todo lo de fase 2. Con Docker lo corre el servicio `db-migrate`. |
-| 3 | Si en el paso 1 corriste `multi-tenant.sql`: **vuelve a correr `actualizaciones.sql`** (paso 2) | La PARTE C de `multi-tenant.sql` hace `GRANT … ON ALL TABLES` y `ALTER DEFAULT PRIVILEGES`, que devuelven `UPDATE`/`DELETE` a `crm_app` sobre `auditoria_bot`. `actualizaciones.sql` los revoca (`REVOKE UPDATE, DELETE, TRUNCATE`). El orden **multi-tenant.sql → actualizaciones.sql** es obligatorio; repetirlo es seguro. |
-| 3b | Revisa los permisos (bloque **E** del mismo archivo, ya incluido en el paso 2) | `bots.permisos` queda así: los bots que ya existían reciben **solo** `leer_perfil`, `enviar_mensaje`, `notas_internas`, `mover_embudo` y `handoff` (lo que sus rutas de producción les permitían); los nuevos nacen con `leer_perfil`, `enviar_mensaje`, `notas_internas` y `handoff`. `crear_tarea`, `agendar_cita`, `cotizar` y el resto se activan después por cliente (sección 7). La migración solo toca filas con `permisos` NULL: volver a correr el archivo no pisa lo que el admin edite. |
+| 3 | Revisa los permisos (bloque **E** del mismo archivo, ya incluido en el paso 2) | `bots.permisos` queda así: los bots que ya existían reciben **solo** `leer_perfil`, `enviar_mensaje`, `notas_internas`, `mover_embudo` y `handoff` (lo que sus rutas de producción les permitían); los nuevos nacen con `leer_perfil`, `enviar_mensaje`, `notas_internas` y `handoff`. `crear_tarea`, `agendar_cita`, `cotizar` y el resto se activan después por cliente (sección 7). La migración solo toca filas con `permisos` NULL: volver a correr el archivo no pisa lo que el admin edite. |
 | 4 | Agrega las variables de entorno (sección 3) | Antes de arrancar la app. |
 | 5 | Construye y despliega la app | `npm run build` ejecuta `prisma generate`. La app **no** corre DDL (`crm_app` no puede). |
 | 6 | Verificaciones (sección 4) | Después del despliegue. |
@@ -155,7 +156,7 @@ BOT_AUTH_FAIL_MAX=20
 BOT_AUTH_FAIL_WINDOW_MS=300000
 ```
 
-Requeridas (ya existen en producción): `META_TOKEN_ENCRYPTION_KEY`, `NEXTAUTH_URL` y `DATABASE_URL` (rol `crm_app`).
+Requeridas por la API del bot (ya deben existir en producción): `META_TOKEN_ENCRYPTION_KEY`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET` y `DATABASE_URL` (rol `crm_app`). `NEXT_PUBLIC_META_APP_ID` y `NEXT_PUBLIC_META_GRAPH_VERSION` deben estar disponibles durante el build si se incluye el SDK del navegador. Para Messenger, además se requiere `MESSENGER_VERIFY_TOKEN`; para WhatsApp Cloud, `META_WEBHOOK_VERIFY_TOKEN`. `META_APP_ID` y `META_APP_SECRET` son necesarias si se usa la app global y el canal no tiene credenciales propias.
 El límite por IP depende de `cf-connecting-ip` / `x-forwarded-for` (ver `api-bot.md`).
 
 ## 4. Qué verificar después
@@ -216,6 +217,12 @@ No hay reversión parcial del resto de `actualizaciones.sql` (fase 2): si hay qu
 restaura el respaldo.
 
 ## 6. Advertencias
+
+### Actualización del odontograma
+
+En cada ambiente, con el usuario dueño de la base, ejecuta `web/prisma/sql/actualizaciones.sql` después de `multi-tenant.sql` si este último era necesario, y antes de desplegar la aplicación que usa el odontograma. El SQL crea `odontograma_zonas`, la añade al bucle que habilita RLS y recrea `org_isolation`, y la agrega al `GRANT` de lectura/escritura para `crm_app`. El permiso de secuencia se concede en el `GRANT … ON ALL SEQUENCES` posterior. No uses `prisma db push` para este cambio.
+
+El script `npm run check:odontograma` prueba el DDL en un esquema temporal de una base desechable; `ODONTOGRAMA_TEST_DATABASE_URL` debe apuntar a una base cuyo nombre incluya `test`, `tmp` o `disposable`. No ejecutes ese check contra producción.
 
 - **Orden de SQL:** nunca dejes `multi-tenant.sql` como último paso. Después de correrlo (o de cualquier
   `GRANT … ON ALL TABLES` manual), vuelve a correr `actualizaciones.sql`.

@@ -63,6 +63,7 @@ export function PantallaExpediente({ modo, id }: { modo: "pacientes" | "clientes
       citas={citasDe(d, id).slice(0, 20).map((c) => ({ id: c.id, titulo: c.titulo, inicio: c.inicio, doctor: c.doctor }))}
       citasActivo={Boolean(d.modulos.citas?.activo)}
       modo={modo}
+      odontograma={modo === "pacientes" ? ((d.extra.odontogramas ?? []).find((o: any) => o.contactoId === id)?.dientes ?? []) : undefined}
     />
   );
 }

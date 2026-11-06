@@ -89,7 +89,7 @@ El administrador debe activarlos por cliente en Configuración → Bots.
 | Permiso | Rutas |
 |---|---|
 | `leer_perfil` | `GET …/{id}` |
-| `enviar_mensaje` | `POST …/messages` (mensaje al cliente) |
+| `enviar_mensaje` | `POST …/messages` y `POST …/messages/template` (texto, adjunto o plantilla aprobada) |
 | `notas_internas` | `POST …/messages` con `private: true` |
 | `mover_embudo` | `POST …/funnel` |
 | `editar_oportunidad` | `PATCH …/opportunity` |
@@ -99,6 +99,7 @@ El administrador debe activarlos por cliente en Configuración → Bots.
 | `cotizar` | `GET` y `POST …/quotes`, `POST …/quotes/{quoteId}/send` |
 | `ver_productos` | `GET …/products` |
 | `gestionar_contactos` | `GET` y `POST …/contacts` |
+| `consultar_taller` | `GET …/taller/ordenes` |
 | `cambiar_estado` | `PATCH …/{id}/status` |
 | `asignar` | `POST …/{id}/assignments` |
 | `editar_contacto` | `PATCH …/{id}/contacts` |
@@ -144,6 +145,29 @@ Opcionalmente se acepta un adjunto: `{ "content": "Pie", "attachments": [{ "file
 si hay adjunto. La URL debe ser HTTPS, pública, sin credenciales y de hasta 2048 caracteres; notas privadas con
 adjuntos responden 400. En Cloud API, el CRM entrega la URL a Meta para que descargue el archivo; el servidor
 del CRM no la descarga. Se comprueba la ventana de 24 horas antes de enviar media.
+
+### `POST …/{id}/messages/template` — enviar plantilla aprobada
+
+Requiere `enviar_mensaje` y una conversación de WhatsApp Cloud. Consulta las plantillas de la WABA del canal y solo envía una que Meta reporte como `APPROVED` para el idioma indicado. Puede usarse fuera de la ventana de 24 h. Los valores de cada componente se validan contra la plantilla aprobada y deben coincidir con sus variables `{{n}}`.
+
+```json
+{
+  "name": "recordatorio_cita",
+  "language": "es_MX",
+  "header": { "type": "text", "variables": ["Ana"] },
+  "variables": ["miércoles", "10:00"],
+  "buttons": [
+    { "index": 0, "type": "quick_reply", "payload": "confirmar-cita-42" },
+    { "index": 1, "type": "quick_reply", "payload": "cancelar-cita-42" }
+  ]
+}
+```
+
+`variables` sigue siendo el arreglo de texto del cuerpo, opcional (`[]` por defecto), hasta 50 valores de 2000 caracteres. `header` también es opcional y admite `{ "type": "text", "variables": ["Ana"] }` o `{ "type": "image" | "document" | "video", "link": "https://…" }`; los encabezados multimedia requieren URL HTTPS pública. `buttons` es opcional: admite hasta 10 entradas con índice de plantilla de 0 a 9, `quick_reply` con `payload` de hasta 256 caracteres, o `url` con `text` como valor dinámico (hasta 2000 caracteres). Los tipos e índices deben existir en `plantilla.components`; encabezado/cuerpo y botones URL deben aportar la cantidad de variables que marca su componente. Una entrada inválida responde `400` con `motivo` como `variables_no_coinciden`, `boton_no_existe` o `encabezado_tipo_no_coincide`.
+
+El body anterior `{ "name": "recordatorio_cita", "language": "es_MX", "variables": ["Ana"] }` conserva su contrato para plantillas de cuerpo. Respuesta `200`:
+`{ "id", "template_name", "language", "status": "enviado", "conversation_id" }`.
+Errores: `400` datos inválidos · `403` falta `enviar_mensaje` · `409` canal no compatible, WABA ausente o plantilla no aprobada · `422` sin teléfono · `502` rechazo de Meta · `503` Meta no disponible.
 
 ### `PATCH …/{id}/status` — cambiar estado
 Body: `{ "status": "open" | "resolved" | "pending" }`; responde `{ "id", "status", "status_anterior" }`.
@@ -288,6 +312,36 @@ Dentro de la ventana de 24 h va como texto libre; fuera de ella, como plantilla 
 Últimas 50 del contacto. `estado` es el efectivo: una `borrador`/`enviada` fuera de vigencia se reporta `vencida`
 aunque el cron aún no la haya marcado (`estado_guardado` es el de la base). Filtros: `borrador`, `enviada`,
 `aceptada`, `rechazada`, `vencida`.
+
+## Taller
+
+### `GET …/{id}/taller/ordenes` — permiso `consultar_taller`
+Órdenes del contacto de esa conversación: todas las activas y las entregadas en los últimos 7 días,
+máximo 10, la más reciente primero. Solo lectura; **no expone conceptos ni precios**. El permiso está
+apagado por defecto: actívalo en Configuración → Bots.
+
+```json
+{ "ordenes": [
+  { "id": "12", "numero": "34", "estado": "en_reparacion", "estadoTexto": "Tu vehículo está en reparación",
+    "vehiculo": { "marca": "Nissan", "modelo": "Versa", "anio": 2018, "placa": "ABC-123-A" },
+    "fechaPromesa": "2026-11-02T00:00:00.000Z", "saldo": 0,
+    "enlaceSeguimiento": "https://crm.ejemplo.com/taller-estado/1-6f…" }
+] }
+```
+
+- `enlaceSeguimiento` se genera la primera vez que se consulta y funciona hasta 30 días después de
+  la entrega. Si el servidor no tiene `NEXTAUTH_URL`, llega `null`; estado y promesa siguen siendo útiles.
+- `200` con `{ "ordenes": [] }` si el contacto no tiene órdenes.
+- `403 permiso_faltante` si el bot no tiene `consultar_taller`; `404` si la conversación no existe o es de otra empresa.
+
+```bash
+curl -H "api_access_token: $TOKEN" \
+  "$CRM/api/v1/accounts/1/conversations/$C/taller/ordenes"
+```
+
+Herramienta sugerida para el agente de n8n: «consultar_estado_taller» (sin parámetros: usa el contacto de
+la conversación actual). Respuesta sugerida al cliente: «Tu Versa va en reparación, la promesa es mañana.
+Seguimiento: …». Si la lista viene vacía, ofrece tomar los datos para una cita en lugar de inventar un estado.
 
 ## Productos, oportunidad y contactos
 

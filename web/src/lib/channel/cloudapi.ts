@@ -5,6 +5,7 @@ import type {
   PlantillaOficial,
   TipoMensaje
 } from "./types";
+import { construirComponentesPlantilla } from "./template-components";
 import { META_GRAPH_URL } from "@/lib/meta/config";
 import { tokenFromChannelConfig } from "@/lib/meta/credentials";
 import { motivoDeErrorMeta } from "@/lib/meta/errores";
@@ -197,15 +198,15 @@ export function makeCloudApiProvider(config?: CloudConfig): ChannelProvider {
       return send({ to: telefono, type: "text", text: { body: texto } });
     },
 
-    async enviarPlantilla(telefono, plantilla, variables = []) {
-      const parameters = variables.map((text) => ({ type: "text", text }));
+    async enviarPlantilla(telefono, plantilla, variables = [], parametros = {}) {
+      const components = construirComponentesPlantilla(variables, parametros);
       return send({
         to: telefono,
         type: "template",
         template: {
           name: plantilla.name,
           language: { code: plantilla.language },
-          ...(parameters.length ? { components: [{ type: "body", parameters }] } : {})
+          ...(components.length ? { components } : {})
         }
       });
     },

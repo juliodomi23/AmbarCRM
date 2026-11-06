@@ -145,6 +145,18 @@ ruta("PATCH", "/api/contactos/:id/expediente", ({ params, cuerpo }) => {
   });
   return { ok: true };
 });
+ruta("PUT", "/api/contactos/:id/odontograma", ({ params, cuerpo }) => {
+  expediente(params.id);
+  const numero = num(cuerpo.diente);
+  if (!numero || !cuerpo.zona || !cuerpo.estado) throw new ErrorApi(400, "Faltan el diente, la zona y el estado");
+  almacen.mutar((d) => {
+    const odontogramas = (d.extra.odontogramas ??= []);
+    const ficha = odontogramas.find((o: any) => o.contactoId === params.id) ?? (odontogramas.push({ contactoId: params.id, dientes: [] }), odontogramas[odontogramas.length - 1]);
+    const diente = ficha.dientes.find((x: any) => x.numero === numero) ?? (ficha.dientes.push({ numero, zonas: {} }), ficha.dientes[ficha.dientes.length - 1]);
+    diente.zonas[String(cuerpo.zona)] = String(cuerpo.estado);
+  });
+  return { ok: true };
+});
 ruta("POST", "/api/contactos/:id/expediente", ({ params, cuerpo }) => {
   const e = expediente(params.id);
   const contenido = String(cuerpo.contenido ?? "").trim();

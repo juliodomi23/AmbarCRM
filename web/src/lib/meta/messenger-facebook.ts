@@ -3,7 +3,7 @@ import { ErrorRetail } from "@/lib/retail-db";
 
 export type PaginaFacebook = { id: string; nombre: string; foto: string | null; token: string };
 // business_management y pages_read_engagement son dependencias que Meta añade al caso de uso; el diálogo debe pedirlos para poder demostrarlos en la revisión.
-export const PERMISOS_MESSENGER = "pages_show_list,pages_messaging,pages_manage_metadata,business_management";
+export const PERMISOS_MESSENGER = "pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,business_management";
 export const PERMISOS_INSTAGRAM = "pages_show_list,instagram_basic,instagram_manage_messages,pages_manage_metadata,pages_read_engagement,business_management";
 
 // Con Facebook Login para empresas el diálogo se define por config_id (permisos configurados en el panel); sin él se usa scope.
