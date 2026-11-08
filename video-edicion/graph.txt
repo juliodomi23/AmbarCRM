@@ -1,0 +1,6 @@
+[0:v]trim=12.0:38.5,setpts=PTS-STARTPTS,fps=30,format=yuv420p[s1];
+[1:v]trim=2.0:7.0,setpts=PTS-STARTPTS,fps=30,scale=-2:986,pad=1908:986:(ow-iw)/2:0:black,format=yuv420p[p1];
+[0:v]trim=38.8:48.5,setpts=PTS-STARTPTS,fps=30,format=yuv420p[s2];
+[1:v]trim=12.0:16.4,setpts=PTS-STARTPTS,fps=30,scale=-2:986,pad=1908:986:(ow-iw)/2:0:black,format=yuv420p[p2];
+[s1][p1][s2][p2]concat=n=4:v=1:a=0[v];
+[v]subtitles=subs.srt:fontsdir='C\:/Windows/Fonts':force_style='FontName=Arial,FontSize=20,Bold=1,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BorderStyle=3,BackColour=&H99000000&,Alignment=2,MarginV=24'[out]

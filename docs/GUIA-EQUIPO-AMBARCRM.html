@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#11130f">
+  <title>AmbarCRM · Guía para el equipo</title>
+  <style>
+    :root{--ink:#f4f0e8;--muted:#b4b0a6;--bg:#11130f;--panel:#1b1e18;--line:#383b32;--amber:#f2a65a;--pink:#e97876;--green:#b5cf9b;--blue:#9bc5d9;--mono:ui-monospace,SFMono-Regular,Consolas,monospace;--sans:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+    *{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans)}body{overflow:hidden}.deck{height:100%;position:relative}.slide{display:none;position:absolute;inset:0;padding:clamp(28px,6vw,88px) clamp(24px,8vw,120px) 100px;overflow:auto;align-content:center}.slide.active{display:grid;animation:appear .35s ease both}@keyframes appear{from{opacity:.2;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .slide:before{content:"";position:absolute;top:0;left:0;width:100%;height:5px;background:linear-gradient(90deg,var(--amber),var(--pink) 55%,transparent)}.eyebrow{color:var(--amber);font:600 .78rem var(--mono);letter-spacing:.14em;text-transform:uppercase;margin:0 0 18px}.title{font-size:clamp(2.4rem,6.4vw,6.5rem);line-height:.97;letter-spacing:-.065em;margin:0 0 24px;max-width:1100px}.title .accent{color:var(--amber)}h2{font-size:clamp(2rem,4vw,4rem);letter-spacing:-.05em;line-height:1;margin:0 0 24px}h3{font-size:1.18rem;margin:0 0 12px;color:var(--amber)}p{font-size:clamp(1rem,1.45vw,1.3rem);line-height:1.55;color:#d9d5cc;max-width:1000px;margin:.45em 0 1em}.lead{font-size:clamp(1.2rem,2.1vw,1.85rem);max-width:980px}.small{font-size:.94rem;color:var(--muted)}strong{color:#fff}code,.code{font: .88em var(--mono);color:#f7c58e;overflow-wrap:anywhere}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:12px 0}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px 24px;min-width:0}.card p{font-size:1rem;margin:.3em 0;color:#d2cec5}.card .tag{font:600 .72rem var(--mono);letter-spacing:.07em;color:var(--green);text-transform:uppercase}.big-number{font-size:clamp(2.8rem,6vw,5rem);line-height:1;letter-spacing:-.07em;color:var(--amber);margin-bottom:9px}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,72px);align-items:start}.stack{display:flex;flex-wrap:wrap;gap:9px;margin:16px 0}.pill{border:1px solid #55584e;border-radius:999px;padding:9px 13px;color:#e8e2d7;background:#20231d;font: .83rem var(--mono)}ul,ol{padding-left:1.2em;color:#ddd8ce;font-size:1.04rem;line-height:1.55}li{margin:.45em 0}table{width:100%;border-collapse:collapse;font-size:.95rem;line-height:1.4;background:#181a15;border-radius:14px;overflow:hidden}th{text-align:left;background:#292b24;color:var(--amber);font-size:.8rem;text-transform:uppercase;letter-spacing:.06em}td,th{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}tr:last-child td{border:0}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px;margin:12px 0}.note{border-left:3px solid var(--pink);padding:10px 18px;background:#211b19;color:#ddd5ca;border-radius:0 12px 12px 0;line-height:1.5;margin:14px 0}.flow{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin:28px 0}.flow .node{padding:18px 22px;border:1px solid #55584e;border-radius:14px;background:#1b1e18;text-align:center;font-weight:650}.flow .arrow{color:var(--amber);font-size:1.5rem}.footer{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;gap:16px;padding:17px clamp(22px,5vw,64px);background:linear-gradient(0deg,#11130f 72%,transparent);z-index:5}.controls{display:flex;gap:8px}.controls button{background:#24271f;color:var(--ink);border:1px solid #44473e;border-radius:10px;padding:9px 13px;font:inherit;cursor:pointer}.controls button:hover{border-color:var(--amber)}.progress{height:3px;background:#33362e;flex:1;border-radius:8px;overflow:hidden}.progress span{height:100%;width:0;display:block;background:var(--amber);transition:width .2s}.counter{font: .8rem var(--mono);color:var(--muted);min-width:58px;text-align:right}.hint{font-size:.76rem;color:#888a80}.cover-mark{display:inline-flex;align-items:center;gap:9px;color:var(--amber);font:600 .82rem var(--mono);letter-spacing:.1em;margin-bottom:36px}.cover-mark:before{content:"";width:11px;height:11px;background:var(--pink);border-radius:50%}.columns{columns:2;column-gap:40px}.columns li{break-inside:avoid}.check{color:var(--green)}.warn{color:#ffc58a}.route{display:block;font: .78rem var(--mono);color:#c7c2b8;margin-top:8px}.source{font-size:.8rem;color:#82857b;margin-top:16px}
+    @media(max-width:760px){body{overflow:hidden}.slide{padding:36px 22px 90px;align-content:start}.slide.active{display:block;overflow:auto}.title{font-size:clamp(2.5rem,13vw,4.5rem)}.grid,.grid.three,.two-col{grid-template-columns:1fr}.table-wrap{font-size:.84rem}.columns{columns:1}.hint{display:none}.flow{gap:7px}.flow .node{padding:12px;font-size:.87rem}.flow .arrow{font-size:1rem}.footer{padding:12px 16px}}
+    @media print{html,body{height:auto;overflow:visible;background:#fff;color:#161616}.deck{height:auto}.slide,.slide.active{display:block;position:relative;inset:auto;min-height:100vh;page-break-after:always;padding:38px 48px;color:#161616;background:#fff;overflow:visible}.slide:before{background:#cb704e}.title,h2{color:#161616}.eyebrow,h3{color:#a95032}.card,.flow .node,table,.pill{background:#f6f3ed;color:#222;border-color:#ccc}.card p,p,li,td{color:#252525}.footer{display:none}.note{background:#f8eee9;color:#222}.route,.source{color:#555}.code,code{color:#8e481d}}
+  </style>
+</head>
+<body>
+<main class="deck" aria-label="Presentación AmbarCRM">
+  <section class="slide active" data-title="Portada">
+    <div class="cover-mark">AMBARCRM · GUÍA DE EQUIPO</div>
+    <p class="eyebrow">Dos proyectos · una decisión compartida</p>
+    <h1 class="title">¿Dónde te gustaría <span class="accent">construir?</span></h1>
+    <p class="lead">Una vista práctica del backend + web y de la app móvil: qué hay hoy, qué se puede aprender y por dónde empezar.</p>
+    <p class="source">Estado contrastado con código, servidor y documentación · actualizado el 26 de octubre de 2026</p>
+  </section>
+
+  <section class="slide" data-title="Qué es AmbarCRM">
+    <p class="eyebrow">01 · Producto</p><h2>Un CRM compartido,<br>datos separados</h2>
+    <div class="two-col">
+      <div><p class="lead">AmbarCRM ayuda a empresas a atender conversaciones de WhatsApp y organizar contactos, oportunidades, agentes y automatizaciones.</p><p>Una sola instalación sirve a muchas empresas. Cada empresa tiene su organización, usuarios y datos; los módulos se habilitan según sus necesidades.</p></div>
+      <div class="grid">
+        <article class="card"><span class="tag">Ejemplo · clínica</span><h3>Pacientes + Citas</h3><p>Expedientes y agenda adecuados a su operación.</p></article>
+        <article class="card"><span class="tag">Ejemplo · tienda</span><h3>Productos + Caja</h3><p>Inventario y ventas dentro del mismo CRM.</p></article>
+      </div>
+    </div>
+    <div class="note">La web configura y opera el CRM. La app móvil acerca la bandeja y el chat al teléfono del agente.</div>
+  </section>
+
+  <section class="slide" data-title="Dos caminos">
+    <p class="eyebrow">02 · Los proyectos</p><h2>Dos formas de aportar</h2>
+    <div class="grid">
+      <article class="card"><div class="big-number">A</div><h3>Backend + web</h3><p>TypeScript, Next.js, PostgreSQL, aislamiento de datos, APIs y módulos de negocio.</p><span class="route">AmbarCRM/web</span></article>
+      <article class="card"><div class="big-number">B</div><h3>App móvil</h3><p>Flutter, experiencia móvil, sesión segura, chat, medios, tiempo real y notificaciones.</p><span class="route">ambarcrm-app</span></article>
+    </div>
+    <p>El equipo ya conoce Flutter; el proyecto web abre una ruta de aprendizaje en TypeScript y datos. En ambos casos hay tareas pequeñas con resultado concreto.</p>
+  </section>
+
+  <section class="slide" data-title="Vista general · lo que ya tenemos">
+    <p class="eyebrow">03 · Estado · 26 de octubre de 2026</p><h2>Vista general:<br>lo que ya tenemos</h2>
+    <div class="grid three">
+      <article class="card"><span class="tag check">Hecho · plataforma</span><h3>Base multiempresa</h3><ul><li>Una instalación, muchas empresas: <code>org_id</code> + RLS (aislamiento probado en 86 tablas).</li><li>Usuarios con puestos y acceso por módulo.</li><li>36 módulos que se activan por empresa.</li><li>Recuperación de contraseña por correo, modo oscuro, UI móvil y demo fiel en <code>/demo</code>.</li></ul></article>
+      <article class="card"><span class="tag check">Hecho · conversaciones</span><h3>Bandeja multicanal</h3><ul><li>WhatsApp Cloud API con alta guiada (Coexistence).</li><li>Messenger e Instagram (en revisión de Meta).</li><li>Plantillas, ventana de 24 h, adjuntos, voz y notas internas.</li><li>Sugerencia con IA, asignación y tiempo real (SSE).</li></ul></article>
+      <article class="card"><span class="tag check">Hecho · CRM</span><h3>Contactos y seguimiento</h3><ul><li>Contactos, campos personalizados y etiquetas.</li><li>Embudos y oportunidades, tareas y grupos.</li><li>Difusión, equipo y reportes.</li><li>Panel interno de Ámbar Rojo (MRR, cartera, cobros).</li></ul></article>
+      <article class="card"><span class="tag check">Hecho · automatización</span><h3>Bots e integraciones</h3><ul><li>API del bot compatible con Chatwoot (<code>/api/v1</code>) y canal API.</li><li>Integración con n8n y webhooks salientes.</li><li>Automatizaciones básicas con registro.</li></ul></article>
+      <article class="card"><span class="tag check">Hecho · dinero</span><h3>Cobros y facturación</h3><ul><li>Pagos en línea con Mercado Pago (en prueba en producción).</li><li>CFDI 4.0 con timbrado simulado.</li><li>Caja de mostrador con turnos, cortes y modo sin internet.</li><li>Cobros y mensualidades internos.</li></ul></article>
+      <article class="card"><span class="tag check">Hecho · agenda y móvil</span><h3>Citas, calendario y app</h3><ul><li>Citas con reservas en línea, recordatorios y Google Calendar por usuario (en producción).</li><li>App móvil: login, bandeja, chat con adjuntos y voz, push en código.</li></ul></article>
+    </div>
+    <p class="source">Hecho = hay código y pruebas en base desechable. No significa que todo tenga ya piloto con clientes reales. Producción despliega la rama <code>meta-tech-provider</code>.</p>
+  </section>
+
+  <section class="slide" data-title="Los 36 módulos · 1 de 2">
+    <p class="eyebrow">04 · Módulos · 1 de 2</p><h2>Los 36 módulos<br>por área</h2>
+    <div class="table-wrap"><table><thead><tr><th>Área</th><th>Módulos</th><th>Estado</th></tr></thead><tbody>
+      <tr><td>CRM y agenda · 7</td><td>Google Calendar, Clientes, Citas, Reservas en línea, Reseñas de Google, Lealtad, Cotizaciones</td><td class="check">Implementados. Calendar en producción con Google en modo prueba; Lealtad usa Aurum y falta su prueba con cuenta real.</td></tr>
+      <tr><td>Marketing y crecimiento · 3</td><td>Campañas de envío, Marketing, Meta Ads</td><td class="warn">Campañas de envío solo para una organización. Marketing y Meta Ads: trabajo interno de la fase 3A; la conexión y publicación reales con Meta están pendientes.</td></tr>
+      <tr><td>Ámbar Rojo · 5</td><td>Servidores, Servicios contratados, Cobros y fechas de pago, Facturación CFDI, Panel Ámbar Rojo</td><td class="check">Implementados para uso interno. Servidores solo en la organización de la plataforma; CFDI con timbrado simulado.</td></tr>
+      <tr><td>Retail y comercio · 6</td><td>Productos e inventario, Compras y proveedores, Ventas y pedidos, Pagos en línea, Pedidos en línea, Caja de mostrador</td><td class="check">Implementados: devoluciones, apartados y fiado, precios y promociones, reportes, varias cajas y modo sin internet opcional. Pagos en línea en prueba.</td></tr>
+    </tbody></table></div>
+    <p class="small">Sigue en la siguiente diapositiva: verticales por giro.</p>
+  </section>
+
+  <section class="slide" data-title="Los 36 módulos · 2 de 2">
+    <p class="eyebrow">05 · Módulos · 2 de 2</p><h2>Módulos por giro</h2>
+    <div class="table-wrap"><table><thead><tr><th>Área</th><th>Módulos</th><th>Estado</th></tr></thead><tbody>
+      <tr><td>Clínica · 1</td><td>Pacientes (expediente, alergias, seguimiento)</td><td class="check">Implementado; se usa junto con Citas.</td></tr>
+      <tr><td>Automotriz · 1</td><td>Inventario de vehículos y seguimiento comercial</td><td class="check">Implementado.</td></tr>
+      <tr><td>Inmobiliaria · 1</td><td>Catálogo de propiedades y citas de visita</td><td class="check">Implementado.</td></tr>
+      <tr><td>Legal · 4</td><td>Expedientes legales, Asesorías, Honorarios y caja, Operación del despacho</td><td class="check">Implementados.</td></tr>
+      <tr><td>Viajes y tours · 3</td><td>Tours y salidas, Reservas y viajeros, Cobranza de viajes</td><td class="check">Implementados.</td></tr>
+      <tr><td>Educación y academias · 5</td><td>Alumnos, Cursos y grupos, Inscripciones, Colegiaturas, Asistencia</td><td class="check">Implementados.</td></tr>
+    </tbody></table></div>
+    <div class="note">Total: 7 + 3 + 5 + 6 + 1 + 1 + 1 + 4 + 3 + 5 = <strong>36 módulos</strong>. Algunos (Pagos en línea y Google Calendar) se configuran en Configuración → Módulos y no aparecen en el menú lateral.</div>
+  </section>
+
+  <section class="slide" data-title="Lo que estamos por hacer">
+    <p class="eyebrow">06 · Plan P0 de competitividad</p><h2>Lo que estamos<br>por hacer</h2>
+    <div class="table-wrap"><table><thead><tr><th>Fase</th><th>Tema</th><th>Estado hoy</th></tr></thead><tbody>
+      <tr><td>1</td><td>Pagos en línea</td><td class="warn">Mercado Pago en prueba. Stripe en desarrollo; después, comparativa de Conekta, OpenPay, PayPal y Clip. Falta IVA por producto, comisión de la pasarela y anticipos de citas.</td></tr>
+      <tr><td>2</td><td>Facturación CFDI 4.0</td><td class="warn">Fase 2A con timbrado simulado hecha. Falta conectar un PAC real (Facturama es la opción provisional).</td></tr>
+      <tr><td>3</td><td>Google Calendar bidireccional</td><td class="check">Hecho y por usuario. Falta verificar la app en Google (video de demostración).</td></tr>
+      <tr><td>4</td><td>Email como canal</td><td class="warn">Por hacer.</td></tr>
+      <tr><td>5</td><td>Integraciones (Zapier / Make)</td><td class="warn">Por hacer. Ya hay webhooks salientes y API del bot como base.</td></tr>
+      <tr><td>6</td><td>Meta Ads y leads reales</td><td class="warn">Parte interna hecha. Faltan conexión, métricas y leads reales, que dependen de los permisos de Meta.</td></tr>
+      <tr><td>7</td><td>Automatizaciones visuales</td><td class="warn">Por hacer. Hoy hay automatizaciones básicas.</td></tr>
+      <tr><td>8</td><td>Reportes personalizados, metas y pronóstico</td><td class="warn">Por hacer. Hoy hay reportes de retail.</td></tr>
+    </tbody></table></div>
+    <p class="small">Regla del plan: una fase por ejecución de Codex y sin avanzar a la siguiente sin revisión de Julio. Fuera del P0: constructor no-code completo, contabilidad y nómina, SSO empresarial (solo si un cliente lo exige).</p>
+  </section>
+
+  <section class="slide" data-title="Otros planes en marcha">
+    <p class="eyebrow">07 · Planes en marcha</p><h2>Todo lo demás que<br>tenemos en el tintero</h2>
+    <div class="grid three">
+      <article class="card"><span class="tag">App móvil</span><h3>8 semanas, con 2 de colchón</h3><ul><li>Semana 4: MVP interno, se lee y contesta un chat.</li><li>Semana 5: beta para los 2 clientes que la pidieron.</li><li>Semana 6: primer envío a las tiendas.</li><li>Después (v1.1): Contactos, Tareas, Kanban y módulos por empresa, empezando por Citas.</li></ul></article>
+      <article class="card"><span class="tag">Revisiones externas</span><h3>Meta, Google y tiendas</h3><ul><li>Revisión de permisos de Meta (WhatsApp, Messenger, Instagram, Ads) con su video.</li><li>Verificación de Google para abrir Calendar a todos: video, justificación y dominio.</li><li>Apple y Google Play: cuenta demo, privacidad y eliminación de datos.</li></ul></article>
+      <article class="card"><span class="tag">Cobros</span><h3>Dinero que cuadre</h3><ul><li>IVA por producto y desglose en la venta, con efecto en CFDI.</li><li>Comisión de la pasarela: absorberla o trasladarla como cargo visible.</li><li>Anticipo de citas y cotizaciones pagadas.</li></ul></article>
+      <article class="card"><span class="tag">Pendientes externos</span><h3>Por acreditar</h3><ul><li>Pruebas con Aurum real y piloto con proveedores reales.</li><li>Ensayo de migración con respaldo real.</li><li>Cobro de prueba de punta a punta con Mercado Pago.</li></ul></article>
+      <article class="card"><span class="tag">Equipo</span><h3>Dos personas nuevas</h3><ul><li>Accesos, usuarios en <code>demo-meta</code>, Firebase y una Mac para iOS.</li><li>Elegir proyecto: app o backend.</li></ul></article>
+      <article class="card"><span class="tag">Mejoras técnicas</span><h3>Deuda conocida</h3><ul><li>Evitar citas duplicadas de eventos compartidos entre dos calendarios.</li><li>Renombrar la variable de cifrado que el calendario comparte con pagos.</li><li>Actualizar la documentación de arquitectura de la app.</li></ul></article>
+    </div>
+  </section>
+
+
+  <section class="slide" data-title="Cobros: cada cliente su cuenta">
+    <p class="eyebrow">08 · Modelo de cobros</p><h2>Cada cliente cobra<br>con su propia cuenta</h2>
+    <div class="grid three">
+      <article class="card"><div class="big-number">1</div><h3>Conecta su cuenta</h3><p>Cada empresa autoriza su Mercado Pago o su Stripe desde Configuración → Módulos → Pagos en línea.</p></article>
+      <article class="card"><div class="big-number">2</div><h3>El dinero va directo</h3><p>El pago llega a la cuenta de la empresa. Ámbar Rojo no recibe ni custodia fondos, y así evitamos responsabilidades de dinero ajeno.</p></article>
+      <article class="card"><div class="big-number">3</div><h3>El CRM concilia</h3><p>Webhooks firmados marcan el pago, y desde la venta se pueden hacer reembolsos. Las credenciales se guardan cifradas.</p></article>
+    </div>
+    <div class="note"><strong>Pendiente de diseñar:</strong> IVA por producto y qué hacer con la comisión de la pasarela. El cliente podrá absorberla o trasladarla como cargo visible. Lo fiscal se valida con un contador antes de ofrecerlo.</div>
+  </section>
+
+  <section class="slide" data-title="Web · stack y mapa">
+    <p class="eyebrow">09 · Proyecto A</p><h2>La web une interfaz y API</h2>
+    <div class="two-col">
+      <div><div class="stack"><span class="pill">Next.js 16</span><span class="pill">React 19</span><span class="pill">TypeScript 5</span><span class="pill">Prisma 5</span><span class="pill">PostgreSQL</span><span class="pill">NextAuth</span></div><p class="small">Versiones declaradas en package.json como rangos; el lockfile y el entorno fijan lo instalado.</p></div>
+      <div class="card"><h3>Mapa rápido</h3><ul><li><code>src/app/(app)</code> · páginas web</li><li><code>src/app/api</code> · endpoints y cron</li><li><code>src/lib</code> · datos, permisos y reglas</li><li><code>prisma/</code> · esquema, SQL y pruebas</li><li><code>scripts/</code> · checks y herramientas</li><li><code>docker-compose.yml</code> · entorno local</li></ul></div>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Multi-tenant">
+    <p class="eyebrow">10 · Concepto clave</p><h2>Multi-tenant: compartir instalación,<br>aislar cada empresa</h2>
+    <div class="grid three">
+      <article class="card"><div class="big-number">1</div><h3><code>org_id</code></h3><p>Identifica qué empresa es dueña de cada fila.</p></article>
+      <article class="card"><div class="big-number">2</div><h3>RLS</h3><p>PostgreSQL filtra y valida filas según el tenant activo.</p></article>
+      <article class="card"><div class="big-number">3</div><h3>Rol <code>crm_app</code></h3><p>La conexión de la app queda sujeta a las políticas RLS.</p></article>
+    </div>
+    <div class="note"><strong>Ejemplo:</strong> si la sesión pertenece a Clínica Norte, la petición establece su organización como contexto; PostgreSQL devuelve las filas de esa empresa. Aunque alguien olvide agregar un filtro a una consulta, RLS vuelve a limitar las filas.</div>
+    <p class="small"><strong>Error típico:</strong> conectarse como dueño de la BD o crear una tabla sin tenant/política. Las claves foráneas no sustituyen el aislamiento. Código: <code>web/src/lib/db.ts</code>.</p>
+  </section>
+
+  <section class="slide" data-title="Qué hace cada pieza web">
+    <p class="eyebrow">11 · Conceptos técnicos en sencillo</p><h2>Qué hace cada pieza<br>del stack web</h2>
+    <div class="grid three">
+      <article class="card"><h3>Next.js</h3><p>Sirve páginas y también recibe peticiones API. Por eso web y backend viven en el mismo proyecto.</p></article>
+      <article class="card"><h3>TypeScript</h3><p>Añade tipos al JavaScript. Ayuda a detectar, antes de ejecutar, que una función reciba datos con forma incorrecta.</p></article>
+      <article class="card"><h3>PostgreSQL</h3><p>Guarda organizaciones, usuarios, contactos y conversaciones en tablas relacionadas.</p></article>
+      <article class="card"><h3>Prisma</h3><p>Traduce operaciones del código a consultas de base de datos y describe modelos en el esquema.</p></article>
+      <article class="card"><h3>API</h3><p>Es el contrato para pedir o cambiar datos. Ejemplo: “dame la bandeja de esta sesión”.</p></article>
+      <article class="card"><h3>RLS</h3><p>Es una regla de PostgreSQL que limita qué filas puede ver o cambiar la conexión actual.</p></article>
+    </div>
+    <p class="small">No es necesario dominar todo el stack para una tarea pequeña; sí entender qué capa se está modificando.</p>
+  </section>
+
+  <section class="slide" data-title="Módulos y tareas web">
+    <p class="eyebrow">12 · Proyecto A</p><h2>36 módulos, configurados por empresa</h2>
+    <div class="two-col">
+      <div><p>La administración activa módulos para cada organización. Páginas y APIs deben verificar el acceso antes de operar.</p><div class="stack"><span class="pill">Clientes</span><span class="pill">Automotriz</span><span class="pill">Cotizaciones</span><span class="pill">Marketing</span><span class="pill">CFDI</span></div><p class="small">Catálogo: <code>web/src/lib/modulos-catalogo.ts</code></p></div>
+      <div class="card"><h3>Ejemplos de carpetas</h3><ul><li>Clientes <code>src/app/(app)/clientes</code></li><li>Automotriz <code>src/app/(app)/automotriz</code></li><li>Cotizaciones <code>src/app/(app)/cotizaciones</code></li><li>Marketing <code>src/app/(app)/marketing</code></li><li>CFDI <code>src/app/(app)/facturas</code></li></ul></div>
+    </div>
+    <div class="note">Tareas actuales posibles: endpoints para móvil, permisos, módulos, pagos, calendario y CFDI. Tamaño depende del alcance y revisión.</div>
+  </section>
+
+  <section class="slide" data-title="Proyecto A · hecho y pendiente">
+    <p class="eyebrow">13 · Estado del proyecto A</p><h2>Backend + web<br>hecho y por hacer</h2>
+    <div class="two-col">
+      <article class="card"><h3 class="check">Ya está en el código</h3><ul><li>Web y API en Next.js; modelos PostgreSQL/Prisma.</li><li>Aislamiento multiempresa con <code>org_id</code> y políticas RLS.</li><li>Catálogo de 36 módulos con activación por organización.</li><li>APIs móviles para login, conversaciones, dispositivos, contactos, embudos, etiquetas, tareas y usuarios.</li><li>Integración de WhatsApp Cloud API, onboarding y eventos de conversación.</li><li>Checks específicos para móvil, pagos, CFDI y calendario.</li></ul></article>
+      <article class="card"><h3 class="warn">Pendiente o por validar</h3><ul><li>Definir/implementar <code>GET /api/movil/modulos</code> para que la app lea sus módulos activos.</li><li>Producción despliega la rama <code>meta-tech-provider</code> y el redeploy se hace a mano en EasyPanel; si un push lo dispara solo, no está verificado.</li><li>Confirmar cómo se programan los cron en el entorno real.</li><li>Validar flujos completos con Meta/número de prueba y ambiente público.</li><li>Completar etapas futuras de Meta Ads (conexión, resultados/publicación) según el plan.</li></ul><div class="note">“Pendiente” aquí incluye tareas explícitas del plan o validaciones no verificadas; no significa que todo el módulo deba rehacerse.</div></article>
+    </div>
+    <p class="source">Evidencia: rutas y catálogo en <code>web/src</code>, checks de <code>web/scripts</code>, documentos API-MOVIL, MODULOS y plan de fase 3. La rama de producción se verificó directamente en el servidor.</p>
+  </section>
+
+  <section class="slide" data-title="Web · local y seguridad">
+    <p class="eyebrow">14 · Proyecto A</p><h2>Local primero.<br>Despliegue con cuidado.</h2>
+    <div class="two-col">
+      <div class="card"><h3>BD desechable con Docker</h3><ol><li>Usar variables locales ficticias, nunca producción.</li><li>Desde la raíz:</li></ol><p><code>docker compose -p ambarcrm-local up -d --build</code></p><p>Al terminar:</p><p><code>docker compose -p ambarcrm-local down -v</code></p></div>
+      <div><h3>Checks de desarrollo</h3><div class="stack"><span class="pill">npm run lint</span><span class="pill">npx tsc --noEmit</span><span class="pill">npx prisma validate</span><span class="pill">npm run build</span><span class="pill">check:app-movil</span><span class="pill">check:cfdi</span></div><div class="note">Producción despliega la rama <code>meta-tech-provider</code> con Docker/EasyPanel. Nadie hace push a esa rama ni a <code>main</code>: todo va por PR y lo fusiona Julio.</div></div>
+    </div>
+  </section>
+
+  <section class="slide" data-title="App · arquitectura">
+    <p class="eyebrow">15 · Proyecto B</p><h2>Flutter organizado por funcionalidad</h2>
+    <div class="flow"><div class="node">Pantalla<br><span class="small">ui</span></div><span class="arrow">→</span><div class="node">Estado<br><span class="small">provider</span></div><span class="arrow">→</span><div class="node">Repositorio<br><span class="small">data</span></div><span class="arrow">→</span><div class="node">Cliente API<br><span class="small">core/api</span></div></div>
+    <div class="grid three"><article class="card"><h3>Estado</h3><p><code>provider</code> + ChangeNotifier</p></article><article class="card"><h3>Red y rutas</h3><p><code>dio</code> + <code>go_router</code></p></article><article class="card"><h3>Dispositivo</h3><p>Almacenamiento seguro, Hive, Firebase, medios y audio</p></article></div>
+    <p>Ejemplo real: <code>chat_repo.dart</code> obtiene datos; <code>chat_provider.dart</code> maneja estado; <code>pantalla_chat.dart</code> presenta la conversación. La ruta se conecta en <code>lib/rutas.dart</code>.</p>
+    <div class="note"><strong>¿Por qué separar?</strong> Si cambia cómo se ve el chat, se toca la pantalla. Si cambia la respuesta del servidor, se adapta el repositorio/modelo. Así cada archivo tiene una responsabilidad fácil de revisar.</div>
+  </section>
+
+  <section class="slide" data-title="Sesión, SSE y push">
+    <p class="eyebrow">16 · Cómo se comunica la app</p><h2>Tres canales, tres trabajos</h2>
+    <div class="grid three">
+      <article class="card"><div class="big-number">01</div><h3>Bearer · identidad</h3><p>Al iniciar sesión, el backend entrega un token. La app lo guarda en almacenamiento seguro y lo adjunta a cada petición para demostrar quién es.</p><p class="small">Si el token no sirve, el servidor responde 401 y la app vuelve al login.</p></article>
+      <article class="card"><div class="big-number">02</div><h3>SSE · en vivo</h3><p>Es una conexión abierta del servidor hacia la app. El servidor avisa que hubo un cambio y la app vuelve a pedir los datos actualizados.</p><p class="small">Es como dejar una línea abierta para recibir avisos mientras la app está activa.</p></article>
+      <article class="card"><div class="big-number">03</div><h3>FCM · en segundo plano</h3><p>Firebase envía una notificación al teléfono cuando el sistema operativo suspende la app y SSE ya no está conectado.</p><p class="small">Al tocarla, la app puede abrir la conversación indicada.</p></article>
+    </div>
+    <div class="note">El sistema operativo puede cerrar SSE cuando la app pasa a segundo plano. Por eso push complementa el tiempo real; no es el mismo mecanismo.</div>
+  </section>
+
+  <section class="slide" data-title="Ejemplo de recorrido técnico">
+    <p class="eyebrow">17 · De tocar Enviar a ver el mensaje</p><h2>¿Qué sucede al mandar un mensaje?</h2>
+    <div class="grid">
+      <article class="card"><h3>1 · La persona escribe</h3><p>La pantalla del chat entrega el texto a su estado (<code>ChatProvider</code>).</p></article>
+      <article class="card"><h3>2 · La app hace la petición</h3><p>El repositorio llama al endpoint de mensajes. <code>ClienteApi</code> añade el Bearer de la sesión.</p></article>
+      <article class="card"><h3>3 · El backend valida</h3><p>La API comprueba sesión, organización y permisos; después ejecuta la operación con el canal conectado.</p></article>
+      <article class="card"><h3>4 · La base guarda</h3><p>PostgreSQL conserva el mensaje bajo la organización activa y RLS mantiene el aislamiento.</p></article>
+      <article class="card"><h3>5 · Tiempo real avisa</h3><p>SSE avisa a las sesiones conectadas para que refresquen la conversación.</p></article>
+      <article class="card"><h3>6 · Push si hace falta</h3><p>Si el móvil está en segundo plano, Firebase puede entregar la notificación push.</p></article>
+    </div>
+    <p class="small">Este recorrido explica las piezas; la entrega real depende del canal y la configuración del ambiente.</p>
+  </section>
+
+  <section class="slide" data-title="App · hecho y pendiente">
+    <p class="eyebrow">18 · Estado del proyecto B</p><h2>App móvil<br>hecha y por hacer</h2>
+    <div class="two-col">
+      <div class="card"><h3 class="check">Ya está en el código</h3><ul><li>Login, token seguro, renovación y cierre de sesión.</li><li>Bandeja con búsqueda/filtros y apertura del chat.</li><li>Chat con texto, plantillas, ventana de 24 h, adjuntos y audio.</li><li>Cliente HTTP con Bearer y manejo de 401.</li><li>SSE con reconexión.</li><li>Integración de Firebase Push y registro de dispositivo.</li><li>Pantallas de ajustes y perfil de contacto.</li></ul></div>
+      <div class="card"><h3 class="warn">Falta construir o validar</h3><ul><li>Contactos: lista/búsqueda/edición completas; la pantalla lista aún dice “Próximamente”.</li><li>Tareas: pantalla funcional (hoy placeholder).</li><li>Kanban: pantalla funcional para ver/mover tarjetas (hoy placeholder).</li><li>Conocer módulos activos de cada empresa mediante API.</li><li>Probar push en dispositivos reales, en especial iOS/APNs.</li><li>Validar chat y medios de extremo a extremo con entorno Meta de prueba.</li><li>Completar checklist y distribución de tiendas.</li></ul><div class="note">El plan puede describir metas futuras. Las pantallas de Contactos, Tareas y Kanban actuales muestran “Próximamente”; perfil de contacto y código de datos sí existen. La guía de arquitectura está atrasada al describir chat como vacío.</div></div>
+    </div>
+    <p class="source">“Ya está” significa que hay implementación en el repo; la recepción real de push, la entrega por WhatsApp y la publicación no se certificaron en esta revisión.</p>
+  </section>
+
+  <section class="slide" data-title="Conexión A y B">
+    <p class="eyebrow">19 · Integración</p><h2>La app usa el mismo backend</h2>
+    <div class="flow"><div class="node">Flutter</div><span class="arrow">→ HTTPS + Bearer</span><div class="node">Next.js<br><span class="small">/api/movil/*</span></div><span class="arrow">→</span><div class="node">PostgreSQL<br><span class="small">org_id + RLS</span></div></div>
+    <div class="flow"><div class="node">Flutter</div><span class="arrow">→</span><div class="node">SSE<br><span class="small">/api/stream</span></div><span class="arrow">·</span><div class="node">Firebase<br><span class="small">push</span></div></div>
+    <p>Hay endpoints móviles para login, dispositivos, conversaciones, contactos, embudos, etiquetas, tareas y usuarios. El chat usa además APIs compartidas de conversaciones y mensajes.</p>
+    <div class="note">No existe <code>GET /api/movil/modulos</code> en las rutas inspeccionadas. Propuesta: acordar y construir ese endpoint para que la app conozca los módulos activos de la empresa.</div>
+  </section>
+
+  <section class="slide" data-title="Comparativa">
+    <p class="eyebrow">20 · Elegir proyecto</p><h2>Qué te gustaría aprender</h2>
+    <div class="table-wrap"><table><thead><tr><th>Criterio</th><th>Backend + web</th><th>App móvil</th></tr></thead><tbody>
+      <tr><td>Aprendizaje</td><td>TypeScript, Next, SQL, RLS y APIs</td><td>Flutter, estado, UX, SSE, Firebase</td></tr>
+      <tr><td>Resultado visible</td><td>UI rápida; datos y API requieren más contexto</td><td>Alto en teléfono; chat ya permite demo</td></tr>
+      <tr><td>Independencia</td><td>Media; RLS y cambios de datos requieren revisión</td><td>Alta en pantallas aisladas; coordinación en core/API</td></tr>
+      <tr><td>Riesgo</td><td>Alto si se despliega o rompe aislamiento</td><td>Bajo usando demo; API compartida también requiere cuidado</td></tr>
+      <tr><td>Apoyo de Julio</td><td>Alto en tenant, datos y despliegue</td><td>Medio; alto para backend, APNs y tiendas</td></tr>
+    </tbody></table></div>
+  </section>
+
+  <section class="slide" data-title="Primeros tres días">
+    <p class="eyebrow">21 · Inicio</p><h2>Una primera PR chica</h2>
+    <div class="two-col">
+      <div class="card"><h3>Backend + web</h3><ol><li>Leer README, módulos, multi-tenant, despliegue y API móvil.</li><li>Preparar Node, Docker y variables locales ficticias.</li><li>Levantar BD desechable.</li><li>Seguir una ruta API hasta reglas/Prisma.</li><li>Correr checks de lint, tipos y tarea.</li><li>Crear rama y PR con evidencia.</li></ol></div>
+      <div class="card"><h3>App Flutter</h3><ol><li>Leer AGENTS, CONTRIBUTING y arquitectura.</li><li>Instalar Flutter y Android Studio.</li><li>Ejecutar <code>flutter pub get</code>.</li><li>Pedir acceso a demo-meta y Firebase si hace falta.</li><li>Probar login y bandeja en entorno de prueba.</li><li>Elegir una pantalla, correr analyze/test y abrir PR.</li></ol></div>
+    </div>
+    <p class="small">Ambos proyectos: rama por tarea, PR pequeño y revisión de Julio. En Flutter se exige prueba en dispositivo Android real para la tarea terminada.</p>
+  </section>
+
+  <section class="slide" data-title="Dónde necesitamos ayuda">
+    <p class="eyebrow">22 · Lo que falta</p><h2>Dónde necesitamos ayuda</h2>
+    <div class="two-col">
+      <article class="card"><h3>App móvil (B)</h3><ul><li><strong>Contactos:</strong> lista, búsqueda, detalle y edición.</li><li><strong>Tareas:</strong> ver y completar, con filtros de hoy y vencidas.</li><li><strong>Kanban:</strong> ver embudos y mover tarjetas.</li><li><strong>Push en iOS</strong> y pruebas en celulares reales.</li><li><strong>Módulos por empresa:</strong> primero Citas, después Cobros.</li><li>Actualizar <code>docs/ARQUITECTURA.md</code> y <code>AGENTS.md</code>, que aún dicen que el chat está vacío.</li></ul></article>
+      <article class="card"><h3>Backend + web (A)</h3><ul><li><code>GET /api/movil/modulos</code> para que la app sepa qué módulos tiene cada empresa.</li><li>Revisar rutas de Citas y Cobros para que acepten el token Bearer de la app.</li><li>IVA por producto y desglose en la venta, y su efecto en CFDI.</li><li>Revisión de Stripe y de los demás proveedores de pago.</li><li>Pruebas de los flujos completos con una base local desechable.</li></ul></article>
+    </div>
+    <div class="grid three">
+      <article class="card"><span class="tag">Julio prepara</span><p>Un usuario por persona en <code>demo-meta</code> y acceso a los repos y al canal del equipo.</p></article>
+      <article class="card"><span class="tag">Julio prepara</span><p>Firebase (<code>google-services.json</code> por canal privado) y una Mac para iOS.</p></article>
+      <article class="card"><span class="tag">Por confirmar</span><p>Si la cuenta de Google Play es personal u organización: cambia cuántos testers exige Google.</p></article>
+    </div>
+    <p class="small">Julio también avanza con la verificación de Google (video de demostración) y la revisión de permisos de Meta; no dependen del equipo.</p>
+  </section>
+
+  <section class="slide" data-title="Cierre">
+    <p class="eyebrow">23 · Conversación</p><h2>Si te gusta X,<br><span class="accent">elige Y</span></h2>
+    <div class="grid">
+      <article class="card"><h3>App móvil</h3><p>Si disfrutas crear interfaces, pulir interacciones y ver el resultado corriendo en el teléfono.</p></article>
+      <article class="card"><h3>Backend + web</h3><p>Si te interesa cómo se conectan datos, permisos y procesos para muchas empresas.</p></article>
+    </div>
+    <p class="lead">No hay una elección única correcta. El equipo decide qué proyecto encaja mejor con sus intereses.</p>
+    <p class="source">No verificado: scheduler externo de los cron y pruebas reales con Meta, Firebase/APNs y tiendas. El código confirma implementación, no validación de producción.</p>
+  </section>
+</main>
+<nav class="footer" aria-label="Controles de presentación">
+  <div class="controls"><button id="prev" aria-label="Diapositiva anterior">←</button><button id="next" aria-label="Siguiente diapositiva">→</button></div>
+  <div class="progress" aria-hidden="true"><span id="bar"></span></div>
+  <span class="counter" id="counter">01 / 24</span><span class="hint">Usa ← → · Inicio · Fin · F para pantalla completa</span>
+</nav>
+<script>
+  (()=>{const slides=[...document.querySelectorAll('.slide')],bar=document.querySelector('#bar'),counter=document.querySelector('#counter');let index=0;function show(next){index=(next+slides.length)%slides.length;slides.forEach((s,i)=>{s.classList.toggle('active',i===index);s.setAttribute('aria-hidden',i===index?'false':'true')});bar.style.width=`${(index+1)/slides.length*100}%`;counter.textContent=`${String(index+1).padStart(2,'0')} / ${String(slides.length).padStart(2,'0')}`;document.title=`${slides[index].dataset.title} · AmbarCRM`}document.querySelector('#prev').addEventListener('click',()=>show(index-1));document.querySelector('#next').addEventListener('click',()=>show(index+1));document.addEventListener('keydown',e=>{if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();show(index+1)}else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();show(index-1)}else if(e.key==='Home')show(0);else if(e.key==='End')show(slides.length-1);else if(e.key.toLowerCase()==='f'){if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()}});let x=null;document.addEventListener('touchstart',e=>{x=e.changedTouches[0].clientX},{passive:true});document.addEventListener('touchend',e=>{if(x===null)return;const delta=e.changedTouches[0].clientX-x;if(Math.abs(delta)>70)show(index+(delta<0?1:-1));x=null},{passive:true});show(0)})();
+</script>
+</body>
+</html>

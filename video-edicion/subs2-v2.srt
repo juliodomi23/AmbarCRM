@@ -1,0 +1,42 @@
+1
+00:00:00,000 --> 00:00:11,900
+The admin signs in to AmbarCRM (reviewer credentials are provided in the submission).
+
+2
+00:00:12,000 --> 00:00:14,400
+1. In Settings > Channels, the admin clicks
+"Connect with Instagram".
+
+3
+00:00:14,500 --> 00:00:21,900
+2. Instagram asks the account owner to authorize AmbarCRM:
+view profile (instagram_business_basic) and
+manage messages (instagram_business_manage_messages).
+
+4
+00:00:22,000 --> 00:00:28,400
+3. The Instagram professional account
+@ambar_rojo_studios is connected successfully.
+
+5
+00:00:28,500 --> 00:00:33,400
+4. The Instagram inbox in AmbarCRM is empty before the test.
+
+6
+00:00:33,500 --> 00:00:38,700
+5. From a customer's phone (right), we send a direct message
+to @ambar_rojo_studios.
+
+7
+00:00:38,800 --> 00:00:40,900
+6. The message arrives in the AmbarCRM inbox.
+
+8
+00:00:41,000 --> 00:00:44,500
+7. The agent opens the conversation and
+replies from AmbarCRM (instagram_business_manage_messages).
+
+9
+00:00:44,600 --> 00:00:48,500
+8. The reply is delivered to the customer's
+Instagram app (phone, right).

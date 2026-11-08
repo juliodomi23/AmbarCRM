@@ -1,0 +1,21 @@
+#!/bin/sh
+# Valida Conventional Commits: tipo(alcance)!: descripción
+primera_linea=$(head -n 1 "$1")
+
+case "$primera_linea" in
+  Merge\ *|Revert\ *|fixup!\ *|squash!\ *) exit 0 ;;
+esac
+
+if ! echo "$primera_linea" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: .{1,72}$'; then
+  echo "Commit rechazado: usa el formato  tipo(alcance): descripción"
+  echo "  tipos: feat fix docs style refactor perf test build ci chore revert"
+  echo "  ejemplo: feat(chat): enviar notas de voz"
+  echo "  recibido: $primera_linea"
+  exit 1
+fi
+
+if echo "$primera_linea" | grep -Eq ': [A-ZÁÉÍÓÚÑ]|\.$'; then
+  echo "Commit rechazado: la descripción va en minúsculas y sin punto final"
+  echo "  recibido: $primera_linea"
+  exit 1
+fi

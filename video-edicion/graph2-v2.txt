@@ -1,0 +1,11 @@
+[0:v]split[intro_src][main_src];
+[intro_src]trim=0:12,setpts=PTS-STARTPTS,fps=30,format=yuv420p,split[intro_clean][intro_password];
+[intro_password]crop=350:68:780:394,gblur=sigma=35[blurred_password];
+[intro_clean][blurred_password]overlay=x=780:y=394:enable='between(t,0,3.2)'[intro];
+[main_src]trim=12.0:48.5,setpts=PTS-STARTPTS,fps=30,format=yuv420p[main];
+[intro][main]concat=n=2:v=1:a=0[base];
+[1:v]trim=2.0:7.0,setpts=PTS-STARTPTS+33.5/TB,fps=30,scale=-2:640,pad=iw+8:ih+8:4:4:white,format=yuv420p[p1];
+[1:v]trim=12.0:15.6,setpts=PTS-STARTPTS+44.7/TB,fps=30,scale=-2:640,pad=iw+8:ih+8:4:4:white,format=yuv420p[p2];
+[base][p1]overlay=x=W-w-24:y=20:enable='between(t,33.5,38.5)':eof_action=pass[b2];
+[b2][p2]overlay=x=W-w-24:y=20:enable='between(t,44.7,48.3)':eof_action=pass[v];
+[v]subtitles=subs2-v2.srt:fontsdir='C\:/Windows/Fonts':force_style='FontName=Arial,FontSize=20,Bold=1,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BorderStyle=3,BackColour=&H99000000&,Alignment=2,MarginV=24'[out]
