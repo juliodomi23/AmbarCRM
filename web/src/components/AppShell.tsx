@@ -473,7 +473,7 @@ export function AppShell({
                   ].join(" ")}
                 >
                   <Icono d={item.icon} className="h-5 w-5" />
-                  {item.label}
+                  <span className="max-w-full truncate px-1">{item.label}</span>
                   {badge > 0 && (
                     <span
                       className={[
