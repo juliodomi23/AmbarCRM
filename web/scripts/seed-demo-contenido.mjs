@@ -18,7 +18,7 @@ function lunesDeLaSemana() {
 function diaDeLaSemana(dia, hora) {
   const fecha = new Date(lunesDeLaSemana());
   fecha.setUTCDate(fecha.getUTCDate() + dia);
-  fecha.setUTCHours(hora, 0, 0, 0);
+  fecha.setUTCHours(hora + 6, 0, 0, 0);
   return fecha;
 }
 
@@ -30,17 +30,17 @@ const org = await prisma.org.upsert({
 
 const PIEZAS = [
   ["Calendario fiscal de noviembre", "instagram", "carrusel", "aprobado", 0, 9],
-  ["CFDI 4.0: lo que debes revisar", "facebook", "imagen", "programado", 1, 11],
-  ["Nómina: errores que cuestan multas", "instagram", "reel", "publicado", 1, 8],
-  ["REPSE: renueva a tiempo", "linkedin", "imagen", "revision", 2, 10],
+  ["CFDI 4.0: lo que debes revisar", "facebook", "imagen", "programado", 1, 13],
+  ["Nómina: errores que cuestan multas", "instagram", "reel", "publicado", 1, 18],
+  ["REPSE: renueva a tiempo", "linkedin", "imagen", "revision", 2, 9],
   ["Auditoría: no es solo para grandes", "facebook", "carrusel", "cambios", 2, 13],
   ["Planeación fiscal 2026", "instagram", "carrusel", "redaccion", 3, 9],
-  ["Compliance laboral en 5 pasos", "linkedin", "articulo", "idea", 3, 15],
-  ["Cartas invitación del SAT: qué hacer", "tiktok", "video", "aprobado", 4, 12],
-  ["Estados financieros claros para decidir", "facebook", "imagen", "publicado", 4, 10],
+  ["Compliance laboral en 5 pasos", "linkedin", "articulo", "idea", 3, 13],
+  ["Cartas invitación del SAT: qué hacer", "tiktok", "video", "aprobado", 4, 18],
+  ["Estados financieros claros para decidir", "facebook", "imagen", "publicado", 4, 13],
   ["Precios de transferencia: cuándo aplica", "linkedin", "imagen", "programado", 5, 9],
-  ["Defensa fiscal preventiva", "instagram", "reel", "idea", 6, 11],
-  ["REFMEX: 3 oficinas, una red fiscal", "instagram", "carrusel", "revision", 6, 17],
+  ["Defensa fiscal preventiva", "instagram", "reel", "idea", 6, 9],
+  ["REFMEX: 3 oficinas, una red fiscal", "instagram", "carrusel", "revision", 6, 18],
 ];
 
 const COPIES = {
@@ -88,10 +88,6 @@ await prisma.$transaction(async (tx) => {
     await tx.moduloOrg.upsert({ where: { orgId_clave: { orgId: org.id, clave } }, update: { activo: true }, create: { clave, activo: true, config: {} } });
   }
 
-  await tx.contenidoCambio.deleteMany({});
-  await tx.contenidoComentario.deleteMany({});
-  await tx.contenidoPieza.deleteMany({});
-
   const campanas = [];
   for (const [nombre, objetivo, canal] of [
     ["Calendario fiscal", "reconocimiento", "instagram"],
@@ -116,8 +112,7 @@ await prisma.$transaction(async (tx) => {
   for (const [indice, [titulo, canal, formato, estado, dia, hora]] of PIEZAS.entries()) {
     const redactor = [valeria, renata][indice % 2];
     const revisor = emilio;
-    const pieza = await tx.contenidoPieza.create({
-      data: {
+    const datosPieza = {
         titulo,
         canal,
         formato,
@@ -131,8 +126,14 @@ await prisma.$transaction(async (tx) => {
         fechaPublicacion: diaDeLaSemana(dia, hora),
         publicadaAt: estado === "publicado" ? diaDeLaSemana(dia, hora) : null,
         enlaceMaterial: indice % 3 === 0 ? "https://example.com/material-demo" : null,
-      },
-    });
+        version: 1,
+      };
+    const existente = await tx.contenidoPieza.findFirst({ where: { titulo }, select: { id: true } });
+    const pieza = existente
+      ? await tx.contenidoPieza.update({ where: { id: existente.id }, data: datosPieza })
+      : await tx.contenidoPieza.create({ data: datosPieza });
+    await tx.contenidoCambio.deleteMany({ where: { piezaId: pieza.id } });
+    await tx.contenidoComentario.deleteMany({ where: { piezaId: pieza.id } });
     await tx.contenidoCambio.create({ data: { piezaId: pieza.id, estadoAnterior: null, estadoNuevo: "idea", userId: admin.id, nota: "Alta de la pieza" } });
     if (estado !== "idea") {
       await tx.contenidoCambio.create({ data: { piezaId: pieza.id, estadoAnterior: "idea", estadoNuevo: estado, userId: redactor.id, nota: "Cambio de estado en la demo" } });
