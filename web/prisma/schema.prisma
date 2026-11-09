@@ -594,6 +594,8 @@ model Contacto {
   campanasDestinatario CampanaDestinatario[]
   contratos            Contrato[]
   tallerVehiculos      TallerVehiculo[]
+  despachoClientes     DespachoCliente[]
+  contenidoPiezas      ContenidoPieza[]
 
   @@unique([orgId, telefono])
   @@unique([id, orgId])
@@ -2706,4 +2708,191 @@ model TallerRecordatorio {
 
   @@index([orgId, estado, proximaFecha, proximoKm])
   @@map("taller_recordatorios")
+}
+
+model DespachoCliente {
+  id            BigInt   @id @default(autoincrement())
+  orgId         BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  contactoId    BigInt   @map("contacto_id")
+  rfc           String?
+  responsableId BigInt?  @map("responsable_id")
+  activo        Boolean  @default(true)
+  notas         String?
+  version       Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  contacto    Contacto                 @relation(fields: [contactoId, orgId], references: [id, orgId], onDelete: Restrict)
+  procesos    DespachoClienteProceso[]
+  actividades DespachoActividad[]
+
+  @@unique([orgId, contactoId])
+  @@unique([id, orgId])
+  @@index([orgId, activo])
+  @@index([orgId, responsableId])
+  @@map("despacho_clientes")
+}
+
+model DespachoProceso {
+  id           BigInt   @id @default(autoincrement())
+  orgId        BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre       String
+  periodicidad String
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  actividades DespachoProcesoActividad[]
+  clientes    DespachoClienteProceso[]
+
+  @@unique([orgId, nombre])
+  @@unique([id, orgId])
+  @@index([orgId, activo])
+  @@map("despacho_procesos")
+}
+
+model DespachoProcesoActividad {
+  id        BigInt   @id @default(autoincrement())
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  procesoId BigInt   @map("proceso_id")
+  nombre    String
+  orden     Int      @default(0)
+  diaLimite Int      @default(1) @map("dia_limite")
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  proceso     DespachoProceso     @relation(fields: [procesoId, orgId], references: [id, orgId], onDelete: Cascade)
+  actividades DespachoActividad[]
+
+  @@unique([id, orgId])
+  @@index([orgId, procesoId, orden])
+  @@map("despacho_proceso_actividades")
+}
+
+model DespachoClienteProceso {
+  id            BigInt   @id @default(autoincrement())
+  orgId         BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  clienteId     BigInt   @map("cliente_id")
+  procesoId     BigInt   @map("proceso_id")
+  responsableId BigInt?  @map("responsable_id")
+  activo        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  cliente     DespachoCliente     @relation(fields: [clienteId, orgId], references: [id, orgId], onDelete: Cascade)
+  proceso     DespachoProceso     @relation(fields: [procesoId, orgId], references: [id, orgId], onDelete: Cascade)
+  actividades DespachoActividad[]
+
+  @@unique([orgId, clienteId, procesoId])
+  @@unique([id, orgId])
+  @@index([orgId, clienteId])
+  @@index([orgId, procesoId])
+  @@map("despacho_cliente_procesos")
+}
+
+model DespachoActividad {
+  id                   BigInt    @id @default(autoincrement())
+  orgId                BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  clienteId            BigInt    @map("cliente_id")
+  clienteProcesoId     BigInt?   @map("cliente_proceso_id")
+  plantillaActividadId BigInt?   @map("plantilla_actividad_id")
+  tipo                 String    @default("fija")
+  titulo               String
+  periodo              DateTime  @db.Date
+  responsableId        BigInt?   @map("responsable_id")
+  fechaLimite          DateTime  @map("fecha_limite") @db.Date
+  estado               String    @default("pendiente")
+  completadaAt         DateTime? @map("completada_at") @db.Timestamptz(6)
+  notas                String?
+  version              Int       @default(1)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  cliente        DespachoCliente           @relation(fields: [clienteId, orgId], references: [id, orgId], onDelete: Cascade)
+  clienteProceso DespachoClienteProceso?   @relation(fields: [clienteProcesoId, orgId], references: [id, orgId], onDelete: Restrict)
+  plantilla      DespachoProcesoActividad? @relation(fields: [plantillaActividadId, orgId], references: [id, orgId], onDelete: Restrict)
+  cambios        DespachoActividadCambio[]
+
+  @@unique([id, orgId])
+  @@index([orgId, periodo])
+  @@index([orgId, responsableId, estado])
+  @@index([orgId, clienteId])
+  @@map("despacho_actividades")
+}
+
+model DespachoActividadCambio {
+  id             BigInt   @id @default(autoincrement())
+  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  actividadId    BigInt   @map("actividad_id")
+  estadoAnterior String?  @map("estado_anterior")
+  estadoNuevo    String   @map("estado_nuevo")
+  userId         BigInt?  @map("user_id")
+  nota           String?
+  creadoAt       DateTime @default(now()) @map("creado_at") @db.Timestamptz(6)
+
+  actividad DespachoActividad @relation(fields: [actividadId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@index([orgId, actividadId, creadoAt])
+  @@map("despacho_actividad_cambios")
+}
+
+model ContenidoPieza {
+  id               BigInt    @id @default(autoincrement())
+  orgId            BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  titulo           String
+  canal            String
+  formato          String
+  copy             String    @default("")
+  notasDiseno      String?   @map("notas_diseno")
+  enlaceMaterial   String?   @map("enlace_material")
+  estado           String    @default("idea")
+  redactorId       BigInt?   @map("redactor_id")
+  revisorId        BigInt?   @map("revisor_id")
+  fechaPublicacion DateTime? @map("fecha_publicacion") @db.Timestamptz(6)
+  publicadaAt      DateTime? @map("publicada_at") @db.Timestamptz(6)
+  contactoId       BigInt?   @map("contacto_id")
+  campanaId        BigInt?   @map("campana_id")
+  version          Int       @default(1)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  contacto    Contacto?             @relation(fields: [contactoId, orgId], references: [id, orgId], onDelete: Restrict)
+  comentarios ContenidoComentario[]
+  cambios     ContenidoCambio[]
+
+  @@unique([id, orgId])
+  @@index([orgId, estado, fechaPublicacion])
+  @@index([orgId, revisorId, estado])
+  @@index([orgId, redactorId])
+  @@map("contenido_piezas")
+}
+
+model ContenidoComentario {
+  id        BigInt   @id @default(autoincrement())
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  piezaId   BigInt   @map("pieza_id")
+  usuarioId BigInt   @map("usuario_id")
+  texto     String
+  tipo      String   @default("comentario")
+  creadoAt  DateTime @default(now()) @map("creado_at") @db.Timestamptz(6)
+
+  pieza ContenidoPieza @relation(fields: [piezaId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@index([orgId, piezaId, creadoAt])
+  @@map("contenido_comentarios")
+}
+
+model ContenidoCambio {
+  id             BigInt   @id @default(autoincrement())
+  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  piezaId        BigInt   @map("pieza_id")
+  estadoAnterior String?  @map("estado_anterior")
+  estadoNuevo    String   @map("estado_nuevo")
+  userId         BigInt?  @map("user_id")
+  nota           String?
+  creadoAt       DateTime @default(now()) @map("creado_at") @db.Timestamptz(6)
+
+  pieza ContenidoPieza @relation(fields: [piezaId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@index([orgId, piezaId, creadoAt])
+  @@map("contenido_cambios")
 }

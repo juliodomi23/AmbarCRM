@@ -2,7 +2,9 @@ const PUESTOS_BASE = ["Administrador", "Agente"] as const;
 
 const PUESTOS_POR_MODULO: Record<string, readonly string[]> = {
   marketing: ["Mercadotecnia", "Dirección comercial"],
+  contenido: ["Mercadotecnia", "Dirección comercial"],
   meta_ads: ["Mercadotecnia", "Dirección comercial"],
+  despacho: ["Director general", "Gerente general", "Contador"],
   pacientes: ["Recepcionista", "Doctor", "Coordinador clínico", "Especialista"],
   citas: ["Recepcionista"],
   automotriz: ["Asesor automotriz", "Vendedor"],

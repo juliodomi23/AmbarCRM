@@ -1,0 +1,161 @@
+// Reglas puras del módulo Despacho: sin base de datos para poder importarse desde el cliente.
+const ZONA = "America/Mexico_City";
+
+export const PERIODICIDADES = ["semanal", "mensual", "bimestral", "trimestral", "anual"] as const;
+export type Periodicidad = (typeof PERIODICIDADES)[number];
+
+export const ESTADOS_DESPACHO = ["pendiente", "en_proceso", "completada", "bloqueada"] as const;
+export type EstadoDespacho = (typeof ESTADOS_DESPACHO)[number];
+
+export const TIPOS_ACTIVIDAD = ["fija", "extraordinaria"] as const;
+export type TipoActividad = (typeof TIPOS_ACTIVIDAD)[number];
+
+type Partes = { y: number; m: number; d: number };
+
+function partesTexto(fecha: string): Partes {
+  const partes = /^(\d{4})-(\d{2})(?:-(\d{2}))?/.exec(fecha.trim());
+  if (!partes) return { y: 1970, m: 1, d: 1 };
+  return { y: Number(partes[1]), m: Number(partes[2]), d: Number(partes[3] ?? 1) };
+}
+
+function partesMexico(fecha: Date): Partes {
+  const partes = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: ZONA, year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(fecha).map((parte) => [parte.type, parte.value]),
+  );
+  return { y: Number(partes.year), m: Number(partes.month), d: Number(partes.day) };
+}
+
+function partes(fecha: string | Date): Partes {
+  return typeof fecha === "string" ? partesTexto(fecha) : partesMexico(fecha);
+}
+
+function iso(anio: number, mes: number, dia: number) {
+  return new Date(Date.UTC(anio, mes - 1, dia)).toISOString().slice(0, 10);
+}
+
+function sumarDias(fecha: string, dias: number) {
+  const base = new Date(`${fecha}T00:00:00.000Z`);
+  base.setUTCDate(base.getUTCDate() + dias);
+  return base.toISOString().slice(0, 10);
+}
+
+function ultimoDia(anio: number, mes: number) {
+  return new Date(Date.UTC(anio, mes, 0)).getUTCDate();
+}
+
+/** Clave civil de una fecha DATE de la base (llega como medianoche UTC). */
+export function claveFecha(fecha: string | Date) {
+  if (typeof fecha === "string") {
+    const { y, m, d } = partesTexto(fecha);
+    return iso(y, m, d);
+  }
+  return fecha.toISOString().slice(0, 10);
+}
+
+export function periodoDe(fecha: string | Date, periodicidad: Periodicidad) {
+  const { y, m, d } = partes(fecha);
+  if (periodicidad === "semanal") {
+    const diaSemana = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+    return sumarDias(iso(y, m, d), -((diaSemana + 6) % 7));
+  }
+  if (periodicidad === "mensual") return iso(y, m, 1);
+  if (periodicidad === "bimestral") return iso(y, m % 2 === 1 ? m : m - 1, 1);
+  if (periodicidad === "trimestral") return iso(y, Math.floor((m - 1) / 3) * 3 + 1, 1);
+  return iso(y, 1, 1);
+}
+
+/** Periodos que se generan al pedir un mes: los semanales producen una instancia por semana. */
+export function periodosDelMes(mes: string, periodicidad: Periodicidad) {
+  const { y, m } = partesTexto(mes);
+  if (periodicidad !== "semanal") return [periodoDe(mes, periodicidad)];
+  const primero = iso(y, m, 1);
+  const diaSemana = new Date(`${primero}T00:00:00.000Z`).getUTCDay();
+  let lunes = sumarDias(primero, (8 - diaSemana) % 7);
+  const periodos: string[] = [];
+  while (partesTexto(lunes).m === m) {
+    periodos.push(lunes);
+    lunes = sumarDias(lunes, 7);
+  }
+  return periodos;
+}
+
+/** Día límite dentro del periodo; en semanal el límite es el día de la semana (1 = lunes). */
+export function fechaLimiteDe(periodo: string, diaLimite: number, periodicidad: Periodicidad = "mensual") {
+  const { y, m } = partesTexto(periodo);
+  if (periodicidad === "semanal") {
+    const dia = Math.min(Math.max(Math.trunc(diaLimite), 1), 7);
+    return sumarDias(periodoDe(periodo, "semanal"), dia - 1);
+  }
+  const dia = Math.min(Math.max(Math.trunc(diaLimite), 1), ultimoDia(y, m));
+  return iso(y, m, dia);
+}
+
+/** Porcentaje entero de avance; sin actividades no hay avance que mostrar (null). */
+export function porcentajeAvance(actividades: { estado: string }[]) {
+  if (actividades.length === 0) return null;
+  const completadas = actividades.filter((actividad) => actividad.estado === "completada").length;
+  return Math.round((completadas / actividades.length) * 100);
+}
+
+export function estaAtrasada(
+  actividad: { estado: string; fechaLimite: string | Date },
+  ahora: Date = new Date(),
+) {
+  if (actividad.estado === "completada") return false;
+  const limite = Date.parse(`${claveFecha(actividad.fechaLimite)}T23:59:59.999-06:00`);
+  return ahora.getTime() > limite;
+}
+
+export type AvanceGrupo = {
+  clave: string;
+  total: number;
+  completadas: number;
+  porcentaje: number | null;
+};
+
+export function agruparAvance<T>(actividades: T[], clave: (actividad: T) => string): AvanceGrupo[] {
+  const grupos = new Map<string, { total: number; completadas: number }>();
+  for (const actividad of actividades) {
+    const nombre = clave(actividad);
+    const grupo = grupos.get(nombre) ?? { total: 0, completadas: 0 };
+    grupo.total += 1;
+    if ((actividad as { estado?: string }).estado === "completada") grupo.completadas += 1;
+    grupos.set(nombre, grupo);
+  }
+  return [...grupos.entries()]
+    .map(([nombre, grupo]) => ({
+      clave: nombre,
+      total: grupo.total,
+      completadas: grupo.completadas,
+      porcentaje: grupo.total ? Math.round((grupo.completadas / grupo.total) * 100) : null,
+    }))
+    .sort((a, b) => a.clave.localeCompare(b.clave, "es-MX"));
+}
+
+/** Una actividad bloqueada no se puede completar sin pasar por otro estado. */
+export function transicionDespachoValida(actual: string, siguiente: string) {
+  if (actual === siguiente) return true;
+  if (actual === "bloqueada" && siguiente === "completada") return false;
+  return ESTADOS_DESPACHO.includes(siguiente as EstadoDespacho);
+}
+
+export function puedeGestionarDespacho(puesto: string | undefined, rol: string | undefined) {
+  if (rol === "admin") return true;
+  return ["Administrador", "Director general", "Gerente general"].includes(String(puesto ?? "").trim());
+}
+
+export function puedeTocarActividad(
+  actividad: { responsableId: string | bigint | null },
+  userId: string | bigint | null,
+  puesto: string | undefined,
+  rol: string | undefined,
+) {
+  if (puedeGestionarDespacho(puesto, rol)) return true;
+  return userId != null && actividad.responsableId != null && String(actividad.responsableId) === String(userId);
+}
+
+export function etiquetaPeriodicidad(periodicidad: string) {
+  return ({ semanal: "Semanal", mensual: "Mensual", bimestral: "Bimestral", trimestral: "Trimestral", anual: "Anual" } as Record<string, string>)[periodicidad] ?? periodicidad;
+}

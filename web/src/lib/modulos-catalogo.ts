@@ -31,6 +31,13 @@ export const MODULOS = [
     icono: "M3 10v4h4l11 5V5L7 10H3zm4 4 2 7h3l-2-6M21 9v6", ruta: "/marketing",
   },
   {
+    clave: "contenido", area: "Marketing y crecimiento", nombre: "Contenido y copys",
+    descripcion: "Planea publicaciones, redacta copys, revisa cambios y agenda la semana.",
+    acceso: { puestosPorDefecto: ["Administrador", "Mercadotecnia", "Dirección comercial"] },
+    icono: "M4 5h16v14H4zM8 9h8M8 13h8M8 17h5M17 3v4",
+    ruta: "/contenido",
+  },
+  {
     clave: "meta_ads", area: "Marketing y crecimiento", nombre: "Meta Ads",
     descripcion: "Prepara propuestas de anuncios y aprueba su contenido y presupuesto internamente.",
     acceso: { puestosPorDefecto: ["Administrador", "Mercadotecnia", "Dirección comercial"] },
@@ -322,6 +329,13 @@ export const MODULOS = [
     acceso: ACCESO_TODOS,
     icono: "M9 11l3 3 8-8M4 5h11M4 10h4M4 15h4M4 20h15",
     ruta: "/asistencia-academia",
+  },
+  {
+    clave: "despacho", area: "Despacho contable", nombre: "Despacho contable",
+    descripcion: "Procesos recurrentes por cliente, actividades del equipo y avance mensual.",
+    acceso: { puestosPorDefecto: ["Administrador", "Director general", "Gerente general", "Contador"] },
+    icono: "M5 3h14v18H5zM8 8h8M8 12h8M8 16h5M15 3v4",
+    ruta: "/despacho",
   },
 ] as const;
 

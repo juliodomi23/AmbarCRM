@@ -159,6 +159,32 @@ listas para guardar como PDF, y `/taller/reportes` (solo administradores) resume
 ingresos, saldo por cobrar, tiempos, embudo, mecánicos y refacciones, con exportación
 CSV.
 
+## Despacho contable
+
+Despacho (`despacho`, `/despacho`) nace apagado por organización y trabaja con
+clientes que son contactos existentes del CRM. Cada cliente puede tener procesos
+recurrentes (semanal, mensual, bimestral, trimestral o anual) con actividades y un
+día límite; el despacho genera las instancias del mes y asigna un responsable por
+cliente y proceso. El resumen muestra avance por gerencia, personal y cliente, y
+las actividades atrasadas se calculan con el fin del día en hora de México.
+Contador solo puede cambiar el estado y las notas de sus propias actividades;
+gerencia y administración pueden reasignar, crear y configurar procesos. Los
+clientes, procesos y plantillas se desactivan en lugar de borrarse, para conservar
+el historial. La generación de un mes es idempotente: repetirla no duplica
+actividades ya creadas.
+
+## Contenido y copys
+
+Contenido (`contenido`, `/contenido`) organiza piezas editoriales por canal,
+formato, campaña y contacto, con un flujo idea → redacción → revisión → cambios o
+aprobado → programado → publicado. El tablero semanal muestra las publicaciones de
+lunes a domingo en hora de México. El revisor asignado o Dirección comercial
+aprueba; el redactor no puede aprobar su propia pieza. Editar el copy de una pieza
+aprobada o programada la regresa a revisión. Los comentarios de tipo
+`cambio_solicitado` piden ajustes y dejan la pieza en cambios; los comentarios y
+cambios de estado quedan en la bitácora. El módulo no publica en redes: solo
+prepara y da seguimiento al contenido.
+
 ## Módulo Inmobiliaria
 
 Inmobiliaria agrega `/inmobiliaria` con propiedades para venta o renta. Registra
