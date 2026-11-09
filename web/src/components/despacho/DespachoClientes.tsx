@@ -50,7 +50,7 @@ export function DespachoClientes({
 
   return (
     <section className="space-y-4">
-      <div className="surface flex flex-wrap items-end gap-3 p-4">
+      <div className="surface flex flex-wrap items-end gap-3 p-4 sm:p-5">
         <label className="min-w-56 flex-1 space-y-1">
           <span className="text-sm font-medium text-muted-foreground">Buscar</span>
           <input className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/30" placeholder="Nombre, empresa o RFC" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
@@ -61,7 +61,7 @@ export function DespachoClientes({
       {error && <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
 
       {creando && esGestion && (
-        <form onSubmit={crear} className="surface grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+        <form onSubmit={crear} className="surface grid gap-3 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
           <Selector label="Contacto" required value={form.contactoId} onChange={(e) => setForm({ ...form, contactoId: e.target.value })}>
             <option value="">Selecciona…</option>
             {contactos.map((contacto) => <option key={contacto.id} value={contacto.id}>{contacto.nombre}</option>)}
@@ -78,9 +78,9 @@ export function DespachoClientes({
       {visibles.length === 0 ? (
         <EmptyState titulo="Sin clientes de despacho" descripcion="Agrega un cliente existente de tu CRM para empezar a asignarle procesos." />
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
           {visibles.map((cliente) => (
-            <Link key={cliente.id} href={`/despacho/clientes/${cliente.id}`} className="surface group space-y-3 p-4 transition hover:border-primary/40">
+            <Link key={cliente.id} href={`/despacho/clientes/${cliente.id}`} className="surface surface-interactiva group space-y-3 p-4 sm:p-5">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h2 className="truncate font-semibold text-foreground">{cliente.contacto.empresa ?? cliente.contacto.nombre}</h2>

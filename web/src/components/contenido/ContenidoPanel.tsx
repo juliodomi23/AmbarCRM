@@ -128,10 +128,10 @@ export function ContenidoPanel({
 
   function tarjeta(pieza: Pieza) {
     return (
-      <button key={pieza.id} type="button" onClick={() => setSeleccionada(pieza)} className="surface w-full space-y-2 p-4 text-left transition hover:border-primary/40">
+      <button key={pieza.id} type="button" onClick={() => setSeleccionada(pieza)} className="surface surface-interactiva w-full space-y-2.5 p-4 text-left sm:p-5">
         <div className="flex items-start justify-between gap-2">
-          <p className="min-w-0 truncate font-semibold text-foreground">{pieza.titulo}</p>
-          <Badge tono={tonoEstado(pieza.estado)} punto>{etiquetaEstadoContenido(pieza.estado)}</Badge>
+          <p className="line-clamp-2 min-w-0 font-semibold leading-snug text-foreground">{pieza.titulo}</p>
+          <Badge tono={tonoEstado(pieza.estado)} punto className="shrink-0">{etiquetaEstadoContenido(pieza.estado)}</Badge>
         </div>
         <p className="line-clamp-2 text-sm text-muted-foreground">{pieza.copy || "Sin copy todavía"}</p>
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
@@ -144,8 +144,8 @@ export function ContenidoPanel({
   }
 
   return (
-    <section className="space-y-4">
-      <div className="surface flex flex-wrap items-end gap-3 p-4">
+    <section className="space-y-5">
+      <div className="surface flex flex-wrap items-end gap-3 p-4 sm:p-5">
         {vista === "semana" && <Campo label="Semana" type="date" value={semana} onChange={(e) => setSemana(e.target.value)} />}
         <Selector label="Canal" value={canal} onChange={(e) => setCanal(e.target.value)}>
           <option value="">Todos</option>
@@ -153,7 +153,7 @@ export function ContenidoPanel({
         </Selector>
         <Boton variante="ghost" onClick={() => void recargar()}>Actualizar</Boton>
         <Boton onClick={() => setCreando(true)}>Nueva pieza</Boton>
-        <p className="ml-auto text-sm text-muted-foreground">{VISTAS[vista]} · {filtradas.length} pieza(s){vista !== "revision" ? ` · ${pendientes} por revisar` : ""}</p>
+        <p className="w-full text-sm text-muted-foreground sm:ml-auto sm:w-auto">{VISTAS[vista]} · {filtradas.length} pieza(s){vista !== "revision" ? ` · ${pendientes} por revisar` : ""}</p>
       </div>
 
       {error && <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
@@ -162,7 +162,7 @@ export function ContenidoPanel({
       {filtradas.length === 0 ? (
         <EmptyState titulo="Sin piezas para mostrar" descripcion="Crea una pieza o cambia el filtro para ver el contenido." />
       ) : vista === "semana" ? (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
           {DIAS.map((dia, indice) => {
             const { inicio } = semanaDe(semana);
             const clave = new Date(`${inicio}T00:00:00.000Z`);
@@ -171,14 +171,14 @@ export function ContenidoPanel({
             const delDia = filtradas.filter((pieza) => claveDia(pieza.fechaPublicacion) === fecha);
             return (
               <div key={dia} className="space-y-2">
-                <h2 className="text-sm font-semibold text-foreground">{dia} <span className="font-normal text-muted-foreground">{fecha.slice(5)}</span></h2>
-                {delDia.length === 0 ? <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">Sin publicaciones</p> : delDia.map(tarjeta)}
+                <h2 className="border-b border-border/60 pb-1.5 text-sm font-semibold text-foreground">{dia} <span className="font-normal text-muted-foreground">{fecha.slice(5)}</span></h2>
+                {delDia.length === 0 ? <p className="rounded-lg border border-dashed border-border p-4 text-xs text-muted-foreground">Sin publicaciones</p> : delDia.map(tarjeta)}
               </div>
             );
           })}
         </div>
       ) : vista === "tablero" ? (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
           {ESTADOS_CONTENIDO.map((estado) => {
             const delEstado = filtradas.filter((pieza) => pieza.estado === estado);
             return (
@@ -190,7 +190,7 @@ export function ContenidoPanel({
           })}
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{filtradas.map(tarjeta)}</div>
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">{filtradas.map(tarjeta)}</div>
       )}
 
       <Modal abierto={creando} onClose={() => setCreando(false)} titulo="Nueva pieza de contenido">

@@ -22,7 +22,7 @@ export default async function DespachoMiTrabajoPage() {
     db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
   ]);
   return (
-    <div className="space-y-5">
+    <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">
       <DespachoNavegacion actual="mi-trabajo" titulo="Mi trabajo" descripcion="Tus actividades asignadas, con lo atrasado primero." esGestion={false} />
       <DespachoActividades iniciales={serializar(actividades)} clientes={serializar(clientes)} usuarios={serializar(usuarios)} esGestion={false} modo="mias" />
     </div>

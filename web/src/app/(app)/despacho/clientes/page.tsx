@@ -26,7 +26,7 @@ export default async function DespachoClientesPage() {
     db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
   ]);
   return (
-    <div className="space-y-5">
+    <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">
       <DespachoNavegacion actual="clientes" titulo="Clientes del despacho" descripcion="Ficha de cada cliente, sus procesos y responsable." esGestion={esGestion} />
       <DespachoClientes iniciales={serializar(clientes)} contactos={serializar(contactos)} usuarios={serializar(usuarios)} esGestion={esGestion} />
     </div>

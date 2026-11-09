@@ -34,7 +34,7 @@ export default async function DespachoClientePage({ params }: { params: Promise<
   ]);
   if (!cliente) notFound();
   return (
-    <div className="space-y-5">
+    <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">
       <DespachoNavegacion actual="clientes" titulo="Ficha del cliente" descripcion="Datos fiscales, procesos asignados y actividades recientes." esGestion={esGestion} />
       <DespachoClienteDetalle inicial={serializar(cliente)} procesos={serializar(procesos)} usuarios={serializar(usuarios)} esGestion={esGestion} />
     </div>

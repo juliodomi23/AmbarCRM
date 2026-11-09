@@ -85,7 +85,7 @@ export function DespachoActividades({
 
   return (
     <section className="space-y-4">
-      <div className="surface flex flex-wrap items-end gap-3 p-4">
+      <div className="surface flex flex-wrap items-end gap-3 p-4 sm:p-5">
         <Selector label="Estado" value={estado} onChange={(e) => setEstado(e.target.value)}>
           <option value="">Todos</option>
           {ESTADOS_DESPACHO.map((valor) => <option key={valor} value={valor}>{ETIQUETAS[valor]}</option>)}
@@ -102,7 +102,7 @@ export function DespachoActividades({
       {error && <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
 
       {creando && esGestion && (
-        <form onSubmit={crear} className="surface grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+        <form onSubmit={crear} className="surface grid gap-3 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
           <Campo label="Título" required value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />
           <Selector label="Cliente" required value={form.clienteId} onChange={(e) => setForm({ ...form, clienteId: e.target.value })}>
             <option value="">Selecciona…</option>
@@ -125,13 +125,13 @@ export function DespachoActividades({
       {actividades.length === 0 ? (
         <EmptyState titulo={modo === "mias" ? "Sin actividades asignadas" : "Sin actividades"} descripcion="Cuando haya actividades para este filtro aparecerán aquí." />
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
           {actividades.map((actividad) => {
             const atrasada = estaAtrasada(actividad);
             const puede = esGestion || modo === "mias";
             const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor));
             return (
-              <article key={actividad.id} className={`surface space-y-3 p-4 ${atrasada ? "border-destructive/50" : ""}`}>
+              <article key={actividad.id} className={`surface space-y-3 p-4 sm:p-5 ${atrasada ? "border-destructive/50" : ""}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate text-xs text-muted-foreground">{actividad.cliente.contacto.empresa ?? actividad.cliente.contacto.nombre}</p>
