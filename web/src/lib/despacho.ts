@@ -112,16 +112,18 @@ export type AvanceGrupo = {
   clave: string;
   total: number;
   completadas: number;
+  atrasadas: number;
   porcentaje: number | null;
 };
 
-export function agruparAvance<T>(actividades: T[], clave: (actividad: T) => string): AvanceGrupo[] {
-  const grupos = new Map<string, { total: number; completadas: number }>();
+export function agruparAvance<T extends { estado?: string; fechaLimite?: string | Date }>(actividades: T[], clave: (actividad: T) => string): AvanceGrupo[] {
+  const grupos = new Map<string, { total: number; completadas: number; atrasadas: number }>();
   for (const actividad of actividades) {
     const nombre = clave(actividad);
-    const grupo = grupos.get(nombre) ?? { total: 0, completadas: 0 };
+    const grupo = grupos.get(nombre) ?? { total: 0, completadas: 0, atrasadas: 0 };
     grupo.total += 1;
-    if ((actividad as { estado?: string }).estado === "completada") grupo.completadas += 1;
+    if (actividad.estado === "completada") grupo.completadas += 1;
+    else if (actividad.fechaLimite && estaAtrasada({ estado: actividad.estado ?? "", fechaLimite: actividad.fechaLimite })) grupo.atrasadas += 1;
     grupos.set(nombre, grupo);
   }
   return [...grupos.entries()]
@@ -129,9 +131,25 @@ export function agruparAvance<T>(actividades: T[], clave: (actividad: T) => stri
       clave: nombre,
       total: grupo.total,
       completadas: grupo.completadas,
+      atrasadas: grupo.atrasadas,
       porcentaje: grupo.total ? Math.round((grupo.completadas / grupo.total) * 100) : null,
     }))
     .sort((a, b) => a.clave.localeCompare(b.clave, "es-MX"));
+}
+
+export function tonoAvance(porcentaje: number | null, atrasadas = 0) {
+  if (atrasadas > 0 || (porcentaje !== null && porcentaje < 40)) return "destructive" as const;
+  if (porcentaje !== null && porcentaje < 80) return "warning" as const;
+  if (porcentaje !== null) return "success" as const;
+  return "neutral" as const;
+}
+
+export function etiquetaAvance(porcentaje: number | null, atrasadas = 0) {
+  if (atrasadas > 0) return `En riesgo · ${atrasadas} atrasada${atrasadas === 1 ? "" : "s"}`;
+  if (porcentaje === null) return "Sin actividades";
+  if (porcentaje < 40) return "Requiere atención";
+  if (porcentaje < 80) return "En curso";
+  return "Al día";
 }
 
 /** Una actividad bloqueada no se puede completar sin pasar por otro estado. */
