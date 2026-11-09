@@ -15,12 +15,11 @@ type Pieza = {
   fechaPublicacion: string | null; publicadaAt: string | null; enlaceMaterial: string | null;
   notasDiseno: string | null; redactorId: string | null; revisorId: string | null;
   redactorNombre?: string | null; revisorNombre?: string | null; campanaId: string | null; contactoId: string | null;
-  version: number; comentarios: Comentario[]; _count?: { comentarios: number };
+  version: number; updatedAt?: string; comentarios: Comentario[]; _count?: { comentarios: number };
 };
 type Opcion = { id: string; nombre: string };
 
 const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-const VISTAS: Record<string, string> = { semana: "Semana", tablero: "Tablero", revision: "Revisión", piezas: "Piezas" };
 
 function claveDia(valor: string | null) {
   if (!valor) return null;
@@ -34,8 +33,26 @@ function fechaHora(valor: string | null) {
 
 function aInputFecha(valor: string | null) {
   if (!valor) return "";
-  return new Date(valor).toISOString().slice(0, 16);
+  const partes = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(valor)).map((parte) => [parte.type, parte.value]));
+  return `${partes.year}-${partes.month}-${partes.day}T${partes.hour}:${partes.minute}`;
 }
+
+function fechaConZonaMexico(valor: string) {
+  if (!valor) return null;
+  const fechaUtc = new Date(`${valor}:00Z`);
+  const partes = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(fechaUtc).map((parte) => [parte.type, parte.value]));
+  const horaZonaComoUtc = Date.UTC(Number(partes.year), Number(partes.month) - 1, Number(partes.day), Number(partes.hour), Number(partes.minute), Number(partes.second));
+  return new Date(fechaUtc.getTime() - (horaZonaComoUtc - fechaUtc.getTime())).toISOString();
+}
+
+function mesDia(fecha: string) { return new Date(`${fecha}T12:00:00Z`).toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", ""); }
+function moverSemana(fecha: string, semanas: number) { const base = new Date(`${semanaDe(fecha).inicio}T12:00:00Z`); base.setUTCDate(base.getUTCDate() + semanas * 7); return base.toISOString().slice(0, 10); }
+function etiquetaEspera(fecha?: string) { if (!fecha) return "Esperando revisión"; const dias = Math.max(0, Math.floor((Date.now() - new Date(fecha).getTime()) / 86400000)); return dias === 0 ? "Esperando desde hoy" : `Esperando hace ${dias} día${dias === 1 ? "" : "s"}`; }
+
+const TONO_CANAL: Record<string, string> = { instagram: "bg-primary/10 text-primary", facebook: "bg-info/10 text-info", linkedin: "bg-info/10 text-info", tiktok: "bg-foreground/10 text-foreground", whatsapp: "bg-success/10 text-success", blog: "bg-warning/10 text-warning", email: "bg-muted text-foreground", otro: "bg-muted text-foreground" };
+const ICONO_ESTADO: Record<string, string> = { publicado: "✓", programado: "◷", revision: "◌", cambios: "!", aprobado: "✓", idea: "•", redaccion: "✎" };
+const TONO_ESTADO: Record<string, string> = { publicado: "border-border bg-muted/50 text-muted-foreground", programado: "border-info/30 bg-info/10 text-info", revision: "border-warning/30 bg-warning/10 text-warning", cambios: "border-warning/30 bg-warning/10 text-warning", aprobado: "border-success/30 bg-success/10 text-success", idea: "border-border bg-muted text-foreground", redaccion: "border-primary/25 bg-primary/10 text-primary" };
+const ICONO_CANAL: Record<string, string> = { instagram: "◎", facebook: "f", linkedin: "in", tiktok: "♪", whatsapp: "◉", blog: "✎", email: "✉", otro: "•" };
 
 export function ContenidoPanel({
   vista, iniciales, usuarios, campanas, contactos, usuarioId, puesto, rol, semanaInicial,
@@ -70,10 +87,16 @@ export function ContenidoPanel({
         return clave !== null && clave >= inicio && clave <= fin;
       });
     }
+    if (vista === "revision") lista = [...lista].sort((a, b) => (a.fechaPublicacion ?? "9999").localeCompare(b.fechaPublicacion ?? "9999"));
     return lista;
   }, [piezas, canal, vista, semana]);
 
-  const pendientes = piezas.filter((pieza) => ["revision", "cambios"].includes(pieza.estado)).length;
+  const resumenPiezas = vista === "semana" ? filtradas : piezas;
+  const resumenSemana = [
+    { etiqueta: "publicadas", total: resumenPiezas.filter((pieza) => pieza.estado === "publicado").length, tono: "success" },
+    { etiqueta: "programadas", total: resumenPiezas.filter((pieza) => pieza.estado === "programado").length, tono: "info" },
+    { etiqueta: "por revisar", total: resumenPiezas.filter((pieza) => ["revision", "cambios"].includes(pieza.estado)).length, tono: "warning" },
+  ];
 
   async function recargar() {
     const respuesta = await fetch("/api/contenido/piezas", { cache: "no-store" });
@@ -85,7 +108,7 @@ export function ContenidoPanel({
     evento.preventDefault();
     setError("");
     const respuesta = await fetch("/api/contenido/piezas", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, fechaPublicacion: fechaConZonaMexico(form.fechaPublicacion) }),
     });
     const datos = await respuesta.json().catch(() => ({}));
     if (!respuesta.ok) { setError(datos.error ?? "No se pudo crear la pieza"); return; }
@@ -127,17 +150,19 @@ export function ContenidoPanel({
     : [];
 
   function tarjeta(pieza: Pieza) {
+    const publicado = pieza.estado === "publicado";
     return (
-      <button key={pieza.id} type="button" onClick={() => setSeleccionada(pieza)} className="surface surface-interactiva w-full space-y-2.5 p-4 text-left sm:p-5">
+      <button key={pieza.id} type="button" onClick={() => setSeleccionada(pieza)} aria-label={`Abrir ${pieza.titulo}, ${etiquetaEstadoContenido(pieza.estado)}`} className={`surface surface-interactiva w-full space-y-3 p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${publicado ? "opacity-70" : ""}`}>
         <div className="flex items-start justify-between gap-2">
           <p className="line-clamp-2 min-w-0 font-semibold leading-snug text-foreground">{pieza.titulo}</p>
-          <Badge tono={tonoEstado(pieza.estado)} punto className="shrink-0">{etiquetaEstadoContenido(pieza.estado)}</Badge>
+          <span className={`inline-flex min-h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold ${TONO_ESTADO[pieza.estado] ?? "border-border bg-muted text-foreground"}`}><span aria-hidden="true">{ICONO_ESTADO[pieza.estado] ?? "•"}</span>{etiquetaEstadoContenido(pieza.estado)}</span>
         </div>
-        <p className="line-clamp-2 text-sm text-muted-foreground">{pieza.copy || "Sin copy todavía"}</p>
-        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-          <span>{etiquetaCanal(pieza.canal)}</span><span aria-hidden="true">·</span><span>{etiquetaFormato(pieza.formato)}</span>
-          <span aria-hidden="true">·</span><span>{fechaHora(pieza.fechaPublicacion)}</span>
+        <p className="line-clamp-2 text-sm text-foreground/80">{pieza.copy || "Sin copy todavía"}</p>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span className={`inline-flex min-h-7 items-center gap-1.5 rounded-md px-2 font-medium ${TONO_CANAL[pieza.canal] ?? "bg-muted text-foreground"}`}><span aria-hidden="true" className="font-bold">{ICONO_CANAL[pieza.canal] ?? "•"}</span>{etiquetaCanal(pieza.canal)}</span><span className="text-muted-foreground">{etiquetaFormato(pieza.formato)}</span>
+          {pieza.fechaPublicacion && <span className="ml-auto text-sm font-bold text-foreground">{new Date(pieza.fechaPublicacion).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit", timeZone: "America/Mexico_City" })}</span>}
         </div>
+        {pieza.estado === "revision" || pieza.estado === "cambios" ? <p className="text-xs font-medium text-warning">{etiquetaEspera(pieza.updatedAt)}</p> : null}
         {(pieza.revisorNombre || pieza.redactorNombre) && <p className="text-xs text-muted-foreground">Redacta {pieza.redactorNombre ?? "—"} · Revisa {pieza.revisorNombre ?? "—"}</p>}
       </button>
     );
@@ -146,33 +171,34 @@ export function ContenidoPanel({
   return (
     <section className="space-y-5">
       <div className="surface flex flex-wrap items-end gap-3 p-4 sm:p-5">
-        {vista === "semana" && <Campo label="Semana" type="date" value={semana} onChange={(e) => setSemana(e.target.value)} />}
+        {vista === "semana" && <div className="space-y-1"><span className="block text-sm font-medium text-muted-foreground">Semana</span><div className="flex min-h-10 items-center rounded-lg border border-input bg-card p-0.5"><button type="button" aria-label="Semana anterior" onClick={() => setSemana((valor) => moverSemana(valor, -1))} className="grid h-9 w-9 place-items-center rounded-md text-xl text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">‹</button><span className="min-w-28 text-center text-sm font-medium text-foreground">{mesDia(semanaDe(semana).inicio)}–{mesDia(semanaDe(semana).fin)}</span><button type="button" aria-label="Semana siguiente" onClick={() => setSemana((valor) => moverSemana(valor, 1))} className="grid h-9 w-9 place-items-center rounded-md text-xl text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">›</button></div></div>}
+        {vista === "semana" && <Boton variante="ghost" onClick={() => setSemana(semanaInicial)}>Hoy</Boton>}
         <Selector label="Canal" value={canal} onChange={(e) => setCanal(e.target.value)}>
           <option value="">Todos</option>
           {CANALES_CONTENIDO.map((valor) => <option key={valor} value={valor}>{etiquetaCanal(valor)}</option>)}
         </Selector>
-        <Boton variante="ghost" onClick={() => void recargar()}>Actualizar</Boton>
         <Boton onClick={() => setCreando(true)}>Nueva pieza</Boton>
-        <p className="w-full text-sm text-muted-foreground sm:ml-auto sm:w-auto">{VISTAS[vista]} · {filtradas.length} pieza(s){vista !== "revision" ? ` · ${pendientes} por revisar` : ""}</p>
+        <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto" aria-label="Resumen del contenido">{resumenSemana.map((item) => <span key={item.etiqueta} className={`inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold ${item.tono === "success" ? "border-success/25 bg-success/10 text-success" : item.tono === "info" ? "border-info/25 bg-info/10 text-info" : "border-warning/25 bg-warning/10 text-warning"}`}><span className="tnum">{item.total}</span>{item.etiqueta}</span>)}</div>
       </div>
 
       {error && <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
       {aviso && <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">{aviso}</p>}
 
-      {filtradas.length === 0 ? (
+      {filtradas.length === 0 && vista !== "semana" ? (
         <EmptyState titulo="Sin piezas para mostrar" descripcion="Crea una pieza o cambia el filtro para ver el contenido." />
       ) : vista === "semana" ? (
-        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 xl:grid-cols-7">
           {DIAS.map((dia, indice) => {
             const { inicio } = semanaDe(semana);
             const clave = new Date(`${inicio}T00:00:00.000Z`);
             clave.setUTCDate(clave.getUTCDate() + indice);
             const fecha = clave.toISOString().slice(0, 10);
             const delDia = filtradas.filter((pieza) => claveDia(pieza.fechaPublicacion) === fecha);
+            const hoy = fecha === semanaInicial;
             return (
-              <div key={dia} className="space-y-2">
-                <h2 className="border-b border-border/60 pb-1.5 text-sm font-semibold text-foreground">{dia} <span className="font-normal text-muted-foreground">{fecha.slice(5)}</span></h2>
-                {delDia.length === 0 ? <p className="rounded-lg border border-dashed border-border p-4 text-xs text-muted-foreground">Sin publicaciones</p> : delDia.map(tarjeta)}
+              <div key={dia} className={`grid gap-2 rounded-xl p-2 md:grid-cols-[140px_minmax(0,1fr)] xl:block xl:space-y-2 xl:p-0 ${hoy ? "bg-primary/5 ring-1 ring-primary/20 xl:bg-transparent xl:ring-0" : ""}`}>
+                <h2 className={`flex min-h-10 items-center gap-2 border-b pb-1.5 text-sm font-semibold ${hoy ? "border-primary/40 text-primary" : "border-border/60 text-foreground"}`}>{dia} {mesDia(fecha)}{hoy && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">Hoy</span>}</h2>
+                <div className="space-y-2">{delDia.length === 0 ? <div className="flex min-h-16 items-center justify-between gap-2 rounded-lg border border-dashed border-border px-3 py-2"><span className="text-xs text-muted-foreground">Sin publicaciones</span><button type="button" aria-label={`Crear pieza para ${dia} ${mesDia(fecha)}`} onClick={() => { setForm({ ...form, fechaPublicacion: `${fecha}T09:00` }); setCreando(true); }} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-lg font-medium text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">+</button></div> : delDia.map(tarjeta)}</div>
               </div>
             );
           })}
@@ -233,13 +259,13 @@ export function ContenidoPanel({
 
       <Modal abierto={seleccionada !== null} onClose={() => setSeleccionada(null)} titulo={seleccionada?.titulo ?? "Pieza"}>
         {seleccionada && (
-          <div className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,.9fr)]">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tono={tonoEstado(seleccionada.estado)} punto>{etiquetaEstadoContenido(seleccionada.estado)}</Badge>
               <span className="text-xs text-muted-foreground">{etiquetaCanal(seleccionada.canal)} · {etiquetaFormato(seleccionada.formato)}</span>
             </div>
             {puedeEditar ? (
-              <form onSubmit={(evento) => { evento.preventDefault(); const datos = new FormData(evento.currentTarget); void guardar(seleccionada, { titulo: datos.get("titulo"), copy: datos.get("copy"), canal: datos.get("canal"), formato: datos.get("formato"), fechaPublicacion: datos.get("fechaPublicacion") || null, enlaceMaterial: datos.get("enlaceMaterial"), notasDiseno: datos.get("notasDiseno") }); }} className="space-y-3">
+              <form onSubmit={(evento) => { evento.preventDefault(); const datos = new FormData(evento.currentTarget); void guardar(seleccionada, { titulo: datos.get("titulo"), copy: datos.get("copy"), canal: datos.get("canal"), formato: datos.get("formato"), fechaPublicacion: fechaConZonaMexico(String(datos.get("fechaPublicacion") ?? "")), enlaceMaterial: datos.get("enlaceMaterial"), notasDiseno: datos.get("notasDiseno") }); }} className="space-y-3">
                 <Campo label="Título" name="titulo" defaultValue={seleccionada.titulo} required />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Selector label="Canal" name="canal" defaultValue={seleccionada.canal}>
@@ -282,7 +308,7 @@ export function ContenidoPanel({
                 {seleccionada.comentarios.map((comentario) => (
                   <div key={comentario.id} className={`rounded-lg p-2 text-sm ${comentario.tipo === "cambio_solicitado" ? "bg-warning/10 text-warning" : "bg-muted/60 text-foreground"}`}>
                     <p className="whitespace-pre-wrap">{comentario.texto}</p>
-                    <p className="mt-1 text-[11px] opacity-70">{fechaHora(comentario.creadoAt)}</p>
+                    <p className="mt-1 text-xs opacity-80">{fechaHora(comentario.creadoAt)}</p>
                   </div>
                 ))}
               </div>
