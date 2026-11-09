@@ -187,7 +187,7 @@ export function ContenidoPanel({
       {filtradas.length === 0 && vista !== "semana" ? (
         <EmptyState titulo="Sin piezas para mostrar" descripcion="Crea una pieza o cambia el filtro para ver el contenido." />
       ) : vista === "semana" ? (
-        <div className="grid gap-3 xl:grid-cols-7">
+        <div className="grid gap-3">
           {DIAS.map((dia, indice) => {
             const { inicio } = semanaDe(semana);
             const clave = new Date(`${inicio}T00:00:00.000Z`);
@@ -196,9 +196,9 @@ export function ContenidoPanel({
             const delDia = filtradas.filter((pieza) => claveDia(pieza.fechaPublicacion) === fecha);
             const hoy = fecha === semanaInicial;
             return (
-              <div key={dia} className={`grid gap-2 rounded-xl p-2 md:grid-cols-[140px_minmax(0,1fr)] xl:block xl:space-y-2 xl:p-0 ${hoy ? "bg-primary/5 ring-1 ring-primary/20 xl:bg-transparent xl:ring-0" : ""}`}>
-                <h2 className={`flex min-h-10 items-center gap-2 border-b pb-1.5 text-sm font-semibold ${hoy ? "border-primary/40 text-primary" : "border-border/60 text-foreground"}`}>{dia} {mesDia(fecha)}{hoy && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">Hoy</span>}</h2>
-                <div className="space-y-2">{delDia.length === 0 ? <div className="flex min-h-16 items-center justify-between gap-2 rounded-lg border border-dashed border-border px-3 py-2"><span className="text-xs text-muted-foreground">Sin publicaciones</span><button type="button" aria-label={`Crear pieza para ${dia} ${mesDia(fecha)}`} onClick={() => { setForm({ ...form, fechaPublicacion: `${fecha}T09:00` }); setCreando(true); }} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-lg font-medium text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">+</button></div> : delDia.map(tarjeta)}</div>
+              <div key={dia} className={`grid gap-2 rounded-xl p-2 md:grid-cols-[150px_minmax(0,1fr)] md:gap-4 ${hoy ? "bg-primary/5 ring-1 ring-primary/20" : "border border-border/60"}`}>
+                <h2 className={`flex min-h-10 items-start gap-2 pt-2 text-sm font-semibold md:flex-col md:items-start md:gap-1 ${hoy ? "text-primary" : "text-foreground"}`}>{dia} {mesDia(fecha)}{hoy && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">Hoy</span>}</h2>
+                <div className="grid content-start gap-2 sm:grid-cols-2 xl:grid-cols-3">{delDia.length === 0 ? <div className="flex min-h-16 items-center justify-between gap-2 rounded-lg border border-dashed sm:col-span-full border-border px-3 py-2"><span className="text-xs text-muted-foreground">Sin publicaciones</span><button type="button" aria-label={`Crear pieza para ${dia} ${mesDia(fecha)}`} onClick={() => { setForm({ ...form, fechaPublicacion: `${fecha}T09:00` }); setCreando(true); }} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-lg font-medium text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">+</button></div> : delDia.map(tarjeta)}</div>
               </div>
             );
           })}
