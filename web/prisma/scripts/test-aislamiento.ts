@@ -59,6 +59,28 @@ async function valorColumna(columna: Columna, tabla: string, indice: number) {
   if (tabla === "resenas" && columna.column_name === "calificacion") return 5;
   if (tabla === "solicitudes_resena" && columna.column_name === "evento") return "cita";
   if (tabla === "solicitudes_resena" && columna.column_name === "estado") return "enviada";
+  if (tabla === "credenciales_pago" && columna.column_name === "proveedor") return "mercado_pago";
+  if (tabla === "pagos_online" && columna.column_name === "proveedor") return "mercado_pago";
+  if (tabla === "messenger_login" && columna.column_name === "proveedor") return "messenger";
+  if (tabla === "eventos_calendario" && columna.column_name === "estado") return "creado";
+  if (tabla === "facturas" && columna.column_name === "estado") return "borrador";
+  if (tabla === "taller_pagos" && columna.column_name === "tipo") return "abono";
+  if (tabla === "productos" && columna.column_name === "iva_tasa") return 0;
+  if (tabla === "cobros" && columna.column_name === "pagos") return [];
+  // CHECK de Despacho/Contenido: primer valor válido de cada catálogo.
+  const fijosDespacho: Record<string, string> = {
+    "despacho_procesos.periodicidad": "mensual",
+    "despacho_actividades.tipo": "fija",
+    "despacho_actividades.estado": "pendiente",
+    "despacho_actividad_cambios.estado_nuevo": "completada",
+    "contenido_piezas.canal": "instagram",
+    "contenido_piezas.formato": "imagen",
+    "contenido_piezas.estado": "idea",
+    "contenido_comentarios.tipo": "comentario",
+    "contenido_cambios.estado_nuevo": "revision",
+  };
+  const fijo = fijosDespacho[`${tabla}.${columna.column_name}`];
+  if (fijo) return fijo;
   if (columna.data_type === "USER-DEFINED") {
     const resultado = await admin.query<{ valor: string }>(
       `SELECT e.enumlabel AS valor
@@ -75,7 +97,8 @@ async function valorColumna(columna: Columna, tabla: string, indice: number) {
   // Columnas con CHECK de rango (reservas en línea): valores válidos fijos.
   const enterosFijos: Record<string, number> = { dia_semana: 1, inicio_min: 540, fin_min: 600, duracion_min: 30, buffer_min: 0 };
   if (columna.column_name in enterosFijos) return enterosFijos[columna.column_name];
-  if (["bigint", "integer", "smallint"].includes(columna.data_type)) {
+  if (columna.data_type === "smallint") return 1;
+  if (["bigint", "integer"].includes(columna.data_type)) {
     return 8_000_000 + indice;
   }
   if (["numeric", "decimal", "real", "double precision"].includes(columna.data_type)) {

@@ -23,6 +23,8 @@
     "verificar:serenica": "tsx scripts/verificar-serenica.ts",
     "check:calendario": "tsx scripts/check-calendario.ts",
     "test:calendario:e2e": "tsx prisma/scripts/test-calendario-e2e.ts",
+    "test:despacho:e2e": "tsx prisma/scripts/test-despacho-e2e.ts",
+    "test:contenido:e2e": "tsx prisma/scripts/test-contenido-e2e.ts",
     "seed:admin": "node scripts/seed-admin.mjs"
   },
   "dependencies": {
