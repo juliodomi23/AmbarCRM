@@ -76,8 +76,8 @@ afectadas.
 
 - `npx tsx scripts/check-despacho.ts` valida reglas puras; con `CHECK_DB=1`
   agrega RLS, activación del módulo, unique por contacto y control de versión.
-- `ALLOW_DEMO_SEED=1 node scripts/seed-demo-despacho.mjs correo contraseña`
-  crea la organización `demo-despacho` con clientes, procesos, actividades del
+- `ALLOW_DEMO_SEED=1 ORG_SLUG=refmex node scripts/seed-demo-despacho.mjs correo contraseña`
+  crea la organización `refmex` con clientes, procesos, actividades del
   mes actual y anterior, y datos 100% ficticios.
 - `prisma/scripts/test-aislamiento.ts` incluye los CHECK nuevos de estados y
   periodicidad.

@@ -3,9 +3,9 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { credencialesDemo, imprimirCredencialesDemo } from "./lib/demo-seed.mjs";
 
-const { email, password, passwordGenerada } = credencialesDemo("contenido@local.test");
+const { email, password, passwordGenerada } = credencialesDemo("refmex@local.test");
 const prisma = new PrismaClient();
-const SLUG = process.env.ORG_SLUG || "demo-contenido";
+const SLUG = process.env.ORG_SLUG || "refmex";
 
 function lunesDeLaSemana() {
   const partes = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -24,38 +24,53 @@ function diaDeLaSemana(dia, hora) {
 
 const org = await prisma.org.upsert({
   where: { slug: SLUG },
-  update: { nombre: "Estudio Ámbar Creativo", activo: true },
-  create: { nombre: "Estudio Ámbar Creativo", slug: SLUG },
+  update: { nombre: "REFMEX", activo: true },
+  create: { nombre: "REFMEX", slug: SLUG },
 });
 
 const PIEZAS = [
-  ["Lanzamiento de temporada", "instagram", "carrusel", "aprobado", 0, 9],
-  ["Tips para cuidar tu piel", "instagram", "reel", "programado", 1, 11],
-  ["Testimonio de cliente", "facebook", "imagen", "publicado", 1, 8],
-  ["Detrás de cámaras", "tiktok", "video", "revision", 2, 10],
-  ["Promoción de fin de semana", "instagram", "historia", "cambios", 2, 13],
-  ["Nuevo producto: set de regalo", "facebook", "carrusel", "redaccion", 3, 9],
-  ["Preguntas frecuentes", "instagram", "reel", "idea", 3, 15],
-  ["Testimonio de cliente", "tiktok", "video", "aprobado", 4, 12],
-  ["Guía de tallas", "facebook", "imagen", "publicado", 4, 10],
-  ["Bienvenida al newsletter", "instagram", "imagen", "programado", 5, 9],
-  ["Resumen de la semana", "facebook", "imagen", "idea", 6, 11],
-  ["Sorteo de aniversario", "instagram", "carrusel", "revision", 6, 17],
+  ["Calendario fiscal de noviembre", "instagram", "carrusel", "aprobado", 0, 9],
+  ["CFDI 4.0: lo que debes revisar", "facebook", "imagen", "programado", 1, 11],
+  ["Nómina: errores que cuestan multas", "instagram", "reel", "publicado", 1, 8],
+  ["REPSE: renueva a tiempo", "linkedin", "imagen", "revision", 2, 10],
+  ["Auditoría: no es solo para grandes", "facebook", "carrusel", "cambios", 2, 13],
+  ["Planeación fiscal 2026", "instagram", "carrusel", "redaccion", 3, 9],
+  ["Compliance laboral en 5 pasos", "linkedin", "articulo", "idea", 3, 15],
+  ["Cartas invitación del SAT: qué hacer", "tiktok", "video", "aprobado", 4, 12],
+  ["Estados financieros claros para decidir", "facebook", "imagen", "publicado", 4, 10],
+  ["Precios de transferencia: cuándo aplica", "linkedin", "imagen", "programado", 5, 9],
+  ["Defensa fiscal preventiva", "instagram", "reel", "idea", 6, 11],
+  ["REFMEX: 3 oficinas, una red fiscal", "instagram", "carrusel", "revision", 6, 17],
 ];
+
+const COPIES = {
+  "Calendario fiscal de noviembre": "Estas son las fechas clave del mes para personas físicas y empresas. Comparte y evita recargos.",
+  "CFDI 4.0: lo que debes revisar": "Datos fiscales, régimen y uso del CFDI: tres puntos que deben coincidir antes de timbrar.",
+  "Nómina: errores que cuestan multas": "Errores frecuentes en nómina y cómo evitarlos antes de que llegue una revisión.",
+  "REPSE: renueva a tiempo": "El REPSE no es un trámite de una sola vez. Revisa vigencias y documentación.",
+  "Auditoría: no es solo para grandes": "Una auditoría preventiva ordena la información y detecta riesgos antes de que crezcan.",
+  "Planeación fiscal 2026": "La mejor estrategia fiscal empieza con decisiones, no con prisas de último día.",
+  "Compliance laboral en 5 pasos": "Del expediente a la seguridad social: cinco revisiones para mantener tu operación en orden.",
+  "Cartas invitación del SAT: qué hacer": "Recibir una carta invitación no es una sentencia. Te explicamos cómo atenderla.",
+  "Estados financieros claros para decidir": "Números claros = mejores decisiones. Así debe leerlos tu equipo directivo.",
+  "Precios de transferencia: cuándo aplica": "Operaciones entre partes relacionadas: qué documentación conviene tener lista.",
+  "Defensa fiscal preventiva": "Prevenir es más barato que corregir. Revisa tu situación antes de una auditoría.",
+  "REFMEX: 3 oficinas, una red fiscal": "Tuxtla Gutiérrez, Monterrey y Tultitlán: un mismo estándar de servicio fiscal y contable.",
+};
 
 await prisma.$transaction(async (tx) => {
   await tx.$executeRawUnsafe("SELECT set_config('app.current_org', $1, true)", String(org.id));
   const passwordHash = await bcrypt.hash(password, 10);
   const admin = await tx.usuario.upsert({
     where: { orgId_email: { orgId: org.id, email } },
-    update: { nombre: "Dirección creativa", passwordHash, rol: "admin", puesto: "Administrador", activo: true },
-    create: { nombre: "Dirección creativa", email, passwordHash, rol: "admin", puesto: "Administrador" },
+    update: { nombre: "Dirección REFMEX", passwordHash, rol: "admin", puesto: "Administrador", activo: true },
+    create: { nombre: "Dirección REFMEX", email, passwordHash, rol: "admin", puesto: "Administrador" },
   });
   const equipo = [];
   for (const [nombre, correo, puesto] of [
-    ["Valeria Ortiz", "valeria@ambar-creativo.demo", "Mercadotecnia"],
-    ["Emilio Cárdenas", "emilio@ambar-creativo.demo", "Dirección comercial"],
-    ["Renata Silva", "renata@ambar-creativo.demo", "Mercadotecnia"],
+    ["Valeria Ortiz", "valeria@refmex.demo", "Mercadotecnia"],
+    ["Emilio Cárdenas", "emilio@refmex.demo", "Dirección comercial"],
+    ["Renata Silva", "renata@refmex.demo", "Mercadotecnia"],
   ]) {
     equipo.push(await tx.usuario.upsert({
       where: { orgId_email: { orgId: org.id, email: correo } },
@@ -64,7 +79,11 @@ await prisma.$transaction(async (tx) => {
     }));
   }
   const [valeria, emilio, renata] = equipo;
-  await tx.ajustes.upsert({ where: { orgId: org.id }, update: { marcaNombre: "Ámbar Creativo" }, create: { marcaNombre: "Ámbar Creativo" } });
+  await tx.ajustes.upsert({
+    where: { orgId: org.id },
+    update: { marcaNombre: "REFMEX", marcaColorPrimario: "#0F2341", marcaColorAcento: "#2563EB", marcaPreset: "legal" },
+    create: { marcaNombre: "REFMEX", marcaColorPrimario: "#0F2341", marcaColorAcento: "#2563EB", marcaPreset: "legal" },
+  });
   for (const clave of ["contenido", "clientes"]) {
     await tx.moduloOrg.upsert({ where: { orgId_clave: { orgId: org.id, clave } }, update: { activo: true }, create: { clave, activo: true, config: {} } });
   }
@@ -75,8 +94,9 @@ await prisma.$transaction(async (tx) => {
 
   const campanas = [];
   for (const [nombre, objetivo, canal] of [
-    ["Temporada primavera", "reconocimiento", "instagram"],
-    ["Fidelización de clientes", "ventas", "facebook"],
+    ["Calendario fiscal", "reconocimiento", "instagram"],
+    ["Confianza fiscal", "ventas", "facebook"],
+    ["Servicios REFMEX", "reconocimiento", "instagram"],
   ]) {
     const existente = await tx.campanaMarketing.findFirst({ where: { nombre } });
     campanas.push(existente ?? await tx.campanaMarketing.create({
@@ -85,7 +105,7 @@ await prisma.$transaction(async (tx) => {
   }
 
   const contactos = [];
-  for (const [nombre, telefono] of [["Marisol Peña", "5558000001"], ["Diego Fuentes", "5558000002"], ["Camila Rojas", "5558000003"]]) {
+  for (const [nombre, telefono] of [["Laura Méndez", "5558000001"], ["Carlos Rivas", "5558000002"], ["Ana Torres", "5558000003"]]) {
     contactos.push(await tx.contacto.upsert({
       where: { orgId_telefono: { orgId: org.id, telefono } },
       update: { nombre },
@@ -101,8 +121,8 @@ await prisma.$transaction(async (tx) => {
         titulo,
         canal,
         formato,
-        copy: `${titulo}. Texto de demostración para redes sociales.`,
-        notasDiseno: "Usar la paleta de marca y tipografía principal.",
+        copy: COPIES[titulo] ?? `${titulo}. Contenido de demostración para redes sociales.`,
+        notasDiseno: "Usar la paleta azul de REFMEX y tipografía institucional.",
         estado,
         redactorId: redactor.id,
         revisorId: revisor.id,
@@ -129,5 +149,5 @@ await prisma.$transaction(async (tx) => {
   }
 });
 
-imprimirCredencialesDemo({ nombre: "Estudio Ámbar Creativo", slug: SLUG, email, password, passwordGenerada });
+imprimirCredencialesDemo({ nombre: "REFMEX", slug: SLUG, email, password, passwordGenerada });
 await prisma.$disconnect();

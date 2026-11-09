@@ -72,8 +72,8 @@ se rechaza con 409.
 
 - `npx tsx scripts/check-contenido.ts` valida reglas puras; con `CHECK_DB=1`
   agrega RLS, activación del módulo, comentarios y control de versión.
-- `ALLOW_DEMO_SEED=1 node scripts/seed-demo-contenido.mjs correo contraseña`
-  crea la organización `demo-contenido` con campañas, piezas de la semana,
+- `ALLOW_DEMO_SEED=1 ORG_SLUG=refmex node scripts/seed-demo-contenido.mjs correo contraseña`
+  usa la misma organización `refmex` y agrega campañas, piezas de la semana,
   comentarios y cambios de estado ficticios.
 - `prisma/scripts/test-aislamiento.ts` incluye los CHECK nuevos de canal,
   formato, estado y tipo de comentario.

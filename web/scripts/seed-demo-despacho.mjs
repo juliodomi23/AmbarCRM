@@ -3,9 +3,9 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { credencialesDemo, imprimirCredencialesDemo } from "./lib/demo-seed.mjs";
 
-const { email, password, passwordGenerada } = credencialesDemo("despacho@local.test");
+const { email, password, passwordGenerada } = credencialesDemo("refmex@local.test");
 const prisma = new PrismaClient();
-const SLUG = process.env.ORG_SLUG || "demo-despacho";
+const SLUG = process.env.ORG_SLUG || "refmex";
 
 function fechaCivil(anio, mes, dia) {
   return new Date(Date.UTC(anio, mes - 1, dia));
@@ -18,23 +18,23 @@ function hoyMexico() {
 
 const org = await prisma.org.upsert({
   where: { slug: SLUG },
-  update: { nombre: "Despacho Contable del Valle", activo: true },
-  create: { nombre: "Despacho Contable del Valle", slug: SLUG },
+  update: { nombre: "REFMEX", activo: true },
+  create: { nombre: "REFMEX", slug: SLUG },
 });
 
 const PROCESOS = [
-  ["Nómina mensual", "mensual", [["Recibir incidencias", 3], ["Calcular nómina", 5], ["Timbrado y dispersión", 7], ["Enviar acuse al cliente", 9]]],
-  ["Declaraciones mensuales", "mensual", [["Recopilar facturas", 5], ["Conciliar IVA e ISR", 8], ["Presentar declaración", 17], ["Enviar acuse", 19]]],
-  ["Contabilidad mensual", "mensual", [["Registrar pólizas", 10], ["Revisar balanza", 15], ["Cerrar mes", 20]]],
-  ["Conciliación bancaria", "mensual", [["Descargar estados de cuenta", 4], ["Conciliar movimientos", 6]]],
-  ["Reporte trimestral", "trimestral", [["Preparar estados financieros", 10], ["Revisar con dirección", 15], ["Entregar al cliente", 20]]],
+  ["Contabilidad mensual", "mensual", [["Recibir documentación", 5], ["Registrar pólizas", 10], ["Conciliar cuentas", 15], ["Cerrar mes", 20], ["Enviar estados financieros", 25]]],
+  ["Impuestos mensuales", "mensual", [["Recopilar CFDI", 5], ["Conciliar IVA e ISR", 8], ["Presentar declaraciones", 17], ["Enviar acuses", 19]]],
+  ["Nómina y seguridad social", "mensual", [["Recibir incidencias", 3], ["Calcular nómina", 5], ["Timbrado y dispersión", 7], ["IMSS e INFONAVIT", 9]]],
+  ["Auditoría y aseguramiento", "anual", [["Planeación de auditoría", 10], ["Pruebas selectivas", 20], ["Informe de hallazgos", 30]]],
+  ["Planeación fiscal y REPSE", "trimestral", [["Diagnóstico fiscal", 10], ["Revisión REPSE", 15], ["Propuesta de optimización", 20], ["Seguimiento con socio", 25]]],
 ];
 
 const CLIENTES = [
-  ["Panadería La Espiga", "5557000001", "PAE850101AB1"],
-  ["Ferretería Torres", "5557000002", "FTO920202CD2"],
-  ["Clínica Dental Sonríe", "5557000003", "CDS010303EF3"],
-  ["Transportes del Sur", "5557000004", "TSU980404GH4"],
+  ["Grupo Tuxtla", "5557000001", "GTU230101AB1"],
+  ["Constructora Monterrey", "5557000002", "CMO210202CD2"],
+  ["Comercializadora Izcalli", "5557000003", "CIZ190303EF3"],
+  ["Servicios del Sureste", "5557000004", "SSU200404GH4"],
 ];
 
 await prisma.$transaction(async (tx) => {
@@ -42,14 +42,14 @@ await prisma.$transaction(async (tx) => {
   const passwordHash = await bcrypt.hash(password, 10);
   const admin = await tx.usuario.upsert({
     where: { orgId_email: { orgId: org.id, email } },
-    update: { nombre: "Dirección del despacho", passwordHash, rol: "admin", puesto: "Administrador", activo: true },
-    create: { nombre: "Dirección del despacho", email, passwordHash, rol: "admin", puesto: "Administrador" },
+    update: { nombre: "Dirección REFMEX", passwordHash, rol: "admin", puesto: "Administrador", activo: true },
+    create: { nombre: "Dirección REFMEX", email, passwordHash, rol: "admin", puesto: "Administrador" },
   });
   const equipo = [];
   for (const [nombre, correo, puesto] of [
-    ["Claudia Nava", "claudia@despacho-valle.demo", "Contador"],
-    ["Raúl Medina", "raul@despacho-valle.demo", "Contador"],
-    ["Sofía Lara", "sofia@despacho-valle.demo", "Gerente general"],
+    ["Claudia Nava", "claudia@refmex.demo", "Contador"],
+    ["Raúl Medina", "raul@refmex.demo", "Contador"],
+    ["Sofía Lara", "sofia@refmex.demo", "Gerente general"],
   ]) {
     equipo.push(await tx.usuario.upsert({
       where: { orgId_email: { orgId: org.id, email: correo } },
@@ -57,7 +57,11 @@ await prisma.$transaction(async (tx) => {
       create: { nombre, email: correo, passwordHash, rol: "agente", puesto },
     }));
   }
-  await tx.ajustes.upsert({ where: { orgId: org.id }, update: { marcaNombre: "Despacho del Valle" }, create: { marcaNombre: "Despacho del Valle" } });
+  await tx.ajustes.upsert({
+    where: { orgId: org.id },
+    update: { marcaNombre: "REFMEX", marcaColorPrimario: "#0F2341", marcaColorAcento: "#2563EB", marcaPreset: "legal" },
+    create: { marcaNombre: "REFMEX", marcaColorPrimario: "#0F2341", marcaColorAcento: "#2563EB", marcaPreset: "legal" },
+  });
   for (const clave of ["despacho", "clientes"]) {
     await tx.moduloOrg.upsert({ where: { orgId_clave: { orgId: org.id, clave } }, update: { activo: true }, create: { clave, activo: true, config: {} } });
   }
@@ -95,7 +99,7 @@ await prisma.$transaction(async (tx) => {
   const mesAnterior = mes === 1 ? { anio: anio - 1, mes: 12 } : { anio, mes: mes - 1 };
   const instancias = [];
   for (const cliente of clientes) {
-    for (const proceso of procesos.slice(0, 4)) {
+    for (const proceso of procesos) {
       const clienteProceso = await tx.despachoClienteProceso.findFirst({ where: { clienteId: cliente.id, procesoId: proceso.id } });
       if (!clienteProceso) continue;
       for (const actividad of proceso.actividades) {
@@ -132,5 +136,5 @@ await prisma.$transaction(async (tx) => {
   if (atrasada) await tx.despachoActividad.update({ where: { id: atrasada.id }, data: { fechaLimite: fechaCivil(anio, mes, Math.max(1, new Date().getDate() - 2)) } });
 });
 
-imprimirCredencialesDemo({ nombre: "Despacho Contable del Valle", slug: SLUG, email, password, passwordGenerada });
+imprimirCredencialesDemo({ nombre: "REFMEX", slug: SLUG, email, password, passwordGenerada });
 await prisma.$disconnect();
