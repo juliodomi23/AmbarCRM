@@ -78,7 +78,7 @@ export function DespachoClienteDetalle({
       {error && <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <form onSubmit={guardar} className="surface space-y-3 p-4">
+        <form onSubmit={guardar} className="surface space-y-3 p-4 sm:p-5">
           <h2 className="font-semibold text-foreground">Datos del cliente</h2>
           <Campo label="RFC" value={form.rfc} maxLength={13} onChange={(e) => setForm({ ...form, rfc: e.target.value })} disabled={!esGestion} />
           <Selector label="Responsable" value={form.responsableId} onChange={(e) => setForm({ ...form, responsableId: e.target.value })} disabled={!esGestion}>
@@ -96,7 +96,7 @@ export function DespachoClienteDetalle({
           {esGestion && <Boton type="submit" disabled={guardando}>{guardando ? "Guardando…" : "Guardar cambios"}</Boton>}
         </form>
 
-        <section className="surface space-y-3 p-4">
+        <section className="surface space-y-3 p-4 sm:p-5">
           <h2 className="font-semibold text-foreground">Procesos asignados</h2>
           {procesos.length === 0 && <p className="text-sm text-muted-foreground">Aún no hay procesos en el catálogo.</p>}
           <div className="space-y-2">

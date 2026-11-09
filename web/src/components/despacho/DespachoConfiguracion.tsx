@@ -71,7 +71,7 @@ export function DespachoConfiguracion({ iniciales, esGestion }: { iniciales: Pro
       {aviso && <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">{aviso}</p>}
 
       {esGestion && (
-        <form onSubmit={generar} className="surface flex flex-wrap items-end gap-3 p-4">
+        <form onSubmit={generar} className="surface flex flex-wrap items-end gap-3 p-4 sm:p-5">
           <Campo label="Generar actividades del mes" type="month" value={mes} onChange={(e) => setMes(e.target.value)} />
           <Boton type="submit">Generar</Boton>
           <p className="w-full text-xs text-muted-foreground">No duplica actividades ya generadas para el mismo cliente y plantilla.</p>
@@ -85,7 +85,7 @@ export function DespachoConfiguracion({ iniciales, esGestion }: { iniciales: Pro
             <Boton variante="ghost" onClick={() => setCreando((valor) => !valor)}>{creando ? "Cerrar" : "Nuevo proceso"}</Boton>
           </div>
           {creando && (
-            <form onSubmit={crear} className="surface space-y-3 p-4">
+            <form onSubmit={crear} className="surface space-y-3 p-4 sm:p-5">
               <div className="grid gap-3 sm:grid-cols-2">
                 <Campo label="Nombre del proceso" required value={nuevo.nombre} onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} />
                 <Selector label="Periodicidad" value={nuevo.periodicidad} onChange={(e) => setNuevo({ ...nuevo, periodicidad: e.target.value })}>
@@ -113,7 +113,7 @@ export function DespachoConfiguracion({ iniciales, esGestion }: { iniciales: Pro
       ) : (
         <div className="space-y-3">
           {procesos.map((proceso) => (
-            <article key={proceso.id} className="surface space-y-3 p-4">
+            <article key={proceso.id} className="surface space-y-3 p-4 sm:p-5">
               <div className="flex flex-wrap items-end gap-3">
                 <Campo label="Proceso" value={proceso.nombre} onChange={(e) => actualizar(proceso.id, { nombre: e.target.value })} disabled={!esGestion} />
                 <Selector label="Periodicidad" value={proceso.periodicidad} onChange={(e) => actualizar(proceso.id, { periodicidad: e.target.value })} disabled={!esGestion}>

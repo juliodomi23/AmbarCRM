@@ -18,7 +18,7 @@ export default async function DespachoConfiguracionPage() {
     orderBy: [{ activo: "desc" }, { nombre: "asc" }],
   });
   return (
-    <div className="space-y-5">
+    <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">
       <DespachoNavegacion actual="configuracion" titulo="Configuración del despacho" descripcion="Catálogo de procesos, actividades y generación mensual." esGestion={esGestion} />
       <DespachoConfiguracion iniciales={serializar(procesos)} esGestion={esGestion} />
     </div>

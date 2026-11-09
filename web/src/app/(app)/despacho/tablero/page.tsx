@@ -23,7 +23,7 @@ export default async function DespachoTableroPage() {
     db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
   ]);
   return (
-    <div className="space-y-5">
+    <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">
       <DespachoNavegacion actual="tablero" titulo="Tablero de actividades" descripcion="Todo lo que el despacho tiene que entregar, por estado y fecha límite." esGestion={esGestion} />
       <DespachoActividades iniciales={serializar(actividades)} clientes={serializar(clientes)} usuarios={serializar(usuarios)} esGestion={esGestion} modo="tablero" />
     </div>
