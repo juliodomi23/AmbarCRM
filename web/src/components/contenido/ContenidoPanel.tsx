@@ -257,7 +257,7 @@ export function ContenidoPanel({
         </form>
       </Modal>
 
-      <Modal abierto={seleccionada !== null} onClose={() => setSeleccionada(null)} titulo={seleccionada?.titulo ?? "Pieza"}>
+      <Modal abierto={seleccionada !== null} onClose={() => setSeleccionada(null)} titulo={seleccionada?.titulo ?? "Pieza"} ancho="xl">
         {seleccionada && (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,.9fr)]">
             <div className="flex flex-wrap items-center gap-2">

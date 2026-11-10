@@ -63,14 +63,14 @@ await prisma.$transaction(async (tx) => {
   const passwordHash = await bcrypt.hash(password, 10);
   const admin = await tx.usuario.upsert({
     where: { orgId_email: { orgId: org.id, email } },
-    update: { nombre: "Dirección REFMEX", passwordHash, rol: "admin", puesto: "Administrador", activo: true },
-    create: { nombre: "Dirección REFMEX", email, passwordHash, rol: "admin", puesto: "Administrador" },
+    update: { nombre: "Adrián Jiménez", passwordHash, rol: "admin", puesto: "Director general", activo: true },
+    create: { nombre: "Adrián Jiménez", email, passwordHash, rol: "admin", puesto: "Director general" },
   });
   const equipo = [];
   for (const [nombre, correo, puesto] of [
-    ["Valeria Ortiz", "valeria@refmex.demo", "Mercadotecnia"],
-    ["Emilio Cárdenas", "emilio@refmex.demo", "Dirección comercial"],
-    ["Renata Silva", "renata@refmex.demo", "Mercadotecnia"],
+    ["Adrián Toledo", "adrian.toledo@refmex.demo", "Encargado de marketing"],
+    ["Lusmi Hernández", "lusmi@refmex.demo", "Copywriter"],
+    ["Rifanny Coutiño", "rifanny@refmex.demo", "Copywriter"],
   ]) {
     equipo.push(await tx.usuario.upsert({
       where: { orgId_email: { orgId: org.id, email: correo } },
@@ -78,7 +78,7 @@ await prisma.$transaction(async (tx) => {
       create: { nombre, email: correo, passwordHash, rol: "agente", puesto },
     }));
   }
-  const [valeria, emilio, renata] = equipo;
+  const [adrianToledo, lusmi, rifanny] = equipo;
   await tx.ajustes.upsert({
     where: { orgId: org.id },
     update: { marcaNombre: "REFMEX", marcaColorPrimario: "#0F2341", marcaColorAcento: "#2563EB", marcaPreset: "legal" },
@@ -110,8 +110,8 @@ await prisma.$transaction(async (tx) => {
   }
 
   for (const [indice, [titulo, canal, formato, estado, dia, hora]] of PIEZAS.entries()) {
-    const redactor = [valeria, renata][indice % 2];
-    const revisor = emilio;
+    const redactor = [lusmi, rifanny][indice % 2];
+    const revisor = adrianToledo;
     const datosPieza = {
         titulo,
         canal,
@@ -148,6 +148,8 @@ await prisma.$transaction(async (tx) => {
       await tx.contenidoComentario.create({ data: { piezaId: pieza.id, usuarioId: revisor.id, texto: "Aprobado para publicación.", tipo: "comentario" } });
     }
   }
+
+  await tx.usuario.deleteMany({ where: { orgId: org.id, email: { in: ["valeria@refmex.demo", "emilio@refmex.demo", "renata@refmex.demo"] } } });
 });
 
 imprimirCredencialesDemo({ nombre: "REFMEX", slug: SLUG, email, password, passwordGenerada });
