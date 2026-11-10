@@ -152,11 +152,18 @@ export function etiquetaAvance(porcentaje: number | null, atrasadas = 0) {
   return "Al día";
 }
 
-/** Una actividad bloqueada no se puede completar sin pasar por otro estado. */
+/** Flujo lineal: pendiente -> en_proceso -> (completada | bloqueada); bloqueada solo vuelve a en_proceso. */
+const SIGUIENTES_DESPACHO: Record<EstadoDespacho, EstadoDespacho[]> = {
+  pendiente: ["en_proceso"],
+  en_proceso: ["completada", "bloqueada"],
+  bloqueada: ["en_proceso"],
+  completada: [],
+};
+
 export function transicionDespachoValida(actual: string, siguiente: string) {
   if (actual === siguiente) return true;
-  if (actual === "bloqueada" && siguiente === "completada") return false;
-  return ESTADOS_DESPACHO.includes(siguiente as EstadoDespacho);
+  if (!ESTADOS_DESPACHO.includes(actual as EstadoDespacho)) return false;
+  return SIGUIENTES_DESPACHO[actual as EstadoDespacho].includes(siguiente as EstadoDespacho);
 }
 
 export function puedeGestionarDespacho(puesto: string | undefined, rol: string | undefined) {

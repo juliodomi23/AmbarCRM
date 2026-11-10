@@ -98,6 +98,7 @@ export function DespachoActividades({
   const [estado, setEstado] = useState("");
   const [periodo, setPeriodo] = useState(mesMexico);
   const [clienteId, setClienteId] = useState("");
+  const [responsableIdFiltro, setResponsableIdFiltro] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
   const [creando, setCreando] = useState(false);
@@ -113,6 +114,7 @@ export function DespachoActividades({
     if (estado) params.set("estado", estado);
     if (periodo) params.set("periodo", periodo);
     if (clienteId) params.set("clienteId", clienteId);
+    if (responsableIdFiltro) params.set("responsableId", responsableIdFiltro);
     try {
       const respuesta = await fetch(`/api/despacho/actividades?${params}`, { cache: "no-store" });
       const datos = await respuesta.json();
@@ -123,7 +125,7 @@ export function DespachoActividades({
     } finally {
       setCargando(false);
     }
-  }, [estado, periodo, clienteId]);
+  }, [estado, periodo, clienteId, responsableIdFiltro]);
 
   useEffect(() => { void cargar(); }, [cargar]);
 
@@ -183,6 +185,12 @@ export function DespachoActividades({
           <option value="">Todos</option>
           {clientes.map((cliente) => <option key={cliente.id} value={cliente.id}>{cliente.contacto.empresa ?? cliente.contacto.nombre}</option>)}
         </Selector>
+        {esGestion && (
+          <Selector label="Colaborador" value={responsableIdFiltro} onChange={(e) => setResponsableIdFiltro(e.target.value)}>
+            <option value="">Todos</option>
+            {usuarios.map((usuario) => <option key={usuario.id} value={usuario.id}>{usuario.nombre}</option>)}
+          </Selector>
+        )}
         <Boton variante="ghost" onClick={() => void cargar()} disabled={cargando}>{cargando ? "Cargando…" : "Actualizar"}</Boton>
         {esGestion && <Boton onClick={() => setCreando((valor) => !valor)}>{creando ? "Cerrar" : "Nueva actividad"}</Boton>}
       </div>
