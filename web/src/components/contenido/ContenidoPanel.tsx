@@ -70,6 +70,7 @@ export function ContenidoPanel({
   const [piezas, setPiezas] = useState(iniciales);
   const [semana, setSemana] = useState(semanaInicial);
   const [canal, setCanal] = useState("");
+  const [trabajadorId, setTrabajadorId] = useState("");
   const [seleccionada, setSeleccionada] = useState<Pieza | null>(null);
   const [creando, setCreando] = useState(false);
   const [error, setError] = useState("");
@@ -79,6 +80,7 @@ export function ContenidoPanel({
   const filtradas = useMemo(() => {
     let lista = piezas;
     if (canal) lista = lista.filter((pieza) => pieza.canal === canal);
+    if (trabajadorId) lista = lista.filter((pieza) => pieza.redactorId === trabajadorId || pieza.revisorId === trabajadorId);
     if (vista === "revision") lista = lista.filter((pieza) => ["revision", "cambios"].includes(pieza.estado));
     if (vista === "semana") {
       const { inicio, fin } = semanaDe(semana);
@@ -89,7 +91,7 @@ export function ContenidoPanel({
     }
     if (vista === "revision") lista = [...lista].sort((a, b) => (a.fechaPublicacion ?? "9999").localeCompare(b.fechaPublicacion ?? "9999"));
     return lista;
-  }, [piezas, canal, vista, semana]);
+  }, [piezas, canal, trabajadorId, vista, semana]);
 
   const resumenPiezas = vista === "semana" ? filtradas : piezas;
   const resumenSemana = [
@@ -177,6 +179,10 @@ export function ContenidoPanel({
           <option value="">Todos</option>
           {CANALES_CONTENIDO.map((valor) => <option key={valor} value={valor}>{etiquetaCanal(valor)}</option>)}
         </Selector>
+        <Selector label="Trabajador" value={trabajadorId} onChange={(e) => setTrabajadorId(e.target.value)}>
+          <option value="">Todos</option>
+          {usuarios.map((usuario) => <option key={usuario.id} value={usuario.id}>{usuario.nombre}</option>)}
+        </Selector>
         <Boton onClick={() => setCreando(true)}>Nueva pieza</Boton>
         <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto" aria-label="Resumen del contenido">{resumenSemana.map((item) => <span key={item.etiqueta} className={`inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold ${item.tono === "success" ? "border-success/25 bg-success/10 text-success" : item.tono === "info" ? "border-info/25 bg-info/10 text-info" : "border-warning/25 bg-warning/10 text-warning"}`}><span className="tnum">{item.total}</span>{item.etiqueta}</span>)}</div>
       </div>
@@ -257,9 +263,9 @@ export function ContenidoPanel({
         </form>
       </Modal>
 
-      <Modal abierto={seleccionada !== null} onClose={() => setSeleccionada(null)} titulo={seleccionada?.titulo ?? "Pieza"} ancho="xl">
+      <Modal abierto={seleccionada !== null} onClose={() => setSeleccionada(null)} titulo={seleccionada?.titulo ?? "Pieza"} ancho="lg">
         {seleccionada && (
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,.9fr)]">
+          <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tono={tonoEstado(seleccionada.estado)} punto>{etiquetaEstadoContenido(seleccionada.estado)}</Badge>
               <span className="text-xs text-muted-foreground">{etiquetaCanal(seleccionada.canal)} · {etiquetaFormato(seleccionada.formato)}</span>
