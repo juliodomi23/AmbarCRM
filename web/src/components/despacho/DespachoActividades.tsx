@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import { Badge, Boton, Campo, Selector, tonoEstado } from "@/components/ui";
 import { EmptyState } from "@/components/EmptyState";
 import { ESTADOS_DESPACHO, estaAtrasada, transicionDespachoValida } from "@/lib/despacho";
@@ -30,6 +31,52 @@ function etiquetaMes(valor: string) { return new Date(`${valor}-01T12:00:00Z`).t
 function fechaCorta(valor: string) { const fecha = valor.slice(0, 10); return new Date(`${fecha}T12:00:00Z`).toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", ""); }
 function avatar(nombre: string) { return nombre.split(/\s+/).filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase() || "—"; }
 
+function TarjetaVista({ actividad, puede, responsable, siguientes, onCambiar }: {
+  actividad: Actividad; puede: boolean; responsable: string; siguientes: string[]; onCambiar: (siguiente: string) => void;
+}) {
+  const atrasada = estaAtrasada(actividad);
+  return (
+    <article aria-label={`${actividad.titulo}, ${ETIQUETAS[actividad.estado] ?? actividad.estado}`} className={`surface space-y-3 p-3 ${atrasada ? "border-destructive/50" : ""}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-xs text-muted-foreground">{actividad.cliente.contacto.empresa ?? actividad.cliente.contacto.nombre}</p>
+          <h3 className="truncate font-semibold text-foreground">{actividad.titulo}</h3>
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary" title={responsable} aria-label={`Responsable: ${responsable}`}>{avatar(responsable)}</span><span className="truncate">{responsable}</span></span>
+        <span className={atrasada ? "shrink-0 font-semibold text-destructive" : "shrink-0"}>{atrasada ? "Atrasada · " : "Vence "}{fechaCorta(actividad.fechaLimite)}</span>
+      </div>
+      {actividad.notas && <p className="line-clamp-2 text-xs text-muted-foreground">{actividad.notas}</p>}
+      <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
+        <Badge tono={actividad.estado === "bloqueada" ? "destructive" : tonoEstado(actividad.estado)} className={`min-h-7 px-2 text-xs ${actividad.estado === "bloqueada" ? "border border-destructive/30 bg-destructive/10 text-destructive" : ""}`}><span aria-hidden="true">{actividad.estado === "bloqueada" ? "!" : "•"}</span>{ETIQUETAS[actividad.estado] ?? actividad.estado}</Badge>
+        {puede && siguientes.length > 0 && <select aria-label={`Cambiar estado de ${actividad.titulo}`} value={actividad.estado} onPointerDown={(e) => e.stopPropagation()} onChange={(e) => onCambiar(e.target.value)} className="min-h-9 max-w-36 rounded-lg border border-input bg-card px-2 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{[actividad.estado, ...siguientes].map((siguiente) => <option key={siguiente} value={siguiente}>{siguiente === actividad.estado ? "Estado" : ETIQUETAS[siguiente]}</option>)}</select>}
+      </div>
+    </article>
+  );
+}
+
+function TarjetaArrastrable({ actividad, puede, responsable, siguientes, onCambiar }: {
+  actividad: Actividad; puede: boolean; responsable: string; siguientes: string[]; onCambiar: (siguiente: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: actividad.id, disabled: !puede });
+  return (
+    <div ref={setNodeRef} {...attributes} {...listeners} style={{ opacity: isDragging ? 0.4 : 1 }} className={puede ? "cursor-grab touch-none active:cursor-grabbing" : undefined}>
+      <TarjetaVista actividad={actividad} puede={puede} responsable={responsable} siguientes={siguientes} onCambiar={onCambiar} />
+    </div>
+  );
+}
+
+function ColumnaKanban({ columna, conteo, children }: { columna: { estado: string; titulo: string }; conteo: number; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: columna.estado });
+  return (
+    <section ref={setNodeRef} aria-labelledby={`columna-${columna.estado}`} className={`space-y-3 rounded-xl p-3 transition-colors ${isOver ? "bg-primary/10 ring-2 ring-primary/40" : "bg-muted/30"}`}>
+      <h2 id={`columna-${columna.estado}`} className="flex items-center justify-between gap-2 text-sm font-semibold text-foreground">{columna.titulo}<span className="rounded-full bg-card px-2 py-0.5 text-xs text-muted-foreground">{conteo}</span></h2>
+      {children}
+    </section>
+  );
+}
+
 export function DespachoActividades({
   iniciales, clientes, usuarios, esGestion, modo,
 }: {
@@ -47,6 +94,8 @@ export function DespachoActividades({
   const [error, setError] = useState("");
   const [creando, setCreando] = useState(false);
   const [form, setForm] = useState({ titulo: "", clienteId: "", periodo: "", fechaLimite: "", tipo: "extraordinaria", responsableId: "" });
+  const [arrastrando, setArrastrando] = useState<Actividad | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const actividadesDelPeriodo = actividades.filter((actividad) => new Date(actividad.periodo).toISOString().slice(0, 7) === periodo);
 
   const cargar = useCallback(async () => {
@@ -78,6 +127,21 @@ export function DespachoActividades({
     const datos = await respuesta.json().catch(() => ({}));
     if (!respuesta.ok) { setError(datos.error ?? "No se pudo actualizar"); if (respuesta.status === 409) void cargar(); return; }
     setActividades((lista) => lista.map((item) => item.id === actividad.id ? datos.actividad : item));
+  }
+
+  function onDragStart(evento: DragStartEvent) {
+    setArrastrando(actividadesDelPeriodo.find((actividad) => actividad.id === evento.active.id) ?? null);
+  }
+
+  function onDragEnd(evento: DragEndEvent) {
+    setArrastrando(null);
+    const { active, over } = evento;
+    if (!over) return;
+    const actividad = actividadesDelPeriodo.find((item) => item.id === active.id);
+    const destino = String(over.id);
+    if (!actividad || actividad.estado === destino) return;
+    if (!transicionDespachoValida(actividad.estado, destino)) { setError("Esa actividad no puede pasar directo a esa columna."); return; }
+    void cambiar(actividad, destino);
   }
 
   async function crear(evento: React.FormEvent) {
@@ -142,37 +206,27 @@ export function DespachoActividades({
         <EmptyState titulo={modo === "mias" ? "Sin actividades asignadas" : "Sin actividades"} descripcion="Cuando haya actividades para este filtro aparecerán aquí." />
       ) : (
         <>
-        <div className="hidden gap-3 sm:gap-4 md:grid md:grid-cols-2 xl:grid-cols-4">
-          {COLUMNAS.map((columna) => {
-            const delEstado = actividadesDelPeriodo.filter((actividad) => actividad.estado === columna.estado);
-            return <section key={columna.estado} aria-labelledby={`columna-${columna.estado}`} className="space-y-3 rounded-xl bg-muted/30 p-3">
-              <h2 id={`columna-${columna.estado}`} className="flex items-center justify-between gap-2 text-sm font-semibold text-foreground">{columna.titulo}<span className="rounded-full bg-card px-2 py-0.5 text-xs text-muted-foreground">{delEstado.length}</span></h2>
-              {delEstado.map((actividad) => {
-            const atrasada = estaAtrasada(actividad);
-            const puede = esGestion || modo === "mias";
-            const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor));
-            const responsable = usuarios.find((usuario) => usuario.id === actividad.responsableId)?.nombre ?? "Sin asignar";
-            return (
-              <article key={actividad.id} aria-label={`${actividad.titulo}, ${ETIQUETAS[actividad.estado] ?? actividad.estado}`} className={`surface space-y-3 p-3 ${atrasada ? "border-destructive/50" : ""}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-xs text-muted-foreground">{actividad.cliente.contacto.empresa ?? actividad.cliente.contacto.nombre}</p>
-                    <h3 className="truncate font-semibold text-foreground">{actividad.titulo}</h3>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <span className="flex min-w-0 items-center gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary" title={responsable} aria-label={`Responsable: ${responsable}`}>{avatar(responsable)}</span><span className="truncate">{responsable}</span></span>
-                  <span className={atrasada ? "shrink-0 font-semibold text-destructive" : "shrink-0"}>{atrasada ? "Atrasada · " : "Vence "}{fechaCorta(actividad.fechaLimite)}</span>
-                </div>
-                {actividad.notas && <p className="line-clamp-2 text-xs text-muted-foreground">{actividad.notas}</p>}
-                <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2"><Badge tono={actividad.estado === "bloqueada" ? "destructive" : tonoEstado(actividad.estado)} className={`min-h-7 px-2 text-xs ${actividad.estado === "bloqueada" ? "border border-destructive/30 bg-destructive/10 text-destructive" : ""}`}><span aria-hidden="true">{actividad.estado === "bloqueada" ? "!" : "•"}</span>{ETIQUETAS[actividad.estado] ?? actividad.estado}</Badge>{puede && siguientes.length > 0 && <select aria-label={`Cambiar estado de ${actividad.titulo}`} value={actividad.estado} onChange={(e) => void cambiar(actividad, e.target.value)} className="min-h-9 max-w-36 rounded-lg border border-input bg-card px-2 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{[actividad.estado, ...siguientes].map((siguiente) => <option key={siguiente} value={siguiente}>{siguiente === actividad.estado ? "Estado" : ETIQUETAS[siguiente]}</option>)}</select>}</div>
-              </article>
-            );
-              })}
-              {delEstado.length === 0 && <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">Sin actividades</p>}
-            </section>;
-          })}
-        </div>
+        <DndContext id="kanban-despacho" sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+          <div className="hidden gap-3 sm:gap-4 md:grid md:grid-cols-2 xl:grid-cols-4">
+            {COLUMNAS.map((columna) => {
+              const delEstado = actividadesDelPeriodo.filter((actividad) => actividad.estado === columna.estado);
+              return (
+                <ColumnaKanban key={columna.estado} columna={columna} conteo={delEstado.length}>
+                  {delEstado.map((actividad) => {
+                    const puede = esGestion || modo === "mias";
+                    const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor));
+                    const responsable = usuarios.find((usuario) => usuario.id === actividad.responsableId)?.nombre ?? "Sin asignar";
+                    return (
+                      <TarjetaArrastrable key={actividad.id} actividad={actividad} puede={puede} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} />
+                    );
+                  })}
+                  {delEstado.length === 0 && <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">Sin actividades</p>}
+                </ColumnaKanban>
+              );
+            })}
+          </div>
+          <DragOverlay>{arrastrando ? <div className="w-64"><TarjetaVista actividad={arrastrando} puede={false} responsable={usuarios.find((usuario) => usuario.id === arrastrando!.responsableId)?.nombre ?? "Sin asignar"} siguientes={[]} onCambiar={() => {}} /></div> : null}</DragOverlay>
+        </DndContext>
         <div className="space-y-2 md:hidden">{COLUMNAS.map((columna) => { const delEstado = actividadesDelPeriodo.filter((actividad) => actividad.estado === columna.estado); return <details key={`movil-${columna.estado}`} className="surface group"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{columna.titulo}<span className="text-sm text-muted-foreground">{delEstado.length}</span></summary><div className="space-y-3 p-3 pt-0">{delEstado.length ? delEstado.map((actividad) => { const atrasada = estaAtrasada(actividad); const responsable = usuarios.find((usuario) => usuario.id === actividad.responsableId)?.nombre ?? "Sin asignar"; const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor)); return <article key={actividad.id} className={`surface space-y-3 p-3 ${atrasada ? "border-destructive/50" : ""}`}><div><p className="text-xs text-muted-foreground">{actividad.cliente.contacto.empresa ?? actividad.cliente.contacto.nombre}</p><h3 className="font-semibold text-foreground">{actividad.titulo}</h3></div><div className="flex items-center justify-between text-xs"><span>{avatar(responsable)} · {responsable}</span><span className={atrasada ? "font-semibold text-destructive" : "text-muted-foreground"}>{atrasada ? "Atrasada · " : "Vence "}{fechaCorta(actividad.fechaLimite)}</span></div><div className="flex items-center justify-between"><Badge tono={actividad.estado === "bloqueada" ? "destructive" : tonoEstado(actividad.estado)} className={actividad.estado === "bloqueada" ? "border border-destructive/30 bg-destructive/10 text-destructive" : ""}><span aria-hidden="true">{actividad.estado === "bloqueada" ? "!" : "•"}</span>{ETIQUETAS[actividad.estado]}</Badge>{(esGestion || modo === "mias") && siguientes.length > 0 && <select aria-label={`Cambiar estado de ${actividad.titulo}`} value={actividad.estado} onChange={(e) => void cambiar(actividad, e.target.value)} className="min-h-9 rounded-lg border border-input bg-card px-2 text-xs text-foreground">{[actividad.estado, ...siguientes].map((siguiente) => <option key={siguiente} value={siguiente}>{siguiente === actividad.estado ? "Estado" : ETIQUETAS[siguiente]}</option>)}</select>}</div></article>; }) : <p className="pb-3 text-center text-xs text-muted-foreground">Sin actividades</p>}</div></details>; })}</div>
         </>
       )}

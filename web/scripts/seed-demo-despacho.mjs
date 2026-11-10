@@ -42,14 +42,20 @@ await prisma.$transaction(async (tx) => {
   const passwordHash = await bcrypt.hash(password, 10);
   const admin = await tx.usuario.upsert({
     where: { orgId_email: { orgId: org.id, email } },
-    update: { nombre: "Dirección REFMEX", passwordHash, rol: "admin", puesto: "Administrador", activo: true },
-    create: { nombre: "Dirección REFMEX", email, passwordHash, rol: "admin", puesto: "Administrador" },
+    update: { nombre: "Adrián Jiménez", passwordHash, rol: "admin", puesto: "Director general", activo: true },
+    create: { nombre: "Adrián Jiménez", email, passwordHash, rol: "admin", puesto: "Director general" },
   });
   const equipo = [];
   for (const [nombre, correo, puesto] of [
-    ["Claudia Nava", "claudia@refmex.demo", "Contador"],
-    ["Raúl Medina", "raul@refmex.demo", "Contador"],
-    ["Sofía Lara", "sofia@refmex.demo", "Gerente general"],
+    ["Cartajena", "cartajena@refmex.demo", "Gerente general"],
+    ["Darío Pérez", "dario@refmex.demo", "Contador"],
+    ["Nelson Gómez", "nelson@refmex.demo", "Contador"],
+    ["Juan José Castañeda", "juanjose@refmex.demo", "Contador"],
+    ["Abner Culebro", "abner@refmex.demo", "Contador"],
+    ["Yolanda Ruiz", "yolanda@refmex.demo", "Auxiliar contable"],
+    ["Brenda Solís", "brenda@refmex.demo", "Auxiliar contable"],
+    ["Ismael Torres", "ismael@refmex.demo", "Auxiliar contable"],
+    ["Dulce Ramos", "dulce@refmex.demo", "Auxiliar contable"],
   ]) {
     equipo.push(await tx.usuario.upsert({
       where: { orgId_email: { orgId: org.id, email: correo } },
@@ -57,6 +63,7 @@ await prisma.$transaction(async (tx) => {
       create: { nombre, email: correo, passwordHash, rol: "agente", puesto },
     }));
   }
+  const contadores = equipo.filter((usuario) => usuario.puesto === "Contador");
   await tx.ajustes.upsert({
     where: { orgId: org.id },
     update: { marcaNombre: "REFMEX", marcaColorPrimario: "#0F2341", marcaColorAcento: "#2563EB", marcaPreset: "legal" },
@@ -88,9 +95,10 @@ await prisma.$transaction(async (tx) => {
       update: { nombre, empresa: nombre },
       create: { nombre, telefono, empresa: nombre, fuente: "manual" },
     });
-    const cliente = await tx.despachoCliente.create({ data: { contactoId: contacto.id, rfc, responsableId: equipo[indice % equipo.length].id, notas: "Cliente de demostración." } });
+    const responsableId = contadores[indice % contadores.length].id;
+    const cliente = await tx.despachoCliente.create({ data: { contactoId: contacto.id, rfc, responsableId, notas: "Cliente de demostración." } });
     for (const proceso of [procesos[indice % procesos.length], procesos[(indice + 1) % procesos.length]]) {
-      await tx.despachoClienteProceso.create({ data: { clienteId: cliente.id, procesoId: proceso.id, responsableId: equipo[indice % equipo.length].id } });
+      await tx.despachoClienteProceso.create({ data: { clienteId: cliente.id, procesoId: proceso.id, responsableId } });
     }
     clientes.push(cliente);
   }
@@ -134,6 +142,8 @@ await prisma.$transaction(async (tx) => {
   // Una actividad atrasada visible para la demo.
   const atrasada = await tx.despachoActividad.findFirst({ where: { estado: { not: "completada" } }, orderBy: { fechaLimite: "asc" } });
   if (atrasada) await tx.despachoActividad.update({ where: { id: atrasada.id }, data: { fechaLimite: fechaCivil(anio, mes, Math.max(1, new Date().getDate() - 2)) } });
+
+  await tx.usuario.deleteMany({ where: { orgId: org.id, email: { in: ["claudia@refmex.demo", "raul@refmex.demo", "sofia@refmex.demo"] } } });
 });
 
 imprimirCredencialesDemo({ nombre: "REFMEX", slug: SLUG, email, password, passwordGenerada });

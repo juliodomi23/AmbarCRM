@@ -116,15 +116,19 @@ export function Badge({
   );
 }
 
+const ANCHO_MODAL: Record<string, string> = { md: "max-w-md", lg: "max-w-xl", xl: "max-w-3xl" };
+
 export function Modal({
   abierto,
   onClose,
   titulo,
+  ancho = "md",
   children
 }: {
   abierto: boolean;
   onClose: () => void;
   titulo: string;
+  ancho?: "md" | "lg" | "xl";
   children: React.ReactNode;
 }) {
   useEffect(() => {
@@ -139,7 +143,7 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label={titulo}>
       <div className="animate-fade-in absolute inset-0 bg-foreground/40 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="surface surface-pop animate-pop relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl p-5 sm:p-6">
+      <div className={`surface surface-pop animate-pop relative max-h-[90vh] w-full ${ANCHO_MODAL[ancho]} overflow-y-auto rounded-2xl p-5 sm:p-6`}>
         <h2 className="mb-4 text-lg font-semibold text-primary">{titulo}</h2>
         {children}
       </div>
