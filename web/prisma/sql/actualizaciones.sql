@@ -1,5 +1,5 @@
-﻿-- Actualizaciones idempotentes para bases nuevas y existentes.
--- Este archivo se ejecuta con el usuario dueÃ±o en cada deploy.
+-- Actualizaciones idempotentes para bases nuevas y existentes.
+-- Este archivo se ejecuta con el usuario dueño en cada deploy.
 
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS marca_nombre TEXT;
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS marca_logo TEXT;
@@ -80,7 +80,7 @@ $$;
 REVOKE ALL ON FUNCTION resolve_org_by_page(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION resolve_org_by_page(text) TO crm_app;
 
--- Un phone_number_id de Meta solo puede estar activo en una organizaciÃ³n.
+-- Un phone_number_id de Meta solo puede estar activo en una organización.
 CREATE UNIQUE INDEX IF NOT EXISTS canales_whatsapp_phone_number_id_activo_uq
   ON canales_whatsapp ((config->>'phoneNumberId'))
   WHERE activo AND config->>'phoneNumberId' IS NOT NULL;
@@ -93,7 +93,7 @@ CREATE OR REPLACE FUNCTION resolve_org_by_phone(p_phone text)
     ORDER BY id DESC LIMIT 1
 $$;
 
--- MÃ³dulos configurables, campos personalizados y citas. Idempotente para producciÃ³n.
+-- Módulos configurables, campos personalizados y citas. Idempotente para producción.
 CREATE TABLE IF NOT EXISTS modulos_org (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
@@ -110,9 +110,9 @@ SET config = jsonb_set(
     WHEN clave IN ('contratos', 'cobros', 'panel_ar') THEN
       '["Administrador"]'::jsonb
     WHEN clave = 'pacientes' THEN
-      '["Administrador", "Doctor", "Coordinador clÃ­nico"]'::jsonb
+      '["Administrador", "Doctor", "Coordinador clínico"]'::jsonb
     WHEN clave IN ('legal', 'asesorias_legales', 'finanzas_legales', 'operacion_legal') THEN
-      '["Administrador", "Abogado", "Coordinador jurÃ­dico", "Pasante"]'::jsonb
+      '["Administrador", "Abogado", "Coordinador jurídico", "Pasante"]'::jsonb
     ELSE '[]'::jsonb
   END,
   true
@@ -931,17 +931,17 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
 TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- multi-tenant.sql crea la organizaciÃ³n plataforma con id explÃ­cito. Sin sincronizar
--- la secuencia, el primer tenant creado despuÃ©s puede intentar reutilizar ese id.
--- Nunca baja la secuencia: si se borrÃ³ una org con id mayor, su id no se reutiliza.
+-- multi-tenant.sql crea la organización plataforma con id explícito. Sin sincronizar
+-- la secuencia, el primer tenant creado después puede intentar reutilizar ese id.
+-- Nunca baja la secuencia: si se borró una org con id mayor, su id no se reutiliza.
 SELECT setval(
   pg_get_serial_sequence('orgs', 'id'),
   GREATEST(COALESCE((SELECT MAX(id) FROM orgs), 0), (SELECT last_value FROM orgs_id_seq), 1),
   true
 );
 
--- Lealtad (Aurum): el webhook de Aurum llega sin sesiÃ³n; esta funciÃ³n solo enruta el
--- slug del negocio de Aurum a la empresa que lo conectÃ³ (como resolve_org_by_phone).
+-- Lealtad (Aurum): el webhook de Aurum llega sin sesión; esta función solo enruta el
+-- slug del negocio de Aurum a la empresa que lo conectó (como resolve_org_by_phone).
 CREATE OR REPLACE FUNCTION resolve_org_by_aurum_slug(p_slug text)
   RETURNS bigint LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
     SELECT org_id FROM modulos_org
@@ -950,17 +950,17 @@ CREATE OR REPLACE FUNCTION resolve_org_by_aurum_slug(p_slug text)
 $$;
 
 -- /api/media verifica que los archivos antiguos (sin prefijo de empresa) pertenezcan a un
--- mensaje de la empresa que los pide; este Ã­ndice evita recorrer toda la tabla.
+-- mensaje de la empresa que los pide; este índice evita recorrer toda la tabla.
 CREATE INDEX IF NOT EXISTS mensajes_media_url_idx ON mensajes(media_url) WHERE media_url IS NOT NULL;
 
--- BÃºsqueda de contactos sin acentos (Â«monicaÂ» encuentra Â«MÃ³nicaÂ»). ExtensiÃ³n confiable
--- desde Postgres 13: la crea el dueÃ±o de la base en db-migrate.
+-- Búsqueda de contactos sin acentos («monica» encuentra «Mónica»). Extensión confiable
+-- desde Postgres 13: la crea el dueño de la base en db-migrate.
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
--- Reservas en lÃ­nea (motor de Cita en Click): servicios, horarios por especialista y
+-- Reservas en línea (motor de Cita en Click): servicios, horarios por especialista y
 -- excepciones. Las horas se guardan como minutos desde la medianoche (9:30 = 570) en la
 -- zona del negocio. La doble reserva se evita bloqueando al especialista (FOR UPDATE),
--- no con EXCLUDE: un EXCLUDE sobre citas ya existentes podrÃ­a hacer fallar la migraciÃ³n.
+-- no con EXCLUDE: un EXCLUDE sobre citas ya existentes podría hacer fallar la migración.
 CREATE TABLE IF NOT EXISTS servicios_reserva (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
@@ -1025,15 +1025,15 @@ END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON servicios_reserva, servicio_reserva_doctores, horarios_doctor, excepciones_horario TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- La pÃ¡gina pÃºblica de una cita (cancelar sin cuenta) llega sin sesiÃ³n: esta funciÃ³n solo
--- enruta el token del enlace a la empresa dueÃ±a de la cita.
+-- La página pública de una cita (cancelar sin cuenta) llega sin sesión: esta función solo
+-- enruta el token del enlace a la empresa dueña de la cita.
 CREATE OR REPLACE FUNCTION resolve_org_by_cita_token(p_token text)
   RETURNS bigint LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
     SELECT org_id FROM citas WHERE token_gestion = p_token LIMIT 1
 $$;
 
 -- Caja de mostrador: turnos, movimientos, pagos desglosados e idempotencia por
--- peticiÃ³n del cliente. Los Ã­ndices parciales son la Ãºltima barrera ante dos
+-- petición del cliente. Los índices parciales son la última barrera ante dos
 -- aperturas concurrentes del mismo usuario o de la misma caja.
 CREATE TABLE IF NOT EXISTS cajas (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -1118,7 +1118,7 @@ END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON cajas, turnos_caja, movimientos_caja, pagos_venta TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- A2 Â· Devoluciones, apartados y crÃ©dito a clientes.
+-- A2 · Devoluciones, apartados y crédito a clientes.
 ALTER TABLE ventas ADD COLUMN IF NOT EXISTS es_credito BOOLEAN NOT NULL DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS devoluciones_venta (
@@ -1238,12 +1238,12 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON devoluciones_venta, devolucion_partidas,
   abonos_apartado, cuentas_cliente, movimientos_cuenta_cliente, notas_credito_cliente TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- CorrecciÃ³n A2 Â· las notas de crÃ©dito pueden pagar ventas de caja.
+-- Corrección A2 · las notas de crédito pueden pagar ventas de caja.
 ALTER TABLE pagos_venta DROP CONSTRAINT IF EXISTS pagos_venta_metodo_check;
 ALTER TABLE pagos_venta ADD CONSTRAINT pagos_venta_metodo_check
   CHECK (metodo IN ('efectivo', 'tarjeta', 'transferencia', 'nota_credito', 'mercado_pago', 'stripe', 'mock'));
 
--- B Â· Cotizaciones.
+-- B · Cotizaciones.
 CREATE TABLE IF NOT EXISTS cotizaciones (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
@@ -1311,7 +1311,7 @@ CREATE OR REPLACE FUNCTION resolve_org_by_cotizacion_token(p_token text)
 REVOKE ALL ON FUNCTION resolve_org_by_cotizacion_token(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION resolve_org_by_cotizacion_token(text) TO crm_app;
 
--- C Â· Pedidos en lÃ­nea y catÃ¡logo pÃºblico.
+-- C · Pedidos en línea y catálogo público.
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS visible_en_linea BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS agotado_manual BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS etiquetas_en_linea TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
@@ -1355,7 +1355,7 @@ CREATE OR REPLACE FUNCTION resolve_org_by_pedido_token(p_token text)
 REVOKE ALL ON FUNCTION resolve_org_by_pedido_token(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION resolve_org_by_pedido_token(text) TO crm_app;
 
--- A3a Â· Motor Ãºnico de precios, listas, volumen y promociones.
+-- A3a · Motor único de precios, listas, volumen y promociones.
 CREATE TABLE IF NOT EXISTS listas_precios (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
@@ -1442,7 +1442,7 @@ END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON listas_precios, precios_volumen, lista_precio_productos, promociones TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- A3b Â· Variantes como productos independientes.
+-- A3b · Variantes como productos independientes.
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS grupo_id BIGINT;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS atributos JSONB NOT NULL DEFAULT '{}'::jsonb;
 DO $$ BEGIN
@@ -1453,10 +1453,10 @@ DO $$ BEGIN
 END $$;
 CREATE INDEX IF NOT EXISTS productos_grupo_id_idx ON productos(grupo_id);
 
--- A4 Â· Costo histÃ³rico al aplicar inventario.
+-- A4 · Costo histórico al aplicar inventario.
 ALTER TABLE venta_partidas ADD COLUMN IF NOT EXISTS costo_unitario NUMERIC(12,2);
 
--- Bot API Â· firma HMAC hacia n8n, asesor fijo para handoff y bitÃ¡cora de acciones del bot.
+-- Bot API · firma HMAC hacia n8n, asesor fijo para handoff y bitácora de acciones del bot.
 ALTER TABLE bots ADD COLUMN IF NOT EXISTS signing_secret TEXT;
 ALTER TABLE bots ADD COLUMN IF NOT EXISTS asesor_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL;
 
@@ -1479,28 +1479,28 @@ DROP POLICY IF EXISTS org_isolation ON auditoria_bot;
 CREATE POLICY org_isolation ON auditoria_bot
   USING (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint)
   WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::bigint);
--- BitÃ¡cora de solo agregar: la app lee e inserta, nunca edita ni borra.
--- (Los DEFAULT PRIVILEGES de multi-tenant.sql dan UPDATE/DELETE a las tablas nuevas; se quitan aquÃ­.)
+-- Bitácora de solo agregar: la app lee e inserta, nunca edita ni borra.
+-- (Los DEFAULT PRIVILEGES de multi-tenant.sql dan UPDATE/DELETE a las tablas nuevas; se quitan aquí.)
 GRANT SELECT, INSERT ON auditoria_bot TO crm_app;
 REVOKE UPDATE, DELETE, TRUNCATE ON auditoria_bot FROM crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- Bot API Â· permisos por bot.
+-- Bot API · permisos por bot.
 ALTER TABLE bots ADD COLUMN IF NOT EXISTS permisos TEXT[];
--- Los bots que ya existen conservan solo lo que sus rutas de producciÃ³n les permitÃ­an: leer la
--- conversaciÃ³n, responder, dejar notas, mover la etapa y handoff/etiquetas. Tareas, citas y
--- cotizaciones no existÃ­an en producciÃ³n y se activan despuÃ©s, por cliente.
+-- Los bots que ya existen conservan solo lo que sus rutas de producción les permitían: leer la
+-- conversación, responder, dejar notas, mover la etapa y handoff/etiquetas. Tareas, citas y
+-- cotizaciones no existían en producción y se activan después, por cliente.
 -- Solo toca filas con permisos NULL: volver a correr el archivo no pisa lo que el admin edite.
 UPDATE bots
    SET permisos = ARRAY['leer_perfil', 'enviar_mensaje', 'notas_internas', 'mover_embudo', 'handoff']
  WHERE permisos IS NULL;
--- Los bots nuevos nacen con el conjunto mÃ­nimo.
+-- Los bots nuevos nacen con el conjunto mínimo.
 ALTER TABLE bots ALTER COLUMN permisos SET DEFAULT ARRAY['leer_perfil', 'enviar_mensaje', 'notas_internas', 'handoff'];
 ALTER TABLE bots ALTER COLUMN permisos SET NOT NULL;
 
--- D Â· ReseÃ±as de Google.
--- resenas: calificaciÃ³n que deja el cliente en /opinion antes de saltar a Google (no se filtra por estrella).
--- solicitudes_resena: una fila por intento de pedir reseÃ±a; sirve de bitÃ¡cora y de candado de "una cada N dÃ­as".
+-- D · Reseñas de Google.
+-- resenas: calificación que deja el cliente en /opinion antes de saltar a Google (no se filtra por estrella).
+-- solicitudes_resena: una fila por intento de pedir reseña; sirve de bitácora y de candado de "una cada N días".
 CREATE TABLE IF NOT EXISTS resenas (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
@@ -1536,10 +1536,10 @@ END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON resenas, solicitudes_resena TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- A5 Â· Ventas sin internet (opcional por empresa: caja.config.ventasSinRed).
--- sin_red: la venta llegÃ³ por la cola local. vendida_at: instante real (reloj de la caja); created_at = vendida_at.
+-- A5 · Ventas sin internet (opcional por empresa: caja.config.ventasSinRed).
+-- sin_red: la venta llegó por la cola local. vendida_at: instante real (reloj de la caja); created_at = vendida_at.
 -- revision_motivos: precio_distinto | tardia | inventario_negativo. turno_original_id: turno de origen cuando
--- la venta entrÃ³ al turno abierto actual porque el original ya estaba cerrado antes de la venta.
+-- la venta entró al turno abierto actual porque el original ya estaba cerrado antes de la venta.
 ALTER TABLE ventas ADD COLUMN IF NOT EXISTS sin_red BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE ventas ADD COLUMN IF NOT EXISTS vendida_at TIMESTAMPTZ;
 ALTER TABLE ventas ADD COLUMN IF NOT EXISTS subida_at TIMESTAMPTZ;
@@ -1553,7 +1553,7 @@ CREATE INDEX IF NOT EXISTS ventas_revision_idx ON ventas(org_id, created_at)
   WHERE sin_red AND revision_resuelta_at IS NULL AND cardinality(revision_motivos) > 0;
 ALTER TABLE movimientos_inventario ADD COLUMN IF NOT EXISTS sin_red BOOLEAN NOT NULL DEFAULT false;
 
--- Ventas sin internet que el servidor rechazÃ³ (4xx definitivo): la caja las marca con error y aquÃ­ queda el
+-- Ventas sin internet que el servidor rechazó (4xx definitivo): la caja las marca con error y aquí queda el
 -- registro completo para que el Encargado decida. UNIQUE por uuid: reenviar no duplica el rechazo.
 CREATE TABLE IF NOT EXISTS cola_caja_rechazos (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -1585,17 +1585,17 @@ END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON cola_caja_rechazos TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- A5 Â· Las ventas sin internet (cola local) pueden dejar la existencia en negativo a propÃ³sito;
+-- A5 · Las ventas sin internet (cola local) pueden dejar la existencia en negativo a propósito;
 -- queda marcada (ventas.revision_motivos, movimientos_inventario.sin_red) y se corrige con una
--- entrada de inventario. Por eso estas tres columnas ya no exigen >= 0. stock_minimo sÃ­.
--- (Las ventas de caja normal y los pedidos en lÃ­nea siguen rechazando la sobreventa en cÃ³digo.)
+-- entrada de inventario. Por eso estas tres columnas ya no exigen >= 0. stock_minimo sí.
+-- (Las ventas de caja normal y los pedidos en línea siguen rechazando la sobreventa en código.)
 ALTER TABLE productos DROP CONSTRAINT IF EXISTS productos_stock_check;
 ALTER TABLE movimientos_inventario
   DROP CONSTRAINT IF EXISTS movimientos_inventario_existencia_antes_check,
   DROP CONSTRAINT IF EXISTS movimientos_inventario_existencia_despues_check;
 
 -- Etiquetas unificadas en el contacto: el chat ya lee y escribe contacto_etiquetas (las mismas de
--- Contactos, DifusiÃ³n y el bot). Las que estaban solo en conversaciones.etiquetas pasan al contacto.
+-- Contactos, Difusión y el bot). Las que estaban solo en conversaciones.etiquetas pasan al contacto.
 INSERT INTO contacto_etiquetas (org_id, contacto_id, etiqueta_id)
 SELECT DISTINCT c.org_id, c.contacto_id, e.id
   FROM conversaciones c
@@ -1603,7 +1603,7 @@ SELECT DISTINCT c.org_id, c.contacto_id, e.id
   JOIN etiquetas e ON e.org_id = c.org_id AND e.nombre = t.nombre
 ON CONFLICT DO NOTHING;
 
--- Ãmbar Rojo Â· contratos y cobros. NULL representa un dato pendiente de confirmar.
+-- Ámbar Rojo · contratos y cobros. NULL representa un dato pendiente de confirmar.
 CREATE TABLE IF NOT EXISTS contratos (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
@@ -1634,7 +1634,7 @@ CREATE TABLE IF NOT EXISTS cobros (
     OR (concepto <> 'mensualidad' AND periodo IS NULL)),
   UNIQUE (contrato_id, concepto, periodo)
 );
--- Un UNIQUE normal permite varios NULL: los cargos de cierre necesitan este Ã­ndice parcial.
+-- Un UNIQUE normal permite varios NULL: los cargos de cierre necesitan este índice parcial.
 CREATE UNIQUE INDEX IF NOT EXISTS cobros_cierre_unico ON cobros(contrato_id, concepto)
   WHERE concepto IN ('anticipo','balance');
 CREATE INDEX IF NOT EXISTS cobros_org_estado_vence_idx ON cobros(org_id, estado, vence);
@@ -1699,7 +1699,7 @@ END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON servidores, heartbeats_servidor TO crm_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_app;
 
--- Resuelve Ãºnicamente la identidad; la lectura/escritura posterior sigue bajo RLS.
+-- Resuelve únicamente la identidad; la lectura/escritura posterior sigue bajo RLS.
 CREATE OR REPLACE FUNCTION resolve_servidor_by_heartbeat_hash(token_hash TEXT)
 RETURNS TABLE(org_id BIGINT, servidor_id BIGINT)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $$
@@ -1801,11 +1801,11 @@ GRANT EXECUTE ON FUNCTION meta_page_other_channels(text, text, text, bigint) TO 
 ALTER TABLE citas ADD COLUMN IF NOT EXISTS recordatorio_intentos INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE citas ADD COLUMN IF NOT EXISTS recordatorio_intentado_at TIMESTAMPTZ;
 
--- La restricciÃ³n permanece aunque se elimine el especialista: nunca abre toda la agenda.
+-- La restricción permanece aunque se elimine el especialista: nunca abre toda la agenda.
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS agenda_solo_propia BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS agenda_doctor_id BIGINT REFERENCES doctores(id) ON DELETE SET NULL;
 
--- RecuperaciÃ³n de contraseÃ±a: el token original nunca se persiste.
+-- Recuperación de contraseña: el token original nunca se persiste.
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_cambiada_at TIMESTAMPTZ;
 CREATE UNIQUE INDEX IF NOT EXISTS usuarios_id_org_id_key ON usuarios(id, org_id);
 
@@ -1838,7 +1838,7 @@ $$;
 REVOKE ALL ON FUNCTION resolve_org_by_password_hash(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION resolve_org_by_password_hash(text) TO crm_app;
 
--- Fase 3: planificaciÃ³n interna. La aprobaciÃ³n no publica ni envÃ­a anuncios.
+-- Fase 3: planificación interna. La aprobación no publica ni envía anuncios.
 CREATE TABLE IF NOT EXISTS campanas_marketing (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id),
@@ -1870,7 +1870,7 @@ CREATE POLICY org_isolation ON campanas_marketing
 GRANT SELECT, INSERT, UPDATE ON campanas_marketing TO crm_app;
 REVOKE DELETE, TRUNCATE ON campanas_marketing FROM crm_app;
 GRANT USAGE, SELECT ON SEQUENCE campanas_marketing_id_seq TO crm_app;
--- CampaÃ±as de envÃ­o para EXI. La bandera del mÃ³dulo se activa por separado desde el panel.
+-- Campañas de envío para EXI. La bandera del módulo se activa por separado desde el panel.
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS tarifa_marketing_usd NUMERIC(8,4) NOT NULL DEFAULT 0.04;
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS campanas_envio_activas BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE ajustes ADD COLUMN IF NOT EXISTS campanas_envio_cambiado_por BIGINT;
@@ -1947,7 +1947,7 @@ CREATE POLICY org_isolation ON campanas_destinatarios
 GRANT SELECT, INSERT, UPDATE, DELETE ON campanas_envio, campanas_destinatarios TO crm_app;
 GRANT USAGE, SELECT ON SEQUENCE campanas_envio_id_seq, campanas_destinatarios_id_seq TO crm_app;
 
--- Lectura cronolÃ³gica de conversaciones y mensajes para la API del bot.
+-- Lectura cronológica de conversaciones y mensajes para la API del bot.
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -2001,9 +2001,9 @@ END $$;
 REVOKE ALL ON FUNCTION registrar_dispositivo_push(BIGINT, TEXT, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION registrar_dispositivo_push(BIGINT, TEXT, TEXT) TO crm_app;
 
--- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
--- Pagos en lÃ­nea (Fase P0-1). Nacen multi-tenant; este bloque es idempotente.
--- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Pagos en línea (Fase P0-1). Nacen multi-tenant; este bloque es idempotente.
+-- ─────────────────────────────────────────────────────────────────────────────
 ALTER TABLE pagos_venta DROP CONSTRAINT IF EXISTS pagos_venta_metodo_check;
 ALTER TABLE pagos_venta ADD CONSTRAINT pagos_venta_metodo_check
   CHECK (metodo IN ('efectivo', 'tarjeta', 'transferencia', 'nota_credito', 'mercado_pago', 'stripe', 'mock'));
@@ -2735,3 +2735,229 @@ BEGIN
     ALTER TABLE taller_pagos ADD CONSTRAINT taller_pagos_tipo_check CHECK (tipo IN ('anticipo','abono','liquidacion'));
   END IF;
 END $$;
+
+-- Despacho contable: clientes, procesos recurrentes y avance por periodo.
+CREATE TABLE IF NOT EXISTS despacho_clientes (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  contacto_id BIGINT NOT NULL,
+  rfc TEXT,
+  responsable_id BIGINT,
+  activo BOOLEAN NOT NULL DEFAULT true,
+  notas TEXT,
+  version INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT despacho_clientes_contacto_org_fk FOREIGN KEY (contacto_id, org_id) REFERENCES contactos(id, org_id) ON DELETE RESTRICT,
+  CONSTRAINT despacho_clientes_org_contacto_uq UNIQUE (org_id, contacto_id),
+  CONSTRAINT despacho_clientes_id_org_uq UNIQUE (id, org_id)
+);
+CREATE INDEX IF NOT EXISTS despacho_clientes_org_activo_idx ON despacho_clientes(org_id, activo);
+CREATE INDEX IF NOT EXISTS despacho_clientes_org_responsable_idx ON despacho_clientes(org_id, responsable_id);
+
+CREATE TABLE IF NOT EXISTS despacho_procesos (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  nombre TEXT NOT NULL,
+  periodicidad TEXT NOT NULL CHECK (periodicidad IN ('semanal','mensual','bimestral','trimestral','anual')),
+  activo BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT despacho_procesos_org_nombre_uq UNIQUE (org_id, nombre),
+  CONSTRAINT despacho_procesos_id_org_uq UNIQUE (id, org_id)
+);
+CREATE INDEX IF NOT EXISTS despacho_procesos_org_activo_idx ON despacho_procesos(org_id, activo);
+
+CREATE TABLE IF NOT EXISTS despacho_proceso_actividades (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  proceso_id BIGINT NOT NULL,
+  nombre TEXT NOT NULL,
+  orden INTEGER NOT NULL DEFAULT 0,
+  dia_limite INTEGER NOT NULL DEFAULT 1 CHECK (dia_limite BETWEEN 1 AND 31),
+  activo BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT despacho_plantillas_proceso_org_fk FOREIGN KEY (proceso_id, org_id) REFERENCES despacho_procesos(id, org_id) ON DELETE CASCADE,
+  CONSTRAINT despacho_plantillas_id_org_uq UNIQUE (id, org_id)
+);
+CREATE INDEX IF NOT EXISTS despacho_plantillas_org_proceso_idx ON despacho_proceso_actividades(org_id, proceso_id, orden);
+
+CREATE TABLE IF NOT EXISTS despacho_cliente_procesos (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  cliente_id BIGINT NOT NULL,
+  proceso_id BIGINT NOT NULL,
+  responsable_id BIGINT,
+  activo BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT despacho_cliente_procesos_cliente_org_fk FOREIGN KEY (cliente_id, org_id) REFERENCES despacho_clientes(id, org_id) ON DELETE CASCADE,
+  CONSTRAINT despacho_cliente_procesos_proceso_org_fk FOREIGN KEY (proceso_id, org_id) REFERENCES despacho_procesos(id, org_id) ON DELETE CASCADE,
+  CONSTRAINT despacho_cliente_procesos_org_cliente_proceso_uq UNIQUE (org_id, cliente_id, proceso_id),
+  CONSTRAINT despacho_cliente_procesos_id_org_uq UNIQUE (id, org_id)
+);
+CREATE INDEX IF NOT EXISTS despacho_cliente_procesos_org_cliente_idx ON despacho_cliente_procesos(org_id, cliente_id);
+CREATE INDEX IF NOT EXISTS despacho_cliente_procesos_org_proceso_idx ON despacho_cliente_procesos(org_id, proceso_id);
+
+CREATE TABLE IF NOT EXISTS despacho_actividades (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  cliente_id BIGINT NOT NULL,
+  cliente_proceso_id BIGINT,
+  plantilla_actividad_id BIGINT,
+  tipo TEXT NOT NULL DEFAULT 'fija' CHECK (tipo IN ('fija','extraordinaria')),
+  titulo TEXT NOT NULL,
+  periodo DATE NOT NULL,
+  responsable_id BIGINT,
+  fecha_limite DATE NOT NULL,
+  estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente','en_proceso','completada','bloqueada')),
+  completada_at TIMESTAMPTZ,
+  notas TEXT,
+  version INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT despacho_actividades_cliente_org_fk FOREIGN KEY (cliente_id, org_id) REFERENCES despacho_clientes(id, org_id) ON DELETE CASCADE,
+  CONSTRAINT despacho_actividades_cliente_proceso_org_fk FOREIGN KEY (cliente_proceso_id, org_id) REFERENCES despacho_cliente_procesos(id, org_id) ON DELETE RESTRICT,
+  CONSTRAINT despacho_actividades_plantilla_org_fk FOREIGN KEY (plantilla_actividad_id, org_id) REFERENCES despacho_proceso_actividades(id, org_id) ON DELETE RESTRICT,
+  CONSTRAINT despacho_actividades_id_org_uq UNIQUE (id, org_id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS despacho_actividades_org_cliente_plantilla_periodo_uq
+  ON despacho_actividades(org_id, cliente_id, plantilla_actividad_id, periodo)
+  WHERE plantilla_actividad_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS despacho_actividades_org_periodo_idx ON despacho_actividades(org_id, periodo);
+CREATE INDEX IF NOT EXISTS despacho_actividades_org_responsable_estado_idx ON despacho_actividades(org_id, responsable_id, estado);
+CREATE INDEX IF NOT EXISTS despacho_actividades_org_cliente_idx ON despacho_actividades(org_id, cliente_id);
+
+CREATE TABLE IF NOT EXISTS despacho_actividad_cambios (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  actividad_id BIGINT NOT NULL,
+  estado_anterior TEXT,
+  estado_nuevo TEXT NOT NULL CHECK (estado_nuevo IN ('pendiente','en_proceso','completada','bloqueada')),
+  user_id BIGINT,
+  nota TEXT,
+  creado_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT despacho_cambios_actividad_org_fk FOREIGN KEY (actividad_id, org_id) REFERENCES despacho_actividades(id, org_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS despacho_cambios_org_actividad_idx ON despacho_actividad_cambios(org_id, actividad_id, creado_at);
+
+DO $$ DECLARE t TEXT; BEGIN
+  FOREACH t IN ARRAY ARRAY['despacho_clientes','despacho_procesos','despacho_proceso_actividades','despacho_cliente_procesos','despacho_actividades','despacho_actividad_cambios'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format('CREATE POLICY org_isolation ON %I USING (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint) WITH CHECK (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint)', t);
+  END LOOP;
+END $$;
+GRANT SELECT, INSERT, UPDATE, DELETE ON despacho_clientes,despacho_procesos,despacho_proceso_actividades,despacho_cliente_procesos,despacho_actividades,despacho_actividad_cambios TO crm_app;
+GRANT USAGE, SELECT ON SEQUENCE despacho_clientes_id_seq,despacho_procesos_id_seq,despacho_proceso_actividades_id_seq,despacho_cliente_procesos_id_seq,despacho_actividades_id_seq,despacho_actividad_cambios_id_seq TO crm_app;
+
+-- Contenido y copys: piezas, revisión, comentarios y calendario editorial.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'campanas_marketing_id_org_uq') THEN
+    ALTER TABLE campanas_marketing ADD CONSTRAINT campanas_marketing_id_org_uq UNIQUE (id, org_id);
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS contenido_piezas (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  titulo TEXT NOT NULL,
+  canal TEXT NOT NULL CHECK (canal IN ('instagram','facebook','linkedin','tiktok','whatsapp','blog','email','otro')),
+  formato TEXT NOT NULL CHECK (formato IN ('imagen','video','carrusel','texto','reel','historia','articulo','otro')),
+  copy TEXT NOT NULL DEFAULT '',
+  notas_diseno TEXT,
+  enlace_material TEXT,
+  estado TEXT NOT NULL DEFAULT 'idea' CHECK (estado IN ('idea','redaccion','revision','cambios','aprobado','programado','publicado')),
+  redactor_id BIGINT,
+  revisor_id BIGINT,
+  fecha_publicacion TIMESTAMPTZ,
+  publicada_at TIMESTAMPTZ,
+  contacto_id BIGINT,
+  campana_id BIGINT,
+  version INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT contenido_piezas_contacto_org_fk FOREIGN KEY (contacto_id, org_id) REFERENCES contactos(id, org_id) ON DELETE RESTRICT,
+  CONSTRAINT contenido_piezas_campana_org_fk FOREIGN KEY (campana_id, org_id) REFERENCES campanas_marketing(id, org_id) ON DELETE RESTRICT,
+  CONSTRAINT contenido_piezas_id_org_uq UNIQUE (id, org_id)
+);
+CREATE INDEX IF NOT EXISTS contenido_piezas_org_estado_fecha_idx ON contenido_piezas(org_id, estado, fecha_publicacion);
+CREATE INDEX IF NOT EXISTS contenido_piezas_org_revisor_idx ON contenido_piezas(org_id, revisor_id, estado);
+CREATE INDEX IF NOT EXISTS contenido_piezas_org_redactor_idx ON contenido_piezas(org_id, redactor_id);
+
+CREATE TABLE IF NOT EXISTS contenido_comentarios (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  pieza_id BIGINT NOT NULL,
+  usuario_id BIGINT NOT NULL,
+  texto TEXT NOT NULL,
+  tipo TEXT NOT NULL DEFAULT 'comentario' CHECK (tipo IN ('comentario','cambio_solicitado')),
+  creado_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT contenido_comentarios_pieza_org_fk FOREIGN KEY (pieza_id, org_id) REFERENCES contenido_piezas(id, org_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS contenido_comentarios_org_pieza_idx ON contenido_comentarios(org_id, pieza_id, creado_at);
+
+CREATE TABLE IF NOT EXISTS contenido_cambios (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  pieza_id BIGINT NOT NULL,
+  estado_anterior TEXT,
+  estado_nuevo TEXT NOT NULL CHECK (estado_nuevo IN ('idea','redaccion','revision','cambios','aprobado','programado','publicado')),
+  user_id BIGINT,
+  nota TEXT,
+  creado_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT contenido_cambios_pieza_org_fk FOREIGN KEY (pieza_id, org_id) REFERENCES contenido_piezas(id, org_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS contenido_cambios_org_pieza_idx ON contenido_cambios(org_id, pieza_id, creado_at);
+
+DO $$ DECLARE t TEXT; BEGIN
+  FOREACH t IN ARRAY ARRAY['contenido_piezas','contenido_comentarios','contenido_cambios'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format('CREATE POLICY org_isolation ON %I USING (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint) WITH CHECK (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint)', t);
+  END LOOP;
+END $$;
+GRANT SELECT, INSERT, UPDATE, DELETE ON contenido_piezas,contenido_comentarios,contenido_cambios TO crm_app;
+GRANT USAGE, SELECT ON SEQUENCE contenido_piezas_id_seq,contenido_comentarios_id_seq,contenido_cambios_id_seq TO crm_app;
+
+-- Auditoria: evaluacion mensual por area con semaforo de cumplimiento.
+CREATE TABLE IF NOT EXISTS auditoria_evaluaciones (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  colaborador_id BIGINT NOT NULL,
+  evaluador_id BIGINT NOT NULL,
+  area TEXT NOT NULL CHECK (area IN ('contabilidad','administracion','marketing','adquisicion')),
+  periodo DATE NOT NULL,
+  color TEXT NOT NULL CHECK (color IN ('rojo','amarillo','verde','gris_na')),
+  nota TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT auditoria_evaluaciones_colaborador_org_fk FOREIGN KEY (colaborador_id, org_id) REFERENCES usuarios(id, org_id) ON DELETE RESTRICT,
+  CONSTRAINT auditoria_evaluaciones_evaluador_org_fk FOREIGN KEY (evaluador_id, org_id) REFERENCES usuarios(id, org_id) ON DELETE RESTRICT,
+  CONSTRAINT auditoria_evaluaciones_unica UNIQUE (org_id, colaborador_id, area, periodo),
+  CONSTRAINT auditoria_evaluaciones_id_org_uq UNIQUE (id, org_id)
+);
+CREATE INDEX IF NOT EXISTS auditoria_evaluaciones_org_area_periodo_idx ON auditoria_evaluaciones(org_id, area, periodo);
+CREATE INDEX IF NOT EXISTS auditoria_evaluaciones_org_colaborador_periodo_idx ON auditoria_evaluaciones(org_id, colaborador_id, periodo);
+
+CREATE TABLE IF NOT EXISTS auditoria_evaluacion_cambios (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  org_id BIGINT NOT NULL DEFAULT NULLIF(current_setting('app.current_org', true), '')::bigint REFERENCES orgs(id) ON DELETE CASCADE,
+  evaluacion_id BIGINT NOT NULL,
+  color_anterior TEXT CHECK (color_anterior IN ('rojo','amarillo','verde','gris_na')),
+  color_nuevo TEXT NOT NULL CHECK (color_nuevo IN ('rojo','amarillo','verde','gris_na')),
+  user_id BIGINT,
+  nota TEXT,
+  creado_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT auditoria_evaluacion_cambios_evaluacion_org_fk FOREIGN KEY (evaluacion_id, org_id) REFERENCES auditoria_evaluaciones(id, org_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS auditoria_evaluacion_cambios_org_evaluacion_idx ON auditoria_evaluacion_cambios(org_id, evaluacion_id, creado_at);
+
+DO $$ DECLARE t TEXT; BEGIN
+  FOREACH t IN ARRAY ARRAY['auditoria_evaluaciones','auditoria_evaluacion_cambios'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS org_isolation ON %I', t);
+    EXECUTE format('CREATE POLICY org_isolation ON %I USING (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint) WITH CHECK (org_id = NULLIF(current_setting(''app.current_org'', true), '''')::bigint)', t);
+  END LOOP;
+END $$;
+GRANT SELECT, INSERT, UPDATE, DELETE ON auditoria_evaluaciones,auditoria_evaluacion_cambios TO crm_app;
+GRANT USAGE, SELECT ON SEQUENCE auditoria_evaluaciones_id_seq,auditoria_evaluacion_cambios_id_seq TO crm_app;
