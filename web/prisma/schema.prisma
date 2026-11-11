@@ -2896,3 +2896,40 @@ model ContenidoCambio {
   @@index([orgId, piezaId, creadoAt])
   @@map("contenido_cambios")
 }
+
+model AuditoriaEvaluacion {
+  id            BigInt   @id @default(autoincrement())
+  orgId         BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  colaboradorId BigInt   @map("colaborador_id")
+  evaluadorId   BigInt   @map("evaluador_id")
+  area          String
+  periodo       DateTime @db.Date
+  color         String
+  nota          String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  cambios AuditoriaEvaluacionCambio[]
+
+  @@unique([orgId, colaboradorId, area, periodo])
+  @@unique([id, orgId])
+  @@index([orgId, area, periodo])
+  @@index([orgId, colaboradorId, periodo])
+  @@map("auditoria_evaluaciones")
+}
+
+model AuditoriaEvaluacionCambio {
+  id            BigInt   @id @default(autoincrement())
+  orgId         BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  evaluacionId  BigInt   @map("evaluacion_id")
+  colorAnterior String?  @map("color_anterior")
+  colorNuevo    String   @map("color_nuevo")
+  userId        BigInt?  @map("user_id")
+  nota          String?
+  creadoAt      DateTime @default(now()) @map("creado_at") @db.Timestamptz(6)
+
+  evaluacion AuditoriaEvaluacion @relation(fields: [evaluacionId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@index([orgId, evaluacionId, creadoAt])
+  @@map("auditoria_evaluacion_cambios")
+}

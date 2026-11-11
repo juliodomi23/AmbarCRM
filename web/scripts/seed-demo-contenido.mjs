@@ -63,14 +63,13 @@ await prisma.$transaction(async (tx) => {
   const passwordHash = await bcrypt.hash(password, 10);
   const admin = await tx.usuario.upsert({
     where: { orgId_email: { orgId: org.id, email } },
-    update: { nombre: "Adrián Jiménez", passwordHash, rol: "admin", puesto: "Director general", activo: true },
-    create: { nombre: "Adrián Jiménez", email, passwordHash, rol: "admin", puesto: "Director general" },
+    update: { nombre: "Adrián Felipe Jiménez López", passwordHash, rol: "admin", puesto: "Director general", activo: true },
+    create: { nombre: "Adrián Felipe Jiménez López", email, passwordHash, rol: "admin", puesto: "Director general" },
   });
   const equipo = [];
   for (const [nombre, correo, puesto] of [
-    ["Adrián Toledo", "adrian.toledo@refmex.demo", "Encargado de marketing"],
-    ["Lusmi Hernández", "lusmi@refmex.demo", "Copywriter"],
-    ["Rifanny Coutiño", "rifanny@refmex.demo", "Copywriter"],
+    ["Tifany", "tifani@refmex.demo", "Diseño y publicaciones"],
+    ["Wendy", "wendy@refmex.demo", "Edición y video"],
   ]) {
     equipo.push(await tx.usuario.upsert({
       where: { orgId_email: { orgId: org.id, email: correo } },
@@ -78,7 +77,7 @@ await prisma.$transaction(async (tx) => {
       create: { nombre, email: correo, passwordHash, rol: "agente", puesto },
     }));
   }
-  const [adrianToledo, lusmi, rifanny] = equipo;
+  const [tifani, wendy] = equipo;
   await tx.ajustes.upsert({
     where: { orgId: org.id },
     update: { marcaNombre: "REFMEX", marcaColorPrimario: "#0F2341", marcaColorAcento: "#2563EB", marcaPreset: "legal" },
@@ -110,8 +109,8 @@ await prisma.$transaction(async (tx) => {
   }
 
   for (const [indice, [titulo, canal, formato, estado, dia, hora]] of PIEZAS.entries()) {
-    const redactor = [lusmi, rifanny][indice % 2];
-    const revisor = adrianToledo;
+    const redactor = [tifani, wendy][indice % 2];
+    const revisor = admin;
     const datosPieza = {
         titulo,
         canal,
@@ -149,7 +148,9 @@ await prisma.$transaction(async (tx) => {
     }
   }
 
-  await tx.usuario.deleteMany({ where: { orgId: org.id, email: { in: ["valeria@refmex.demo", "emilio@refmex.demo", "renata@refmex.demo"] } } });
+  // Nota: "berenice@refmex.demo" no se limpia aquí porque ahora es el correo real
+  // de la auxiliar contable Berenice (seed-demo-despacho.mjs); borrarlo rompería esa referencia.
+  await tx.usuario.deleteMany({ where: { orgId: org.id, email: { in: ["valeria@refmex.demo", "emilio@refmex.demo", "renata@refmex.demo", "adrian.toledo@refmex.demo", "esterita@refmex.demo", "dario.contenido@refmex.demo", "jeny@refmex.demo", "arianna@refmex.demo", "nelson.contenido@refmex.demo"] } } });
 });
 
 imprimirCredencialesDemo({ nombre: "REFMEX", slug: SLUG, email, password, passwordGenerada });

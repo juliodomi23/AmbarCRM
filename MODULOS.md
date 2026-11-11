@@ -185,6 +185,43 @@ aprobada o programada la regresa a revisión. Los comentarios de tipo
 cambios de estado quedan en la bitácora. El módulo no publica en redes: solo
 prepara y da seguimiento al contenido.
 
+## Auditoría
+
+Auditoría (`auditoria`, `/auditoria`) registra una evaluación mensual por
+colaborador y área, con un semáforo de cumplimiento y una nota opcional. Las áreas
+son contabilidad, administración, marketing y adquisición; el periodo se guarda
+siempre en el primer día del mes y no puede haber dos evaluaciones del mismo
+colaborador, área y mes.
+
+| Código | Significado |
+| --- | --- |
+| Rojo (0) | No realizado / Incumplió |
+| Amarillo (1) | Realizado con observaciones |
+| Verde (2) | Cumplimiento óptimo |
+| Gris / N-A | No aplica (descanso o tarea ajena al área) |
+
+Admin, dirección y gerencia general capturan y ven todas las evaluaciones; un
+colaborador normal solo consulta las propias. Registrar sobre un mes existente
+actualiza el semáforo y la nota, y cada cambio de color queda en la bitácora. El
+módulo no borra evaluaciones históricas y no sustituye al proceso fiscal de
+auditoría del despacho contable.
+
+### Demo Auditoría (REFMEX)
+
+```bash
+cd web
+ALLOW_DEMO_SEED=1 node scripts/seed-demo-despacho.mjs
+ALLOW_DEMO_SEED=1 node scripts/seed-demo-contenido.mjs
+ALLOW_DEMO_SEED=1 node scripts/seed-demo-auditoria.mjs
+```
+
+Correr los tres en ese orden sobre `refmex`: Auditoría reutiliza a los
+colaboradores de Contabilidad (Despacho) y Marketing (Contenido) y crea los de
+Administración y Adquisición (Ernesto, Lusmi, Silvia), que ningún otro seed
+siembra. El seed es idempotente (45 evaluaciones estables: 15 pares
+colaborador/área × 3 meses) y evalúa a Víctor Manuel Cartagena Marín (gerente
+general) como evaluador por defecto.
+
 ## Módulo Inmobiliaria
 
 Inmobiliaria agrega `/inmobiliaria` con propiedades para venta o renta. Registra

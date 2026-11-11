@@ -337,6 +337,15 @@ export const MODULOS = [
     icono: "M5 3h14v18H5zM8 8h8M8 12h8M8 16h5M15 3v4",
     ruta: "/despacho",
   },
+  {
+    clave: "auditoria",
+    area: "Operación interna",
+    nombre: "Auditoría",
+    descripcion: "Evaluación mensual por área con semáforo de cumplimiento y seguimiento por colaborador.",
+    acceso: ACCESO_TODOS,
+    icono: "M4 4h16v16H4zM8 9l2 2 4-4M8 15h8",
+    ruta: "/auditoria",
+  },
 ] as const;
 
 export type ClaveModulo = (typeof MODULOS)[number]["clave"];

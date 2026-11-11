@@ -21,7 +21,9 @@ assert.deepEqual(agruparAvance([{ estado: "completada", g: "b" }, { estado: "pen
 assert.equal(estaAtrasada({ estado: "completada", fechaLimite: "2020-01-01" }, new Date("2026-01-01T00:00:00Z")), false, "una actividad completada no se marca atrasada");
 assert.equal(estaAtrasada({ estado: "pendiente", fechaLimite: "2020-01-01" }, new Date("2026-01-01T00:00:00Z")), true, "una pendiente con fecha pasada está atrasada");
 assert.equal(transicionDespachoValida("bloqueada", "completada"), false, "bloqueada no salta a completada");
-assert.equal(transicionDespachoValida("pendiente", "completada"), true, "pendiente puede completarse");
+assert.equal(transicionDespachoValida("pendiente", "en_proceso"), true, "pendiente avanza a en_proceso");
+assert.equal(transicionDespachoValida("pendiente", "completada"), false, "pendiente no salta directo a completada (flujo lineal)");
+assert.equal(transicionDespachoValida("en_proceso", "completada"), true, "en_proceso puede completarse");
 assert.equal(transicionDespachoValida("pendiente", "inventado"), false, "un estado desconocido no es válido");
 assert.equal(puedeGestionarDespacho("Contador", "agente"), false, "un contador no gestiona el despacho");
 assert.equal(puedeGestionarDespacho("Gerente general", "agente"), true, "gerencia sí gestiona");
