@@ -11,6 +11,7 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "check:campanas-envio": "tsx scripts/check-campanas-envio.ts",
+    "check:seguimientos": "tsx scripts/check-seguimientos.ts",
     "check:taller": "tsx scripts/check-taller.ts",
     "check:app-movil": "tsx scripts/check-app-movil.ts",
     "check:app-movil-http": "tsx scripts/check-app-movil-http.ts",
