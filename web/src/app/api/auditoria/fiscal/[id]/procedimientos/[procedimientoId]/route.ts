@@ -24,6 +24,9 @@ export const PATCH = conModulo("auditoria", {}, async (sesion, req: NextRequest,
   const id = aBigInt(procedimientoId);
   if (!auditoriaIdBig || !id) return NextResponse.json({ error: "Id inválido" }, { status: 400 });
 
+  const existente = await db.auditoriaFiscalProcedimiento.findUnique({ where: { id }, select: { id: true, auditoriaId: true, nombre: true, estado: true } });
+  if (!existente || existente.auditoriaId !== auditoriaIdBig) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
@@ -41,6 +44,18 @@ export const PATCH = conModulo("auditoria", {}, async (sesion, req: NextRequest,
 
   const actualizado = await db.auditoriaFiscalProcedimiento.updateMany({ where: { id, auditoriaId: auditoriaIdBig }, data });
   if (!actualizado.count) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  if (data.estado && data.estado !== existente.estado) {
+    await db.auditoriaFiscalCambio.create({
+      data: {
+        auditoriaId: auditoriaIdBig,
+        estadoAnterior: existente.estado,
+        estadoNuevo: data.estado,
+        userId: sesion.userId ?? null,
+        nota: `Procedimiento "${existente.nombre}"${data.resultado ? `: ${data.resultado}` : ""}`,
+      },
+    });
+  }
 
   const procedimiento = await db.auditoriaFiscalProcedimiento.findUnique({ where: { id } });
   return NextResponse.json(serializar({ procedimiento }));

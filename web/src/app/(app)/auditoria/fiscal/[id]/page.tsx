@@ -4,16 +4,12 @@ import { moduloActivo } from "@/lib/modulos";
 import { db } from "@/lib/db";
 import { getSesion } from "@/lib/session";
 import { aBigInt } from "@/lib/ids";
-import { ESTADOS_AUDITORIA_FISCAL, ESTADOS_PROCEDIMIENTO_FISCAL, etiquetaEstadoAuditoriaFiscal, puedeGestionarAuditoria } from "@/lib/auditoria";
+import { ESTADOS_AUDITORIA_FISCAL, ESTADOS_PROCEDIMIENTO_FISCAL, etiquetaEstadoCambio, tonoEstadoCambio, puedeGestionarAuditoria } from "@/lib/auditoria";
 import { EncabezadoPagina, Badge } from "@/components/ui";
 import { AuditoriaFiscalEstado } from "@/components/modulos/auditoria/AuditoriaFiscalEstado";
 import { AuditoriaFiscalProcedimientos } from "@/components/modulos/auditoria/AuditoriaFiscalProcedimientos";
 
 export const dynamic = "force-dynamic";
-
-const TONOS: Record<string, "neutral" | "warning" | "destructive" | "success"> = {
-  planeacion: "neutral", en_proceso: "warning", con_observaciones: "destructive", concluida: "success",
-};
 
 function fechaLarga(valor: string | Date | null) {
   if (!valor) return "—";
@@ -98,9 +94,9 @@ export default async function AuditoriaFiscalDetallePage({ params }: { params: P
               <div key={String(cambio.id)} className="flex gap-3 border-l-2 border-border pl-3">
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2 text-sm">
-                    {cambio.estadoAnterior && <Badge tono={TONOS[cambio.estadoAnterior] ?? "neutral"}>{etiquetaEstadoAuditoriaFiscal(cambio.estadoAnterior)}</Badge>}
+                    {cambio.estadoAnterior && <Badge tono={tonoEstadoCambio(cambio.estadoAnterior)}>{etiquetaEstadoCambio(cambio.estadoAnterior)}</Badge>}
                     {cambio.estadoAnterior && <span className="text-muted-foreground">→</span>}
-                    <Badge tono={TONOS[cambio.estadoNuevo] ?? "neutral"}>{etiquetaEstadoAuditoriaFiscal(cambio.estadoNuevo)}</Badge>
+                    <Badge tono={tonoEstadoCambio(cambio.estadoNuevo)}>{etiquetaEstadoCambio(cambio.estadoNuevo)}</Badge>
                   </div>
                   {cambio.nota && <p className="whitespace-pre-wrap text-sm text-foreground">{cambio.nota}</p>}
                   <p className="text-xs text-muted-foreground">{fechaHora(cambio.creadoAt)} · {cambio.userId ? nombres.get(String(cambio.userId)) ?? "—" : "Sistema"}</p>

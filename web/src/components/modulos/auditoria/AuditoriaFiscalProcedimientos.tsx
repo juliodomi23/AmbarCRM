@@ -61,6 +61,7 @@ function FilaProcedimiento({ auditoriaId, procedimiento, onCambio }: {
       return;
     }
     if (estado !== "con_observacion") setNotaAbierta(false);
+    router.refresh();
   }
 
   function elegir(valor: string) {

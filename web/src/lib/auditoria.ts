@@ -92,6 +92,19 @@ export function tonoEstadoProcedimientoFiscal(estado: string) {
   return ESTADOS_PROCEDIMIENTO_FISCAL.find((item) => item.clave === estado)?.tono ?? "neutral";
 }
 
+/** El historial mezcla cambios de estado de la auditoría y de sus procedimientos; cada valor viene de un catálogo distinto. */
+export function etiquetaEstadoCambio(estado: string) {
+  return ESTADOS_AUDITORIA_FISCAL.find((item) => item.clave === estado)?.etiqueta
+    ?? ESTADOS_PROCEDIMIENTO_FISCAL.find((item) => item.clave === estado)?.etiqueta
+    ?? estado;
+}
+
+export function tonoEstadoCambio(estado: string) {
+  return ESTADOS_AUDITORIA_FISCAL.find((item) => item.clave === estado)?.tono
+    ?? ESTADOS_PROCEDIMIENTO_FISCAL.find((item) => item.clave === estado)?.tono
+    ?? "neutral";
+}
+
 export function nombreArea(area: string) {
   return AREAS_AUDITORIA.find((item) => item.clave === area)?.nombre ?? area;
 }
