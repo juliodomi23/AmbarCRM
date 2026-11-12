@@ -15,6 +15,11 @@ export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest, p
   if (!id || id <= 0n || !Number.isSafeInteger(version) || version < 1) {
     return NextResponse.json({ error: "Actividad o versión inválida" }, { status: 400 });
   }
+  const calificacion = body?.calificacion === undefined || body?.calificacion === null ? null : Number(body.calificacion);
+  if (calificacion !== null && (!Number.isSafeInteger(calificacion) || calificacion < 1 || calificacion > 5)) {
+    return NextResponse.json({ error: "La calificación debe ser un entero del 1 al 5" }, { status: 400 });
+  }
+  const calificacionNota = typeof body?.calificacionNota === "string" ? body.calificacionNota.trim().slice(0, 1000) || null : null;
   const modulo = await db.moduloOrg.findFirst({
     where: { clave: "despacho", activo: true },
     select: { config: true },
@@ -35,10 +40,13 @@ export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest, p
 
     await tx.despachoActividad.update({
       where: { id },
-      data: { confirmadaAt: new Date(), confirmadaPorId: sesion.userId, version: { increment: 1 } },
+      data: { confirmadaAt: new Date(), confirmadaPorId: sesion.userId, calificacion, calificacionNota, version: { increment: 1 } },
     });
     await tx.despachoActividadCambio.create({
-      data: { actividadId: id, estadoAnterior: "completada", estadoNuevo: "completada", userId: sesion.userId, nota: "Confirmación aprobada" },
+      data: {
+        actividadId: id, estadoAnterior: "completada", estadoNuevo: "completada", userId: sesion.userId,
+        nota: calificacion ? `Confirmación aprobada · Calidad ${calificacion}/5${calificacionNota ? `: ${calificacionNota}` : ""}` : "Confirmación aprobada",
+      },
     });
     return {
       actividad: await tx.despachoActividad.findUnique({

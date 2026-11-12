@@ -2809,6 +2809,8 @@ model DespachoActividad {
   requiereConfirmacion Boolean   @default(true) @map("requiere_confirmacion")
   confirmadaAt         DateTime? @map("confirmada_at") @db.Timestamptz(6)
   confirmadaPorId      BigInt?   @map("confirmada_por_id")
+  calificacion         Int?
+  calificacionNota     String?   @map("calificacion_nota")
   notas                String?
   version              Int       @default(1)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)

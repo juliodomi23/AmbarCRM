@@ -10,6 +10,7 @@ type Actividad = {
   id: string; titulo: string; estado: string; tipo: string; periodo: string; fechaLimite: string;
   responsableId: string | null; notas: string | null; version: number; requiereConfirmacion: boolean;
   confirmadaAt: string | null; confirmadaPorId: string | null;
+  calificacion: number | null; calificacionNota: string | null;
   cliente: { id: string; contacto: { nombre: string; empresa: string | null } };
 };
 
@@ -43,9 +44,53 @@ function etiquetaMes(valor: string) { return new Date(`${valor}-01T12:00:00Z`).t
 function fechaCorta(valor: string) { const fecha = valor.slice(0, 10); return new Date(`${fecha}T12:00:00Z`).toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", ""); }
 function avatar(nombre: string) { return nombre.split(/\s+/).filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase() || "—"; }
 
+function EstrellaCalificacion({ valor, activo, onClick }: { valor: number; activo: boolean; onClick: () => void }) {
+  return (
+    <button type="button" aria-label={`Calidad ${valor} de 5`} aria-pressed={activo} onPointerDown={(e) => e.stopPropagation()} onClick={onClick} className="grid h-8 w-8 place-items-center rounded-md text-warning transition hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill={activo ? "currentColor" : "none"} stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 2.5l2.9 6.1 6.6.9-4.8 4.7 1.1 6.6L12 17.6l-5.8 3.2 1.1-6.6-4.8-4.7 6.6-.9z" />
+      </svg>
+    </button>
+  );
+}
+
+function ConfirmarActividad({ onConfirmar }: { onConfirmar: (calificacion: number, nota: string) => Promise<void> | void }) {
+  const [abierto, setAbierto] = useState(false);
+  const [calificacion, setCalificacion] = useState(0);
+  const [nota, setNota] = useState("");
+  const [enviando, setEnviando] = useState(false);
+
+  if (!abierto) {
+    return <Boton className="min-h-9 w-full" onPointerDown={(e) => e.stopPropagation()} onClick={() => setAbierto(true)}>Confirmar actividad</Boton>;
+  }
+
+  return (
+    <div className="space-y-2 rounded-lg border border-input bg-card p-2.5" onPointerDown={(e) => e.stopPropagation()}>
+      <p className="text-xs font-medium text-muted-foreground">Calidad del trabajo</p>
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5].map((valor) => (
+          <EstrellaCalificacion key={valor} valor={valor} activo={valor <= calificacion} onClick={() => setCalificacion(valor)} />
+        ))}
+      </div>
+      <textarea className="w-full rounded-md border border-input bg-card px-2 py-1.5 text-xs" rows={2} placeholder="Comentario de calidad (opcional)" value={nota} onChange={(e) => setNota(e.target.value)} />
+      <div className="flex gap-1.5">
+        <Boton
+          className="min-h-8 flex-1 text-xs"
+          disabled={calificacion === 0 || enviando}
+          onClick={async () => { setEnviando(true); await onConfirmar(calificacion, nota); setEnviando(false); setAbierto(false); }}
+        >
+          {enviando ? "Confirmando…" : "Confirmar"}
+        </Boton>
+        <Boton variante="ghost" className="min-h-8 px-3 text-xs" onClick={() => { setAbierto(false); setCalificacion(0); setNota(""); }}>Cancelar</Boton>
+      </div>
+      {calificacion === 0 && <p className="text-xs text-muted-foreground">Elige una calificación de calidad para confirmar.</p>}
+    </div>
+  );
+}
+
 function TarjetaVista({ actividad, puede, puedeConfirmar, responsable, siguientes, onCambiar, onConfirmar }: {
   actividad: Actividad; puede: boolean; puedeConfirmar: boolean; responsable: string; siguientes: string[];
-  onCambiar: (siguiente: string) => void; onConfirmar: () => void;
+  onCambiar: (siguiente: string) => void; onConfirmar: (calificacion: number, nota: string) => Promise<void> | void;
 }) {
   const atrasada = estaAtrasada(actividad);
   const pendienteConfirmacion = esperaConfirmacion(actividad);
@@ -66,7 +111,19 @@ function TarjetaVista({ actividad, puede, puedeConfirmar, responsable, siguiente
         <Badge tono={actividad.estado === "bloqueada" ? "destructive" : pendienteConfirmacion ? "warning" : tonoEstado(actividad.estado)} className={`min-h-7 px-2 text-xs ${actividad.estado === "bloqueada" ? "border border-destructive/30 bg-destructive/10 text-destructive" : ""}`}><span aria-hidden="true">{actividad.estado === "bloqueada" ? "!" : pendienteConfirmacion ? "◷" : "•"}</span>{pendienteConfirmacion ? "Por confirmar" : ETIQUETAS[actividad.estado] ?? actividad.estado}</Badge>
       </div>
       {pendienteConfirmacion && <p className="text-xs text-warning">No suma al avance hasta que se confirme.</p>}
-      {pendienteConfirmacion && puedeConfirmar && <Boton className="min-h-9 w-full" onClick={onConfirmar}>Confirmar actividad</Boton>}
+      {pendienteConfirmacion && puedeConfirmar && <ConfirmarActividad onConfirmar={onConfirmar} />}
+      {actividad.calificacion && (
+        <div className="flex items-center gap-1 text-xs text-muted-foreground" title={actividad.calificacionNota ?? undefined}>
+          <span>Calidad:</span>
+          <span className="flex gap-0.5 text-warning">
+            {[1, 2, 3, 4, 5].map((valor) => (
+              <svg key={valor} viewBox="0 0 24 24" className="h-3.5 w-3.5" fill={valor <= actividad.calificacion! ? "currentColor" : "none"} stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2.5l2.9 6.1 6.6.9-4.8 4.7 1.1 6.6L12 17.6l-5.8 3.2 1.1-6.6-4.8-4.7 6.6-.9z" />
+              </svg>
+            ))}
+          </span>
+        </div>
+      )}
       {puede && siguientes.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {siguientes.map((siguiente) => (
@@ -82,7 +139,7 @@ function TarjetaVista({ actividad, puede, puedeConfirmar, responsable, siguiente
 
 function TarjetaArrastrable({ actividad, puede, puedeConfirmar, responsable, siguientes, onCambiar, onConfirmar }: {
   actividad: Actividad; puede: boolean; puedeConfirmar: boolean; responsable: string; siguientes: string[];
-  onCambiar: (siguiente: string) => void; onConfirmar: () => void;
+  onCambiar: (siguiente: string) => void; onConfirmar: (calificacion: number, nota: string) => Promise<void> | void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: actividad.id, disabled: !puede });
   return (
@@ -161,10 +218,10 @@ export function DespachoActividades({
     setActividades((lista) => lista.map((item) => item.id === actividad.id ? datos.actividad : item));
   }
 
-  async function confirmar(actividad: Actividad) {
+  async function confirmar(actividad: Actividad, calificacion: number, nota: string) {
     const respuesta = await fetch(`/api/despacho/actividades/${actividad.id}/confirmar`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ version: actividad.version }),
+      body: JSON.stringify({ version: actividad.version, calificacion, calificacionNota: nota }),
     });
     const datos = await respuesta.json().catch(() => ({}));
     if (!respuesta.ok) { setError(datos.error ?? "No se pudo confirmar la actividad"); if (respuesta.status === 409) void cargar(); return; }
@@ -265,7 +322,7 @@ export function DespachoActividades({
                     const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor));
                     const responsable = usuarios.find((usuario) => usuario.id === actividad.responsableId)?.nombre ?? "Sin asignar";
                     return (
-                      <TarjetaArrastrable key={actividad.id} actividad={actividad} puede={puede} puedeConfirmar={puedeConfirmar} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} onConfirmar={() => void confirmar(actividad)} />
+                      <TarjetaArrastrable key={actividad.id} actividad={actividad} puede={puede} puedeConfirmar={puedeConfirmar} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} onConfirmar={(calificacion, nota) => confirmar(actividad, calificacion, nota)} />
                     );
                   })}
                   {delEstado.length === 0 && <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">Sin actividades</p>}
@@ -275,7 +332,7 @@ export function DespachoActividades({
           </div>
           <DragOverlay>{arrastrando ? <div className="w-64"><TarjetaVista actividad={arrastrando} puede={false} puedeConfirmar={false} responsable={usuarios.find((usuario) => usuario.id === arrastrando!.responsableId)?.nombre ?? "Sin asignar"} siguientes={[]} onCambiar={() => {}} onConfirmar={() => {}} /></div> : null}</DragOverlay>
         </DndContext>
-        <div className="space-y-2 md:hidden">{COLUMNAS.map((columna) => { const delEstado = actividadesDelPeriodo.filter((actividad) => vaEnColumna(actividad, columna.estado)); return <details key={`movil-${columna.estado}`} className="surface group"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{columna.titulo}<span className="text-sm text-muted-foreground">{delEstado.length}</span></summary><div className="space-y-3 p-3 pt-0">{delEstado.length ? delEstado.map((actividad) => { const responsable = usuarios.find((usuario) => usuario.id === actividad.responsableId)?.nombre ?? "Sin asignar"; const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor)); return <TarjetaVista key={actividad.id} actividad={actividad} puede={esGestion || modo === "mias"} puedeConfirmar={puedeConfirmar} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} onConfirmar={() => void confirmar(actividad)} />; }) : <p className="pb-3 text-center text-xs text-muted-foreground">Sin actividades</p>}</div></details>; })}</div>
+        <div className="space-y-2 md:hidden">{COLUMNAS.map((columna) => { const delEstado = actividadesDelPeriodo.filter((actividad) => vaEnColumna(actividad, columna.estado)); return <details key={`movil-${columna.estado}`} className="surface group"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{columna.titulo}<span className="text-sm text-muted-foreground">{delEstado.length}</span></summary><div className="space-y-3 p-3 pt-0">{delEstado.length ? delEstado.map((actividad) => { const responsable = usuarios.find((usuario) => usuario.id === actividad.responsableId)?.nombre ?? "Sin asignar"; const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor)); return <TarjetaVista key={actividad.id} actividad={actividad} puede={esGestion || modo === "mias"} puedeConfirmar={puedeConfirmar} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} onConfirmar={(calificacion, nota) => confirmar(actividad, calificacion, nota)} />; }) : <p className="pb-3 text-center text-xs text-muted-foreground">Sin actividades</p>}</div></details>; })}</div>
         </>
       )}
     </section>
