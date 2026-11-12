@@ -4,9 +4,10 @@ import { moduloActivo } from "@/lib/modulos";
 import { db } from "@/lib/db";
 import { getSesion } from "@/lib/session";
 import { aBigInt } from "@/lib/ids";
-import { ESTADOS_AUDITORIA_FISCAL, etiquetaEstadoAuditoriaFiscal, puedeGestionarAuditoria } from "@/lib/auditoria";
+import { ESTADOS_AUDITORIA_FISCAL, ESTADOS_PROCEDIMIENTO_FISCAL, etiquetaEstadoAuditoriaFiscal, puedeGestionarAuditoria } from "@/lib/auditoria";
 import { EncabezadoPagina, Badge } from "@/components/ui";
 import { AuditoriaFiscalEstado } from "@/components/modulos/auditoria/AuditoriaFiscalEstado";
+import { AuditoriaFiscalProcedimientos } from "@/components/modulos/auditoria/AuditoriaFiscalProcedimientos";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ export default async function AuditoriaFiscalDetallePage({ params }: { params: P
     include: {
       cliente: { include: { contacto: { select: { nombre: true, empresa: true } } } },
       cambios: { orderBy: { creadoAt: "desc" } },
+      procedimientos: { orderBy: [{ orden: "asc" }, { id: "asc" }] },
     },
   });
   if (!auditoria) notFound();
@@ -72,6 +74,18 @@ export default async function AuditoriaFiscalDetallePage({ params }: { params: P
             <p className="whitespace-pre-wrap text-sm text-foreground">{auditoria.hallazgos}</p>
           </div>
         )}
+      </section>
+
+      <section className="surface space-y-3 p-4 sm:p-5">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Procedimientos y pruebas</h2>
+          <p className="text-sm text-muted-foreground">Qué se revisó en esta auditoría y con qué resultado.</p>
+        </div>
+        <AuditoriaFiscalProcedimientos
+          auditoriaId={String(auditoria.id)}
+          iniciales={auditoria.procedimientos.map((procedimiento) => ({ id: String(procedimiento.id), nombre: procedimiento.nombre, estado: procedimiento.estado, resultado: procedimiento.resultado }))}
+          opciones={ESTADOS_PROCEDIMIENTO_FISCAL.map((estado) => ({ valor: estado.clave, etiqueta: estado.etiqueta }))}
+        />
       </section>
 
       <section className="surface space-y-3 p-4 sm:p-5">

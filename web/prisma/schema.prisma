@@ -2960,14 +2960,32 @@ model AuditoriaFiscalCliente {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  cliente DespachoCliente @relation(fields: [clienteId, orgId], references: [id, orgId], onDelete: Restrict)
-  cambios AuditoriaFiscalCambio[]
+  cliente        DespachoCliente @relation(fields: [clienteId, orgId], references: [id, orgId], onDelete: Restrict)
+  cambios        AuditoriaFiscalCambio[]
+  procedimientos AuditoriaFiscalProcedimiento[]
 
   @@unique([orgId, clienteId, periodo])
   @@unique([id, orgId])
   @@index([orgId, estado])
   @@index([orgId, clienteId])
   @@map("auditoria_fiscal_clientes")
+}
+
+model AuditoriaFiscalProcedimiento {
+  id          BigInt   @id @default(autoincrement())
+  orgId       BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  auditoriaId BigInt   @map("auditoria_id")
+  nombre      String
+  estado      String   @default("pendiente")
+  resultado   String?
+  orden       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  auditoria AuditoriaFiscalCliente @relation(fields: [auditoriaId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@index([orgId, auditoriaId, orden])
+  @@map("auditoria_fiscal_procedimientos")
 }
 
 model AuditoriaFiscalCambio {

@@ -72,6 +72,26 @@ export function tonoEstadoAuditoriaFiscal(estado: string) {
   return ESTADOS_AUDITORIA_FISCAL.find((item) => item.clave === estado)?.tono ?? "neutral";
 }
 
+export const ESTADOS_PROCEDIMIENTO_FISCAL = [
+  { clave: "pendiente", etiqueta: "Pendiente", tono: "neutral" },
+  { clave: "hecho", etiqueta: "Hecho", tono: "success" },
+  { clave: "con_observacion", etiqueta: "Con observación", tono: "destructive" },
+] as const;
+
+export type EstadoProcedimientoFiscal = (typeof ESTADOS_PROCEDIMIENTO_FISCAL)[number]["clave"];
+
+export function esEstadoProcedimientoFiscal(valor: unknown): valor is EstadoProcedimientoFiscal {
+  return ESTADOS_PROCEDIMIENTO_FISCAL.some((estado) => estado.clave === valor);
+}
+
+export function etiquetaEstadoProcedimientoFiscal(estado: string) {
+  return ESTADOS_PROCEDIMIENTO_FISCAL.find((item) => item.clave === estado)?.etiqueta ?? estado;
+}
+
+export function tonoEstadoProcedimientoFiscal(estado: string) {
+  return ESTADOS_PROCEDIMIENTO_FISCAL.find((item) => item.clave === estado)?.tono ?? "neutral";
+}
+
 export function nombreArea(area: string) {
   return AREAS_AUDITORIA.find((item) => item.clave === area)?.nombre ?? area;
 }
