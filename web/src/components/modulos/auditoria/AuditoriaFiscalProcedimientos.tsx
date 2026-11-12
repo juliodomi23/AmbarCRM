@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton, Campo } from "@/components/ui";
 import { toast } from "@/components/Toaster";
@@ -152,6 +152,8 @@ export function AuditoriaFiscalProcedimientos({ auditoriaId, iniciales }: {
   const [procedimientos, setProcedimientos] = useState(iniciales);
   const [nombre, setNombre] = useState("");
   const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => setProcedimientos(iniciales), [iniciales]);
 
   function actualizar(id: string, cambios: Partial<Procedimiento>) {
     setProcedimientos((lista) => lista.map((item) => item.id === id ? { ...item, ...cambios } : item));
