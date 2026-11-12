@@ -32,13 +32,25 @@ export const PATCH = conModulo("auditoria", {}, async (sesion, req: NextRequest,
   const hallazgos = datos.hallazgos != null ? texto(datos.hallazgos).slice(0, 4000) || null : undefined;
   const fechaCierre = estado === "concluida" ? new Date().toISOString().slice(0, 10) : null;
 
-  const existente = await db.auditoriaFiscalCliente.findUnique({ where: { id }, select: { id: true } });
+  const existente = await db.auditoriaFiscalCliente.findUnique({ where: { id }, select: { id: true, estado: true } });
   if (!existente) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   const auditoria = await db.auditoriaFiscalCliente.update({
     where: { id },
     data: { estado, ...(hallazgos !== undefined ? { hallazgos } : {}), fechaCierre },
   });
+
+  if (existente.estado !== estado || hallazgos) {
+    await db.auditoriaFiscalCambio.create({
+      data: {
+        auditoriaId: id,
+        estadoAnterior: existente.estado,
+        estadoNuevo: estado,
+        userId: sesion.userId ?? null,
+        nota: hallazgos || null,
+      },
+    });
+  }
 
   return NextResponse.json(serializar({ auditoria }));
 });

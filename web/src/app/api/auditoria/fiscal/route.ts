@@ -89,11 +89,17 @@ export const POST = conModulo("auditoria", {}, async (sesion, req: NextRequest) 
   const orgId = sesion.orgId ?? (await orgActual());
   if (!orgId) return NextResponse.json({ error: "Organización no disponible" }, { status: 400 });
 
+  const previa = await db.auditoriaFiscalCliente.findUnique({ where: { orgId_clienteId_periodo: { orgId, clienteId, periodo } }, select: { id: true } });
   const auditoria = await db.auditoriaFiscalCliente.upsert({
     where: { orgId_clienteId_periodo: { orgId, clienteId, periodo } },
     create: { orgId, clienteId, auditorId, periodo, alcance, fechaInicio, estado: "planeacion" },
     update: { auditorId, alcance },
   });
+  if (!previa) {
+    await db.auditoriaFiscalCambio.create({
+      data: { auditoriaId: auditoria.id, estadoAnterior: null, estadoNuevo: "planeacion", userId: sesion.userId ?? null, nota: "Auditoría registrada." },
+    });
+  }
 
   return NextResponse.json(serializar({ auditoria }), { status: 201 });
 });

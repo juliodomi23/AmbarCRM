@@ -2961,11 +2961,29 @@ model AuditoriaFiscalCliente {
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   cliente DespachoCliente @relation(fields: [clienteId, orgId], references: [id, orgId], onDelete: Restrict)
+  cambios AuditoriaFiscalCambio[]
 
   @@unique([orgId, clienteId, periodo])
+  @@unique([id, orgId])
   @@index([orgId, estado])
   @@index([orgId, clienteId])
   @@map("auditoria_fiscal_clientes")
+}
+
+model AuditoriaFiscalCambio {
+  id             BigInt   @id @default(autoincrement())
+  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  auditoriaId    BigInt   @map("auditoria_id")
+  estadoAnterior String?  @map("estado_anterior")
+  estadoNuevo    String   @map("estado_nuevo")
+  userId         BigInt?  @map("user_id")
+  nota           String?
+  creadoAt       DateTime @default(now()) @map("creado_at") @db.Timestamptz(6)
+
+  auditoria AuditoriaFiscalCliente @relation(fields: [auditoriaId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@index([orgId, auditoriaId, creadoAt])
+  @@map("auditoria_fiscal_cambios")
 }
 
 model AuditoriaEvaluacion {

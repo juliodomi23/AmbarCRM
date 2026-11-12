@@ -79,10 +79,10 @@ export default async function AuditoriaFiscalPage() {
         <div className="surface divide-y divide-border/60 p-2">
           {auditorias.map((auditoria) => (
             <div key={String(auditoria.id)} className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-[minmax(0,1fr)_140px_160px_160px] sm:items-center">
-              <div className="min-w-0">
+              <Link href={`/auditoria/fiscal/${auditoria.id}`} className="min-w-0 rounded-lg transition hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                 <p className="truncate font-medium text-foreground">{auditoria.cliente.contacto.empresa ?? auditoria.cliente.contacto.nombre}</p>
                 <p className="truncate text-xs text-muted-foreground">{auditoria.alcance}</p>
-              </div>
+              </Link>
               <span className="text-xs text-muted-foreground">Periodo {auditoria.periodo}</span>
               <span className="text-xs text-muted-foreground">
                 Inicio {fechaCorta(auditoria.fechaInicio)} · Auditor {nombres.get(String(auditoria.auditorId)) ?? "—"}
