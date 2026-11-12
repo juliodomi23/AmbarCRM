@@ -30,7 +30,7 @@ export const PATCH = conModulo("auditoria", {}, async (sesion, req: NextRequest,
   if (!esEstadoAuditoriaFiscal(estado)) return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
 
   const hallazgos = datos.hallazgos != null ? texto(datos.hallazgos).slice(0, 4000) || null : undefined;
-  const fechaCierre = estado === "concluida" ? new Date().toISOString().slice(0, 10) : null;
+  const fechaCierre = estado === "concluida" ? new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`) : null;
 
   const existente = await db.auditoriaFiscalCliente.findUnique({ where: { id }, select: { id: true, estado: true } });
   if (!existente) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
