@@ -96,7 +96,12 @@ export type ActividadPuntuable = {
   estado: string;
   requiereConfirmacion?: boolean;
   confirmadaAt?: string | Date | null;
+  peso?: number | null;
 };
+
+function pesoDe(actividad: { peso?: number | null }) {
+  return actividad.peso && actividad.peso > 0 ? actividad.peso : 1;
+}
 
 /** Solo las completadas y confirmadas cuentan para el avance. */
 export function actividadCuentaComoCompletada(actividad: ActividadPuntuable) {
@@ -104,11 +109,13 @@ export function actividadCuentaComoCompletada(actividad: ActividadPuntuable) {
     (actividad.requiereConfirmacion === false || Boolean(actividad.confirmadaAt));
 }
 
-/** Porcentaje entero de avance; sin actividades no hay avance que mostrar (null). */
+/** Porcentaje entero de avance ponderado por peso; no todas las actividades valen lo mismo. */
 export function porcentajeAvance(actividades: ActividadPuntuable[]) {
   if (actividades.length === 0) return null;
-  const completadas = actividades.filter(actividadCuentaComoCompletada).length;
-  return Math.round((completadas / actividades.length) * 100);
+  const pesoTotal = actividades.reduce((suma, actividad) => suma + pesoDe(actividad), 0);
+  if (pesoTotal === 0) return null;
+  const pesoCompletado = actividades.filter(actividadCuentaComoCompletada).reduce((suma, actividad) => suma + pesoDe(actividad), 0);
+  return Math.round((pesoCompletado / pesoTotal) * 100);
 }
 
 export function estaAtrasada(
@@ -128,7 +135,7 @@ export type AvanceGrupo = {
   porcentaje: number | null;
 };
 
-export function agruparAvance<T extends { estado?: string; fechaLimite?: string | Date; confirmadaAt?: string | Date | null }>(actividades: T[], clave: (actividad: T) => string): AvanceGrupo[] {
+export function agruparAvance<T extends { estado?: string; fechaLimite?: string | Date; confirmadaAt?: string | Date | null; peso?: number | null }>(actividades: T[], clave: (actividad: T) => string): AvanceGrupo[] {
   const grupos = new Map<string, { total: number; completadas: number; atrasadas: number }>();
   for (const actividad of actividades) {
     const nombre = clave(actividad);

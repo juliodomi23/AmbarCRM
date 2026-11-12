@@ -54,14 +54,14 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
   const porcentaje = porcentajeAvance(actividades);
   const atrasadas = actividades.filter((actividad) => estaAtrasada(actividad));
   const limiteTresDias = new Date(); limiteTresDias.setDate(limiteTresDias.getDate() + 3);
-  const porVencer = actividades.filter((actividad) => {
+  const proximasAVencer = actividades.filter((actividad) => {
     if (actividad.estado === "completada" || estaAtrasada(actividad)) return false;
     const fecha = new Date(`${new Date(actividad.fechaLimite).toISOString().slice(0, 10)}T23:59:59-06:00`);
     return fecha <= limiteTresDias;
-  }).length;
+  }).sort((a, b) => new Date(a.fechaLimite).getTime() - new Date(b.fechaLimite).getTime());
+  const porVencer = proximasAVencer.length;
   const porCliente = agruparAvance(actividades, (actividad) => String(actividad.cliente.id));
   const nombres = new Map(usuarios.map((usuario) => [String(usuario.id), usuario.nombre]));
-  const porResponsable = agruparAvance(actividades, (actividad) => actividad.responsableId ? nombres.get(String(actividad.responsableId)) ?? "Sin nombre" : "Sin asignar");
   const colorAvance = (valor: number | null, vencidas: number) => ({ success: "bg-success", warning: "bg-warning", destructive: "bg-destructive", neutral: "bg-muted-foreground/30" })[tonoAvance(valor, vencidas)];
 
   return (
@@ -116,14 +116,21 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
             })}
           </section>
           <section className="surface space-y-4 p-4 sm:p-5">
-            <h2 className="text-base font-semibold text-foreground">Carga por responsable</h2>
-            {porResponsable.map((grupo) => (
-              <div key={grupo.clave} className="space-y-1.5">
-                <div className="flex items-center justify-between gap-3 text-sm"><span className="truncate font-medium text-foreground">{grupo.clave}</span><span className="shrink-0 text-xs tabular-nums text-foreground">{grupo.completadas}/{grupo.total} · {grupo.porcentaje}%</span></div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-muted" aria-hidden="true"><div className={`h-full rounded-full ${colorAvance(grupo.porcentaje, grupo.atrasadas)}`} style={{ width: `${grupo.porcentaje ?? 0}%` }} /></div>
-                <p className="text-xs font-medium text-muted-foreground">{etiquetaAvance(grupo.porcentaje, grupo.atrasadas)}</p>
-              </div>
-            ))}
+            <h2 className="text-base font-semibold text-foreground">Próximas a vencer</h2>
+            {proximasAVencer.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nada vence en los próximos 3 días.</p>
+            ) : proximasAVencer.slice(0, 6).map((actividad) => {
+              const nombre = actividad.responsableId ? nombres.get(String(actividad.responsableId)) ?? "Sin asignar" : "Sin asignar";
+              return (
+                <Link key={String(actividad.id)} href={`/despacho/clientes/${actividad.cliente.id}?mes=${mes}`} className="block space-y-1 rounded-lg p-2 transition hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="truncate font-medium text-foreground">{actividad.cliente.contacto.empresa ?? actividad.cliente.contacto.nombre}</span>
+                    <span className="shrink-0 text-xs font-semibold tabular-nums text-warning">{fechaCorta(actividad.fechaLimite)}</span>
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground">{actividad.titulo} · {nombre}</p>
+                </Link>
+              );
+            })}
           </section>
         </div>
       )}

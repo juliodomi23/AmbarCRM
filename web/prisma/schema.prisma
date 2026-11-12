@@ -2760,6 +2760,7 @@ model DespachoProcesoActividad {
   nombre    String
   orden     Int      @default(0)
   diaLimite Int      @default(1) @map("dia_limite")
+  peso      Int      @default(1)
   activo    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -2802,6 +2803,7 @@ model DespachoActividad {
   periodo              DateTime  @db.Date
   responsableId        BigInt?   @map("responsable_id")
   fechaLimite          DateTime  @map("fecha_limite") @db.Date
+  peso                 Int       @default(1)
   estado               String    @default("pendiente")
   completadaAt         DateTime? @map("completada_at") @db.Timestamptz(6)
   requiereConfirmacion Boolean   @default(true) @map("requiere_confirmacion")

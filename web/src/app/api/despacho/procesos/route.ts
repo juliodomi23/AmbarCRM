@@ -27,16 +27,20 @@ export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest) =
   }
   const crudas = Array.isArray(body.actividades) ? body.actividades : [];
   if (crudas.length > 100) return NextResponse.json({ error: "Demasiadas actividades" }, { status: 400 });
-  const actividades: { nombre: string; diaLimite: number; orden: number }[] = [];
+  const actividades: { nombre: string; diaLimite: number; peso: number; orden: number }[] = [];
   for (const [indice, raw] of crudas.entries()) {
     if (!raw || typeof raw !== "object") return NextResponse.json({ error: "Actividad inválida" }, { status: 400 });
     const dato = raw as Record<string, unknown>;
     const nombreActividad = texto(dato.nombre).slice(0, 160);
     const diaLimite = Number(dato.diaLimite ?? 1);
+    const peso = Number(dato.peso ?? 1);
     if (!nombreActividad || !Number.isSafeInteger(diaLimite) || diaLimite < 1 || diaLimite > 31) {
       return NextResponse.json({ error: "Revisa el nombre y el día límite de cada actividad" }, { status: 400 });
     }
-    actividades.push({ nombre: nombreActividad, diaLimite, orden: Number.isSafeInteger(Number(dato.orden)) ? Number(dato.orden) : indice });
+    if (!Number.isSafeInteger(peso) || peso < 1 || peso > 100) {
+      return NextResponse.json({ error: "El peso de cada actividad debe ser un entero entre 1 y 100" }, { status: 400 });
+    }
+    actividades.push({ nombre: nombreActividad, diaLimite, peso, orden: Number.isSafeInteger(Number(dato.orden)) ? Number(dato.orden) : indice });
   }
   const proceso = await db.despachoProceso.create({
     data: { nombre, periodicidad, actividades: { create: actividades } },
