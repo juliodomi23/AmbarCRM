@@ -43,7 +43,6 @@ export default async function AuditoriaFiscalPage() {
         descripcion="Auditorías que el despacho realiza a sus clientes (distinto del control de calidad interno de colaboradores)."
         acciones={
           <div className="flex flex-wrap items-center gap-2">
-            <Link href="/auditoria" className="min-h-10 rounded-lg border border-input px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">Auditoría interna →</Link>
             <FormularioModulo
               boton="Nueva auditoría"
               titulo="Registrar auditoría fiscal a un cliente"

@@ -341,10 +341,10 @@ export const MODULOS = [
     clave: "auditoria",
     area: "Operación interna",
     nombre: "Auditoría",
-    descripcion: "Evaluación mensual por área con semáforo de cumplimiento y seguimiento por colaborador.",
+    descripcion: "Auditorías fiscales a clientes: alcance, estado y seguimiento por periodo.",
     acceso: ACCESO_TODOS,
     icono: "M4 4h16v16H4zM8 9l2 2 4-4M8 15h8",
-    ruta: "/auditoria",
+    ruta: "/auditoria/fiscal",
   },
 ] as const;
 
