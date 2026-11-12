@@ -82,6 +82,8 @@ async function valorColumna(columna: Columna, tabla: string, indice: number) {
     "auditoria_evaluaciones.color": "verde",
     "auditoria_evaluacion_cambios.color_anterior": "rojo",
     "auditoria_evaluacion_cambios.color_nuevo": "verde",
+    "despacho_movimientos_financieros.unidad": "despacho",
+    "despacho_movimientos_financieros.tipo": "gasto",
   };
   const fijo = fijosDespacho[`${tabla}.${columna.column_name}`];
   if (fijo) return fijo;
@@ -177,7 +179,7 @@ async function main() {
      ORDER BY c.table_name`,
   );
   assert.ok(tablas.rowCount && tablas.rowCount > 0, "No se encontraron tablas con org_id");
-  for (const tabla of ["contratos", "cobros", "servidores", "heartbeats_servidor", "campanas_marketing", "auditoria_evaluaciones", "auditoria_evaluacion_cambios"]) {
+  for (const tabla of ["contratos", "cobros", "servidores", "heartbeats_servidor", "campanas_marketing", "auditoria_evaluaciones", "auditoria_evaluacion_cambios", "despacho_movimientos_financieros", "despacho_finanza_pagos"]) {
     assert.ok(tablas.rows.some((fila) => fila.table_name === tabla), `${tabla} debe estar incluida en la auditoría RLS`);
   }
 

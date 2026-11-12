@@ -6,18 +6,21 @@ import { serializar } from "@/lib/serialize";
 import { transaccionTenant } from "@/lib/retail-db";
 import { aBigInt } from "@/lib/ids";
 import { exigirGestion, texto } from "@/lib/despacho-api";
+import { puedeVerTodasActividadesDespacho } from "@/lib/despacho";
 
 type Props = { params: Promise<{ id: string }> };
 
-export const GET = conModulo("despacho", {}, async (_sesion, _req: NextRequest, props: Props) => {
+export const GET = conModulo("despacho", {}, async (sesion, _req: NextRequest, props: Props) => {
   const id = aBigInt((await props.params).id);
   if (!id || id <= 0n) return NextResponse.json({ error: "Cliente inválido" }, { status: 400 });
+  const modulo = await db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } });
+  const puedeVerTodo = puedeVerTodasActividadesDespacho({ id: sesion.userId, puesto: sesion.puesto, rol: sesion.rol }, modulo?.config);
   const cliente = await db.despachoCliente.findUnique({
-    where: { id },
+    where: { id, ...(puedeVerTodo ? {} : { actividades: { some: { responsableId: sesion.userId } } }) },
     include: {
       contacto: { select: { id: true, nombre: true, telefono: true, email: true, empresa: true } },
       procesos: { include: { proceso: { include: { actividades: { where: { activo: true }, orderBy: { orden: "asc" } } } } } },
-      actividades: { orderBy: [{ periodo: "desc" }, { fechaLimite: "asc" }], take: 200 },
+      actividades: { where: puedeVerTodo ? {} : { responsableId: sesion.userId }, orderBy: [{ periodo: "desc" }, { fechaLimite: "asc" }], take: 200 },
     },
   });
   return cliente ? NextResponse.json(serializar({ cliente })) : NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 });

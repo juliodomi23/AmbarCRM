@@ -162,6 +162,7 @@ await prisma.$transaction(async (tx) => {
     const fechaLimite = fechaCivil(instancia.periodo.getUTCFullYear(), instancia.periodo.getUTCMonth() + 1, instancia.actividad.diaLimite);
     const estados = ["pendiente", "en_proceso", "completada", "pendiente", "bloqueada"];
     const estado = instancia.completada ? "completada" : estados[indice % estados.length];
+    const confirmada = estado === "completada" && indice % 3 !== 0;
     const actividad = await tx.despachoActividad.create({
       data: {
         clienteId: instancia.cliente.id,
@@ -174,6 +175,8 @@ await prisma.$transaction(async (tx) => {
         responsableId: instancia.clienteProceso.responsableId ?? instancia.cliente.responsableId ?? admin.id,
         estado,
         completadaAt: estado === "completada" ? new Date() : null,
+        confirmadaAt: confirmada ? new Date() : null,
+        confirmadaPorId: confirmada ? admin.id : null,
       },
     });
     if (estado !== "pendiente") {

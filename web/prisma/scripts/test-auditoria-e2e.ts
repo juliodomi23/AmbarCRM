@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import bcrypt from "bcryptjs";
 import pg from "pg";
-import { apiE2E, loginE2E, paginaE2E } from "./e2e-http";
+import { apiE2E, loginE2E, paginaE2E, paginaE2EConCuerpo } from "./e2e-http";
 
 const baseUrl = process.env.E2E_BASE_URL ?? "";
 const adminUrl = process.env.ADMIN_DATABASE_URL ?? "";
@@ -131,9 +131,8 @@ async function main() {
   assert.equal(await paginaE2E(baseUrl, contadorA, "/auditoria?mes=2026-11"), 200);
   const desactivado = await admin.query("UPDATE modulos_org SET activo=false WHERE org_id=$1 AND clave='auditoria'", [String(orgB)]);
   assert.equal(desactivado.rowCount, 1, "el m�dulo de la org B debe desactivarse");
-  const respuestaSinModulo = await fetch(`${baseUrl}/auditoria?mes=2026-11`, { headers: { Cookie: adminB }, redirect: "manual" });
-  const cuerpoSinModulo = await respuestaSinModulo.text();
-  assert.ok(cuerpoSinModulo.includes("NEXT_REDIRECT"), "sin modulo la pagina redirige");
+  const respuestaSinModulo = await paginaE2EConCuerpo(baseUrl, adminB, "/auditoria?mes=2026-11");
+  assert.ok(respuestaSinModulo.cuerpo.includes("NEXT_REDIRECT"), "sin modulo la pagina redirige");
   assert.equal(respuestaSinModulo.status, 200, "sin módulo la página redirige");
 
   console.log("auditoría e2e: permisos, upsert, RLS y página OK");

@@ -12,7 +12,7 @@ type Cliente = {
   id: string; rfc: string | null; notas: string | null; activo: boolean; version: number; responsableId: string | null;
   contacto: { id: string; nombre: string; telefono: string | null; email: string | null; empresa: string | null };
   procesos: { id: string; procesoId: string; responsableId: string | null; activo: boolean; proceso: { id: string; nombre: string; periodicidad: string } }[];
-  actividades: { id: string; titulo: string; estado: string; fechaLimite: string; periodo: string }[];
+  actividades: { id: string; titulo: string; estado: string; fechaLimite: string; periodo: string; requiereConfirmacion: boolean; confirmadaAt: string | null }[];
 };
 
 export function DespachoClienteDetalle({
@@ -141,7 +141,7 @@ export function DespachoClienteDetalle({
                     <td className="px-3 py-2 font-medium text-foreground">{actividad.titulo}</td>
                     <td className="px-3 py-2 text-muted-foreground">{actividad.periodo.slice(0, 10)}</td>
                     <td className="px-3 py-2 text-muted-foreground">{actividad.fechaLimite.slice(0, 10)}</td>
-                    <td className="px-3 py-2"><Badge tono={tonoEstado(actividad.estado)}>{actividad.estado.replaceAll("_", " ")}</Badge></td>
+                    <td className="px-3 py-2"><Badge tono={actividad.estado === "completada" && actividad.requiereConfirmacion && !actividad.confirmadaAt ? "warning" : tonoEstado(actividad.estado)}>{actividad.estado === "completada" && actividad.requiereConfirmacion && !actividad.confirmadaAt ? "Por confirmar" : actividad.estado.replaceAll("_", " ")}</Badge></td>
                   </tr>
                 ))}
               </tbody>

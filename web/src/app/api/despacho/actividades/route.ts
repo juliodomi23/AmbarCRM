@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { serializar } from "@/lib/serialize";
 import { aBigInt } from "@/lib/ids";
 import { exigirGestion, fechaCivil, texto, aFecha, mesValido } from "@/lib/despacho-api";
-import { ESTADOS_DESPACHO, TIPOS_ACTIVIDAD, puedeGestionarDespacho } from "@/lib/despacho";
+import { ESTADOS_DESPACHO, TIPOS_ACTIVIDAD, puedeVerTodasActividadesDespacho } from "@/lib/despacho";
 
 function rangoMes(mes: string) {
   const [anio, numero] = mes.split("-").map(Number);
@@ -24,8 +24,9 @@ export const GET = conModulo("despacho", {}, async (sesion, req: NextRequest) =>
   if (clienteId) where.clienteId = clienteId;
   if (responsableId) where.responsableId = responsableId;
   if (periodo && mesValido(periodo)) where.periodo = rangoMes(periodo);
-  const gestiona = puedeGestionarDespacho(sesion.puesto, sesion.rol);
-  if (!gestiona) where.responsableId = sesion.userId;
+  const modulo = await db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } });
+  const puedeVerTodo = puedeVerTodasActividadesDespacho({ id: sesion.userId, puesto: sesion.puesto, rol: sesion.rol }, modulo?.config);
+  if (!puedeVerTodo) where.responsableId = sesion.userId;
   const actividades = await db.despachoActividad.findMany({
     where,
     include: {

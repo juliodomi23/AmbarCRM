@@ -15,7 +15,7 @@ export function listarModulos() {
       const config = guardado?.config ?? {};
       return {
         ...m,
-        activo: Boolean(guardado?.activo) && puestoPuedeAcceder(m.clave, config, yo.puesto, yo.rol),
+        activo: Boolean(guardado?.activo) && puestoPuedeAcceder(m.clave, config, yo.puesto, yo.rol, yo.id),
         config: { ...config, puestosPermitidos: puestosPermitidosModulo(m.clave, config) },
       };
     }),

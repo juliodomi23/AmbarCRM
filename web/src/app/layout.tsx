@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import Script from "next/script";
 import { getServerSession } from "next-auth";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
@@ -28,7 +29,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="es" suppressHydrationWarning style={estiloMarca}>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('ambar-theme');var d=t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d)}catch(e){}})()` }} />
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`(function(){try{var t=localStorage.getItem('ambar-theme');var d=t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d)}catch(e){}})()`}
+        </Script>
       </head>
       <body className={`${inter.variable} ${jakarta.variable}`}>
         <Providers>{children}</Providers>

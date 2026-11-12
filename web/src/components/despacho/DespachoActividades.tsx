@@ -4,11 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import { Badge, Boton, Campo, Selector, tonoEstado } from "@/components/ui";
 import { EmptyState } from "@/components/EmptyState";
-import { ESTADOS_DESPACHO, estaAtrasada, transicionDespachoValida } from "@/lib/despacho";
+import { ESTADOS_DESPACHO, actividadCuentaComoCompletada, estaAtrasada, transicionDespachoValida } from "@/lib/despacho";
 
 type Actividad = {
   id: string; titulo: string; estado: string; tipo: string; periodo: string; fechaLimite: string;
-  responsableId: string | null; notas: string | null; version: number;
+  responsableId: string | null; notas: string | null; version: number; requiereConfirmacion: boolean;
+  confirmadaAt: string | null; confirmadaPorId: string | null;
   cliente: { id: string; contacto: { nombre: string; empresa: string | null } };
 };
 
@@ -16,14 +17,25 @@ type Opcion = { id: string; nombre: string };
 type Cliente = { id: string; contacto: { nombre: string; empresa: string | null } };
 
 const ETIQUETAS: Record<string, string> = {
-  pendiente: "Pendiente", en_proceso: "En proceso", completada: "Completada", bloqueada: "Bloqueada",
+  pendiente: "Pendiente", en_proceso: "En proceso", por_confirmar: "Por confirmar", completada: "Completada", bloqueada: "Bloqueada",
 };
 const COLUMNAS = [
   { estado: "pendiente", titulo: "Pendiente" },
   { estado: "en_proceso", titulo: "En proceso" },
   { estado: "bloqueada", titulo: "Bloqueada" },
+  { estado: "por_confirmar", titulo: "Por confirmar" },
   { estado: "completada", titulo: "Completada" },
 ];
+
+function esperaConfirmacion(actividad: Actividad) {
+  return actividad.estado === "completada" && !actividadCuentaComoCompletada(actividad);
+}
+
+function vaEnColumna(actividad: Actividad, estado: string) {
+  if (estado === "por_confirmar") return esperaConfirmacion(actividad);
+  if (estado === "completada") return actividadCuentaComoCompletada(actividad);
+  return actividad.estado === estado;
+}
 
 function mesMexico() { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit" }).format(new Date()); }
 function moverMes(valor: string, delta: number) { const [anio, mes] = valor.split("-").map(Number); return new Date(Date.UTC(anio, mes - 1 + delta, 1)).toISOString().slice(0, 7); }
@@ -31,10 +43,12 @@ function etiquetaMes(valor: string) { return new Date(`${valor}-01T12:00:00Z`).t
 function fechaCorta(valor: string) { const fecha = valor.slice(0, 10); return new Date(`${fecha}T12:00:00Z`).toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", ""); }
 function avatar(nombre: string) { return nombre.split(/\s+/).filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase() || "—"; }
 
-function TarjetaVista({ actividad, puede, responsable, siguientes, onCambiar }: {
-  actividad: Actividad; puede: boolean; responsable: string; siguientes: string[]; onCambiar: (siguiente: string) => void;
+function TarjetaVista({ actividad, puede, puedeConfirmar, responsable, siguientes, onCambiar, onConfirmar }: {
+  actividad: Actividad; puede: boolean; puedeConfirmar: boolean; responsable: string; siguientes: string[];
+  onCambiar: (siguiente: string) => void; onConfirmar: () => void;
 }) {
   const atrasada = estaAtrasada(actividad);
+  const pendienteConfirmacion = esperaConfirmacion(actividad);
   return (
     <article aria-label={`${actividad.titulo}, ${ETIQUETAS[actividad.estado] ?? actividad.estado}`} className={`surface space-y-3 p-3 ${atrasada ? "border-destructive/50" : ""}`}>
       <div className="flex items-start justify-between gap-2">
@@ -49,8 +63,10 @@ function TarjetaVista({ actividad, puede, responsable, siguientes, onCambiar }: 
       </div>
       {actividad.notas && <p className="line-clamp-2 text-xs text-muted-foreground">{actividad.notas}</p>}
       <div className="flex items-center gap-2 border-t border-border/60 pt-2">
-        <Badge tono={actividad.estado === "bloqueada" ? "destructive" : tonoEstado(actividad.estado)} className={`min-h-7 px-2 text-xs ${actividad.estado === "bloqueada" ? "border border-destructive/30 bg-destructive/10 text-destructive" : ""}`}><span aria-hidden="true">{actividad.estado === "bloqueada" ? "!" : "•"}</span>{ETIQUETAS[actividad.estado] ?? actividad.estado}</Badge>
+        <Badge tono={actividad.estado === "bloqueada" ? "destructive" : pendienteConfirmacion ? "warning" : tonoEstado(actividad.estado)} className={`min-h-7 px-2 text-xs ${actividad.estado === "bloqueada" ? "border border-destructive/30 bg-destructive/10 text-destructive" : ""}`}><span aria-hidden="true">{actividad.estado === "bloqueada" ? "!" : pendienteConfirmacion ? "◷" : "•"}</span>{pendienteConfirmacion ? "Por confirmar" : ETIQUETAS[actividad.estado] ?? actividad.estado}</Badge>
       </div>
+      {pendienteConfirmacion && <p className="text-xs text-warning">No suma al avance hasta que se confirme.</p>}
+      {pendienteConfirmacion && puedeConfirmar && <Boton className="min-h-9 w-full" onClick={onConfirmar}>Confirmar actividad</Boton>}
       {puede && siguientes.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {siguientes.map((siguiente) => (
@@ -64,19 +80,20 @@ function TarjetaVista({ actividad, puede, responsable, siguientes, onCambiar }: 
   );
 }
 
-function TarjetaArrastrable({ actividad, puede, responsable, siguientes, onCambiar }: {
-  actividad: Actividad; puede: boolean; responsable: string; siguientes: string[]; onCambiar: (siguiente: string) => void;
+function TarjetaArrastrable({ actividad, puede, puedeConfirmar, responsable, siguientes, onCambiar, onConfirmar }: {
+  actividad: Actividad; puede: boolean; puedeConfirmar: boolean; responsable: string; siguientes: string[];
+  onCambiar: (siguiente: string) => void; onConfirmar: () => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: actividad.id, disabled: !puede });
   return (
     <div ref={setNodeRef} {...attributes} {...listeners} style={{ opacity: isDragging ? 0.4 : 1 }} className={puede ? "cursor-grab touch-none active:cursor-grabbing" : undefined}>
-      <TarjetaVista actividad={actividad} puede={puede} responsable={responsable} siguientes={siguientes} onCambiar={onCambiar} />
+      <TarjetaVista actividad={actividad} puede={puede} puedeConfirmar={puedeConfirmar} responsable={responsable} siguientes={siguientes} onCambiar={onCambiar} onConfirmar={onConfirmar} />
     </div>
   );
 }
 
 function ColumnaKanban({ columna, conteo, children }: { columna: { estado: string; titulo: string }; conteo: number; children: React.ReactNode }) {
-  const { setNodeRef, isOver } = useDroppable({ id: columna.estado });
+  const { setNodeRef, isOver } = useDroppable({ id: columna.estado, disabled: columna.estado === "por_confirmar" });
   return (
     <section ref={setNodeRef} aria-labelledby={`columna-${columna.estado}`} className={`space-y-3 rounded-xl p-3 transition-colors ${isOver ? "bg-primary/10 ring-2 ring-primary/40" : "bg-muted/30"}`}>
       <h2 id={`columna-${columna.estado}`} className="flex items-center justify-between gap-2 text-sm font-semibold text-foreground">{columna.titulo}<span className="rounded-full bg-card px-2 py-0.5 text-xs text-muted-foreground">{conteo}</span></h2>
@@ -86,23 +103,28 @@ function ColumnaKanban({ columna, conteo, children }: { columna: { estado: strin
 }
 
 export function DespachoActividades({
-  iniciales, clientes, usuarios, esGestion, modo,
+  iniciales, clientes, usuarios, esGestion, puedeConfirmar = false, modo, clienteIdInicial = "", soloCliente = false, periodoInicial, responsableIdInicial = "",
 }: {
   iniciales: Actividad[];
   clientes: Cliente[];
   usuarios: Opcion[];
   esGestion: boolean;
+  puedeConfirmar?: boolean;
   modo: "tablero" | "mias";
+  clienteIdInicial?: string;
+  soloCliente?: boolean;
+  periodoInicial?: string;
+  responsableIdInicial?: string;
 }) {
   const [actividades, setActividades] = useState(iniciales);
   const [estado, setEstado] = useState("");
-  const [periodo, setPeriodo] = useState(mesMexico);
-  const [clienteId, setClienteId] = useState("");
-  const [responsableIdFiltro, setResponsableIdFiltro] = useState("");
+  const [periodo, setPeriodo] = useState(periodoInicial ?? mesMexico);
+  const [clienteId, setClienteId] = useState(clienteIdInicial);
+  const [responsableIdFiltro, setResponsableIdFiltro] = useState(responsableIdInicial);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
   const [creando, setCreando] = useState(false);
-  const [form, setForm] = useState({ titulo: "", clienteId: "", periodo: "", fechaLimite: "", tipo: "extraordinaria", responsableId: "" });
+  const [form, setForm] = useState({ titulo: "", clienteId: clienteIdInicial, periodo: "", fechaLimite: "", tipo: "extraordinaria", responsableId: "" });
   const [arrastrando, setArrastrando] = useState<Actividad | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const actividadesDelPeriodo = actividades.filter((actividad) => new Date(actividad.periodo).toISOString().slice(0, 7) === periodo);
@@ -139,6 +161,16 @@ export function DespachoActividades({
     setActividades((lista) => lista.map((item) => item.id === actividad.id ? datos.actividad : item));
   }
 
+  async function confirmar(actividad: Actividad) {
+    const respuesta = await fetch(`/api/despacho/actividades/${actividad.id}/confirmar`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ version: actividad.version }),
+    });
+    const datos = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) { setError(datos.error ?? "No se pudo confirmar la actividad"); if (respuesta.status === 409) void cargar(); return; }
+    setActividades((lista) => lista.map((item) => item.id === actividad.id ? datos.actividad : item));
+  }
+
   function onDragStart(evento: DragStartEvent) {
     setArrastrando(actividadesDelPeriodo.find((actividad) => actividad.id === evento.active.id) ?? null);
   }
@@ -163,7 +195,7 @@ export function DespachoActividades({
     if (!respuesta.ok) { setError(datos.error ?? "No se pudo crear la actividad"); return; }
     setActividades((lista) => [datos.actividad, ...lista]);
     setCreando(false);
-    setForm({ titulo: "", clienteId: "", periodo: "", fechaLimite: "", tipo: "extraordinaria", responsableId: "" });
+    setForm({ titulo: "", clienteId: clienteIdInicial, periodo: "", fechaLimite: "", tipo: "extraordinaria", responsableId: "" });
   }
 
   return (
@@ -181,10 +213,10 @@ export function DespachoActividades({
             <button type="button" aria-label="Mes siguiente" onClick={() => setPeriodo((valor) => moverMes(valor, 1))} className="grid h-9 w-9 place-items-center rounded-md text-xl text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">›</button>
           </div>
         </div>
-        <Selector label="Cliente" value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
+        {!soloCliente && <Selector label="Cliente" value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
           <option value="">Todos</option>
           {clientes.map((cliente) => <option key={cliente.id} value={cliente.id}>{cliente.contacto.empresa ?? cliente.contacto.nombre}</option>)}
-        </Selector>
+        </Selector>}
         {esGestion && (
           <Selector label="Colaborador" value={responsableIdFiltro} onChange={(e) => setResponsableIdFiltro(e.target.value)}>
             <option value="">Todos</option>
@@ -200,10 +232,10 @@ export function DespachoActividades({
       {creando && esGestion && (
         <form onSubmit={crear} className="surface grid gap-3 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
           <Campo label="Título" required value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />
-          <Selector label="Cliente" required value={form.clienteId} onChange={(e) => setForm({ ...form, clienteId: e.target.value })}>
+          {!soloCliente && <Selector label="Cliente" required value={form.clienteId} onChange={(e) => setForm({ ...form, clienteId: e.target.value })}>
             <option value="">Selecciona…</option>
             {clientes.map((cliente) => <option key={cliente.id} value={cliente.id}>{cliente.contacto.empresa ?? cliente.contacto.nombre}</option>)}
-          </Selector>
+          </Selector>}
           <Campo label="Periodo" type="month" required value={form.periodo} onChange={(e) => setForm({ ...form, periodo: e.target.value })} />
           <Campo label="Fecha límite" type="date" required value={form.fechaLimite} onChange={(e) => setForm({ ...form, fechaLimite: e.target.value })} />
           <Selector label="Tipo" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
@@ -223,9 +255,9 @@ export function DespachoActividades({
       ) : (
         <>
         <DndContext id="kanban-despacho" sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <div className="hidden gap-3 sm:gap-4 md:grid md:grid-cols-2 xl:grid-cols-4">
+          <div className="hidden gap-3 sm:gap-4 md:grid md:grid-cols-2 xl:grid-cols-5">
             {COLUMNAS.map((columna) => {
-              const delEstado = actividadesDelPeriodo.filter((actividad) => actividad.estado === columna.estado);
+              const delEstado = actividadesDelPeriodo.filter((actividad) => vaEnColumna(actividad, columna.estado));
               return (
                 <ColumnaKanban key={columna.estado} columna={columna} conteo={delEstado.length}>
                   {delEstado.map((actividad) => {
@@ -233,7 +265,7 @@ export function DespachoActividades({
                     const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor));
                     const responsable = usuarios.find((usuario) => usuario.id === actividad.responsableId)?.nombre ?? "Sin asignar";
                     return (
-                      <TarjetaArrastrable key={actividad.id} actividad={actividad} puede={puede} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} />
+                      <TarjetaArrastrable key={actividad.id} actividad={actividad} puede={puede} puedeConfirmar={puedeConfirmar} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} onConfirmar={() => void confirmar(actividad)} />
                     );
                   })}
                   {delEstado.length === 0 && <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">Sin actividades</p>}
@@ -241,9 +273,9 @@ export function DespachoActividades({
               );
             })}
           </div>
-          <DragOverlay>{arrastrando ? <div className="w-64"><TarjetaVista actividad={arrastrando} puede={false} responsable={usuarios.find((usuario) => usuario.id === arrastrando!.responsableId)?.nombre ?? "Sin asignar"} siguientes={[]} onCambiar={() => {}} /></div> : null}</DragOverlay>
+          <DragOverlay>{arrastrando ? <div className="w-64"><TarjetaVista actividad={arrastrando} puede={false} puedeConfirmar={false} responsable={usuarios.find((usuario) => usuario.id === arrastrando!.responsableId)?.nombre ?? "Sin asignar"} siguientes={[]} onCambiar={() => {}} onConfirmar={() => {}} /></div> : null}</DragOverlay>
         </DndContext>
-        <div className="space-y-2 md:hidden">{COLUMNAS.map((columna) => { const delEstado = actividadesDelPeriodo.filter((actividad) => actividad.estado === columna.estado); return <details key={`movil-${columna.estado}`} className="surface group"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{columna.titulo}<span className="text-sm text-muted-foreground">{delEstado.length}</span></summary><div className="space-y-3 p-3 pt-0">{delEstado.length ? delEstado.map((actividad) => { const responsable = usuarios.find((usuario) => usuario.id === actividad.responsableId)?.nombre ?? "Sin asignar"; const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor)); return <TarjetaVista key={actividad.id} actividad={actividad} puede={esGestion || modo === "mias"} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} />; }) : <p className="pb-3 text-center text-xs text-muted-foreground">Sin actividades</p>}</div></details>; })}</div>
+        <div className="space-y-2 md:hidden">{COLUMNAS.map((columna) => { const delEstado = actividadesDelPeriodo.filter((actividad) => vaEnColumna(actividad, columna.estado)); return <details key={`movil-${columna.estado}`} className="surface group"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{columna.titulo}<span className="text-sm text-muted-foreground">{delEstado.length}</span></summary><div className="space-y-3 p-3 pt-0">{delEstado.length ? delEstado.map((actividad) => { const responsable = usuarios.find((usuario) => usuario.id === actividad.responsableId)?.nombre ?? "Sin asignar"; const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor)); return <TarjetaVista key={actividad.id} actividad={actividad} puede={esGestion || modo === "mias"} puedeConfirmar={puedeConfirmar} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} onConfirmar={() => void confirmar(actividad)} />; }) : <p className="pb-3 text-center text-xs text-muted-foreground">Sin actividades</p>}</div></details>; })}</div>
         </>
       )}
     </section>

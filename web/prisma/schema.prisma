@@ -2725,6 +2725,7 @@ model DespachoCliente {
   contacto    Contacto                 @relation(fields: [contactoId, orgId], references: [id, orgId], onDelete: Restrict)
   procesos    DespachoClienteProceso[]
   actividades DespachoActividad[]
+  movimientosFinancieros DespachoMovimientoFinanciero[]
 
   @@unique([orgId, contactoId])
   @@unique([id, orgId])
@@ -2802,6 +2803,9 @@ model DespachoActividad {
   fechaLimite          DateTime  @map("fecha_limite") @db.Date
   estado               String    @default("pendiente")
   completadaAt         DateTime? @map("completada_at") @db.Timestamptz(6)
+  requiereConfirmacion Boolean   @default(true) @map("requiere_confirmacion")
+  confirmadaAt         DateTime? @map("confirmada_at") @db.Timestamptz(6)
+  confirmadaPorId      BigInt?   @map("confirmada_por_id")
   notas                String?
   version              Int       @default(1)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2817,6 +2821,48 @@ model DespachoActividad {
   @@index([orgId, responsableId, estado])
   @@index([orgId, clienteId])
   @@map("despacho_actividades")
+}
+
+model DespachoMovimientoFinanciero {
+  id                 BigInt   @id @default(autoincrement())
+  orgId              BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  unidad             String
+  tipo               String
+  concepto           String
+  monto              Decimal  @db.Decimal(12, 2)
+  fecha              DateTime @db.Date
+  fechaVencimiento   DateTime? @map("fecha_vencimiento") @db.Date
+  clienteId          BigInt?  @map("cliente_id")
+  responsableId      BigInt   @map("responsable_id")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  cliente DespachoCliente? @relation(fields: [clienteId, orgId], references: [id, orgId], onDelete: Restrict)
+  pagos   DespachoFinanzaPago[]
+
+  @@unique([id, orgId])
+  @@index([orgId, unidad, fecha])
+  @@index([orgId, tipo, fecha])
+  @@index([orgId, clienteId, fechaVencimiento])
+  @@index([orgId, responsableId, fecha])
+  @@map("despacho_movimientos_financieros")
+}
+
+model DespachoFinanzaPago {
+  id            BigInt   @id @default(autoincrement())
+  orgId         BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  movimientoId  BigInt   @map("movimiento_id")
+  monto         Decimal  @db.Decimal(12, 2)
+  fecha         DateTime @db.Date
+  responsableId BigInt   @map("responsable_id")
+  metodo        String?
+  nota          String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  movimiento DespachoMovimientoFinanciero @relation(fields: [movimientoId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@index([orgId, movimientoId, fecha])
+  @@map("despacho_finanza_pagos")
 }
 
 model DespachoActividadCambio {

@@ -173,6 +173,33 @@ clientes, procesos y plantillas se desactivan en lugar de borrarse, para conserv
 el historial. La generación de un mes es idempotente: repetirla no duplica
 actividades ya creadas.
 
+El porcentaje solo suma actividades completadas y confirmadas. Al completar una
+actividad nueva queda en «Por confirmar» y no incrementa el avance hasta que la
+confirme gerencia, administración o una persona autorizada por una Administradora
+global desde Configuración del despacho. Las actividades históricas anteriores a
+esta regla conservan su avance. Las actividades extraordinarias se registran desde
+el tablero o la ficha del cliente y aparecen en el mismo Kanban.
+
+El porcentaje global abre Rendimiento (`/despacho/rendimiento`), con desglose de
+los seis meses recientes por responsable y cliente; al seleccionar un cliente se
+abre su ficha y Kanban del periodo. Finanzas (`/despacho/finanzas`) separa las
+unidades Despacho y REFMEX, y permite registrar ingresos, costos y gastos con fecha,
+responsable y cliente. Los ingresos por cobrar requieren vencimiento y permiten
+abonos; la cartera muestra el saldo pendiente por cliente. Los accesos especiales
+para ver o confirmar actividades son permisos exclusivos del módulo, no elevan el
+rol global del CRM. La gráfica de calidad queda pendiente de la escala que defina
+el equipo.
+
+La cartera inicial de REFMEX se carga con `cd web && npm run
+seed:refmex-despacho`. Por defecto es solo dry-run. En producción el dry-run exige
+`ORG_SLUG`; para aplicar requiere además los correos reales de los cinco responsables
+(`RESPONSABLE_DARIO_EMAIL`, `RESPONSABLE_JUAN_JOSE_EMAIL`, `RESPONSABLE_NELSON_EMAIL`,
+`RESPONSABLE_VICTOR_EMAIL`, `RESPONSABLE_ABNER_EMAIL`), `ALLOW_PROD_DISPATCH_SEED=1`
+y `--apply`. El seed es aditivo e idempotente: reutiliza contactos existentes por
+nombre normalizado, asigna clientes, actualiza los responsables de sus procesos y
+actividades y no borra registros. Crea las dos actividades extraordinarias bajo el
+cliente interno «Despacho interno».
+
 ## Contenido y copys
 
 Contenido (`contenido`, `/contenido`) organiza piezas editoriales por canal,

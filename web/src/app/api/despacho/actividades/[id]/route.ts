@@ -6,11 +6,11 @@ import { serializar } from "@/lib/serialize";
 import { transaccionTenant } from "@/lib/retail-db";
 import { aBigInt } from "@/lib/ids";
 import { exigirGestion, fechaCivil, texto, aFecha } from "@/lib/despacho-api";
-import { ESTADOS_DESPACHO, puedeGestionarDespacho, transicionDespachoValida } from "@/lib/despacho";
+import { ESTADOS_DESPACHO, puedeGestionarDespacho, puedeVerTodasActividadesDespacho, transicionDespachoValida } from "@/lib/despacho";
 
 type Props = { params: Promise<{ id: string }> };
 
-export const GET = conModulo("despacho", {}, async (_sesion, _req: NextRequest, props: Props) => {
+export const GET = conModulo("despacho", {}, async (sesion, _req: NextRequest, props: Props) => {
   const id = aBigInt((await props.params).id);
   if (!id || id <= 0n) return NextResponse.json({ error: "Actividad inválida" }, { status: 400 });
   const actividad = await db.despachoActividad.findUnique({
@@ -20,6 +20,10 @@ export const GET = conModulo("despacho", {}, async (_sesion, _req: NextRequest, 
       cambios: { orderBy: { creadoAt: "asc" } },
     },
   });
+  const modulo = await db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } });
+  if (actividad && !puedeVerTodasActividadesDespacho({ id: sesion.userId, puesto: sesion.puesto, rol: sesion.rol }, modulo?.config) && String(actividad.responsableId ?? "") !== String(sesion.userId ?? "")) {
+    return NextResponse.json({ error: "Actividad no encontrada" }, { status: 404 });
+  }
   return actividad ? NextResponse.json(serializar({ actividad })) : NextResponse.json({ error: "Actividad no encontrada" }, { status: 404 });
 });
 
@@ -55,6 +59,8 @@ export const PATCH = conModulo("despacho", {}, async (sesion, req: NextRequest, 
     if (body.estado !== undefined) {
       data.estado = estadoSiguiente;
       data.completadaAt = estadoSiguiente === "completada" ? new Date() : null;
+      data.confirmadaAt = null;
+      data.confirmadaPorId = null;
     }
     if (body.titulo !== undefined) {
       const titulo = texto(body.titulo).slice(0, 200);

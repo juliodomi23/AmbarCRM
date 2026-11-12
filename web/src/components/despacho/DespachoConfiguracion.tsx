@@ -7,13 +7,19 @@ import { PERIODICIDADES, etiquetaPeriodicidad } from "@/lib/despacho";
 
 type ActividadPlantilla = { id?: string; nombre: string; diaLimite: number; activo?: boolean };
 type Proceso = { id: string; nombre: string; periodicidad: string; activo: boolean; actividades: ActividadPlantilla[]; _count?: { clientes: number } };
+type UsuarioDespacho = { id: string; nombre: string; email: string };
+type PermisosDespacho = { usuariosAccesoTotal: string[]; usuariosConfirmadores: string[] };
 
 const VACIA: ActividadPlantilla = { nombre: "", diaLimite: 1 };
 
-export function DespachoConfiguracion({ iniciales, esGestion }: { iniciales: Proceso[]; esGestion: boolean }) {
+export function DespachoConfiguracion({ iniciales, usuarios, permisosIniciales, esGestion, esAdmin }: {
+  iniciales: Proceso[]; usuarios: UsuarioDespacho[]; permisosIniciales: PermisosDespacho; esGestion: boolean; esAdmin: boolean;
+}) {
   const [procesos, setProcesos] = useState(iniciales);
+  const [permisos, setPermisos] = useState(permisosIniciales);
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
+  const [guardandoPermisos, setGuardandoPermisos] = useState(false);
   const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7));
   const [creando, setCreando] = useState(false);
   const [nuevo, setNuevo] = useState<{ nombre: string; periodicidad: string; actividades: ActividadPlantilla[] }>({ nombre: "", periodicidad: "mensual", actividades: [{ ...VACIA }] });
@@ -65,10 +71,56 @@ export function DespachoConfiguracion({ iniciales, esGestion }: { iniciales: Pro
       : proceso));
   }
 
+  function alternarPermiso(clave: keyof PermisosDespacho, usuarioId: string) {
+    setPermisos((actual) => {
+      const conjunto = new Set(actual[clave]);
+      if (conjunto.has(usuarioId)) conjunto.delete(usuarioId);
+      else conjunto.add(usuarioId);
+      return { ...actual, [clave]: [...conjunto] };
+    });
+  }
+
+  async function guardarPermisosDespacho() {
+    setError(""); setAviso(""); setGuardandoPermisos(true);
+    try {
+      const respuesta = await fetch("/api/despacho/permisos", {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(permisos),
+      });
+      const datos = await respuesta.json().catch(() => ({}));
+      if (!respuesta.ok) throw new Error(datos.error ?? "No se pudieron guardar los permisos");
+      setAviso("Permisos de Despacho guardados");
+    } catch (fallo) {
+      setError(fallo instanceof Error ? fallo.message : "No se pudieron guardar los permisos");
+    } finally {
+      setGuardandoPermisos(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       {error && <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
       {aviso && <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">{aviso}</p>}
+
+      {esAdmin && (
+        <section className="surface space-y-4 p-4 sm:p-5">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Accesos especiales del módulo</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Estos permisos aplican solo a Despacho; no cambian el rol global del CRM.</p>
+          </div>
+          <div className="grid gap-5 lg:grid-cols-2">
+            <fieldset className="space-y-2">
+              <legend className="font-medium text-foreground">Puede ver todas las actividades y porcentajes</legend>
+              {usuarios.map((usuario) => <label key={`ver-${usuario.id}`} className="flex min-h-10 items-center gap-2 text-sm text-foreground"><input type="checkbox" checked={permisos.usuariosAccesoTotal.includes(usuario.id)} onChange={() => alternarPermiso("usuariosAccesoTotal", usuario.id)} />{usuario.nombre}<span className="text-xs text-muted-foreground">{usuario.email}</span></label>)}
+            </fieldset>
+            <fieldset className="space-y-2">
+              <legend className="font-medium text-foreground">Puede confirmar actividades completadas</legend>
+              {usuarios.map((usuario) => <label key={`confirmar-${usuario.id}`} className="flex min-h-10 items-center gap-2 text-sm text-foreground"><input type="checkbox" checked={permisos.usuariosConfirmadores.includes(usuario.id)} onChange={() => alternarPermiso("usuariosConfirmadores", usuario.id)} />{usuario.nombre}<span className="text-xs text-muted-foreground">{usuario.email}</span></label>)}
+            </fieldset>
+          </div>
+          <Boton onClick={() => void guardarPermisosDespacho()} disabled={guardandoPermisos}>{guardandoPermisos ? "Guardando…" : "Guardar accesos"}</Boton>
+          <p className="text-xs text-muted-foreground">Solo una Administradora global del CRM puede cambiar estos accesos.</p>
+        </section>
+      )}
 
       {esGestion && (
         <form onSubmit={generar} className="surface flex flex-wrap items-end gap-3 p-4 sm:p-5">

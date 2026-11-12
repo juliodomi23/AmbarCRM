@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Badge, Boton, Campo, Selector } from "@/components/ui";
 import { EmptyState } from "@/components/EmptyState";
+import { actividadCuentaComoCompletada } from "@/lib/despacho";
 
 type Cliente = {
   id: string; rfc: string | null; activo: boolean; version: number; responsableId: string | null;
   contacto: { id: string; nombre: string; telefono: string | null; empresa: string | null };
   procesos: { id: string; proceso: { id: string; nombre: string; periodicidad: string } }[];
   _count: { actividades: number };
-  actividades: { estado: string; fechaLimite: string }[];
+  actividades: { estado: string; fechaLimite: string; requiereConfirmacion: boolean; confirmadaAt: string | null }[];
 };
 type Opcion = { id: string; nombre: string };
 
@@ -42,8 +43,8 @@ export function DespachoClientes({
     return [...filtrados].sort((a, b) => {
       const atrasadasA = a.actividades.filter(actividadAtrasada).length;
       const atrasadasB = b.actividades.filter(actividadAtrasada).length;
-      const porcentajeA = a.actividades.length ? a.actividades.filter((actividad) => actividad.estado === "completada").length / a.actividades.length : 0;
-      const porcentajeB = b.actividades.length ? b.actividades.filter((actividad) => actividad.estado === "completada").length / b.actividades.length : 0;
+      const porcentajeA = a.actividades.length ? a.actividades.filter(actividadCuentaComoCompletada).length / a.actividades.length : 0;
+      const porcentajeB = b.actividades.length ? b.actividades.filter(actividadCuentaComoCompletada).length / b.actividades.length : 0;
       return orden === "avance" ? porcentajeA - porcentajeB : atrasadasB - atrasadasA || porcentajeA - porcentajeB;
     });
   }, [clientes, busqueda, orden]);
@@ -102,7 +103,7 @@ export function DespachoClientes({
                 </div>
                 <Badge tono={cliente.activo ? "success" : "neutral"}>{cliente.activo ? "Activo" : "Inactivo"}</Badge>
               </div>
-              {(() => { const hechas = cliente.actividades.filter((actividad) => actividad.estado === "completada").length; const avance = cliente.actividades.length ? Math.round(hechas / cliente.actividades.length * 100) : null; const atrasadas = cliente.actividades.filter(actividadAtrasada).length; const responsable = usuarios.find((usuario) => usuario.id === cliente.responsableId)?.nombre ?? "Sin asignar"; const avatar = responsable.split(/\s+/).filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase() || "—"; return <>
+              {(() => { const hechas = cliente.actividades.filter(actividadCuentaComoCompletada).length; const avance = cliente.actividades.length ? Math.round(hechas / cliente.actividades.length * 100) : null; const atrasadas = cliente.actividades.filter(actividadAtrasada).length; const responsable = usuarios.find((usuario) => usuario.id === cliente.responsableId)?.nombre ?? "Sin asignar"; const avatar = responsable.split(/\s+/).filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase() || "—"; return <>
                 <div className="space-y-1.5"><div className="flex items-center justify-between text-xs"><span className="font-medium text-muted-foreground">Avance del mes</span><span className="font-semibold text-foreground">{avance === null ? "Sin actividades" : `${avance}%`}</span></div><div className="h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={avance ?? 0} aria-valuemin={0} aria-valuemax={100} aria-label={`Avance del mes ${avance ?? 0} por ciento`}><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${avance ?? 0}%` }} /></div></div>
                 <div className="flex items-center justify-between gap-3 text-xs"><span className="flex min-w-0 items-center gap-2 text-muted-foreground"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/10 font-semibold text-primary" title={responsable} aria-label={`Responsable: ${responsable}`}>{avatar}</span><span className="truncate">{responsable}</span></span><span className={atrasadas ? "font-semibold text-destructive" : "text-muted-foreground"}>{atrasadas} atrasada{atrasadas === 1 ? "" : "s"}</span></div>
                 <p className="text-xs text-muted-foreground">{cliente.procesos.length} procesos · {cliente._count.actividades} actividades</p>

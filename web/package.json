@@ -28,6 +28,7 @@
     "test:despacho:e2e": "tsx prisma/scripts/test-despacho-e2e.ts",
     "test:contenido:e2e": "tsx prisma/scripts/test-contenido-e2e.ts",
     "test:auditoria:e2e": "tsx prisma/scripts/test-auditoria-e2e.ts",
+    "seed:refmex-despacho": "node scripts/seed-refmex-despacho-cartera.mjs",
     "seed:admin": "node scripts/seed-admin.mjs"
   },
   "dependencies": {

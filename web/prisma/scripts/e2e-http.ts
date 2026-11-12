@@ -54,3 +54,13 @@ export async function paginaE2E(baseUrl: string, cookie: string, ruta: string) {
   const respuesta = await fetch(`${baseUrl}${ruta}`, { headers: { Cookie: cookie }, redirect: "manual" });
   return respuesta.status;
 }
+
+/**
+ * Página con su cuerpo. En Next.js 16 una redirección del servidor durante el streaming
+ * responde 200 y viaja como marcador NEXT_REDIRECT en el cuerpo, no como 307: para
+ * comprobar que una página redirige hay que leer el cuerpo, no el código de estado.
+ */
+export async function paginaE2EConCuerpo(baseUrl: string, cookie: string, ruta: string) {
+  const respuesta = await fetch(`${baseUrl}${ruta}`, { headers: { Cookie: cookie }, redirect: "manual" });
+  return { status: respuesta.status, cuerpo: await respuesta.text() };
+}

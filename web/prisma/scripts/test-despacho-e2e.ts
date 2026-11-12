@@ -34,8 +34,11 @@ type ActividadDto = {
   titulo: string;
   responsableId: string | null;
   clienteId: string;
+  requiereConfirmacion: boolean;
+  confirmadaAt: string | null;
   cambios: { estadoNuevo: string }[];
 };
+type MovimientoDto = { id: string; monto: string; tipo: string; unidad: string };
 
 async function main() {
   await admin.query(
@@ -46,6 +49,7 @@ async function main() {
   const usuarios = [
     { org: orgA, nombre: "Admin A", email: `admin-${sufijo}@test.local`, rol: "admin", puesto: "Administrador" },
     { org: orgA, nombre: "Contador A", email: `contador-${sufijo}@test.local`, rol: "agente", puesto: "Contador" },
+    { org: orgA, nombre: "Lusmi A", email: `lusmi-${sufijo}@test.local`, rol: "agente", puesto: "Auxiliar administrativo" },
     { org: orgB, nombre: "Admin B", email: `admin-b-${sufijo}@test.local`, rol: "admin", puesto: "Administrador" },
   ] as const;
   const ids = new Map<string, string>();
@@ -74,13 +78,14 @@ async function main() {
     )
   ).rows[0].id;
   await admin.query(
-    "INSERT INTO modulos_org(org_id,clave,activo) VALUES ($1,'despacho',true),($2,'despacho',true)",
-    [String(orgA), String(orgB)],
+    "INSERT INTO modulos_org(org_id,clave,activo,config) VALUES ($1,'despacho',true,$2::jsonb),($3,'despacho',true,'{}'::jsonb)",
+    [String(orgA), JSON.stringify({ usuariosAccesoTotal: [idDe(usuarios[2].email)], usuariosConfirmadores: [idDe(usuarios[2].email)] }), String(orgB)],
   );
 
   const adminA = await loginE2E(baseUrl, usuarios[0].email, slugA, password);
   const contadorA = await loginE2E(baseUrl, usuarios[1].email, slugA, password);
-  const adminB = await loginE2E(baseUrl, usuarios[2].email, slugB, password);
+  const lusmiA = await loginE2E(baseUrl, usuarios[2].email, slugA, password);
+  const adminB = await loginE2E(baseUrl, usuarios[3].email, slugB, password);
 
   assert.equal((await apiE2E(baseUrl, "", "/api/despacho/procesos")).status, 307);
   assert.equal((await apiE2E(baseUrl, "", "/api/despacho/procesos", "POST", {})).status, 307);
@@ -156,6 +161,15 @@ async function main() {
   assert.ok(listado.every((actividad) => actividad.clienteId === cliente.id));
   assert.ok(listado.every((actividad) => String(actividad.responsableId) === idDe(usuarios[1].email)));
   assert.equal((await apiE2E<{ actividades: ActividadDto[] }>(baseUrl, adminB, "/api/despacho/actividades")).data.actividades.length, 0);
+  const extraordinaria = await apiE2E<{ actividad: ActividadDto }>(baseUrl, adminA, "/api/despacho/actividades", "POST", {
+    clienteId: cliente.id, titulo: "Aclaración extraordinaria", periodo: "2026-11", fechaLimite: "2026-11-30", tipo: "extraordinaria", responsableId: idDe(usuarios[0].email),
+  });
+  assert.equal(extraordinaria.status, 201);
+  assert.equal(extraordinaria.data.actividad.requiereConfirmacion, true);
+  assert.equal((await apiE2E<{ actividades: ActividadDto[] }>(baseUrl, contadorA, "/api/despacho/actividades?periodo=2026-11")).data.actividades.length, 2);
+  assert.equal((await apiE2E<{ actividades: ActividadDto[] }>(baseUrl, lusmiA, "/api/despacho/actividades?periodo=2026-11")).data.actividades.length, 3, "Lusmi ve las actividades de todos los responsables");
+  const modulosLusmi = await apiE2E<{ modulos: { clave: string; activo: boolean }[] }>(baseUrl, lusmiA, "/api/modulos");
+  assert.equal(modulosLusmi.data.modulos.find((modulo) => modulo.clave === "despacho")?.activo, true, "el acceso especial habilita el módulo sin rol admin global");
 
   const actividad = listado[0];
   assert.ok(actividad);
@@ -188,9 +202,34 @@ async function main() {
   assert.equal((await apiE2E(baseUrl, adminA, `/api/despacho/actividades/${actividad.id}`, "DELETE")).status, 200);
   assert.equal((await apiE2E(baseUrl, adminA, `/api/despacho/actividades/${actividad.id}`)).status, 404);
 
-  for (const ruta of ["/despacho", "/despacho/tablero", "/despacho/mi-trabajo", "/despacho/clientes", "/despacho/configuracion", `/despacho/clientes/${cliente.id}`]) {
+  const paraConfirmar = listado[1];
+  const iniciada = await apiE2E<{ actividad: ActividadDto }>(baseUrl, contadorA, `/api/despacho/actividades/${paraConfirmar.id}`, "PATCH", { version: paraConfirmar.version, estado: "en_proceso" });
+  assert.equal(iniciada.status, 200);
+  const completada = await apiE2E<{ actividad: ActividadDto }>(baseUrl, contadorA, `/api/despacho/actividades/${paraConfirmar.id}`, "PATCH", { version: iniciada.data.actividad.version, estado: "completada" });
+  assert.equal(completada.status, 200);
+  assert.equal(completada.data.actividad.confirmadaAt, null, "completar solicita confirmación, no suma todavía");
+  assert.equal((await apiE2E(baseUrl, contadorA, `/api/despacho/actividades/${paraConfirmar.id}/confirmar`, "POST", { version: completada.data.actividad.version })).status, 403);
+  const confirmacion = await apiE2E<{ actividad: ActividadDto }>(baseUrl, lusmiA, `/api/despacho/actividades/${paraConfirmar.id}/confirmar`, "POST", { version: completada.data.actividad.version });
+  assert.equal(confirmacion.status, 200);
+  assert.ok(confirmacion.data.actividad.confirmadaAt, "Lusmi confirma sin convertirse en admin global");
+
+  const ingreso = await apiE2E<{ movimiento: MovimientoDto }>(baseUrl, adminA, "/api/despacho/finanzas", "POST", {
+    unidad: "despacho", tipo: "ingreso", concepto: "Honorarios de noviembre", monto: "1000.00", fecha: "2026-11-01", fechaVencimiento: "2026-11-30", clienteId: cliente.id, responsableId: idDe(usuarios[1].email),
+  });
+  assert.equal(ingreso.status, 201, JSON.stringify(ingreso.data));
+  assert.equal((await apiE2E(baseUrl, lusmiA, "/api/despacho/finanzas?mes=2026-11&unidad=despacho")).status, 403, "el acceso global de Lusmi es solo para actividades");
+  const abono = await apiE2E(baseUrl, adminA, `/api/despacho/finanzas/${ingreso.data.movimiento.id}/pagos`, "POST", { monto: "250.00", fecha: "2026-11-20", metodo: "transferencia" });
+  assert.equal(abono.status, 200);
+  const finanzas = await apiE2E<{ movimientos: MovimientoDto[]; porCobrar: { saldo: string }[]; cobradoEnMes: string }>(baseUrl, adminA, "/api/despacho/finanzas?mes=2026-11&unidad=despacho");
+  assert.equal(Number(finanzas.data.porCobrar[0]?.saldo), 750);
+  assert.equal(Number(finanzas.data.cobradoEnMes), 250);
+  const finanzasOrgB = await apiE2E<{ movimientos: MovimientoDto[] }>(baseUrl, adminB, "/api/despacho/finanzas?mes=2026-11&unidad=despacho");
+  assert.equal(finanzasOrgB.data.movimientos.length, 0, "las finanzas quedan aisladas por organización");
+
+  for (const ruta of ["/despacho", "/despacho/rendimiento?mes=2026-11", "/despacho/tablero?periodo=2026-11", "/despacho/mi-trabajo", "/despacho/clientes", "/despacho/configuracion", "/despacho/finanzas", `/despacho/clientes/${cliente.id}?mes=2026-11`]) {
     assert.equal(await paginaE2E(baseUrl, adminA, ruta), 200, ruta);
   }
+  assert.equal(await paginaE2E(baseUrl, lusmiA, "/despacho/rendimiento?mes=2026-11"), 200);
 
   await admin.query("UPDATE modulos_org SET activo=false WHERE org_id=$1 AND clave='despacho'", [String(orgA)]);
   assert.equal((await apiE2E(baseUrl, adminA, "/api/despacho/procesos")).status, 404);
@@ -205,6 +244,8 @@ try {
   await main();
 } finally {
   for (const tabla of [
+    "despacho_finanza_pagos",
+    "despacho_movimientos_financieros",
     "despacho_actividad_cambios",
     "despacho_actividades",
     "despacho_cliente_procesos",

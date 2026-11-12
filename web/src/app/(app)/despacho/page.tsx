@@ -4,7 +4,7 @@ import { moduloActivo } from "@/lib/modulos";
 import { db } from "@/lib/db";
 import { serializar } from "@/lib/serialize";
 import { getSesion } from "@/lib/session";
-import { agruparAvance, estaAtrasada, porcentajeAvance, puedeGestionarDespacho, etiquetaAvance, tonoAvance } from "@/lib/despacho";
+import { agruparAvance, actividadCuentaComoCompletada, estaAtrasada, porcentajeAvance, puedeGestionarDespacho, puedeVerTodasActividadesDespacho, etiquetaAvance, tonoAvance } from "@/lib/despacho";
 import { DespachoNavegacion } from "@/components/despacho/DespachoNavegacion";
 import { Badge } from "@/components/ui";
 import { EmptyState } from "@/components/EmptyState";
@@ -34,14 +34,22 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
   const sesion = await getSesion();
   const esGestion = puedeGestionarDespacho(sesion?.user?.puesto, sesion?.user?.rol);
   const { inicio, fin, etiqueta, anterior, siguiente } = rangoMes(mes);
-  const [actividades, clientes, usuarios] = await Promise.all([
+  const [moduloDespacho, usuarios] = await Promise.all([
+    db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } }),
+    db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true } }),
+  ]);
+  const puedeVerTodo = puedeVerTodasActividadesDespacho(
+    { id: sesion?.user?.id, puesto: sesion?.user?.puesto, rol: sesion?.user?.rol },
+    moduloDespacho?.config,
+  );
+  const responsableId = sesion?.user?.id ? BigInt(sesion.user.id) : -1n;
+  const [actividades, clientes] = await Promise.all([
     db.despachoActividad.findMany({
-      where: { periodo: { gte: inicio, lt: fin }, ...(esGestion ? {} : { responsableId: sesion?.user?.id ? BigInt(sesion.user.id) : -1n }) },
+      where: { periodo: { gte: inicio, lt: fin }, ...(puedeVerTodo ? {} : { responsableId }) },
       include: { cliente: { include: { contacto: { select: { nombre: true, empresa: true } } } } },
       orderBy: [{ fechaLimite: "asc" }],
     }),
-    db.despachoCliente.count({ where: { activo: true } }),
-    db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true } }),
+    db.despachoCliente.count({ where: { activo: true, ...(puedeVerTodo ? {} : { actividades: { some: { periodo: { gte: inicio, lt: fin }, responsableId } } }) } }),
   ]);
   const porcentaje = porcentajeAvance(actividades);
   const atrasadas = actividades.filter((actividad) => estaAtrasada(actividad));
@@ -51,14 +59,14 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
     const fecha = new Date(`${new Date(actividad.fechaLimite).toISOString().slice(0, 10)}T23:59:59-06:00`);
     return fecha <= limiteTresDias;
   }).length;
-  const porCliente = agruparAvance(actividades, (actividad) => actividad.cliente.contacto.empresa ?? actividad.cliente.contacto.nombre).slice(0, 8);
+  const porCliente = agruparAvance(actividades, (actividad) => String(actividad.cliente.id));
   const nombres = new Map(usuarios.map((usuario) => [String(usuario.id), usuario.nombre]));
   const porResponsable = agruparAvance(actividades, (actividad) => actividad.responsableId ? nombres.get(String(actividad.responsableId)) ?? "Sin nombre" : "Sin asignar");
   const colorAvance = (valor: number | null, vencidas: number) => ({ success: "bg-success", warning: "bg-warning", destructive: "bg-destructive", neutral: "bg-muted-foreground/30" })[tonoAvance(valor, vencidas)];
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">
-      <DespachoNavegacion actual="resumen" titulo="Resumen del despacho" descripcion={`Avance de ${etiqueta}.`} esGestion={esGestion} />
+      <DespachoNavegacion actual="resumen" titulo="Resumen del despacho" descripcion={`Avance de ${etiqueta}.`} esGestion={esGestion} puedeVerTodo={puedeVerTodo} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold capitalize text-foreground">Resumen · {etiqueta}</h2>
         <nav aria-label="Cambiar mes" className="flex min-h-10 items-center gap-2 rounded-xl border border-border bg-card p-1">
@@ -68,7 +76,7 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
         </nav>
       </div>
       <div className="grid gap-3 lg:grid-cols-[minmax(260px,340px)_1fr]">
-        <section className="surface flex min-h-48 items-center gap-5 p-4 sm:p-6" aria-label="Avance global">
+        <Link href={`/despacho/rendimiento?mes=${mes}`} className="surface group flex min-h-48 items-center gap-5 p-4 transition hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:p-6" aria-label={`Avance global ${porcentaje ?? 0} por ciento. Ver desglose por contador y cliente`}>
           <div className="relative grid h-32 w-32 shrink-0 place-items-center sm:h-36 sm:w-36">
             <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90" role="img" aria-label={`Avance global ${porcentaje ?? 0} por ciento`}>
               <circle cx="60" cy="60" r="52" fill="none" stroke="hsl(var(--muted))" strokeWidth="10" />
@@ -76,8 +84,8 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
             </svg>
             <div className="absolute text-center"><p className="text-3xl font-bold text-foreground tnum">{porcentaje ?? 0}%</p><p className="text-xs text-muted-foreground">avance</p></div>
           </div>
-          <div><p className="text-sm font-medium text-muted-foreground">Actividades completadas</p><p className="mt-1 text-xl font-semibold text-foreground tnum">{actividades.filter((actividad) => actividad.estado === "completada").length} <span className="text-sm font-normal text-muted-foreground">de {actividades.length}</span></p></div>
-        </section>
+          <div><p className="text-sm font-medium text-muted-foreground">Actividades confirmadas</p><p className="mt-1 text-xl font-semibold text-foreground tnum">{actividades.filter(actividadCuentaComoCompletada).length} <span className="text-sm font-normal text-muted-foreground">de {actividades.length}</span></p><p className="mt-2 text-xs font-semibold text-primary group-hover:underline">Ver contadores y clientes →</p></div>
+        </Link>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="surface p-4 sm:p-5"><p className="text-sm text-muted-foreground">Clientes activos</p><p className="mt-3 text-3xl font-bold text-foreground tnum">{clientes}</p></div>
           <div className="surface p-4 sm:p-5"><p className="text-sm text-muted-foreground">Atrasadas</p><p className="mt-3 text-3xl font-bold text-destructive tnum">{atrasadas.length}</p></div>
@@ -91,19 +99,21 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
         <div className="grid gap-4 lg:grid-cols-2">
           <section className="surface space-y-4 p-4 sm:p-5">
             <h2 className="text-base font-semibold text-foreground">Avance por cliente</h2>
-            {porCliente.map((grupo) => (
-              <div key={grupo.clave} className="space-y-1.5">
+            {porCliente.map((grupo) => {
+              const cliente = actividades.find((actividad) => String(actividad.cliente.id) === grupo.clave)?.cliente;
+              const nombre = cliente?.contacto.empresa ?? cliente?.contacto.nombre ?? "Cliente";
+              return <Link key={grupo.clave} href={`/despacho/clientes/${grupo.clave}?mes=${mes}`} className="block space-y-1.5 rounded-lg p-2 transition hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                 <div className="flex items-center justify-between gap-3 text-sm">
                   <span className="flex min-w-0 items-center gap-2">
                     <span className={`h-2 w-2 shrink-0 rounded-full ${colorAvance(grupo.porcentaje, grupo.atrasadas)}`} aria-hidden="true" />
-                    <span className="truncate font-medium text-foreground">{grupo.clave}</span>
+                    <span className="truncate font-medium text-foreground">{nombre}</span>
                   </span>
                   <span className="shrink-0 text-xs tabular-nums text-foreground">{grupo.completadas}/{grupo.total} · {grupo.porcentaje}%</span>
                 </div>
                 <div className="h-2.5 overflow-hidden rounded-full bg-muted" aria-hidden="true"><div className={`h-full rounded-full ${colorAvance(grupo.porcentaje, grupo.atrasadas)}`} style={{ width: `${grupo.porcentaje ?? 0}%` }} /></div>
                 <p className="text-xs font-medium text-muted-foreground">{etiquetaAvance(grupo.porcentaje, grupo.atrasadas)}</p>
-              </div>
-            ))}
+              </Link>;
+            })}
           </section>
           <section className="surface space-y-4 p-4 sm:p-5">
             <h2 className="text-base font-semibold text-foreground">Carga por responsable</h2>

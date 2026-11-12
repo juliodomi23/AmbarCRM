@@ -354,7 +354,7 @@ export function moduloPorClave(clave: string) {
   return MODULOS.find((modulo) => modulo.clave === clave);
 }
 
-type ConfigModulo = { puestosPermitidos?: unknown };
+type ConfigModulo = { puestosPermitidos?: unknown; usuariosAccesoTotal?: unknown };
 
 export function puestosPermitidosModulo(clave: ClaveModulo, config: unknown) {
   const configurados = (config as ConfigModulo | null)?.puestosPermitidos;
@@ -372,9 +372,12 @@ export function puestoPuedeAcceder(
   config: unknown,
   puesto?: string,
   rol?: string,
+  usuarioId?: string | bigint | null,
 ) {
   if (clave === "servidores") return puesto === "Administrador";
   if (rol === "admin") return true;
+  const accesosDirectos = (config as ConfigModulo | null)?.usuariosAccesoTotal;
+  if (clave === "despacho" && usuarioId != null && Array.isArray(accesosDirectos) && accesosDirectos.map(String).includes(String(usuarioId))) return true;
   const permitidos = puestosPermitidosModulo(clave, config);
   if (permitidos.length === 0) return true;
   const actual = String(puesto ?? "").trim().toLocaleLowerCase("es-MX");

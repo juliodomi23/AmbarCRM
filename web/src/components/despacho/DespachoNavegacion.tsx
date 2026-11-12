@@ -3,22 +3,28 @@ import type { ReactNode } from "react";
 
 const SECCIONES = [
   { href: "/despacho", nombre: "Resumen", clave: "resumen", gestion: false },
+  { href: "/despacho/rendimiento", nombre: "Rendimiento", clave: "rendimiento", gestion: false, verTodo: true },
   { href: "/despacho/tablero", nombre: "Tablero", clave: "tablero", gestion: false },
   { href: "/despacho/clientes", nombre: "Clientes", clave: "clientes", gestion: false },
+  { href: "/despacho/finanzas", nombre: "Finanzas", clave: "finanzas", gestion: true },
   { href: "/despacho/mi-trabajo", nombre: "Mi trabajo", clave: "mi-trabajo", gestion: false },
   { href: "/despacho/configuracion", nombre: "Configuración", clave: "configuracion", gestion: true },
 ];
 
 export function DespachoNavegacion({
-  actual, titulo, descripcion, acciones, esGestion = false,
+  actual, titulo, descripcion, acciones, esGestion = false, puedeVerTodo = esGestion,
 }: {
   actual: string;
   titulo: ReactNode;
   descripcion: string;
   acciones?: ReactNode;
   esGestion?: boolean;
+  puedeVerTodo?: boolean;
 }) {
-  const visibles = SECCIONES.filter((seccion) => !seccion.gestion || esGestion);
+  const visibles = SECCIONES.filter((seccion) => {
+    if ("verTodo" in seccion && seccion.verTodo) return puedeVerTodo;
+    return !seccion.gestion || esGestion;
+  });
   return (
     <header className="space-y-4">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">

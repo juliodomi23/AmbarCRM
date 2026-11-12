@@ -108,6 +108,23 @@ await prisma.$transaction(async (tx) => {
     });
   }
 
+  const lusmi = await tx.usuario.findFirst({
+    where: { orgId: org.id, email: "lusmi@refmex.demo", activo: true },
+    select: { id: true },
+  });
+  const moduloDespacho = await tx.moduloOrg.findFirst({ where: { clave: "despacho", activo: true } });
+  if (lusmi && moduloDespacho) {
+    const configActual = moduloDespacho.config && typeof moduloDespacho.config === "object" && !Array.isArray(moduloDespacho.config)
+      ? moduloDespacho.config
+      : {};
+    const acceso = new Set([...(Array.isArray(configActual.usuariosAccesoTotal) ? configActual.usuariosAccesoTotal.map(String) : []), String(lusmi.id)]);
+    const confirmadores = new Set([...(Array.isArray(configActual.usuariosConfirmadores) ? configActual.usuariosConfirmadores.map(String) : []), String(lusmi.id)]);
+    await tx.moduloOrg.update({
+      where: { id: moduloDespacho.id },
+      data: { config: { ...configActual, usuariosAccesoTotal: [...acceso], usuariosConfirmadores: [...confirmadores] } },
+    });
+  }
+
   for (const [areaIndice, bloque] of PLAN.entries()) {
     const colaboradores = [...new Set(bloque.correos)].map((correo) => porCorreo.get(correo)).filter(Boolean);
     for (const [indice, colaborador] of colaboradores.entries()) {

@@ -48,7 +48,7 @@ async function manejarGET() {
         ...m,
         activo:
           Boolean(guardado) &&
-          puestoPuedeAcceder(m.clave, config, s.puesto, s.rol),
+          puestoPuedeAcceder(m.clave, config, s.puesto, s.rol, s.userId),
         config: {
           ...config,
           puestosPermitidos: puestosPermitidosModulo(m.clave, config),

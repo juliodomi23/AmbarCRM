@@ -92,10 +92,22 @@ export function fechaLimiteDe(periodo: string, diaLimite: number, periodicidad: 
   return iso(y, m, dia);
 }
 
+export type ActividadPuntuable = {
+  estado: string;
+  requiereConfirmacion?: boolean;
+  confirmadaAt?: string | Date | null;
+};
+
+/** Solo las completadas y confirmadas cuentan para el avance. */
+export function actividadCuentaComoCompletada(actividad: ActividadPuntuable) {
+  return actividad.estado === "completada" &&
+    (actividad.requiereConfirmacion === false || Boolean(actividad.confirmadaAt));
+}
+
 /** Porcentaje entero de avance; sin actividades no hay avance que mostrar (null). */
-export function porcentajeAvance(actividades: { estado: string }[]) {
+export function porcentajeAvance(actividades: ActividadPuntuable[]) {
   if (actividades.length === 0) return null;
-  const completadas = actividades.filter((actividad) => actividad.estado === "completada").length;
+  const completadas = actividades.filter(actividadCuentaComoCompletada).length;
   return Math.round((completadas / actividades.length) * 100);
 }
 
@@ -116,13 +128,13 @@ export type AvanceGrupo = {
   porcentaje: number | null;
 };
 
-export function agruparAvance<T extends { estado?: string; fechaLimite?: string | Date }>(actividades: T[], clave: (actividad: T) => string): AvanceGrupo[] {
+export function agruparAvance<T extends { estado?: string; fechaLimite?: string | Date; confirmadaAt?: string | Date | null }>(actividades: T[], clave: (actividad: T) => string): AvanceGrupo[] {
   const grupos = new Map<string, { total: number; completadas: number; atrasadas: number }>();
   for (const actividad of actividades) {
     const nombre = clave(actividad);
     const grupo = grupos.get(nombre) ?? { total: 0, completadas: 0, atrasadas: 0 };
     grupo.total += 1;
-    if (actividad.estado === "completada") grupo.completadas += 1;
+    if (actividadCuentaComoCompletada(actividad as ActividadPuntuable)) grupo.completadas += 1;
     else if (actividad.fechaLimite && estaAtrasada({ estado: actividad.estado ?? "", fechaLimite: actividad.fechaLimite })) grupo.atrasadas += 1;
     grupos.set(nombre, grupo);
   }
@@ -132,7 +144,9 @@ export function agruparAvance<T extends { estado?: string; fechaLimite?: string 
       total: grupo.total,
       completadas: grupo.completadas,
       atrasadas: grupo.atrasadas,
-      porcentaje: grupo.total ? Math.round((grupo.completadas / grupo.total) * 100) : null,
+      porcentaje: porcentajeAvance(
+        actividades.filter((actividad) => clave(actividad) === nombre) as ActividadPuntuable[],
+      ),
     }))
     .sort((a, b) => a.clave.localeCompare(b.clave, "es-MX"));
 }
@@ -169,6 +183,28 @@ export function transicionDespachoValida(actual: string, siguiente: string) {
 export function puedeGestionarDespacho(puesto: string | undefined, rol: string | undefined) {
   if (rol === "admin") return true;
   return ["Administrador", "Director general", "Gerente general"].includes(String(puesto ?? "").trim());
+}
+
+function idsPermisoDespacho(config: unknown, clave: "usuariosAccesoTotal" | "usuariosConfirmadores") {
+  if (!config || typeof config !== "object" || Array.isArray(config)) return [];
+  const valor = (config as Record<string, unknown>)[clave];
+  return Array.isArray(valor) ? valor.map(String) : [];
+}
+
+export function puedeVerTodasActividadesDespacho(
+  usuario: { id?: string | bigint | null; puesto?: string; rol?: string },
+  config?: unknown,
+) {
+  if (puedeGestionarDespacho(usuario.puesto, usuario.rol)) return true;
+  return usuario.id != null && idsPermisoDespacho(config, "usuariosAccesoTotal").includes(String(usuario.id));
+}
+
+export function puedeConfirmarActividadDespacho(
+  usuario: { id?: string | bigint | null; puesto?: string; rol?: string },
+  config?: unknown,
+) {
+  if (puedeGestionarDespacho(usuario.puesto, usuario.rol)) return true;
+  return usuario.id != null && idsPermisoDespacho(config, "usuariosConfirmadores").includes(String(usuario.id));
 }
 
 export function puedeTocarActividad(

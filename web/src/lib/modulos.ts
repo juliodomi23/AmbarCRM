@@ -22,6 +22,7 @@ export async function moduloActivo(clave: ClaveModulo) {
     modulo.config,
     sesion.user.puesto,
     sesion.user.rol,
+    sesion.user.id,
   );
 }
 
@@ -37,7 +38,7 @@ export async function moduloHabilitado(clave: ClaveModulo) {
 
 export async function requireModuloActivo(
   clave: ClaveModulo,
-  sesionActual?: { rol?: string; puesto?: string },
+  sesionActual?: { rol?: string; puesto?: string; userId?: string | bigint | null },
 ) {
   if (!moduloVisibleEnOrg(moduloPorClave(clave)!, await orgActual())) {
     return Response.json({ error: "módulo no activo" }, { status: 404 });
@@ -52,6 +53,9 @@ export async function requireModuloActivo(
   const sesion = sesionActual
     ? { user: sesionActual }
     : await (await import("@/lib/session")).getSesion();
+  const usuarioId = sesion?.user
+    ? "userId" in sesion.user ? sesion.user.userId : "id" in sesion.user ? sesion.user.id : null
+    : null;
   if (
     sesion?.user &&
     !puestoPuedeAcceder(
@@ -59,6 +63,7 @@ export async function requireModuloActivo(
       modulo.config,
       sesion.user.puesto,
       sesion.user.rol,
+      usuarioId,
     )
   ) {
     return Response.json({ error: "puesto sin acceso al módulo" }, { status: 403 });
