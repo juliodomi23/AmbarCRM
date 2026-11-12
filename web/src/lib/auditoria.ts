@@ -1,8 +1,6 @@
 export const AREAS_AUDITORIA = [
   { clave: "contabilidad", nombre: "Contabilidad", descripcion: "Cierre, conciliaciones y obligaciones fiscales." },
   { clave: "administracion", nombre: "Administración", descripcion: "Gestión interna, personal y procesos administrativos." },
-  { clave: "marketing", nombre: "Marketing", descripcion: "Contenido, campañas y calendario editorial." },
-  { clave: "adquisicion", nombre: "Adquisición", descripcion: "Compras, proveedores y abastecimiento." },
 ] as const;
 
 export type AreaAuditoria = (typeof AREAS_AUDITORIA)[number]["clave"];
