@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
 import { moduloActivo } from "@/lib/modulos";
@@ -150,6 +151,7 @@ export default async function AuditoriaPage({
         }
         acciones={
           <div className="flex flex-wrap items-center gap-2">
+            {esGestion && <Link href="/auditoria/fiscal" className="min-h-10 rounded-lg border border-input px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">Auditoría fiscal a clientes →</Link>}
             <AuditoriaMesSelector
               etiqueta={periodoLargo(periodo)}
               anterior={mesISO(mesDesplazado(periodo, -1))}

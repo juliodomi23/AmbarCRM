@@ -2726,6 +2726,7 @@ model DespachoCliente {
   procesos    DespachoClienteProceso[]
   actividades DespachoActividad[]
   movimientosFinancieros DespachoMovimientoFinanciero[]
+  auditoriasFiscales AuditoriaFiscalCliente[]
 
   @@unique([orgId, contactoId])
   @@unique([id, orgId])
@@ -2941,6 +2942,28 @@ model ContenidoCambio {
 
   @@index([orgId, piezaId, creadoAt])
   @@map("contenido_cambios")
+}
+
+model AuditoriaFiscalCliente {
+  id          BigInt    @id @default(autoincrement())
+  orgId       BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  clienteId   BigInt    @map("cliente_id")
+  auditorId   BigInt    @map("auditor_id")
+  periodo     String
+  alcance     String
+  estado      String    @default("planeacion")
+  hallazgos   String?
+  fechaInicio DateTime  @map("fecha_inicio") @db.Date
+  fechaCierre DateTime? @map("fecha_cierre") @db.Date
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  cliente DespachoCliente @relation(fields: [clienteId, orgId], references: [id, orgId], onDelete: Restrict)
+
+  @@unique([orgId, clienteId, periodo])
+  @@index([orgId, estado])
+  @@index([orgId, clienteId])
+  @@map("auditoria_fiscal_clientes")
 }
 
 model AuditoriaEvaluacion {

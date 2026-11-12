@@ -53,6 +53,27 @@ export function esColorAuditoria(valor: unknown): valor is ColorAuditoria {
   return CLAVES_COLOR.includes(valor as ColorAuditoria);
 }
 
+export const ESTADOS_AUDITORIA_FISCAL = [
+  { clave: "planeacion", etiqueta: "Planeación", tono: "neutral" },
+  { clave: "en_proceso", etiqueta: "En proceso", tono: "warning" },
+  { clave: "con_observaciones", etiqueta: "Con observaciones", tono: "destructive" },
+  { clave: "concluida", etiqueta: "Concluida", tono: "success" },
+] as const;
+
+export type EstadoAuditoriaFiscal = (typeof ESTADOS_AUDITORIA_FISCAL)[number]["clave"];
+
+export function esEstadoAuditoriaFiscal(valor: unknown): valor is EstadoAuditoriaFiscal {
+  return ESTADOS_AUDITORIA_FISCAL.some((estado) => estado.clave === valor);
+}
+
+export function etiquetaEstadoAuditoriaFiscal(estado: string) {
+  return ESTADOS_AUDITORIA_FISCAL.find((item) => item.clave === estado)?.etiqueta ?? estado;
+}
+
+export function tonoEstadoAuditoriaFiscal(estado: string) {
+  return ESTADOS_AUDITORIA_FISCAL.find((item) => item.clave === estado)?.tono ?? "neutral";
+}
+
 export function nombreArea(area: string) {
   return AREAS_AUDITORIA.find((item) => item.clave === area)?.nombre ?? area;
 }

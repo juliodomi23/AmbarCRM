@@ -20,6 +20,7 @@ const BUSCAR = {
   tallerVehiculo: (id: bigint) => db.tallerVehiculo.findFirst({ where: { id }, select: { id: true } }),
   tallerOrden: (id: bigint) => db.tallerOrden.findFirst({ where: { id }, select: { id: true } }),
   campana: (id: bigint) => db.campanaMarketing.findFirst({ where: { id }, select: { id: true } }),
+  despachoCliente: (id: bigint) => db.despachoCliente.findFirst({ where: { id }, select: { id: true } }),
 };
 
 export type TablaReferencia = keyof typeof BUSCAR;
