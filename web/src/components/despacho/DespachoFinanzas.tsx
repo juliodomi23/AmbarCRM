@@ -35,11 +35,6 @@ function mesActual() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit" }).format(new Date());
 }
 
-function mesAnterior(mes: string) {
-  const [anio, numero] = mes.split("-").map(Number);
-  return new Date(Date.UTC(anio, numero - 2, 1)).toISOString().slice(0, 7);
-}
-
 function moneda(valor: number) {
   return valor.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 }
@@ -144,7 +139,7 @@ export function DespachoFinanzas({ usuarios, clientes }: { usuarios: Opcion[]; c
         <article className="surface p-4"><p className="text-sm text-muted-foreground">Cobrado este mes</p><strong className="mt-2 block text-2xl text-success tnum">{moneda(resumen.cobrado)}</strong></article>
         <article className="surface p-4"><p className="text-sm text-muted-foreground">Costos</p><strong className="mt-2 block text-2xl text-foreground tnum">{moneda(resumen.costos)}</strong></article>
         <article className="surface p-4"><p className="text-sm text-muted-foreground">Gastos</p><strong className="mt-2 block text-2xl text-foreground tnum">{moneda(resumen.gastos)}</strong></article>
-        <article className="surface p-4"><p className="text-sm text-muted-foreground">Saldo operativo</p><strong className="mt-2 block text-2xl text-foreground tnum">{moneda(resumen.cobrado - resumen.costos - resumen.gastos)}</strong></article>
+        <article className="surface p-4"><p className="text-sm text-muted-foreground">Saldo operativo</p><strong className={`mt-2 block text-2xl tnum ${resumen.cobrado - resumen.costos - resumen.gastos < 0 ? "text-destructive" : "text-success"}`}>{moneda(resumen.cobrado - resumen.costos - resumen.gastos)}</strong></article>
       </div>
 
       <section className="surface space-y-3 p-4 sm:p-5">

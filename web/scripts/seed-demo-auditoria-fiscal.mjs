@@ -31,6 +31,7 @@ await prisma.$transaction(async (tx) => {
 
   const cartagena = await tx.usuario.findUnique({ where: { orgId_email: { orgId: org.id, email: "cartagena@refmex.demo" } } });
   const dario = await tx.usuario.findUnique({ where: { orgId_email: { orgId: org.id, email: "dario@refmex.demo" } } });
+  const nelson = await tx.usuario.findUnique({ where: { orgId_email: { orgId: org.id, email: "nelson@refmex.demo" } } });
   const admin = await tx.usuario.findFirst({ where: { orgId: org.id, rol: "admin" } });
   const auditorPrincipal = cartagena ?? admin;
   if (!auditorPrincipal) {
@@ -50,7 +51,9 @@ await prisma.$transaction(async (tx) => {
   }
 
   const { anio, mes } = hoyMexico();
-  const periodoActual = `${anio}-T${Math.ceil(mes / 3)}`;
+  const trimestre = Math.ceil(mes / 3);
+  const periodoActual = `${anio}-T${trimestre}`;
+  const periodoPasado = trimestre === 1 ? `${anio - 1}-T4` : `${anio}-T${trimestre - 1}`;
   const periodoAnterior = `Ejercicio ${anio - 1}`;
 
   const PLAN = [
@@ -58,6 +61,8 @@ await prisma.$transaction(async (tx) => {
     { cliente: 1, periodo: periodoAnterior, alcance: "Nómina y seguridad social del ejercicio anterior", estado: "con_observaciones", hallazgos: "Se detectaron 3 altas IMSS fuera de plazo; pendiente corrección con el cliente.", diasAtras: 60, auditor: dario ?? auditorPrincipal },
     { cliente: 2, periodo: periodoActual, alcance: "CFDI e ISR del trimestre en curso", estado: "en_proceso", hallazgos: null, diasAtras: 10, auditor: auditorPrincipal },
     { cliente: 3, periodo: periodoActual, alcance: "Revisión preventiva de obligaciones fiscales del trimestre", estado: "planeacion", hallazgos: null, diasAtras: 1, auditor: dario ?? auditorPrincipal },
+    { cliente: 4, periodo: periodoPasado, alcance: "Retenciones de ISR a proveedores y honorarios", estado: "con_observaciones", hallazgos: "2 CFDI de honorarios sin retención de ISR aplicada; se notificó al cliente para corrección.", diasAtras: 40, auditor: nelson ?? auditorPrincipal },
+    { cliente: 5, periodo: periodoPasado, alcance: "Declaraciones informativas y línea de captura SAT", estado: "concluida", hallazgos: "Declaraciones presentadas en tiempo; sin observaciones.", diasAtras: 50, auditor: nelson ?? auditorPrincipal },
   ];
 
   for (const item of PLAN) {
