@@ -29,7 +29,7 @@ function diasAtraso(fecha: string | Date) { const clave = typeof fecha === "stri
 export default async function DespachoPage({ searchParams }: { searchParams: Promise<{ mes?: string; cliente?: string }> }) {
   if (!(await moduloActivo("despacho"))) redirect("/");
   const { mes: mesQuery, cliente: clienteQuery } = await searchParams;
-  if (clienteQuery && /^\d+$/.test(clienteQuery) && Number(clienteQuery) > 0) redirect(`/despacho/clientes/${clienteQuery}`);
+  if (clienteQuery && /^\d+$/.test(clienteQuery) && Number(clienteQuery) > 0) redirect(`/despacho/mi-trabajo?cliente=${clienteQuery}`);
   const mesPorDefecto = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit" }).format(new Date());
   const mes = mesValido(mesQuery) ?? mesPorDefecto;
   const sesion = await getSesion();

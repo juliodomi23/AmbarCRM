@@ -9,8 +9,10 @@ import { DespachoActividades } from "@/components/despacho/DespachoActividades";
 
 export const dynamic = "force-dynamic";
 
-export default async function DespachoMiTrabajoPage() {
+export default async function DespachoMiTrabajoPage({ searchParams }: { searchParams: Promise<{ cliente?: string }> }) {
   if (!(await moduloActivo("despacho"))) redirect("/");
+  const { cliente: clienteQuery } = await searchParams;
+  const clienteIdInicial = clienteQuery && /^\d+$/.test(clienteQuery) ? clienteQuery : "";
   const sesion = await getSesion();
   const esGestion = puedeGestionarDespacho(sesion?.user?.puesto, sesion?.user?.rol);
   const modulo = await db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } });
@@ -29,7 +31,7 @@ export default async function DespachoMiTrabajoPage() {
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">
       <DespachoNavegacion actual="mi-trabajo" titulo="Mi trabajo" descripcion="Tus actividades asignadas, con lo atrasado primero." esGestion={esGestion} puedeVerTodo={puedeVerTodo} puedeConfirmar={puedeConfirmar} />
-      <DespachoActividades iniciales={serializar(actividades)} clientes={serializar(clientes)} usuarios={serializar(usuarios)} esGestion={false} puedeConfirmar={puedeConfirmar} modo="mias" />
+      <DespachoActividades iniciales={serializar(actividades)} clientes={serializar(clientes)} usuarios={serializar(usuarios)} esGestion={false} puedeConfirmar={puedeConfirmar} modo="mias" clienteIdInicial={clienteIdInicial} />
     </div>
   );
 }
