@@ -9,7 +9,7 @@ import { ESTADOS_DESPACHO, actividadCuentaComoCompletada, estaAtrasada, transici
 type Actividad = {
   id: string; titulo: string; estado: string; tipo: string; periodo: string; fechaLimite: string;
   responsableId: string | null; notas: string | null; version: number; requiereConfirmacion: boolean;
-  confirmadaAt: string | null; confirmadaPorId: string | null;
+  confirmadaAt: string | null; confirmadaPorId: string | null; peso: number;
   calificacion: number | null; calificacionNota: string | null;
   cliente: { id: string; contacto: { nombre: string; empresa: string | null } };
 };
@@ -54,11 +54,12 @@ function EstrellaCalificacion({ valor, activo, onClick }: { valor: number; activ
   );
 }
 
-export function ConfirmarActividad({ onConfirmar }: { onConfirmar: (calificacion: number, nota: string) => Promise<void> | void }) {
+export function ConfirmarActividad({ peso = 5, onConfirmar }: { peso?: number; onConfirmar: (calificacion: number, nota: string) => Promise<void> | void }) {
   const [abierto, setAbierto] = useState(false);
   const [calificacion, setCalificacion] = useState(0);
   const [nota, setNota] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const maxEstrellas = Math.max(1, Math.min(peso, 5));
 
   if (!abierto) {
     return <Boton className="min-h-9 w-full" onPointerDown={(e) => e.stopPropagation()} onClick={() => setAbierto(true)}>Confirmar actividad</Boton>;
@@ -68,7 +69,7 @@ export function ConfirmarActividad({ onConfirmar }: { onConfirmar: (calificacion
     <div className="space-y-2 rounded-lg border border-input bg-card p-2.5" onPointerDown={(e) => e.stopPropagation()}>
       <p className="text-xs font-medium text-muted-foreground">Calidad del trabajo</p>
       <div className="flex gap-0.5">
-        {[1, 2, 3, 4, 5].map((valor) => (
+        {Array.from({ length: maxEstrellas }, (_, i) => i + 1).map((valor) => (
           <EstrellaCalificacion key={valor} valor={valor} activo={valor <= calificacion} onClick={() => setCalificacion(valor)} />
         ))}
       </div>
@@ -143,7 +144,7 @@ function TarjetaVista({ actividad, puede, puedeConfirmar, responsable, siguiente
       {pendienteConfirmacion && <p className="text-xs text-warning">No suma al avance hasta que se confirme.</p>}
       {pendienteConfirmacion && puedeConfirmar && (
         <div className="space-y-2">
-          <ConfirmarActividad onConfirmar={onConfirmar} />
+          <ConfirmarActividad peso={actividad.peso} onConfirmar={onConfirmar} />
           <RechazarActividad onRechazar={onRechazar} />
         </div>
       )}
