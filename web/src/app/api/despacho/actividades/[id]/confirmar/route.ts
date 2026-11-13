@@ -16,8 +16,8 @@ export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest, p
     return NextResponse.json({ error: "Actividad o versión inválida" }, { status: 400 });
   }
   const calificacion = body?.calificacion === undefined || body?.calificacion === null ? null : Number(body.calificacion);
-  if (calificacion !== null && (!Number.isSafeInteger(calificacion) || calificacion < 1 || calificacion > 5)) {
-    return NextResponse.json({ error: "La calificación debe ser un entero del 1 al 5" }, { status: 400 });
+  if (calificacion !== null && (!Number.isSafeInteger(calificacion) || calificacion < 1)) {
+    return NextResponse.json({ error: "La calificación debe ser un entero mayor a 0" }, { status: 400 });
   }
   const calificacionNota = typeof body?.calificacionNota === "string" ? body.calificacionNota.trim().slice(0, 1000) || null : null;
   const modulo = await db.moduloOrg.findFirst({
@@ -34,6 +34,9 @@ export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest, p
     if (!actividad) return { error: "Actividad no encontrada", status: 404 } as const;
     if (actividad.version !== version) return { error: "La actividad cambió desde que la abriste. Actualiza e intenta de nuevo.", status: 409 } as const;
     if (actividad.estado !== "completada") return { error: "Solo se pueden confirmar actividades completadas", status: 409 } as const;
+    if (calificacion !== null && calificacion > actividad.peso) {
+      return { error: `La calificación no puede ser mayor al valor de la actividad (${actividad.peso})`, status: 400 } as const;
+    }
     if (!actividad.requiereConfirmacion || actividad.confirmadaAt) {
       return { actividad: await tx.despachoActividad.findUnique({ where: { id }, include: { cliente: { include: { contacto: { select: { id: true, nombre: true, empresa: true } } } }, cambios: { orderBy: { creadoAt: "asc" } } } }) } as const;
     }
@@ -45,7 +48,7 @@ export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest, p
     await tx.despachoActividadCambio.create({
       data: {
         actividadId: id, estadoAnterior: "completada", estadoNuevo: "completada", userId: sesion.userId,
-        nota: calificacion ? `Confirmación aprobada · Calidad ${calificacion}/5${calificacionNota ? `: ${calificacionNota}` : ""}` : "Confirmación aprobada",
+        nota: calificacion ? `Confirmación aprobada · Calidad ${calificacion}/${actividad.peso}${calificacionNota ? `: ${calificacionNota}` : ""}` : "Confirmación aprobada",
       },
     });
     return {
