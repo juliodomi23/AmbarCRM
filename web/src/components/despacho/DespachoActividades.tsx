@@ -150,10 +150,10 @@ function TarjetaVista({ actividad, puede, puedeConfirmar, responsable, siguiente
       )}
       {actividad.calificacion && (
         <div className="flex items-center gap-1 text-xs text-muted-foreground" title={actividad.calificacionNota ?? undefined}>
-          <span>Calidad:</span>
+          <span>Calidad: {actividad.calificacion}/{actividad.peso}</span>
           <span className="flex gap-0.5 text-warning">
             {[1, 2, 3, 4, 5].map((valor) => (
-              <svg key={valor} viewBox="0 0 24 24" className="h-3.5 w-3.5" fill={valor <= actividad.calificacion! ? "currentColor" : "none"} stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+              <svg key={valor} viewBox="0 0 24 24" className="h-3.5 w-3.5" fill={valor <= Math.round((actividad.calificacion! / actividad.peso) * 5) ? "currentColor" : "none"} stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 2.5l2.9 6.1 6.6.9-4.8 4.7 1.1 6.6L12 17.6l-5.8 3.2 1.1-6.6-4.8-4.7 6.6-.9z" />
               </svg>
             ))}
