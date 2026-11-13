@@ -192,7 +192,7 @@ export function puedeGestionarDespacho(puesto: string | undefined, rol: string |
   return ["Administrador", "Director general", "Gerente general"].includes(String(puesto ?? "").trim());
 }
 
-function idsPermisoDespacho(config: unknown, clave: "usuariosAccesoTotal" | "usuariosConfirmadores") {
+export function idsPermisoDespacho(config: unknown, clave: "usuariosAccesoTotal" | "usuariosConfirmadores") {
   if (!config || typeof config !== "object" || Array.isArray(config)) return [];
   const valor = (config as Record<string, unknown>)[clave];
   return Array.isArray(valor) ? valor.map(String) : [];

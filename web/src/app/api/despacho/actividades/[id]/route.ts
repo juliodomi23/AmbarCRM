@@ -6,7 +6,7 @@ import { serializar } from "@/lib/serialize";
 import { transaccionTenant } from "@/lib/retail-db";
 import { aBigInt } from "@/lib/ids";
 import { exigirGestion, fechaCivil, texto, aFecha } from "@/lib/despacho-api";
-import { ESTADOS_DESPACHO, puedeGestionarDespacho, puedeVerTodasActividadesDespacho, transicionDespachoValida } from "@/lib/despacho";
+import { ESTADOS_DESPACHO, idsPermisoDespacho, puedeGestionarDespacho, puedeVerTodasActividadesDespacho, transicionDespachoValida } from "@/lib/despacho";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -89,6 +89,19 @@ export const PATCH = conModulo("despacho", {}, async (sesion, req: NextRequest, 
           userId: sesion.userId, nota: texto(body.nota).slice(0, 500) || null,
         },
       });
+      if (estadoSiguiente === "completada" && actual.requiereConfirmacion) {
+        const modulo = await tx.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } });
+        const confirmadorIds = idsPermisoDespacho(modulo?.config, "usuariosConfirmadores");
+        if (confirmadorIds.length) {
+          await tx.notificacion.createMany({
+            data: confirmadorIds.map((idStr) => ({
+              usuarioId: BigInt(idStr),
+              titulo: `Actividad por confirmar: ${actual.titulo}`,
+              enlace: "/despacho/revision",
+            })),
+          });
+        }
+      }
     }
     return {
       actividad: await tx.despachoActividad.findUnique({
