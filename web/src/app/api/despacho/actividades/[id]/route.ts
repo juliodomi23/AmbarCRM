@@ -97,7 +97,7 @@ export const PATCH = conModulo("despacho", {}, async (sesion, req: NextRequest, 
             data: confirmadorIds.map((idStr) => ({
               usuarioId: BigInt(idStr),
               titulo: `Actividad por confirmar: ${actual.titulo}`,
-              enlace: "/despacho/revision",
+              enlace: `/despacho/revision?actividad=${id}`,
             })),
           });
         }

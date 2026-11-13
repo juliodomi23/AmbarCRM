@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { EmptyState } from "@/components/EmptyState";
+import { Modal } from "@/components/ui";
 import { ConfirmarActividad, RechazarActividad } from "@/components/despacho/DespachoActividades";
 
 type Actividad = {
@@ -17,9 +19,35 @@ function fechaCorta(valor: string) {
   return new Date(`${fecha}T12:00:00Z`).toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", "");
 }
 
+function ContenidoTarjeta({ actividad, onConfirmar, onRechazar }: {
+  actividad: Actividad;
+  onConfirmar: (calificacion: number, nota: string) => Promise<void> | void;
+  onRechazar: (motivo: string) => Promise<void> | void;
+}) {
+  return (
+    <>
+      <div className="min-w-0">
+        <p className="truncate text-xs text-muted-foreground">{actividad.cliente.contacto.empresa ?? actividad.cliente.contacto.nombre}</p>
+        <h3 className="truncate font-semibold text-foreground">{actividad.titulo}</h3>
+        <p className="text-xs text-muted-foreground">Vencía {fechaCorta(actividad.fechaLimite)}</p>
+      </div>
+      {actividad.notas && <p className="line-clamp-2 text-xs text-muted-foreground">{actividad.notas}</p>}
+      <div className="space-y-2">
+        <ConfirmarActividad onConfirmar={onConfirmar} />
+        <RechazarActividad onRechazar={onRechazar} />
+      </div>
+    </>
+  );
+}
+
 export function DespachoRevision({ iniciales }: { iniciales: Actividad[] }) {
   const [actividades, setActividades] = useState(pendientes(iniciales));
   const [error, setError] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const idModal = searchParams.get("actividad");
+  const actividadModal = idModal ? actividades.find((a) => a.id === idModal) ?? null : null;
+  const cerrarModal = () => router.replace("/despacho/revision");
 
   const cargar = useCallback(async () => {
     const respuesta = await fetch("/api/despacho/actividades?estado=completada", { cache: "no-store" });
@@ -58,20 +86,18 @@ export function DespachoRevision({ iniciales }: { iniciales: Actividad[] }) {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {actividades.map((actividad) => (
             <article key={actividad.id} className="surface space-y-3 p-3">
-              <div className="min-w-0">
-                <p className="truncate text-xs text-muted-foreground">{actividad.cliente.contacto.empresa ?? actividad.cliente.contacto.nombre}</p>
-                <h3 className="truncate font-semibold text-foreground">{actividad.titulo}</h3>
-                <p className="text-xs text-muted-foreground">Vencía {fechaCorta(actividad.fechaLimite)}</p>
-              </div>
-              {actividad.notas && <p className="line-clamp-2 text-xs text-muted-foreground">{actividad.notas}</p>}
-              <div className="space-y-2">
-                <ConfirmarActividad onConfirmar={(calificacion, nota) => confirmar(actividad, calificacion, nota)} />
-                <RechazarActividad onRechazar={(motivo) => rechazar(actividad, motivo)} />
-              </div>
+              <ContenidoTarjeta actividad={actividad} onConfirmar={(calificacion, nota) => confirmar(actividad, calificacion, nota)} onRechazar={(motivo) => rechazar(actividad, motivo)} />
             </article>
           ))}
         </div>
       )}
+      <Modal abierto={Boolean(actividadModal)} onClose={cerrarModal} titulo="Confirmar actividad">
+        {actividadModal && (
+          <div className="space-y-3">
+            <ContenidoTarjeta actividad={actividadModal} onConfirmar={(calificacion, nota) => confirmar(actividadModal, calificacion, nota)} onRechazar={(motivo) => rechazar(actividadModal, motivo)} />
+          </div>
+        )}
+      </Modal>
     </section>
   );
 }
