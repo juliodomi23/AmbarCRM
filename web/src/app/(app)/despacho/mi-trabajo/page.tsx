@@ -15,6 +15,7 @@ export default async function DespachoMiTrabajoPage() {
   const esGestion = puedeGestionarDespacho(sesion?.user?.puesto, sesion?.user?.rol);
   const modulo = await db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } });
   const puedeVerTodo = puedeVerTodasActividadesDespacho({ id: sesion?.user?.id, puesto: sesion?.user?.puesto, rol: sesion?.user?.rol }, modulo?.config);
+  const puedeConfirmar = puedeConfirmarActividadDespacho({ id: sesion?.user?.id, puesto: sesion?.user?.puesto, rol: sesion?.user?.rol }, modulo?.config);
   const userId = sesion?.user?.id ? BigInt(sesion.user.id) : 0n;
   const [actividades, clientes, usuarios] = await Promise.all([
     db.despachoActividad.findMany({
@@ -27,8 +28,8 @@ export default async function DespachoMiTrabajoPage() {
   ]);
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">
-      <DespachoNavegacion actual="mi-trabajo" titulo="Mi trabajo" descripcion="Tus actividades asignadas, con lo atrasado primero." esGestion={esGestion} puedeVerTodo={puedeVerTodo} />
-      <DespachoActividades iniciales={serializar(actividades)} clientes={serializar(clientes)} usuarios={serializar(usuarios)} esGestion={false} puedeConfirmar={puedeConfirmarActividadDespacho({ id: sesion?.user?.id, puesto: sesion?.user?.puesto, rol: sesion?.user?.rol }, modulo?.config)} modo="mias" />
+      <DespachoNavegacion actual="mi-trabajo" titulo="Mi trabajo" descripcion="Tus actividades asignadas, con lo atrasado primero." esGestion={esGestion} puedeVerTodo={puedeVerTodo} puedeConfirmar={puedeConfirmar} />
+      <DespachoActividades iniciales={serializar(actividades)} clientes={serializar(clientes)} usuarios={serializar(usuarios)} esGestion={false} puedeConfirmar={puedeConfirmar} modo="mias" />
     </div>
   );
 }

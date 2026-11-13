@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { DespachoNavegacion } from "@/components/despacho/DespachoNavegacion";
 import { DespachoSelectorMes } from "@/components/despacho/DespachoSelectorMes";
 import { db } from "@/lib/db";
-import { agruparAvance, puedeGestionarDespacho, puedeVerTodasActividadesDespacho } from "@/lib/despacho";
+import { agruparAvance, puedeConfirmarActividadDespacho, puedeGestionarDespacho, puedeVerTodasActividadesDespacho } from "@/lib/despacho";
 import { moduloActivo } from "@/lib/modulos";
 import { serializar } from "@/lib/serialize";
 import { getSesion } from "@/lib/session";
@@ -59,6 +59,7 @@ export default async function DespachoRendimientoPage({ searchParams }: { search
   ]);
   const esGestion = puedeGestionarDespacho(sesion.user.puesto, sesion.user.rol);
   const puedeVerTodo = puedeVerTodasActividadesDespacho({ id: sesion.user.id, puesto: sesion.user.puesto, rol: sesion.user.rol }, modulo?.config);
+  const puedeConfirmar = puedeConfirmarActividadDespacho({ id: sesion.user.id, puesto: sesion.user.puesto, rol: sesion.user.rol }, modulo?.config);
   const actividades = await db.despachoActividad.findMany({
     where: {
       periodo: { gte: desde, lt: hasta },
@@ -94,7 +95,7 @@ export default async function DespachoRendimientoPage({ searchParams }: { search
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">
-      <DespachoNavegacion actual="rendimiento" titulo="Rendimiento del equipo" descripcion="Avance confirmado por responsable y cliente." esGestion={esGestion} puedeVerTodo={puedeVerTodo} />
+      <DespachoNavegacion actual="rendimiento" titulo="Rendimiento del equipo" descripcion="Avance confirmado por responsable y cliente." esGestion={esGestion} puedeVerTodo={puedeVerTodo} puedeConfirmar={puedeConfirmar} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><p className="text-sm text-muted-foreground">Periodo seleccionado</p><h2 className="text-xl font-semibold capitalize text-foreground">{etiquetaMes(mes)}</h2></div>
         <nav aria-label="Cambiar mes" className="flex min-h-10 items-center gap-2 rounded-xl border border-border bg-card p-1">

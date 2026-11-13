@@ -68,6 +68,11 @@ export const PATCH = conModulo("despacho", {}, async (sesion, req: NextRequest, 
       data.titulo = titulo;
     }
     if (body.notas !== undefined) data.notas = texto(body.notas).slice(0, 2000) || null;
+    if (body.peso !== undefined) {
+      const peso = Number(body.peso);
+      if (!Number.isSafeInteger(peso) || peso < 1) return { error: "El valor (peso) debe ser un entero mayor a 0", status: 400 } as const;
+      data.peso = peso;
+    }
     if (body.fechaLimite !== undefined) {
       const fechaLimite = fechaCivil(body.fechaLimite);
       if (!fechaLimite) return { error: "Fecha límite inválida", status: 400 } as const;

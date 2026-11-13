@@ -4,7 +4,7 @@ import { moduloActivo } from "@/lib/modulos";
 import { db } from "@/lib/db";
 import { serializar } from "@/lib/serialize";
 import { getSesion } from "@/lib/session";
-import { agruparAvance, actividadCuentaComoCompletada, estaAtrasada, porcentajeAvance, puedeGestionarDespacho, puedeVerTodasActividadesDespacho, etiquetaAvance, tonoAvance } from "@/lib/despacho";
+import { agruparAvance, actividadCuentaComoCompletada, estaAtrasada, porcentajeAvance, puedeConfirmarActividadDespacho, puedeGestionarDespacho, puedeVerTodasActividadesDespacho, etiquetaAvance, tonoAvance } from "@/lib/despacho";
 import { DespachoNavegacion } from "@/components/despacho/DespachoNavegacion";
 import { Badge } from "@/components/ui";
 import { EmptyState } from "@/components/EmptyState";
@@ -38,10 +38,9 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
     db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } }),
     db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true } }),
   ]);
-  const puedeVerTodo = puedeVerTodasActividadesDespacho(
-    { id: sesion?.user?.id, puesto: sesion?.user?.puesto, rol: sesion?.user?.rol },
-    moduloDespacho?.config,
-  );
+  const identidad = { id: sesion?.user?.id, puesto: sesion?.user?.puesto, rol: sesion?.user?.rol };
+  const puedeVerTodo = puedeVerTodasActividadesDespacho(identidad, moduloDespacho?.config);
+  const puedeConfirmar = puedeConfirmarActividadDespacho(identidad, moduloDespacho?.config);
   const responsableId = sesion?.user?.id ? BigInt(sesion.user.id) : -1n;
   const [actividades, clientes] = await Promise.all([
     db.despachoActividad.findMany({
@@ -66,7 +65,7 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">
-      <DespachoNavegacion actual="resumen" titulo="Resumen del despacho" descripcion={`Avance de ${etiqueta}.`} esGestion={esGestion} puedeVerTodo={puedeVerTodo} />
+      <DespachoNavegacion actual="resumen" titulo="Resumen del despacho" descripcion={`Avance de ${etiqueta}.`} esGestion={esGestion} puedeVerTodo={puedeVerTodo} puedeConfirmar={puedeConfirmar} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold capitalize text-foreground">Resumen · {etiqueta}</h2>
         <nav aria-label="Cambiar mes" className="flex min-h-10 items-center gap-2 rounded-xl border border-border bg-card p-1">
