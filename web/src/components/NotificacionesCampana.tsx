@@ -66,6 +66,12 @@ export function NotificacionesCampana() {
     if (n.enlace) router.push(n.enlace);
   };
 
+  const eliminar = (n: Notificacion) => {
+    setNotificaciones((prev) => prev.filter((x) => x.id !== n.id));
+    if (!n.leidaAt) setNoLeidas((c) => Math.max(0, c - 1));
+    fetch(`/api/notificaciones/${n.id}`, { method: "DELETE" }).catch(() => {});
+  };
+
   const marcarTodas = async () => {
     setNotificaciones((prev) => prev.map((x) => ({ ...x, leidaAt: x.leidaAt ?? new Date().toISOString() })));
     setNoLeidas(0);
@@ -104,18 +110,26 @@ export function NotificacionesCampana() {
               <p className="px-4 py-8 text-center text-sm text-muted-foreground">Sin notificaciones</p>
             )}
             {notificaciones.map((n) => (
-              <button
-                key={n.id}
-                onClick={() => abrir(n)}
-                className="flex w-full items-start gap-2.5 px-4 py-3 text-left transition hover:bg-muted/60"
-              >
-                <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.leidaAt ? "bg-transparent" : "bg-primary"}`} aria-hidden="true" />
-                <span className="min-w-0 flex-1">
-                  <span className={`block text-sm leading-snug ${n.leidaAt ? "text-muted-foreground" : "font-semibold text-foreground"}`}>{n.titulo}</span>
-                  {n.cuerpo && <span className="mt-0.5 block truncate text-xs text-muted-foreground">{n.cuerpo}</span>}
-                  <span className="mt-1 block text-[11px] text-muted-foreground/80">{haceCuanto(n.createdAt)}</span>
-                </span>
-              </button>
+              <div key={n.id} className="relative">
+                <button
+                  onClick={() => abrir(n)}
+                  className="flex w-full items-start gap-2.5 px-4 py-3 pr-10 text-left transition hover:bg-muted/60"
+                >
+                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.leidaAt ? "bg-transparent" : "bg-primary"}`} aria-hidden="true" />
+                  <span className="min-w-0 flex-1">
+                    <span className={`block text-sm leading-snug ${n.leidaAt ? "text-muted-foreground" : "font-semibold text-foreground"}`}>{n.titulo}</span>
+                    {n.cuerpo && <span className="mt-0.5 block truncate text-xs text-muted-foreground">{n.cuerpo}</span>}
+                    <span className="mt-1 block text-[11px] text-muted-foreground/80">{haceCuanto(n.createdAt)}</span>
+                  </span>
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); eliminar(n); }}
+                  aria-label="Eliminar notificación"
+                  className="absolute right-2 top-3 grid h-6 w-6 place-items-center rounded text-base leading-none text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  ×
+                </button>
+              </div>
             ))}
           </div>
         </div>

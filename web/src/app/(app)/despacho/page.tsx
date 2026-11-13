@@ -26,9 +26,10 @@ function fechaCorta(fecha: string | Date) { const clave = typeof fecha === "stri
 function iniciales(nombre: string) { return nombre.split(/\s+/).filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase(); }
 function diasAtraso(fecha: string | Date) { const clave = typeof fecha === "string" ? fecha.slice(0, 10) : fecha.toISOString().slice(0, 10); const limite = new Date(`${clave}T23:59:59-06:00`); return Math.max(1, Math.floor((Date.now() - limite.getTime()) / 86400000)); }
 
-export default async function DespachoPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
+export default async function DespachoPage({ searchParams }: { searchParams: Promise<{ mes?: string; cliente?: string }> }) {
   if (!(await moduloActivo("despacho"))) redirect("/");
-  const { mes: mesQuery } = await searchParams;
+  const { mes: mesQuery, cliente: clienteQuery } = await searchParams;
+  if (clienteQuery && /^\d+$/.test(clienteQuery) && Number(clienteQuery) > 0) redirect(`/despacho/clientes/${clienteQuery}`);
   const mesPorDefecto = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit" }).format(new Date());
   const mes = mesValido(mesQuery) ?? mesPorDefecto;
   const sesion = await getSesion();
