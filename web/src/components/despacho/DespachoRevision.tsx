@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { EmptyState } from "@/components/EmptyState";
-import { Boton, Modal, Selector } from "@/components/ui";
+import { Badge, Boton, Modal, Selector } from "@/components/ui";
 import { RechazarActividad } from "@/components/despacho/DespachoActividades";
 
 type Actividad = {
@@ -23,6 +23,10 @@ function fechaCorta(valor: string) {
 
 function etiquetaMes(valor: string) {
   return new Date(`${valor.slice(0, 7)}-01T12:00:00Z`).toLocaleDateString("es-MX", { month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+function iniciales(nombre: string) {
+  return nombre.split(/\s+/).filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase() || "—";
 }
 
 function ConfirmarActividadPeso({ peso, onConfirmar }: { peso: number; onConfirmar: (calificacion: number, nota: string) => Promise<void> | void }) {
@@ -73,14 +77,26 @@ function ContenidoTarjeta({ actividad, contador, onConfirmar, onRechazar }: {
 }) {
   return (
     <>
-      <div className="min-w-0">
-        <p className="truncate text-xs text-muted-foreground">{actividad.cliente.contacto.empresa ?? actividad.cliente.contacto.nombre}</p>
-        <h3 className="truncate font-semibold text-foreground">{actividad.titulo}</h3>
-        <p className="text-xs text-muted-foreground capitalize">{etiquetaMes(actividad.periodo)}</p>
-        <p className="text-xs text-muted-foreground">{contador} · Vencía {fechaCorta(actividad.fechaLimite)} · Valor {actividad.peso}</p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium text-primary">{actividad.cliente.contacto.empresa ?? actividad.cliente.contacto.nombre}</p>
+          <h3 className="truncate text-base font-semibold text-foreground">{actividad.titulo}</h3>
+        </div>
+        <Badge tono="warning" className="shrink-0"><span aria-hidden="true">◷</span>Por confirmar</Badge>
       </div>
-      {actividad.notas && <p className="line-clamp-2 text-xs text-muted-foreground">{actividad.notas}</p>}
-      <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2.5 text-xs text-muted-foreground">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary" title={contador} aria-label={`Contador: ${contador}`}>{iniciales(contador)}</span>
+          <span className="truncate">{contador}</span>
+        </span>
+        <span className="shrink-0 capitalize">{etiquetaMes(actividad.periodo)}</span>
+      </div>
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>Vencía {fechaCorta(actividad.fechaLimite)}</span>
+        <span className="font-medium text-foreground">Valor {actividad.peso}</span>
+      </div>
+      {actividad.notas && <p className="line-clamp-2 rounded-md bg-muted/50 px-2 py-1.5 text-xs text-muted-foreground">{actividad.notas}</p>}
+      <div className="space-y-2 pt-1">
         <ConfirmarActividadPeso peso={actividad.peso} onConfirmar={onConfirmar} />
         <RechazarActividad onRechazar={onRechazar} />
       </div>
@@ -166,7 +182,7 @@ export function DespachoRevision({ iniciales, usuarios, clientes }: { iniciales:
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {actividades.map((actividad) => (
-            <article key={actividad.id} className="surface space-y-3 p-3">
+            <article key={actividad.id} className="surface space-y-3 border-l-4 border-l-warning/60 p-4">
               <ContenidoTarjeta actividad={actividad} contador={contador(actividad)} onConfirmar={(calificacion, nota) => confirmar(actividad, calificacion, nota)} onRechazar={(motivo) => rechazar(actividad, motivo)} />
             </article>
           ))}
