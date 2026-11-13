@@ -30,7 +30,11 @@ export function NotificacionesCampana() {
   useEffect(() => {
     refrescar();
     const timer = window.setInterval(refrescar, 30000);
-    return () => window.clearInterval(timer);
+    window.addEventListener("focus", refrescar);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refrescar);
+    };
   }, []);
 
   useEffect(() => {
@@ -61,7 +65,7 @@ export function NotificacionesCampana() {
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setAbierto((v) => !v)}
+        onClick={() => { setAbierto((v) => !v); void refrescar(); }}
         className="relative flex h-10 w-10 items-center justify-center rounded-xl hover:bg-card"
         aria-label="Notificaciones"
       >
