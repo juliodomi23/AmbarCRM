@@ -242,7 +242,15 @@ export function DespachoActividades({
     }
   }, [estado, periodo, clienteId, responsableIdFiltro]);
 
-  useEffect(() => { void cargar(); }, [cargar]);
+  useEffect(() => {
+    void cargar();
+    const timer = window.setInterval(cargar, 30000);
+    window.addEventListener("focus", cargar);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", cargar);
+    };
+  }, [cargar]);
 
   async function cambiar(actividad: Actividad, siguiente: string) {
     const respuesta = await fetch(`/api/despacho/actividades/${actividad.id}`, {
