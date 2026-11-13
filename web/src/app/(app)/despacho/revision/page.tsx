@@ -19,7 +19,7 @@ export default async function DespachoRevisionPage() {
   if (!puedeConfirmar) redirect("/despacho/mi-trabajo");
   const puedeVerTodo = puedeVerTodasActividadesDespacho(identidad, modulo?.config);
 
-  const [actividades, usuarios] = await Promise.all([
+  const [actividades, usuarios, clientes] = await Promise.all([
     db.despachoActividad.findMany({
       where: { estado: "completada", confirmadaAt: null },
       include: { cliente: { include: { contacto: { select: { nombre: true, empresa: true } } } } },
@@ -27,11 +27,12 @@ export default async function DespachoRevisionPage() {
       take: 300,
     }),
     db.usuario.findMany({ select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
+    db.despachoCliente.findMany({ where: { activo: true }, select: { id: true, contacto: { select: { nombre: true, empresa: true } } }, orderBy: { updatedAt: "desc" }, take: 300 }),
   ]);
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">
       <DespachoNavegacion actual="revision" titulo="Revisión" descripcion="Actividades completadas que esperan tu confirmación de calidad." esGestion={esGestion} puedeVerTodo={puedeVerTodo} puedeConfirmar={puedeConfirmar} />
-      <DespachoRevision iniciales={serializar(actividades)} usuarios={serializar(usuarios)} />
+      <DespachoRevision iniciales={serializar(actividades)} usuarios={serializar(usuarios)} clientes={serializar(clientes)} />
     </div>
   );
 }

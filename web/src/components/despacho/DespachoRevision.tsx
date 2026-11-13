@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { EmptyState } from "@/components/EmptyState";
-import { Boton, Modal } from "@/components/ui";
+import { Boton, Modal, Selector } from "@/components/ui";
 import { RechazarActividad } from "@/components/despacho/DespachoActividades";
 
 type Actividad = {
@@ -12,6 +12,7 @@ type Actividad = {
   cliente: { contacto: { nombre: string; empresa: string | null } };
 };
 type Opcion = { id: string; nombre: string };
+type Cliente = { id: string; contacto: { nombre: string; empresa: string | null } };
 
 function pendientes(lista: Actividad[]) { return lista.filter((a) => !a.confirmadaAt); }
 
@@ -82,9 +83,12 @@ function ContenidoTarjeta({ actividad, contador, onConfirmar, onRechazar }: {
   );
 }
 
-export function DespachoRevision({ iniciales, usuarios }: { iniciales: Actividad[]; usuarios: Opcion[] }) {
+export function DespachoRevision({ iniciales, usuarios, clientes }: { iniciales: Actividad[]; usuarios: Opcion[]; clientes: Cliente[] }) {
   const [actividades, setActividades] = useState(pendientes(iniciales));
   const [error, setError] = useState("");
+  const [responsableIdFiltro, setResponsableIdFiltro] = useState("");
+  const [clienteIdFiltro, setClienteIdFiltro] = useState("");
+  const [periodoFiltro, setPeriodoFiltro] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
   const idModal = searchParams.get("actividad");
@@ -93,10 +97,14 @@ export function DespachoRevision({ iniciales, usuarios }: { iniciales: Actividad
   const contador = (actividad: Actividad) => usuarios.find((u) => u.id === actividad.responsableId)?.nombre ?? "Sin asignar";
 
   const cargar = useCallback(async () => {
-    const respuesta = await fetch("/api/despacho/actividades?estado=completada", { cache: "no-store" });
+    const params = new URLSearchParams({ estado: "completada" });
+    if (responsableIdFiltro) params.set("responsableId", responsableIdFiltro);
+    if (clienteIdFiltro) params.set("clienteId", clienteIdFiltro);
+    if (periodoFiltro) params.set("periodo", periodoFiltro);
+    const respuesta = await fetch(`/api/despacho/actividades?${params}`, { cache: "no-store" });
     const datos = await respuesta.json().catch(() => ({}));
     if (respuesta.ok) setActividades(pendientes(datos.actividades));
-  }, []);
+  }, [responsableIdFiltro, clienteIdFiltro, periodoFiltro]);
 
   async function confirmar(actividad: Actividad, calificacion: number, nota: string) {
     const respuesta = await fetch(`/api/despacho/actividades/${actividad.id}/confirmar`, {
@@ -118,10 +126,35 @@ export function DespachoRevision({ iniciales, usuarios }: { iniciales: Actividad
     setActividades((lista) => lista.filter((item) => item.id !== actividad.id));
   }
 
-  useEffect(() => { void cargar(); }, [cargar]);
+  useEffect(() => {
+    void cargar();
+    const timer = window.setInterval(cargar, 30000);
+    window.addEventListener("focus", cargar);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", cargar);
+    };
+  }, [cargar]);
 
   return (
     <section className="space-y-4">
+      <div className="surface flex flex-wrap items-end gap-3 p-4 sm:p-5">
+        <Selector label="Contador" value={responsableIdFiltro} onChange={(e) => setResponsableIdFiltro(e.target.value)}>
+          <option value="">Todos</option>
+          {usuarios.map((usuario) => <option key={usuario.id} value={usuario.id}>{usuario.nombre}</option>)}
+        </Selector>
+        <Selector label="Cliente" value={clienteIdFiltro} onChange={(e) => setClienteIdFiltro(e.target.value)}>
+          <option value="">Todos</option>
+          {clientes.map((cliente) => <option key={cliente.id} value={cliente.id}>{cliente.contacto.empresa ?? cliente.contacto.nombre}</option>)}
+        </Selector>
+        <label className="block space-y-1">
+          <span className="text-sm font-medium text-muted-foreground">Periodo</span>
+          <input type="month" value={periodoFiltro} onChange={(e) => setPeriodoFiltro(e.target.value)} className="min-h-10 rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground" />
+        </label>
+        {(responsableIdFiltro || clienteIdFiltro || periodoFiltro) && (
+          <Boton variante="ghost" className="min-h-10 text-sm" onClick={() => { setResponsableIdFiltro(""); setClienteIdFiltro(""); setPeriodoFiltro(""); }}>Limpiar filtros</Boton>
+        )}
+      </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       {actividades.length === 0 ? (
         <EmptyState titulo="Nada por revisar" descripcion="Las actividades completadas que esperan confirmación aparecerán aquí." />
