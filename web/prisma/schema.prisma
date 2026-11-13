@@ -2886,6 +2886,20 @@ model DespachoActividadCambio {
   @@map("despacho_actividad_cambios")
 }
 
+model Notificacion {
+  id        BigInt    @id @default(autoincrement())
+  orgId     BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  usuarioId BigInt    @map("usuario_id")
+  titulo    String
+  cuerpo    String?
+  enlace    String?
+  leidaAt   DateTime? @map("leida_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([orgId, usuarioId, leidaAt, createdAt])
+  @@map("notificaciones")
+}
+
 model ContenidoPieza {
   id               BigInt    @id @default(autoincrement())
   orgId            BigInt    @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")

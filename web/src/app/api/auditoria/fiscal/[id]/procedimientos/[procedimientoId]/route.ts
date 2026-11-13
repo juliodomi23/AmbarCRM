@@ -24,7 +24,13 @@ export const PATCH = conModulo("auditoria", {}, async (sesion, req: NextRequest,
   const id = aBigInt(procedimientoId);
   if (!auditoriaIdBig || !id) return NextResponse.json({ error: "Id inválido" }, { status: 400 });
 
-  const existente = await db.auditoriaFiscalProcedimiento.findUnique({ where: { id }, select: { id: true, auditoriaId: true, nombre: true, estado: true } });
+  const existente = await db.auditoriaFiscalProcedimiento.findUnique({
+    where: { id },
+    select: {
+      id: true, auditoriaId: true, nombre: true, estado: true,
+      auditoria: { select: { cliente: { select: { contacto: { select: { nombre: true, empresa: true } } } } } },
+    },
+  });
   if (!existente || existente.auditoriaId !== auditoriaIdBig) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   const body = await req.json().catch(() => null);
@@ -55,6 +61,22 @@ export const PATCH = conModulo("auditoria", {}, async (sesion, req: NextRequest,
         nota: `Procedimiento "${existente.nombre}"${data.resultado ? `: ${data.resultado}` : ""}`,
       },
     });
+    if (data.estado === "con_observacion" && sesion.orgId) {
+      const cliente = existente.auditoria.cliente.contacto.empresa ?? existente.auditoria.cliente.contacto.nombre;
+      // ponytail: destinatarios fijos a petición del cliente (Adrián = dirección, Lusmi = administración); mover a config si se pide generalizar
+      const destinatarios = await db.usuario.findMany({
+        where: { orgId: sesion.orgId, email: { in: ["refmex@local.test", "lusmi@refmex.demo"] } },
+        select: { id: true },
+      });
+      await db.notificacion.createMany({
+        data: destinatarios.map((u) => ({
+          usuarioId: u.id,
+          titulo: `Observación en auditoría: ${cliente}`,
+          cuerpo: `Procedimiento "${existente.nombre}"${data.resultado ? `: ${data.resultado}` : ""}`,
+          enlace: `/auditoria/fiscal/${auditoriaIdBig}`,
+        })),
+      });
+    }
   }
 
   const procedimiento = await db.auditoriaFiscalProcedimiento.findUnique({ where: { id } });

@@ -121,12 +121,20 @@ export const PATCH = conModulo("contenido", {}, async (sesion, req: NextRequest,
     }
     await tx.contenidoPieza.update({ where: { id }, data: { ...data, version: { increment: 1 } } });
     if (estadoFinal !== actual.estado) {
+      const nota = texto(body.nota).slice(0, 500) || null;
       await tx.contenidoCambio.create({
-        data: {
-          piezaId: id, estadoAnterior: actual.estado, estadoNuevo: estadoFinal,
-          userId: sesion.userId, nota: texto(body.nota).slice(0, 500) || null,
-        },
+        data: { piezaId: id, estadoAnterior: actual.estado, estadoNuevo: estadoFinal, userId: sesion.userId, nota },
       });
+      if (estadoFinal === "cambios" && actual.redactorId) {
+        await tx.notificacion.create({
+          data: {
+            usuarioId: actual.redactorId,
+            titulo: `Pieza con cambios: ${actual.titulo}`,
+            cuerpo: nota,
+            enlace: `/contenido?pieza=${id}`,
+          },
+        });
+      }
     }
     return {
       pieza: await tx.contenidoPieza.findUnique({
