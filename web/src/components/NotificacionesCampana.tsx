@@ -12,6 +12,16 @@ type Notificacion = {
   createdAt: string;
 };
 
+function haceCuanto(valor: string) {
+  const ms = Date.now() - new Date(valor).getTime();
+  const min = Math.floor(ms / 60000);
+  if (min < 1) return "ahora";
+  if (min < 60) return `hace ${min} min`;
+  const horas = Math.floor(min / 60);
+  if (horas < 24) return `hace ${horas} h`;
+  return `hace ${Math.floor(horas / 24)} d`;
+}
+
 export function NotificacionesCampana() {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
@@ -80,30 +90,31 @@ export function NotificacionesCampana() {
         )}
       </button>
       {abierto && (
-        <div className="absolute right-0 top-12 z-50 w-80 rounded-xl bg-card p-1 text-foreground shadow-pop">
-          <div className="flex items-center justify-between px-3 py-2">
+        <div className="absolute right-0 top-12 z-50 w-80 overflow-hidden rounded-xl border border-border/60 bg-card text-foreground shadow-pop">
+          <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
             <span className="text-sm font-semibold">Notificaciones</span>
             {noLeidas > 0 && (
-              <button onClick={marcarTodas} className="text-xs text-primary hover:underline">
+              <button onClick={marcarTodas} className="text-xs font-medium text-primary hover:underline">
                 Marcar todas leídas
               </button>
             )}
           </div>
-          <div className="max-h-96 overflow-auto">
+          <div className="max-h-96 divide-y divide-border/60 overflow-auto">
             {notificaciones.length === 0 && (
-              <p className="px-3 py-6 text-center text-sm text-muted-foreground">Sin notificaciones</p>
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground">Sin notificaciones</p>
             )}
             {notificaciones.map((n) => (
               <button
                 key={n.id}
                 onClick={() => abrir(n)}
-                className={[
-                  "block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-white/5",
-                  n.leidaAt ? "opacity-60" : "",
-                ].join(" ")}
+                className="flex w-full items-start gap-2.5 px-4 py-3 text-left transition hover:bg-muted/60"
               >
-                <p className="font-medium">{n.titulo}</p>
-                {n.cuerpo && <p className="mt-0.5 text-xs text-muted-foreground">{n.cuerpo}</p>}
+                <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.leidaAt ? "bg-transparent" : "bg-primary"}`} aria-hidden="true" />
+                <span className="min-w-0 flex-1">
+                  <span className={`block text-sm leading-snug ${n.leidaAt ? "text-muted-foreground" : "font-semibold text-foreground"}`}>{n.titulo}</span>
+                  {n.cuerpo && <span className="mt-0.5 block truncate text-xs text-muted-foreground">{n.cuerpo}</span>}
+                  <span className="mt-1 block text-[11px] text-muted-foreground/80">{haceCuanto(n.createdAt)}</span>
+                </span>
               </button>
             ))}
           </div>

@@ -50,7 +50,7 @@ export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest, p
           usuarioId: actividad.responsableId,
           titulo: `Actividad rechazada: ${actividad.titulo}`,
           cuerpo: motivo,
-          enlace: `/despacho?cliente=${actividad.clienteId}`,
+          enlace: `/despacho/mi-trabajo?actividad=${id}`,
         },
       });
     }

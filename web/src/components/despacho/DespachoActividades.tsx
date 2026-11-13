@@ -1,10 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
-import { Badge, Boton, Campo, Selector, tonoEstado } from "@/components/ui";
+import { Badge, Boton, Campo, Modal, Selector, tonoEstado } from "@/components/ui";
 import { EmptyState } from "@/components/EmptyState";
 import { ESTADOS_DESPACHO, actividadCuentaComoCompletada, estaAtrasada, transicionDespachoValida } from "@/lib/despacho";
+
+type Cambio = { estadoAnterior: string | null; estadoNuevo: string; nota: string | null; creadoAt: string };
 
 type Actividad = {
   id: string; titulo: string; estado: string; tipo: string; periodo: string; fechaLimite: string;
@@ -12,7 +15,15 @@ type Actividad = {
   confirmadaAt: string | null; confirmadaPorId: string | null; peso: number;
   calificacion: number | null; calificacionNota: string | null;
   cliente: { id: string; contacto: { nombre: string; empresa: string | null } };
+  cambios?: Cambio[];
 };
+
+function motivoRechazo(actividad: Actividad) {
+  if (!actividad.cambios?.length) return null;
+  const ultimo = [...actividad.cambios].sort((a, b) => b.creadoAt.localeCompare(a.creadoAt))[0];
+  if (ultimo.estadoNuevo !== "en_proceso" || !ultimo.nota?.startsWith("Rechazada:")) return null;
+  return ultimo.nota.replace(/^Rechazada:\s*/, "");
+}
 
 type Opcion = { id: string; nombre: string };
 type Cliente = { id: string; contacto: { nombre: string; empresa: string | null } };
@@ -138,6 +149,11 @@ function TarjetaVista({ actividad, puede, puedeConfirmar, responsable, siguiente
         <span className={atrasada ? "shrink-0 font-semibold text-destructive" : "shrink-0"}>{atrasada ? "Atrasada · " : "Vence "}{fechaCorta(actividad.fechaLimite)}</span>
       </div>
       {actividad.notas && <p className="line-clamp-2 text-xs text-muted-foreground">{actividad.notas}</p>}
+      {motivoRechazo(actividad) && (
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 text-xs text-destructive">
+          <span className="font-semibold">Rechazada: </span>{motivoRechazo(actividad)}
+        </p>
+      )}
       <div className="flex items-center gap-2 border-t border-border/60 pt-2">
         <Badge tono={actividad.estado === "bloqueada" ? "destructive" : pendienteConfirmacion ? "warning" : tonoEstado(actividad.estado)} className={`min-h-7 px-2 text-xs ${actividad.estado === "bloqueada" ? "border border-destructive/30 bg-destructive/10 text-destructive" : ""}`}><span aria-hidden="true">{actividad.estado === "bloqueada" ? "!" : pendienteConfirmacion ? "◷" : "•"}</span>{pendienteConfirmacion ? "Por confirmar" : ETIQUETAS[actividad.estado] ?? actividad.estado}</Badge>
       </div>
@@ -220,8 +236,22 @@ export function DespachoActividades({
   const [creando, setCreando] = useState(false);
   const [form, setForm] = useState({ titulo: "", clienteId: clienteIdInicial, periodo: "", fechaLimite: "", tipo: "extraordinaria", responsableId: "" });
   const [arrastrando, setArrastrando] = useState<Actividad | null>(null);
+  const [actividadDeepLink, setActividadDeepLink] = useState<Actividad | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const actividadesDelPeriodo = actividades.filter((actividad) => new Date(actividad.periodo).toISOString().slice(0, 7) === periodo);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const idDeepLink = searchParams.get("actividad");
+  const cerrarDeepLink = () => { setActividadDeepLink(null); router.replace(soloCliente ? `/despacho/clientes/${clienteIdInicial}` : modo === "mias" ? "/despacho/mi-trabajo" : "/despacho/tablero"); };
+
+  useEffect(() => {
+    if (!idDeepLink) { setActividadDeepLink(null); return; }
+    const enLista = actividades.find((a) => a.id === idDeepLink);
+    if (enLista) { setActividadDeepLink(enLista); return; }
+    fetch(`/api/despacho/actividades/${idDeepLink}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setActividadDeepLink(d?.actividad ?? null));
+  }, [idDeepLink, actividades]);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -390,6 +420,20 @@ export function DespachoActividades({
         <div className="space-y-2 md:hidden">{COLUMNAS.map((columna) => { const delEstado = actividadesDelPeriodo.filter((actividad) => vaEnColumna(actividad, columna.estado)); return <details key={`movil-${columna.estado}`} className="surface group"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{columna.titulo}<span className="text-sm text-muted-foreground">{delEstado.length}</span></summary><div className="space-y-3 p-3 pt-0">{delEstado.length ? delEstado.map((actividad) => { const responsable = usuarios.find((usuario) => usuario.id === actividad.responsableId)?.nombre ?? "Sin asignar"; const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor)); return <TarjetaVista key={actividad.id} actividad={actividad} puede={esGestion || modo === "mias"} puedeConfirmar={puedeConfirmar} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} onConfirmar={(calificacion, nota) => confirmar(actividad, calificacion, nota)} onRechazar={(motivo) => rechazar(actividad, motivo)} />; }) : <p className="pb-3 text-center text-xs text-muted-foreground">Sin actividades</p>}</div></details>; })}</div>
         </>
       )}
+      <Modal abierto={Boolean(actividadDeepLink)} onClose={cerrarDeepLink} titulo="Actividad">
+        {actividadDeepLink && (
+          <TarjetaVista
+            actividad={actividadDeepLink}
+            puede={esGestion || modo === "mias"}
+            puedeConfirmar={puedeConfirmar}
+            responsable={usuarios.find((usuario) => usuario.id === actividadDeepLink.responsableId)?.nombre ?? "Sin asignar"}
+            siguientes={ESTADOS_DESPACHO.filter((valor) => valor !== actividadDeepLink.estado && transicionDespachoValida(actividadDeepLink.estado, valor))}
+            onCambiar={(siguiente) => void cambiar(actividadDeepLink, siguiente)}
+            onConfirmar={(calificacion, nota) => confirmar(actividadDeepLink, calificacion, nota)}
+            onRechazar={(motivo) => rechazar(actividadDeepLink, motivo)}
+          />
+        )}
+      </Modal>
     </section>
   );
 }
