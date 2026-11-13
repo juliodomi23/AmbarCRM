@@ -118,6 +118,12 @@ export function puedeGestionarAuditoria(puesto: string | undefined, rol: string 
   return ["Administrador", "Director general", "Gerente general"].includes(String(puesto ?? "").trim());
 }
 
+export function idsNotificadosObservacion(config: unknown) {
+  if (!config || typeof config !== "object" || Array.isArray(config)) return [];
+  const valor = (config as Record<string, unknown>).usuariosNotificadosObservacion;
+  return Array.isArray(valor) ? valor.map(String) : [];
+}
+
 export function normalizarPeriodo(valor: unknown): Date | null {
   const texto = String(valor ?? "").trim();
   const coincidencia = /^(\d{4})-(\d{2})(?:-\d{2})?$/.exec(texto);

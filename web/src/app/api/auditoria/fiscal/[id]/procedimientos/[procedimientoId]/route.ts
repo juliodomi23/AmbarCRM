@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { serializar } from "@/lib/serialize";
 import { aBigInt } from "@/lib/ids";
 import { texto } from "@/lib/despacho-api";
-import { esEstadoProcedimientoFiscal, puedeGestionarAuditoria } from "@/lib/auditoria";
+import { esEstadoProcedimientoFiscal, idsNotificadosObservacion, puedeGestionarAuditoria } from "@/lib/auditoria";
 
 function exigirGestion(sesion: SesionModulo) {
   if (!puedeGestionarAuditoria(sesion.puesto, sesion.rol)) {
@@ -63,19 +63,23 @@ export const PATCH = conModulo("auditoria", {}, async (sesion, req: NextRequest,
     });
     if (data.estado === "con_observacion" && sesion.orgId) {
       const cliente = existente.auditoria.cliente.contacto.empresa ?? existente.auditoria.cliente.contacto.nombre;
-      // ponytail: destinatarios fijos a petición del cliente (Adrián = dirección, Lusmi = administración); mover a config si se pide generalizar
-      const destinatarios = await db.usuario.findMany({
-        where: { orgId: sesion.orgId, email: { in: ["refmex@local.test", "lusmi@refmex.demo"] } },
-        select: { id: true },
+      const modulo = await db.moduloOrg.findFirst({
+        where: { clave: "auditoria", activo: true },
+        select: { config: true },
       });
-      await db.notificacion.createMany({
-        data: destinatarios.map((u) => ({
-          usuarioId: u.id,
-          titulo: `Observación en auditoría: ${cliente}`,
-          cuerpo: `Procedimiento "${existente.nombre}"${data.resultado ? `: ${data.resultado}` : ""}`,
-          enlace: `/auditoria/fiscal/${auditoriaIdBig}`,
-        })),
-      });
+      const destinatarios = [...new Set(idsNotificadosObservacion(modulo?.config))]
+        .map((id) => aBigInt(id))
+        .filter((id): id is bigint => id !== null);
+      if (destinatarios.length) {
+        await db.notificacion.createMany({
+          data: destinatarios.map((usuarioId) => ({
+            usuarioId,
+            titulo: `Observación en auditoría: ${cliente}`,
+            cuerpo: `Procedimiento "${existente.nombre}"${data.resultado ? `: ${data.resultado}` : ""}`,
+            enlace: `/auditoria/fiscal/${auditoriaIdBig}`,
+          })),
+        });
+      }
     }
   }
 
