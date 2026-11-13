@@ -21,6 +21,10 @@ function fechaCorta(valor: string) {
   return new Date(`${fecha}T12:00:00Z`).toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", "");
 }
 
+function etiquetaMes(valor: string) {
+  return new Date(`${valor.slice(0, 7)}-01T12:00:00Z`).toLocaleDateString("es-MX", { month: "long", year: "numeric", timeZone: "UTC" });
+}
+
 function ConfirmarActividadPeso({ peso, onConfirmar }: { peso: number; onConfirmar: (calificacion: number, nota: string) => Promise<void> | void }) {
   const [abierto, setAbierto] = useState(false);
   const [calificacion, setCalificacion] = useState("");
@@ -72,6 +76,7 @@ function ContenidoTarjeta({ actividad, contador, onConfirmar, onRechazar }: {
       <div className="min-w-0">
         <p className="truncate text-xs text-muted-foreground">{actividad.cliente.contacto.empresa ?? actividad.cliente.contacto.nombre}</p>
         <h3 className="truncate font-semibold text-foreground">{actividad.titulo}</h3>
+        <p className="text-xs text-muted-foreground capitalize">{etiquetaMes(actividad.periodo)}</p>
         <p className="text-xs text-muted-foreground">{contador} · Vencía {fechaCorta(actividad.fechaLimite)} · Valor {actividad.peso}</p>
       </div>
       {actividad.notas && <p className="line-clamp-2 text-xs text-muted-foreground">{actividad.notas}</p>}
