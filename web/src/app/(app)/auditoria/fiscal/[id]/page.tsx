@@ -4,7 +4,7 @@ import { moduloActivo } from "@/lib/modulos";
 import { db } from "@/lib/db";
 import { getSesion } from "@/lib/session";
 import { aBigInt } from "@/lib/ids";
-import { ESTADOS_AUDITORIA_FISCAL, ESTADOS_PROCEDIMIENTO_FISCAL, etiquetaEstadoCambio, tonoEstadoCambio, puedeGestionarAuditoria } from "@/lib/auditoria";
+import { ESTADOS_AUDITORIA_FISCAL, ESTADOS_PROCEDIMIENTO_FISCAL, etiquetaEstadoCambio, tonoEstadoCambio, etiquetaEstadoAuditoriaFiscal, tonoEstadoAuditoriaFiscal, etiquetaEstadoProcedimientoFiscal, tonoEstadoProcedimientoFiscal, puedeGestionarAuditoria } from "@/lib/auditoria";
 import { EncabezadoPagina, Badge } from "@/components/ui";
 import { AuditoriaFiscalEstado } from "@/components/modulos/auditoria/AuditoriaFiscalEstado";
 import { AuditoriaFiscalProcedimientos } from "@/components/modulos/auditoria/AuditoriaFiscalProcedimientos";
@@ -26,7 +26,6 @@ export default async function AuditoriaFiscalDetallePage({ params }: { params: P
   const sesion = await getSesion();
   if (!sesion?.user) redirect("/login");
   const esGestion = puedeGestionarAuditoria(sesion.user.puesto, sesion.user.rol);
-  if (!esGestion) redirect("/auditoria");
 
   const id = aBigInt((await params).id);
   if (!id) notFound();
@@ -62,7 +61,13 @@ export default async function AuditoriaFiscalDetallePage({ params }: { params: P
         <div><p className="text-sm text-muted-foreground">Cierre</p><p className="font-medium text-foreground">{fechaLarga(auditoria.fechaCierre)}</p></div>
         <div className="sm:col-span-2">
           <p className="text-sm text-muted-foreground">Estado actual</p>
-          <div className="mt-1"><AuditoriaFiscalEstado id={String(auditoria.id)} estado={auditoria.estado} hallazgos={auditoria.hallazgos} opciones={ESTADOS_AUDITORIA_FISCAL.map((estado) => ({ valor: estado.clave, etiqueta: estado.etiqueta }))} /></div>
+          <div className="mt-1">
+            {esGestion ? (
+              <AuditoriaFiscalEstado id={String(auditoria.id)} estado={auditoria.estado} hallazgos={auditoria.hallazgos} opciones={ESTADOS_AUDITORIA_FISCAL.map((estado) => ({ valor: estado.clave, etiqueta: estado.etiqueta }))} />
+            ) : (
+              <Badge tono={tonoEstadoAuditoriaFiscal(auditoria.estado)}>{etiquetaEstadoAuditoriaFiscal(auditoria.estado)}</Badge>
+            )}
+          </div>
         </div>
         {auditoria.hallazgos && (
           <div className="sm:col-span-2">
@@ -77,11 +82,27 @@ export default async function AuditoriaFiscalDetallePage({ params }: { params: P
           <h2 className="text-base font-semibold text-foreground">Procedimientos y pruebas</h2>
           <p className="text-sm text-muted-foreground">Qué se revisó en esta auditoría y con qué resultado.</p>
         </div>
-        <AuditoriaFiscalProcedimientos
-          auditoriaId={String(auditoria.id)}
-          iniciales={auditoria.procedimientos.map((procedimiento) => ({ id: String(procedimiento.id), nombre: procedimiento.nombre, estado: procedimiento.estado, resultado: procedimiento.resultado }))}
-          opciones={ESTADOS_PROCEDIMIENTO_FISCAL.map((estado) => ({ valor: estado.clave, etiqueta: estado.etiqueta }))}
-        />
+        {esGestion ? (
+          <AuditoriaFiscalProcedimientos
+            auditoriaId={String(auditoria.id)}
+            iniciales={auditoria.procedimientos.map((procedimiento) => ({ id: String(procedimiento.id), nombre: procedimiento.nombre, estado: procedimiento.estado, resultado: procedimiento.resultado }))}
+            opciones={ESTADOS_PROCEDIMIENTO_FISCAL.map((estado) => ({ valor: estado.clave, etiqueta: estado.etiqueta }))}
+          />
+        ) : auditoria.procedimientos.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sin procedimientos registrados todavía.</p>
+        ) : (
+          <div className="divide-y divide-border/60">
+            {auditoria.procedimientos.map((procedimiento) => (
+              <div key={String(procedimiento.id)} className="flex flex-wrap items-start justify-between gap-2 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{procedimiento.nombre}</p>
+                  {procedimiento.resultado && <p className="text-xs text-muted-foreground">{procedimiento.resultado}</p>}
+                </div>
+                <Badge tono={tonoEstadoProcedimientoFiscal(procedimiento.estado)} className="shrink-0">{etiquetaEstadoProcedimientoFiscal(procedimiento.estado)}</Badge>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="surface space-y-3 p-4 sm:p-5">

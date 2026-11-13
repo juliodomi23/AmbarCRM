@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { moduloActivo } from "@/lib/modulos";
 import { db } from "@/lib/db";
 import { getSesion } from "@/lib/session";
-import { ESTADOS_AUDITORIA_FISCAL, puedeGestionarAuditoria } from "@/lib/auditoria";
-import { EncabezadoPagina } from "@/components/ui";
+import { ESTADOS_AUDITORIA_FISCAL, etiquetaEstadoAuditoriaFiscal, puedeGestionarAuditoria, tonoEstadoAuditoriaFiscal } from "@/lib/auditoria";
+import { Badge, EncabezadoPagina } from "@/components/ui";
 import { FormularioModulo } from "@/components/modulos/FormularioModulo";
 import { EmptyState } from "@/components/EmptyState";
 import { AuditoriaFiscalEstado } from "@/components/modulos/auditoria/AuditoriaFiscalEstado";
@@ -21,7 +21,6 @@ export default async function AuditoriaFiscalPage() {
   const sesion = await getSesion();
   if (!sesion?.user) redirect("/login");
   const esGestion = puedeGestionarAuditoria(sesion.user.puesto, sesion.user.rol);
-  if (!esGestion) redirect("/auditoria");
 
   const [auditorias, clientes, usuarios] = await Promise.all([
     db.auditoriaFiscalCliente.findMany({
@@ -41,7 +40,7 @@ export default async function AuditoriaFiscalPage() {
         eyebrow="Auditoría"
         titulo="Auditoría fiscal a clientes"
         descripcion="Auditorías que el despacho realiza a sus clientes (distinto del control de calidad interno de colaboradores)."
-        acciones={
+        acciones={esGestion ? (
           <div className="flex flex-wrap items-center gap-2">
             <FormularioModulo
               boton="Nueva auditoría"
@@ -69,33 +68,47 @@ export default async function AuditoriaFiscalPage() {
               ]}
             />
           </div>
-        }
+        ) : undefined}
       />
 
       {auditorias.length === 0 ? (
-        <EmptyState titulo="Sin auditorías fiscales" descripcion="Registra la primera auditoría a un cliente para empezar a dar seguimiento." />
+        <EmptyState
+          titulo="Sin auditorías fiscales"
+          descripcion={esGestion ? "Registra la primera auditoría a un cliente para empezar a dar seguimiento." : "Aún no hay auditorías fiscales registradas."}
+        />
       ) : (
         <div className="surface divide-y divide-border/60 p-2">
-          {auditorias.map((auditoria) => (
-            <div key={String(auditoria.id)} className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-[minmax(0,1fr)_140px_160px_160px] sm:items-center">
-              <Link href={`/auditoria/fiscal/${auditoria.id}`} className="min-w-0 rounded-lg transition hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          {auditorias.map((auditoria) => {
+            const detalle = (
+              <>
                 <p className="truncate font-medium text-foreground">{auditoria.cliente.contacto.empresa ?? auditoria.cliente.contacto.nombre}</p>
                 <p className="truncate text-xs text-muted-foreground">{auditoria.alcance}</p>
-              </Link>
-              <span className="text-xs text-muted-foreground">Periodo {auditoria.periodo}</span>
-              <span className="text-xs text-muted-foreground">
-                Inicio {fechaCorta(auditoria.fechaInicio)} · Auditor {nombres.get(String(auditoria.auditorId)) ?? "—"}
-              </span>
-              <div className="flex items-center justify-start sm:justify-end">
-                <AuditoriaFiscalEstado
-                  id={String(auditoria.id)}
-                  estado={auditoria.estado}
-                  hallazgos={auditoria.hallazgos}
-                  opciones={ESTADOS_AUDITORIA_FISCAL.map((estado) => ({ valor: estado.clave, etiqueta: estado.etiqueta }))}
-                />
+              </>
+            );
+            return (
+              <div key={String(auditoria.id)} className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-[minmax(0,1fr)_140px_160px_160px] sm:items-center">
+                <Link href={`/auditoria/fiscal/${auditoria.id}`} className="min-w-0 rounded-lg transition hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                  {detalle}
+                </Link>
+                <span className="text-xs text-muted-foreground">Periodo {auditoria.periodo}</span>
+                <span className="text-xs text-muted-foreground">
+                  Inicio {fechaCorta(auditoria.fechaInicio)} · Auditor {nombres.get(String(auditoria.auditorId)) ?? "—"}
+                </span>
+                <div className="flex items-center justify-start sm:justify-end">
+                  {esGestion ? (
+                    <AuditoriaFiscalEstado
+                      id={String(auditoria.id)}
+                      estado={auditoria.estado}
+                      hallazgos={auditoria.hallazgos}
+                      opciones={ESTADOS_AUDITORIA_FISCAL.map((estado) => ({ valor: estado.clave, etiqueta: estado.etiqueta }))}
+                    />
+                  ) : (
+                    <Badge tono={tonoEstadoAuditoriaFiscal(auditoria.estado)}>{etiquetaEstadoAuditoriaFiscal(auditoria.estado)}</Badge>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
