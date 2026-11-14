@@ -4,7 +4,7 @@ import { moduloActivo } from "@/lib/modulos";
 import { db } from "@/lib/db";
 import { serializar } from "@/lib/serialize";
 import { getSesion } from "@/lib/session";
-import { agruparAvance, actividadCuentaComoCompletada, estaAtrasada, porcentajeAvance, puedeConfirmarActividadDespacho, puedeGestionarDespacho, puedeVerTodasActividadesDespacho, etiquetaAvance, tonoAvance } from "@/lib/despacho";
+import { agruparAvance, actividadCuentaComoCompletada, estaAtrasada, porcentajeAvance, puedeConfirmarActividadDespacho, puedeGestionarDespacho, puedeVerAvanceEquipoDespacho, puedeVerTodasActividadesDespacho, etiquetaAvance, tonoAvance } from "@/lib/despacho";
 import { DespachoNavegacion } from "@/components/despacho/DespachoNavegacion";
 import { Badge } from "@/components/ui";
 import { EmptyState } from "@/components/EmptyState";
@@ -41,15 +41,16 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
   ]);
   const identidad = { id: sesion?.user?.id, puesto: sesion?.user?.puesto, rol: sesion?.user?.rol };
   const puedeVerTodo = puedeVerTodasActividadesDespacho(identidad, moduloDespacho?.config);
+  const puedeVerAvanceEquipo = puedeVerAvanceEquipoDespacho(identidad, moduloDespacho?.config);
   const puedeConfirmar = puedeConfirmarActividadDespacho(identidad, moduloDespacho?.config);
   const responsableId = sesion?.user?.id ? BigInt(sesion.user.id) : -1n;
   const [actividades, clientes] = await Promise.all([
     db.despachoActividad.findMany({
-      where: { periodo: { gte: inicio, lt: fin }, ...(puedeVerTodo ? {} : { responsableId }) },
+      where: { periodo: { gte: inicio, lt: fin }, ...(puedeVerAvanceEquipo ? {} : { responsableId }) },
       include: { cliente: { include: { contacto: { select: { nombre: true, empresa: true } } } } },
       orderBy: [{ fechaLimite: "asc" }],
     }),
-    db.despachoCliente.count({ where: { activo: true, ...(puedeVerTodo ? {} : { actividades: { some: { periodo: { gte: inicio, lt: fin }, responsableId } } }) } }),
+    db.despachoCliente.count({ where: { activo: true, ...(puedeVerAvanceEquipo ? {} : { actividades: { some: { periodo: { gte: inicio, lt: fin }, responsableId } } }) } }),
   ]);
   const porcentaje = porcentajeAvance(actividades);
   const atrasadas = actividades.filter((actividad) => estaAtrasada(actividad));
@@ -62,11 +63,16 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
   const porVencer = proximasAVencer.length;
   const porCliente = agruparAvance(actividades, (actividad) => String(actividad.cliente.id));
   const nombres = new Map(usuarios.map((usuario) => [String(usuario.id), usuario.nombre]));
+  const clientesPropios = new Set(
+    actividades
+      .filter((actividad) => actividad.responsableId != null && String(actividad.responsableId) === String(sesion?.user?.id))
+      .map((actividad) => String(actividad.cliente.id)),
+  );
   const colorAvance = (valor: number | null, vencidas: number) => ({ success: "bg-success", warning: "bg-warning", destructive: "bg-destructive", neutral: "bg-muted-foreground/30" })[tonoAvance(valor, vencidas)];
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">
-      <DespachoNavegacion actual="resumen" titulo="Resumen del despacho" descripcion={`Avance de ${etiqueta}.`} esGestion={esGestion} puedeVerTodo={puedeVerTodo} puedeConfirmar={puedeConfirmar} />
+      <DespachoNavegacion actual="resumen" titulo="Resumen del despacho" descripcion={`Avance de ${etiqueta}.`} esGestion={esGestion} puedeVerTodo={puedeVerAvanceEquipo} puedeConfirmar={puedeConfirmar} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold capitalize text-foreground">Resumen · {etiqueta}</h2>
         <nav aria-label="Cambiar mes" className="flex min-h-10 items-center gap-2 rounded-xl border border-border bg-card p-1">
@@ -102,7 +108,8 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
             {porCliente.map((grupo) => {
               const cliente = actividades.find((actividad) => String(actividad.cliente.id) === grupo.clave)?.cliente;
               const nombre = cliente?.contacto.empresa ?? cliente?.contacto.nombre ?? "Cliente";
-              return <Link key={grupo.clave} href={`/despacho/clientes/${grupo.clave}?mes=${mes}`} className="block space-y-1.5 rounded-lg p-2 transition hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              const puedeAbrir = puedeVerTodo || clientesPropios.has(grupo.clave);
+              const contenido = <>
                 <div className="flex items-center justify-between gap-3 text-sm">
                   <span className="flex min-w-0 items-center gap-2">
                     <span className={`h-2 w-2 shrink-0 rounded-full ${colorAvance(grupo.porcentaje, grupo.atrasadas)}`} aria-hidden="true" />
@@ -112,10 +119,13 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
                 </div>
                 <div className="h-2.5 overflow-hidden rounded-full bg-muted" aria-hidden="true"><div className={`h-full rounded-full ${colorAvance(grupo.porcentaje, grupo.atrasadas)}`} style={{ width: `${grupo.porcentaje ?? 0}%` }} /></div>
                 <p className="text-xs font-medium text-muted-foreground">{etiquetaAvance(grupo.porcentaje, grupo.atrasadas)}</p>
-              </Link>;
+              </>;
+              return puedeAbrir
+                ? <Link key={grupo.clave} href={`/despacho/clientes/${grupo.clave}?mes=${mes}`} className="block space-y-1.5 rounded-lg p-2 transition hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{contenido}</Link>
+                : <div key={grupo.clave} className="block space-y-1.5 rounded-lg p-2">{contenido}</div>;
             })}
           </section>
-          <section className="surface space-y-4 p-4 sm:p-5">
+          {puedeVerTodo && <section className="surface space-y-4 p-4 sm:p-5">
             <h2 className="text-base font-semibold text-foreground">Próximas a vencer</h2>
             {proximasAVencer.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nada vence en los próximos 3 días.</p>
@@ -131,11 +141,11 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
                 </Link>
               );
             })}
-          </section>
+          </section>}
         </div>
       )}
 
-      {atrasadas.length > 0 && (
+      {puedeVerTodo && atrasadas.length > 0 && (
         <section className="surface space-y-3 p-4 sm:p-5">
           <h2 className="text-base font-semibold text-foreground">Atrasadas</h2>
           <div className="divide-y divide-border/60">

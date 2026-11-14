@@ -192,18 +192,39 @@ export function puedeGestionarDespacho(puesto: string | undefined, rol: string |
   return ["Administrador", "Director general", "Gerente general"].includes(String(puesto ?? "").trim());
 }
 
-export function idsPermisoDespacho(config: unknown, clave: "usuariosAccesoTotal" | "usuariosConfirmadores") {
+export function idsPermisoDespacho(
+  config: unknown,
+  clave: "usuariosAccesoTotal" | "usuariosConfirmadores" | "usuariosVistaLimitada",
+) {
   if (!config || typeof config !== "object" || Array.isArray(config)) return [];
   const valor = (config as Record<string, unknown>)[clave];
   return Array.isArray(valor) ? valor.map(String) : [];
 }
 
+function estaEnLista(usuario: { id?: string | bigint | null }, config: unknown, clave: "usuariosAccesoTotal" | "usuariosVistaLimitada") {
+  return usuario.id != null && idsPermisoDespacho(config, clave).includes(String(usuario.id));
+}
+
+/**
+ * Detalle completo de actividades (propias y ajenas).
+ * `usuariosVistaLimitada` nunca ve el detalle ajeno, aunque sea dirección.
+ */
 export function puedeVerTodasActividadesDespacho(
   usuario: { id?: string | bigint | null; puesto?: string; rol?: string },
   config?: unknown,
 ) {
+  if (estaEnLista(usuario, config, "usuariosVistaLimitada")) return false;
   if (puedeGestionarDespacho(usuario.puesto, usuario.rol)) return true;
-  return usuario.id != null && idsPermisoDespacho(config, "usuariosAccesoTotal").includes(String(usuario.id));
+  return estaEnLista(usuario, config, "usuariosAccesoTotal");
+}
+
+/** Avance agregado de todo el equipo, sin exponer el detalle de actividades ajenas. */
+export function puedeVerAvanceEquipoDespacho(
+  usuario: { id?: string | bigint | null; puesto?: string; rol?: string },
+  config?: unknown,
+) {
+  if (puedeVerTodasActividadesDespacho(usuario, config)) return true;
+  return estaEnLista(usuario, config, "usuariosVistaLimitada");
 }
 
 export function puedeConfirmarActividadDespacho(
@@ -226,4 +247,33 @@ export function puedeTocarActividad(
 
 export function etiquetaPeriodicidad(periodicidad: string) {
   return ({ semanal: "Semanal", mensual: "Mensual", bimestral: "Bimestral", trimestral: "Trimestral", anual: "Anual" } as Record<string, string>)[periodicidad] ?? periodicidad;
+}
+
+export type ActividadApelable = {
+  responsableId?: string | bigint | null;
+  estado: string;
+  confirmadaAt?: string | Date | null;
+  calificacion?: number | null;
+  apelacionEstado?: string | null;
+};
+
+/** Solo el contador responsable puede apelar una calificación ya confirmada, y solo una vez. */
+export function puedeApelarCalificacion(actividad: ActividadApelable, userId: string | bigint | null | undefined) {
+  return userId != null &&
+    actividad.responsableId != null &&
+    String(actividad.responsableId) === String(userId) &&
+    actividad.estado === "completada" &&
+    Boolean(actividad.confirmadaAt) &&
+    actividad.calificacion != null &&
+    !actividad.apelacionEstado;
+}
+
+/** La apelación solo la ven quien confirma actividades y el contador que la levantó. */
+export function puedeVerApelacion(
+  actividad: { responsableId?: string | bigint | null },
+  userId: string | bigint | null | undefined,
+  puedeConfirmar: boolean,
+) {
+  if (puedeConfirmar) return true;
+  return userId != null && actividad.responsableId != null && String(actividad.responsableId) === String(userId);
 }

@@ -11,7 +11,7 @@ type Cliente = {
   contacto: { id: string; nombre: string; telefono: string | null; empresa: string | null };
   procesos: { id: string; proceso: { id: string; nombre: string; periodicidad: string } }[];
   _count: { actividades: number };
-  actividades: { estado: string; fechaLimite: string; requiereConfirmacion: boolean; confirmadaAt: string | null }[];
+  actividades: { estado: string; fechaLimite: string; requiereConfirmacion: boolean; confirmadaAt: string | null; responsableId: string | null }[];
 };
 type Opcion = { id: string; nombre: string };
 
@@ -21,12 +21,14 @@ function actividadAtrasada(actividad: Cliente["actividades"][number]) {
 }
 
 export function DespachoClientes({
-  iniciales, contactos, usuarios, esGestion,
+  iniciales, contactos, usuarios, esGestion, puedeVerTodo = true, usuarioId = null,
 }: {
   iniciales: Cliente[];
   contactos: Opcion[];
   usuarios: Opcion[];
   esGestion: boolean;
+  puedeVerTodo?: boolean;
+  usuarioId?: string | null;
 }) {
   const [clientes, setClientes] = useState(iniciales);
   const [busqueda, setBusqueda] = useState("");
@@ -94,8 +96,9 @@ export function DespachoClientes({
         <EmptyState titulo="Sin clientes de despacho" descripcion="Agrega un cliente existente de tu CRM para empezar a asignarle procesos." />
       ) : (
         <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {visibles.map((cliente) => (
-            <Link key={cliente.id} href={`/despacho/clientes/${cliente.id}`} className="surface surface-interactiva group space-y-3 p-4 sm:p-5">
+          {visibles.map((cliente) => {
+            const puedeAbrir = puedeVerTodo || cliente.actividades.some((actividad) => actividad.responsableId === usuarioId);
+            const contenido = (<>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h2 className="truncate font-semibold text-foreground">{cliente.contacto.empresa ?? cliente.contacto.nombre}</h2>
@@ -108,8 +111,11 @@ export function DespachoClientes({
                 <div className="flex items-center justify-between gap-3 text-xs"><span className="flex min-w-0 items-center gap-2 text-muted-foreground"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/10 font-semibold text-primary" title={responsable} aria-label={`Responsable: ${responsable}`}>{avatar}</span><span className="truncate">{responsable}</span></span><span className={atrasadas ? "font-semibold text-destructive" : "text-muted-foreground"}>{atrasadas} atrasada{atrasadas === 1 ? "" : "s"}</span></div>
                 <p className="text-xs text-muted-foreground">{cliente.procesos.length} procesos · {cliente._count.actividades} actividades</p>
               </>; })()}
-            </Link>
-          ))}
+            </>);
+            return puedeAbrir
+              ? <Link key={cliente.id} href={`/despacho/clientes/${cliente.id}`} className="surface surface-interactiva group space-y-3 p-4 sm:p-5">{contenido}</Link>
+              : <div key={cliente.id} className="surface space-y-3 p-4 sm:p-5">{contenido}</div>;
+          })}
         </div>
       )}
     </section>

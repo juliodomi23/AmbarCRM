@@ -4,18 +4,20 @@ import { db } from "@/lib/db";
 import { serializar } from "@/lib/serialize";
 import { referenciaPropia } from "@/lib/referencias";
 import { exigirGestion, texto } from "@/lib/despacho-api";
-import { puedeVerTodasActividadesDespacho } from "@/lib/despacho";
+import { puedeVerAvanceEquipoDespacho, puedeVerTodasActividadesDespacho } from "@/lib/despacho";
 
 export const GET = conModulo("despacho", {}, async (sesion) => {
   const modulo = await db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } });
-  const puedeVerTodo = puedeVerTodasActividadesDespacho({ id: sesion.userId, puesto: sesion.puesto, rol: sesion.rol }, modulo?.config);
+  const identidad = { id: sesion.userId, puesto: sesion.puesto, rol: sesion.rol };
+  const verDetalle = puedeVerTodasActividadesDespacho(identidad, modulo?.config);
+  const verAvanceEquipo = puedeVerAvanceEquipoDespacho(identidad, modulo?.config);
   const clientes = await db.despachoCliente.findMany({
-    where: puedeVerTodo ? {} : { actividades: { some: { responsableId: sesion.userId } } },
+    where: verAvanceEquipo ? {} : { actividades: { some: { responsableId: sesion.userId } } },
     include: {
       contacto: { select: { id: true, nombre: true, telefono: true, empresa: true } },
       procesos: { include: { proceso: { select: { id: true, nombre: true, periodicidad: true } } } },
       _count: { select: { actividades: true } },
-      ...(!puedeVerTodo ? { actividades: { where: { responsableId: sesion.userId }, select: { estado: true, fechaLimite: true, requiereConfirmacion: true, confirmadaAt: true } } } : {}),
+      ...(!verDetalle ? { actividades: { where: verAvanceEquipo ? {} : { responsableId: sesion.userId }, select: { estado: true, fechaLimite: true, requiereConfirmacion: true, confirmadaAt: true, responsableId: true } } } : {}),
     },
     orderBy: { updatedAt: "desc" },
     take: 500,
