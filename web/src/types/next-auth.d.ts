@@ -5,6 +5,7 @@ declare module "next-auth" {
     rol?: "admin" | "agente";
     orgId?: string;
     puesto?: string;
+    passwordCambiadaAt?: Date | null;
   }
   interface Session {
     user: {
@@ -14,6 +15,7 @@ declare module "next-auth" {
       rol?: "admin" | "agente";
       orgId?: string;
       puesto?: string;
+      passwordCambiadaAt?: Date | null;
     };
   }
 }
@@ -28,5 +30,6 @@ declare module "next-auth/jwt" {
     rol?: "admin" | "agente";
     orgId?: string;
     puesto?: string;
+    passwordCambiadaAt?: number | null;
   }
 }

@@ -1,22 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import Image from "next/image";
 import { BrandRuntime } from "@/components/BrandRuntime";
 import { DEFAULT_BRAND, BrandConfig } from "@/lib/brand";
+import { pantallaInicial } from "@/lib/pantalla-inicial";
 import Link from "next/link";
 
 // Un taller mecánico empieza en su tablero de órdenes; el resto de organizaciones, en Embudos.
-async function pantallaInicial() {
-  try {
-    const res = await fetch("/api/modulos");
-    const datos = res.ok ? await res.json() : null;
-    return datos?.modulos?.some((m: { clave: string; activo: boolean }) => m.clave === "taller" && m.activo) ? "/taller/ordenes" : "/embudos";
-  } catch {
-    return "/embudos";
-  }
-}
 
 export function LoginForm({ recuperarHabilitado }: { recuperarHabilitado: boolean }) {
   const [email, setEmail] = useState("");
@@ -54,7 +46,11 @@ export function LoginForm({ recuperarHabilitado }: { recuperarHabilitado: boolea
     setCargando(false);
     if (res?.error) setError("Credenciales incorrectas");
     // Carga completa: el layout raíz se vuelve a renderizar con la sesión y aplica la marca de la org.
-    else window.location.assign(await pantallaInicial());
+    else {
+      const sesion = await getSession();
+      const destino = sesion?.user?.passwordCambiadaAt === null ? "/cambiar-password" : await pantallaInicial();
+      window.location.assign(destino);
+    }
   }
 
   return (

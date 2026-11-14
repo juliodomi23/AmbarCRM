@@ -9,6 +9,7 @@ import { normalizarMarca } from "@/lib/brand";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+  if (session.user.passwordCambiadaAt === null) redirect("/cambiar-password");
 
   const userId = session.user.id ? BigInt(session.user.id) : null;
   const [contadoresIniciales, ajustes] = await Promise.all([obtenerContadoresShell(userId), getAjustes()]);

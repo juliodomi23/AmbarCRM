@@ -42,6 +42,7 @@ async function manejarPOST(req: NextRequest) {
   const resultado = await db.usuario.updateMany({ where: { id: s.userId, passwordHash: usuario.passwordHash }, data: { passwordHash, passwordCambiadaAt } });
   if (!resultado.count) return NextResponse.json({ error: "La contraseña cambió durante la solicitud. Inténtalo de nuevo." }, { status: 409 });
   const respuesta = NextResponse.json({ ok: true });
+  token.passwordCambiadaAt = passwordCambiadaAt.getTime();
   await renovarSesionPassword(token, respuesta, passwordCambiadaAt, req);
   return respuesta;
 }

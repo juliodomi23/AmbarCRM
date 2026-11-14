@@ -27,5 +27,5 @@ export async function validarCredenciales({ email, password, orgSlug, headers }:
   if (!u || !u.activo) return null;
   if (!await bcrypt.compare(password, u.passwordHash)) return null;
   return { id: String(u.id), name: u.nombre, email: u.email, rol: u.rol,
-    orgId: String(org.id), puesto: u.puesto };
+    orgId: String(org.id), puesto: u.puesto, passwordCambiadaAt: u.passwordCambiadaAt };
 }

@@ -23,12 +23,13 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    async jwt({ token, user, trigger }) {
+      async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         token.rol = user.rol;
         token.orgId = user.orgId;
         token.puesto = user.puesto;
+        token.passwordCambiadaAt = user.passwordCambiadaAt ? user.passwordCambiadaAt.getTime() : null;
         token.emitidoAt = Date.now();
         token.checkedAt = Date.now();
       }
@@ -46,7 +47,7 @@ export const authOptions: NextAuthOptions = {
       // Revalida contra la BD cada 5 min: desactivar un usuario (o su org) mata su
       // sesión aunque el JWT siga vigente; un cambio de rol también se refleja.
       const checkedAt = token.checkedAt;
-      if (!user && token.id && token.orgId && (trigger === "update" || !checkedAt || Date.now() - checkedAt > 5 * 60_000)) {
+      if (!user && token.id && token.orgId && (trigger === "update" || token.passwordCambiadaAt === undefined || !checkedAt || Date.now() - checkedAt > 5 * 60_000)) {
         token.checkedAt = Date.now();
         try {
           const u = await runWithOrg(BigInt(token.orgId), () =>
@@ -57,6 +58,7 @@ export const authOptions: NextAuthOptions = {
           else {
             token.rol = u.rol as "admin" | "agente";
             token.puesto = u.puesto;
+            token.passwordCambiadaAt = u.passwordCambiadaAt ? u.passwordCambiadaAt.getTime() : null;
           }
         } catch {
           /* BD caída: no cerramos sesiones por un error transitorio */
@@ -70,12 +72,12 @@ export const authOptions: NextAuthOptions = {
         (session as { user?: typeof session.user }).user = undefined;
         return session;
       }
-      if (session.user) {
-        session.user.id = token.id;
         session.user.rol = token.rol;
         session.user.orgId = token.orgId;
         session.user.puesto = token.puesto;
-      }
+        if (token.passwordCambiadaAt !== undefined) {
+          session.user.passwordCambiadaAt = token.passwordCambiadaAt === null ? null : new Date(token.passwordCambiadaAt);
+        }
       return session;
     }
   }
