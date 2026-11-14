@@ -55,6 +55,9 @@ export const GET = conModulo("contenido", {}, async (sesion, req: NextRequest) =
 });
 
 export const POST = conModulo("contenido", {}, async (sesion, req: NextRequest) => {
+  if (esSoloRevisorContenido(sesion)) {
+    return NextResponse.json({ error: "Tu puesto solo puede revisar contenido, no crear piezas" }, { status: 403 });
+  }
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return NextResponse.json({ error: "Datos de la pieza inválidos" }, { status: 400 });
