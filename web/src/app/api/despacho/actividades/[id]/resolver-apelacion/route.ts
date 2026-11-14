@@ -36,11 +36,12 @@ export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest, p
       return { error: `La calificación no puede ser mayor al valor de la actividad (${actividad.peso})`, status: 400 } as const;
     }
 
+    const cambioCalificacion = calificacion !== null && calificacion !== actividad.calificacion;
     await tx.despachoActividad.update({
       where: { id },
       data: {
         ...(calificacion !== null ? { calificacion, calificacionNota } : {}),
-        apelacionEstado: "resuelta",
+        apelacionEstado: cambioCalificacion ? null : "resuelta",
         apelacionRespuesta: respuesta,
         apelacionResueltaAt: new Date(),
         apelacionResueltaPorId: sesion.userId,

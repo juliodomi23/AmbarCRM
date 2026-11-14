@@ -108,19 +108,19 @@ function ContenidoTarjeta({ actividad, contador, onConfirmar, onRechazar }: {
 
 function ResolverApelacion({ actividad, onResolver }: {
   actividad: Actividad;
-  onResolver: (calificacion: number, nota: string, respuesta: string) => Promise<void> | void;
+  onResolver: (calificacion: number | null, nota: string, respuesta: string) => Promise<void> | void;
 }) {
   const [calificacion, setCalificacion] = useState(String(actividad.calificacion ?? ""));
   const [nota, setNota] = useState(actividad.calificacionNota ?? "");
   const [respuesta, setRespuesta] = useState("");
   const [enviando, setEnviando] = useState(false);
   const valor = Number(calificacion);
-  const valido = calificacion !== "" && Number.isInteger(valor) && valor >= 1 && valor <= actividad.peso;
+  const valido = calificacion === "" || (Number.isInteger(valor) && valor >= 1 && valor <= actividad.peso);
 
   return (
     <div className="space-y-2 rounded-lg border border-warning/40 bg-warning/5 p-2.5">
       <label className="block space-y-1">
-        <span className="text-xs font-medium text-muted-foreground">Nueva calificación (de 1 a {actividad.peso})</span>
+        <span className="text-xs font-medium text-muted-foreground">Nueva calificación (opcional; vacío mantiene {actividad.calificacion ?? "—"} de {actividad.peso})</span>
         <div className="flex items-center gap-1">
           <input type="number" min={1} max={actividad.peso} value={calificacion} onChange={(e) => setCalificacion(e.target.value)} className="w-16 rounded-md border border-input bg-card px-2 py-1 text-sm" />
           <span className="text-sm text-muted-foreground">/ {actividad.peso}</span>
@@ -129,18 +129,19 @@ function ResolverApelacion({ actividad, onResolver }: {
       <textarea className="w-full rounded-md border border-input bg-card px-2 py-1.5 text-xs" rows={2} placeholder="Nota de calidad (opcional)" value={nota} onChange={(e) => setNota(e.target.value)} />
       <textarea className="w-full rounded-md border border-input bg-card px-2 py-1.5 text-xs" rows={2} placeholder="Respuesta al contador (opcional)" value={respuesta} onChange={(e) => setRespuesta(e.target.value)} />
       <div className="flex gap-1.5">
-        <Boton className="min-h-8 flex-1 text-xs" disabled={!valido || enviando} onClick={async () => { setEnviando(true); await onResolver(valor, nota, respuesta); setEnviando(false); }}>
+        <Boton className="min-h-8 flex-1 text-xs" disabled={!valido || enviando} onClick={async () => { setEnviando(true); await onResolver(calificacion === "" ? null : valor, nota, respuesta); setEnviando(false); }}>
           {enviando ? "Resolviendo…" : "Resolver apelación"}
         </Boton>
       </div>
-      {!valido && <p className="text-xs text-muted-foreground">Escribe una calificación entre 1 y {actividad.peso}.</p>}
+      {!valido && <p className="text-xs text-muted-foreground">Escribe una calificación entre 1 y {actividad.peso} o déjala vacía.</p>}
+      {calificacion === "" && <p className="text-xs text-muted-foreground">Sin nueva calificación no se podrá apelar de nuevo.</p>}
     </div>
   );
 }
 
 function ApelacionTarjeta({ actividad, contador, onResolver }: {
   actividad: Actividad; contador: string;
-  onResolver: (calificacion: number, nota: string, respuesta: string) => Promise<void> | void;
+  onResolver: (calificacion: number | null, nota: string, respuesta: string) => Promise<void> | void;
 }) {
   return (
     <>
@@ -219,7 +220,7 @@ export function DespachoRevision({ iniciales, apelacionesIniciales = [], usuario
     if (respuesta.ok) setApelaciones(datos.actividades ?? []);
   }, []);
 
-  async function resolver(actividad: Actividad, calificacion: number, nota: string, respuesta: string) {
+  async function resolver(actividad: Actividad, calificacion: number | null, nota: string, respuesta: string) {
     const solicitud = await fetch(`/api/despacho/actividades/${actividad.id}/resolver-apelacion`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ version: actividad.version, calificacion, calificacionNota: nota, respuesta }),

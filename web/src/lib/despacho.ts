@@ -257,7 +257,7 @@ export type ActividadApelable = {
   apelacionEstado?: string | null;
 };
 
-/** Solo el contador responsable puede apelar una calificación ya confirmada, y solo una vez. */
+/** Solo el contador responsable puede apelar una calificación confirmada, una vez por calificación. */
 export function puedeApelarCalificacion(actividad: ActividadApelable, userId: string | bigint | null | undefined) {
   return userId != null &&
     actividad.responsableId != null &&
@@ -268,12 +268,13 @@ export function puedeApelarCalificacion(actividad: ActividadApelable, userId: st
     !actividad.apelacionEstado;
 }
 
-/** La apelación solo la ven quien confirma actividades y el contador que la levantó. */
+/** La apelación solo la ven quien confirma actividades y el contador que la levantó, mientras esté vigente. */
 export function puedeVerApelacion(
-  actividad: { responsableId?: string | bigint | null },
+  actividad: { responsableId?: string | bigint | null; apelacionEstado?: string | null },
   userId: string | bigint | null | undefined,
   puedeConfirmar: boolean,
 ) {
+  if (!actividad.apelacionEstado) return false;
   if (puedeConfirmar) return true;
   return userId != null && actividad.responsableId != null && String(actividad.responsableId) === String(userId);
 }
