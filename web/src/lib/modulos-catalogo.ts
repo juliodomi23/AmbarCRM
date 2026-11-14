@@ -33,7 +33,7 @@ export const MODULOS = [
   {
     clave: "contenido", area: "Marketing y crecimiento", nombre: "Contenido y copys",
     descripcion: "Planea publicaciones, redacta copys, revisa cambios y agenda la semana.",
-    acceso: { puestosPorDefecto: ["Administrador", "Mercadotecnia", "Dirección comercial"] },
+    acceso: { puestosPorDefecto: ["Administrador", "Mercadotecnia", "Dirección comercial", "Revisor de contenido"] },
     icono: "M4 5h16v14H4zM8 9h8M8 13h8M8 17h5M17 3v4",
     ruta: "/contenido",
   },

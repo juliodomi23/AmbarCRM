@@ -9,6 +9,7 @@ import { texto } from "@/lib/despacho-api";
 import {
   CANALES_CONTENIDO, ESTADOS_CONTENIDO, FORMATOS_CONTENIDO, semanaDe, validarEnlaceMaterial,
 } from "@/lib/contenido";
+import { revisorPorDefecto, esSoloRevisorContenido } from "@/lib/contenido-datos";
 
 async function nombresUsuarios(ids: (bigint | null)[]) {
   const limpios = [...new Set(ids.filter((id): id is bigint => id !== null).map(String))].map(BigInt);
@@ -17,7 +18,7 @@ async function nombresUsuarios(ids: (bigint | null)[]) {
   return new Map(usuarios.map((usuario) => [String(usuario.id), usuario.nombre]));
 }
 
-export const GET = conModulo("contenido", {}, async (_sesion, req: NextRequest) => {
+export const GET = conModulo("contenido", {}, async (sesion, req: NextRequest) => {
   const params = req.nextUrl.searchParams;
   const where: Prisma.ContenidoPiezaWhereInput = {};
   const estado = params.get("estado");
@@ -32,6 +33,7 @@ export const GET = conModulo("contenido", {}, async (_sesion, req: NextRequest) 
   if (contactoId) where.contactoId = contactoId;
   if (revisorId) where.revisorId = revisorId;
   if (redactorId) where.redactorId = redactorId;
+  if (esSoloRevisorContenido(sesion) && sesion.userId != null) where.revisorId = sesion.userId;
   const semana = params.get("semana");
   if (semana && /^\d{4}-\d{2}-\d{2}$/.test(semana)) {
     const { inicio, fin } = semanaDe(semana);
@@ -77,6 +79,8 @@ export const POST = conModulo("contenido", {}, async (sesion, req: NextRequest) 
   if (redactorId === false) return NextResponse.json({ error: "Redactor no encontrado" }, { status: 400 });
   const revisorId = await referenciaPropia("usuario", body.revisorId);
   if (revisorId === false) return NextResponse.json({ error: "Revisor no encontrado" }, { status: 400 });
+  const redactorFinal = redactorId ?? sesion.userId ?? null;
+  const revisorFinal = revisorId ?? (redactorFinal != null ? await revisorPorDefecto(redactorFinal) : null);
   let fechaPublicacion: Date | null = null;
   if (body.fechaPublicacion) {
     fechaPublicacion = new Date(String(body.fechaPublicacion));
@@ -90,8 +94,8 @@ export const POST = conModulo("contenido", {}, async (sesion, req: NextRequest) 
       formato,
       campanaId,
       contactoId,
-      redactorId: redactorId ?? sesion.userId,
-      revisorId,
+      redactorId: redactorFinal,
+      revisorId: revisorFinal,
       fechaPublicacion,
       enlaceMaterial: texto(body.enlaceMaterial) || null,
       notasDiseno: texto(body.notasDiseno).slice(0, 2000) || null,
