@@ -45,6 +45,7 @@ Reglas del equipo:
 | [PLAN-MODULOS-FASE-3.md](PLAN-MODULOS-FASE-3.md) | Revisión de fase 2, prioridades de UX y entregas de Marketing y Meta Ads |
 | [MODULOS.md](MODULOS.md) | Capacidades y activación de los módulos por organización |
 | [docs/META-ADS-APP-REVIEW.md](docs/META-ADS-APP-REVIEW.md) | Permisos y revisión para las futuras integraciones de Meta Ads |
+| [docs/importar-historial-chatwoot.md](docs/importar-historial-chatwoot.md) | Importar el historial de Chatwoot sin enviar mensajes |
 | `DESPLIEGUE.md` | Variables y pasos de instalación |
 | `META-APP-REVIEW.md` | Checklist para revisión de Meta |
 | `INTEGRACION-N8N.md` | Automatizaciones con n8n |

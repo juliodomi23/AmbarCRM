@@ -23,6 +23,7 @@
     "check:plantillas-botones": "tsx scripts/check-plantillas-botones.ts",
     "alta:serenica": "tsx scripts/alta-serenica.ts",
     "verificar:serenica": "tsx scripts/verificar-serenica.ts",
+    "importar:historial:chatwoot": "tsx scripts/importar-historial-chatwoot.ts",
     "check:calendario": "tsx scripts/check-calendario.ts",
     "test:calendario:e2e": "tsx prisma/scripts/test-calendario-e2e.ts",
     "test:despacho:e2e": "tsx prisma/scripts/test-despacho-e2e.ts",
