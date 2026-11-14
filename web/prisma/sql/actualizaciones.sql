@@ -2827,6 +2827,9 @@ ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS requiere_confirmacion 
 ALTER TABLE despacho_actividades ALTER COLUMN requiere_confirmacion SET DEFAULT true;
 ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS confirmada_at TIMESTAMPTZ;
 ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS confirmada_por_id BIGINT;
+ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS peso INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS calificacion INTEGER;
+ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS calificacion_nota TEXT;
 ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS apelacion_comentario TEXT;
 ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS apelacion_estado TEXT CHECK (apelacion_estado IN ('pendiente','resuelta'));
 ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS apelacion_respuesta TEXT;
