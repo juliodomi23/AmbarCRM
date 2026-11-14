@@ -4,7 +4,7 @@ import { conModulo } from "@/lib/con-modulo";
 import { db } from "@/lib/db";
 import { serializar } from "@/lib/serialize";
 import { aBigInt } from "@/lib/ids";
-import { aFecha, exigirGestion, fechaCivil, texto } from "@/lib/despacho-api";
+import { aFecha, exigirGestionDespacho, fechaCivil, texto } from "@/lib/despacho-api";
 
 const UNIDADES = ["despacho", "refmex"] as const;
 const TIPOS = ["ingreso", "costo", "gasto"] as const;
@@ -34,7 +34,7 @@ function tipoValido(valor: unknown): valor is (typeof TIPOS)[number] {
 }
 
 export const GET = conModulo("despacho", {}, async (sesion, req: NextRequest) => {
-  const bloqueo = exigirGestion(sesion);
+  const bloqueo = await exigirGestionDespacho(sesion);
   if (bloqueo) return bloqueo;
   const params = req.nextUrl.searchParams;
   const mes = mesValido(params.get("mes")) ?? new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit" }).format(new Date());
@@ -87,7 +87,7 @@ export const GET = conModulo("despacho", {}, async (sesion, req: NextRequest) =>
 });
 
 export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest) => {
-  const bloqueo = exigirGestion(sesion);
+  const bloqueo = await exigirGestionDespacho(sesion);
   if (bloqueo) return bloqueo;
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Datos del movimiento inválidos" }, { status: 400 });

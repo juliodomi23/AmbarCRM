@@ -14,8 +14,8 @@ export default async function DespachoMiTrabajoPage({ searchParams }: { searchPa
   const { cliente: clienteQuery } = await searchParams;
   const clienteIdInicial = clienteQuery && /^\d+$/.test(clienteQuery) ? clienteQuery : "";
   const sesion = await getSesion();
-  const esGestion = puedeGestionarDespacho(sesion?.user?.puesto, sesion?.user?.rol);
   const modulo = await db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } });
+  const esGestion = puedeGestionarDespacho(sesion?.user?.puesto, sesion?.user?.rol, modulo?.config, sesion?.user?.id);
   const puedeVerTodo = puedeVerTodasActividadesDespacho({ id: sesion?.user?.id, puesto: sesion?.user?.puesto, rol: sesion?.user?.rol }, modulo?.config);
   const puedeConfirmar = puedeConfirmarActividadDespacho({ id: sesion?.user?.id, puesto: sesion?.user?.puesto, rol: sesion?.user?.rol }, modulo?.config);
   const userId = sesion?.user?.id ? BigInt(sesion.user.id) : 0n;

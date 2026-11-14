@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache";
 import { conModulo } from "@/lib/con-modulo";
 import { transaccionTenant } from "@/lib/retail-db";
 import { aBigInt } from "@/lib/ids";
-import { exigirGestion, mesValido, texto, aFecha } from "@/lib/despacho-api";
+import { exigirGestionDespacho, mesValido, texto, aFecha } from "@/lib/despacho-api";
 import { fechaLimiteDe, periodosDelMes, type Periodicidad } from "@/lib/despacho";
 
 export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest) => {
-  const bloqueo = exigirGestion(sesion);
+  const bloqueo = await exigirGestionDespacho(sesion);
   if (bloqueo) return bloqueo;
   const body = await req.json().catch(() => null);
   const mes = mesValido(body?.mes);

@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { serializar } from "@/lib/serialize";
 import { transaccionTenant } from "@/lib/retail-db";
 import { aBigInt } from "@/lib/ids";
-import { aFecha, exigirGestion, fechaCivil, texto } from "@/lib/despacho-api";
+import { aFecha, exigirGestionDespacho, fechaCivil, texto } from "@/lib/despacho-api";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -17,7 +17,7 @@ function montoDecimal(valor: unknown) {
 }
 
 export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest, props: Props) => {
-  const bloqueo = exigirGestion(sesion);
+  const bloqueo = await exigirGestionDespacho(sesion);
   if (bloqueo) return bloqueo;
   const id = aBigInt((await props.params).id);
   const body = await req.json().catch(() => null);

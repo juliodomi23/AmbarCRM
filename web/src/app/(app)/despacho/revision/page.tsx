@@ -13,8 +13,8 @@ export default async function DespachoRevisionPage() {
   if (!(await moduloActivo("despacho"))) redirect("/");
   const sesion = await getSesion();
   const identidad = { id: sesion?.user?.id, puesto: sesion?.user?.puesto, rol: sesion?.user?.rol };
-  const esGestion = puedeGestionarDespacho(sesion?.user?.puesto, sesion?.user?.rol);
   const modulo = await db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } });
+  const esGestion = puedeGestionarDespacho(sesion?.user?.puesto, sesion?.user?.rol, modulo?.config, sesion?.user?.id);
   const puedeConfirmar = puedeConfirmarActividadDespacho(identidad, modulo?.config);
   if (!puedeConfirmar) redirect("/despacho/mi-trabajo");
   const puedeVerTodo = puedeVerTodasActividadesDespacho(identidad, modulo?.config);

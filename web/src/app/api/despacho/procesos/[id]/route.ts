@@ -5,13 +5,13 @@ import { db } from "@/lib/db";
 import { serializar } from "@/lib/serialize";
 import { transaccionTenant } from "@/lib/retail-db";
 import { aBigInt } from "@/lib/ids";
-import { exigirGestion, texto } from "@/lib/despacho-api";
+import { exigirGestionDespacho, texto } from "@/lib/despacho-api";
 import { PERIODICIDADES } from "@/lib/despacho";
 
 type Props = { params: Promise<{ id: string }> };
 
 export const PATCH = conModulo("despacho", {}, async (sesion, req: NextRequest, props: Props) => {
-  const bloqueo = exigirGestion(sesion);
+  const bloqueo = await exigirGestionDespacho(sesion);
   if (bloqueo) return bloqueo;
   const id = aBigInt((await props.params).id);
   const body = await req.json().catch(() => null);
@@ -82,7 +82,7 @@ export const PATCH = conModulo("despacho", {}, async (sesion, req: NextRequest, 
 });
 
 export const DELETE = conModulo("despacho", {}, async (sesion, _req: NextRequest, props: Props) => {
-  const bloqueo = exigirGestion(sesion);
+  const bloqueo = await exigirGestionDespacho(sesion);
   if (bloqueo) return bloqueo;
   const id = aBigInt((await props.params).id);
   if (!id || id <= 0n) return NextResponse.json({ error: "Proceso inválido" }, { status: 400 });

@@ -1,11 +1,25 @@
 import { NextResponse } from "next/server";
 import type { SesionModulo } from "@/lib/con-modulo";
+import { db } from "@/lib/db";
 import { puedeGestionarDespacho } from "@/lib/despacho";
 
 export const texto = (valor: unknown) => String(valor ?? "").trim();
 
 export function exigirGestion(sesion: SesionModulo) {
   if (!puedeGestionarDespacho(sesion.puesto, sesion.rol)) {
+    return NextResponse.json({ error: "Solo dirección o administración puede hacer este cambio" }, { status: 403 });
+  }
+  return null;
+}
+
+/**
+ * Igual a `exigirGestion`, pero respeta `usuariosVistaLimitada` del módulo
+ * despacho: alguien con ese puesto pero cartera limitada no puede hacer
+ * cambios de gestión aunque su puesto normalmente lo permita.
+ */
+export async function exigirGestionDespacho(sesion: SesionModulo) {
+  const modulo = await db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } });
+  if (!puedeGestionarDespacho(sesion.puesto, sesion.rol, modulo?.config, sesion.userId)) {
     return NextResponse.json({ error: "Solo dirección o administración puede hacer este cambio" }, { status: 403 });
   }
   return null;

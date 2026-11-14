@@ -12,7 +12,6 @@ export const dynamic = "force-dynamic";
 export default async function DespachoConfiguracionPage() {
   if (!(await moduloActivo("despacho"))) redirect("/");
   const sesion = await getSesion();
-  const esGestion = puedeGestionarDespacho(sesion?.user?.puesto, sesion?.user?.rol);
   const [procesos, usuarios, modulo] = await Promise.all([
     db.despachoProceso.findMany({
       include: { actividades: { orderBy: [{ orden: "asc" }, { id: "asc" }] }, _count: { select: { clientes: true } } },
@@ -21,6 +20,8 @@ export default async function DespachoConfiguracionPage() {
     db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true, email: true }, orderBy: { nombre: "asc" } }),
     db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } }),
   ]);
+  const esGestion = puedeGestionarDespacho(sesion?.user?.puesto, sesion?.user?.rol, modulo?.config, sesion?.user?.id);
+  if (!esGestion) redirect("/despacho");
   const config = modulo?.config && typeof modulo.config === "object" && !Array.isArray(modulo.config)
     ? modulo.config as Record<string, unknown>
     : {};

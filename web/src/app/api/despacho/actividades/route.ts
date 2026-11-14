@@ -4,7 +4,7 @@ import { conModulo } from "@/lib/con-modulo";
 import { db } from "@/lib/db";
 import { serializar } from "@/lib/serialize";
 import { aBigInt } from "@/lib/ids";
-import { exigirGestion, fechaCivil, texto, aFecha, mesValido, sinDatosApelacion } from "@/lib/despacho-api";
+import { exigirGestionDespacho, fechaCivil, texto, aFecha, mesValido, sinDatosApelacion } from "@/lib/despacho-api";
 import { ESTADOS_DESPACHO, TIPOS_ACTIVIDAD, puedeConfirmarActividadDespacho, puedeVerApelacion, puedeVerTodasActividadesDespacho } from "@/lib/despacho";
 
 function rangoMes(mes: string) {
@@ -45,7 +45,7 @@ export const GET = conModulo("despacho", {}, async (sesion, req: NextRequest) =>
 });
 
 export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest) => {
-  const bloqueo = exigirGestion(sesion);
+  const bloqueo = await exigirGestionDespacho(sesion);
   if (bloqueo) return bloqueo;
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object" || Array.isArray(body)) {

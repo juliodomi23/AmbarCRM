@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { serializar } from "@/lib/serialize";
 import { transaccionTenant } from "@/lib/retail-db";
 import { aBigInt } from "@/lib/ids";
-import { exigirGestion, fechaCivil, texto, aFecha, sinDatosApelacion } from "@/lib/despacho-api";
+import { exigirGestionDespacho, fechaCivil, texto, aFecha, sinDatosApelacion } from "@/lib/despacho-api";
 import { ESTADOS_DESPACHO, idsPermisoDespacho, puedeConfirmarActividadDespacho, puedeGestionarDespacho, puedeVerApelacion, puedeVerTodasActividadesDespacho, transicionDespachoValida } from "@/lib/despacho";
 
 type Props = { params: Promise<{ id: string }> };
@@ -37,7 +37,8 @@ export const PATCH = conModulo("despacho", {}, async (sesion, req: NextRequest, 
   }
   const version = Number(body.version);
   if (!Number.isSafeInteger(version) || version < 1) return NextResponse.json({ error: "Versión inválida" }, { status: 400 });
-  const gestiona = puedeGestionarDespacho(sesion.puesto, sesion.rol);
+  const moduloPatch = await db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } });
+  const gestiona = puedeGestionarDespacho(sesion.puesto, sesion.rol, moduloPatch?.config, sesion.userId);
   const result = await transaccionTenant(sesion.orgId!, async (tx) => {
     const actual = await tx.despachoActividad.findUnique({ where: { id } });
     if (!actual) return { error: "Actividad no encontrada", status: 404 } as const;
@@ -125,7 +126,7 @@ export const PATCH = conModulo("despacho", {}, async (sesion, req: NextRequest, 
 });
 
 export const DELETE = conModulo("despacho", {}, async (sesion, _req: NextRequest, props: Props) => {
-  const bloqueo = exigirGestion(sesion);
+  const bloqueo = await exigirGestionDespacho(sesion);
   if (bloqueo) return bloqueo;
   const id = aBigInt((await props.params).id);
   if (!id || id <= 0n) return NextResponse.json({ error: "Actividad inválida" }, { status: 400 });

@@ -18,7 +18,6 @@ export default async function DespachoClientePage({ params, searchParams }: { pa
   const id = aBigInt((await params).id);
   if (!id) notFound();
   const sesion = await getSesion();
-  const esGestion = puedeGestionarDespacho(sesion?.user?.puesto, sesion?.user?.rol);
   const query = await searchParams;
   const mesHoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit" }).format(new Date());
   const mes = mesValido(query.mes) ?? mesHoy;
@@ -34,6 +33,7 @@ export default async function DespachoClientePage({ params, searchParams }: { pa
     }),
     db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
   ]);
+  const esGestion = puedeGestionarDespacho(sesion?.user?.puesto, sesion?.user?.rol, moduloDespacho?.config, sesion?.user?.id);
   const puedeVerTodo = puedeVerTodasActividadesDespacho(
     { id: sesion?.user?.id, puesto: sesion?.user?.puesto, rol: sesion?.user?.rol },
     moduloDespacho?.config,

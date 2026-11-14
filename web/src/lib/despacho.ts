@@ -187,7 +187,18 @@ export function transicionDespachoValida(actual: string, siguiente: string) {
   return SIGUIENTES_DESPACHO[actual as EstadoDespacho].includes(siguiente as EstadoDespacho);
 }
 
-export function puedeGestionarDespacho(puesto: string | undefined, rol: string | undefined) {
+/**
+ * `config`/`usuarioId` son opcionales por compatibilidad; cuando se pasan,
+ * un usuario en `usuariosVistaLimitada` nunca es gestión, aunque su puesto
+ * lo sea (ej. un "Gerente general" con la cartera limitada a sus clientes).
+ */
+export function puedeGestionarDespacho(
+  puesto: string | undefined,
+  rol: string | undefined,
+  config?: unknown,
+  usuarioId?: string | bigint | null,
+) {
+  if (usuarioId != null && idsPermisoDespacho(config, "usuariosVistaLimitada").includes(String(usuarioId))) return false;
   if (rol === "admin") return true;
   return ["Administrador", "Director general", "Gerente general"].includes(String(puesto ?? "").trim());
 }
@@ -214,24 +225,23 @@ export function puedeVerTodasActividadesDespacho(
   config?: unknown,
 ) {
   if (estaEnLista(usuario, config, "usuariosVistaLimitada")) return false;
-  if (puedeGestionarDespacho(usuario.puesto, usuario.rol)) return true;
+  if (puedeGestionarDespacho(usuario.puesto, usuario.rol, config, usuario.id)) return true;
   return estaEnLista(usuario, config, "usuariosAccesoTotal");
 }
 
-/** Avance agregado de todo el equipo, sin exponer el detalle de actividades ajenas. */
+/** Igual a `puedeVerTodasActividadesDespacho`; un `usuariosVistaLimitada` no ve avance ajeno, ni siquiera agregado. */
 export function puedeVerAvanceEquipoDespacho(
   usuario: { id?: string | bigint | null; puesto?: string; rol?: string },
   config?: unknown,
 ) {
-  if (puedeVerTodasActividadesDespacho(usuario, config)) return true;
-  return estaEnLista(usuario, config, "usuariosVistaLimitada");
+  return puedeVerTodasActividadesDespacho(usuario, config);
 }
 
 export function puedeConfirmarActividadDespacho(
   usuario: { id?: string | bigint | null; puesto?: string; rol?: string },
   config?: unknown,
 ) {
-  if (puedeGestionarDespacho(usuario.puesto, usuario.rol)) return true;
+  if (puedeGestionarDespacho(usuario.puesto, usuario.rol, config, usuario.id)) return true;
   return usuario.id != null && idsPermisoDespacho(config, "usuariosConfirmadores").includes(String(usuario.id));
 }
 

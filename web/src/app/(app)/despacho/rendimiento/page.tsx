@@ -57,7 +57,7 @@ export default async function DespachoRendimientoPage({ searchParams }: { search
     db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } }),
     db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
   ]);
-  const esGestion = puedeGestionarDespacho(sesion.user.puesto, sesion.user.rol);
+  const esGestion = puedeGestionarDespacho(sesion.user.puesto, sesion.user.rol, modulo?.config, sesion.user.id);
   const puedeVerTodo = puedeVerTodasActividadesDespacho({ id: sesion.user.id, puesto: sesion.user.puesto, rol: sesion.user.rol }, modulo?.config);
   const puedeVerAvanceEquipo = puedeVerAvanceEquipoDespacho({ id: sesion.user.id, puesto: sesion.user.puesto, rol: sesion.user.rol }, modulo?.config);
   const puedeConfirmar = puedeConfirmarActividadDespacho({ id: sesion.user.id, puesto: sesion.user.puesto, rol: sesion.user.rol }, modulo?.config);

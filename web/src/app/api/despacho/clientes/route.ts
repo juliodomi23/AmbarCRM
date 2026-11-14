@@ -3,7 +3,7 @@ import { conModulo } from "@/lib/con-modulo";
 import { db } from "@/lib/db";
 import { serializar } from "@/lib/serialize";
 import { referenciaPropia } from "@/lib/referencias";
-import { exigirGestion, texto } from "@/lib/despacho-api";
+import { exigirGestionDespacho, texto } from "@/lib/despacho-api";
 import { puedeVerAvanceEquipoDespacho, puedeVerTodasActividadesDespacho } from "@/lib/despacho";
 
 export const GET = conModulo("despacho", {}, async (sesion) => {
@@ -26,7 +26,7 @@ export const GET = conModulo("despacho", {}, async (sesion) => {
 });
 
 export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest) => {
-  const bloqueo = exigirGestion(sesion);
+  const bloqueo = await exigirGestionDespacho(sesion);
   if (bloqueo) return bloqueo;
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object" || Array.isArray(body)) {

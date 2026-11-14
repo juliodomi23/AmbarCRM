@@ -14,7 +14,6 @@ function mesValido(valor?: string) { return valor && /^\d{4}-(0[1-9]|1[0-2])$/.t
 export default async function DespachoTableroPage({ searchParams }: { searchParams: Promise<{ periodo?: string; responsableId?: string }> }) {
   if (!(await moduloActivo("despacho"))) redirect("/");
   const sesion = await getSesion();
-  const esGestion = puedeGestionarDespacho(sesion?.user?.puesto, sesion?.user?.rol);
   const params = await searchParams;
   const periodo = mesValido(params.periodo) ?? new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit" }).format(new Date());
   const [anio, numeroMes] = periodo.split("-").map(Number);
@@ -24,6 +23,7 @@ export default async function DespachoTableroPage({ searchParams }: { searchPara
     db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } }),
     db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
   ]);
+  const esGestion = puedeGestionarDespacho(sesion?.user?.puesto, sesion?.user?.rol, moduloDespacho?.config, sesion?.user?.id);
   const puedeVerTodo = puedeVerTodasActividadesDespacho(
     { id: sesion?.user?.id, puesto: sesion?.user?.puesto, rol: sesion?.user?.rol },
     moduloDespacho?.config,

@@ -33,13 +33,13 @@ export default async function DespachoPage({ searchParams }: { searchParams: Pro
   const mesPorDefecto = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit" }).format(new Date());
   const mes = mesValido(mesQuery) ?? mesPorDefecto;
   const sesion = await getSesion();
-  const esGestion = puedeGestionarDespacho(sesion?.user?.puesto, sesion?.user?.rol);
   const { inicio, fin, etiqueta, anterior, siguiente } = rangoMes(mes);
   const [moduloDespacho, usuarios] = await Promise.all([
     db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } }),
     db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true } }),
   ]);
   const identidad = { id: sesion?.user?.id, puesto: sesion?.user?.puesto, rol: sesion?.user?.rol };
+  const esGestion = puedeGestionarDespacho(sesion?.user?.puesto, sesion?.user?.rol, moduloDespacho?.config, sesion?.user?.id);
   const puedeVerTodo = puedeVerTodasActividadesDespacho(identidad, moduloDespacho?.config);
   const puedeVerAvanceEquipo = puedeVerAvanceEquipoDespacho(identidad, moduloDespacho?.config);
   const puedeConfirmar = puedeConfirmarActividadDespacho(identidad, moduloDespacho?.config);
