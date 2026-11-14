@@ -8,11 +8,12 @@ const SECCIONES = [
   { href: "/despacho/clientes", nombre: "Clientes", clave: "clientes", gestion: false },
   { href: "/despacho/finanzas", nombre: "Finanzas", clave: "finanzas", gestion: true },
   { href: "/despacho/mi-trabajo", nombre: "Mi trabajo", clave: "mi-trabajo", gestion: false },
+  { href: "/despacho/revision", nombre: "Revisión", clave: "revision", gestion: false, confirmar: true },
   { href: "/despacho/configuracion", nombre: "Configuración", clave: "configuracion", gestion: true },
 ];
 
 export function DespachoNavegacion({
-  actual, titulo, descripcion, acciones, esGestion = false, puedeVerTodo = esGestion,
+  actual, titulo, descripcion, acciones, esGestion = false, puedeVerTodo = esGestion, puedeConfirmar = esGestion,
 }: {
   actual: string;
   titulo: ReactNode;
@@ -20,8 +21,10 @@ export function DespachoNavegacion({
   acciones?: ReactNode;
   esGestion?: boolean;
   puedeVerTodo?: boolean;
+  puedeConfirmar?: boolean;
 }) {
   const visibles = SECCIONES.filter((seccion) => {
+    if ("confirmar" in seccion && seccion.confirmar) return puedeConfirmar;
     if ("verTodo" in seccion && seccion.verTodo) return puedeVerTodo;
     return !seccion.gestion || esGestion;
   });

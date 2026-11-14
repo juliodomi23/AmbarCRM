@@ -56,6 +56,11 @@ El bot se crea sin canal. Cuando el número de WhatsApp Cloud esté conectado, a
 
 La API actual no importa mensajes antiguos ni contactos en lote. Diseñar una migración aparte con exportación CSV/JSON de Chatwoot, un `--dry-run`, normalización de teléfonos, deduplicación por empresa y teléfono, mapeo de etiquetas exactas y una clave de origen que haga cada lote idempotente. Para mensajes, mapear conversación y contacto, dirección, contenido, fecha original, estado y adjuntos; conservar el ID de Chatwoot como referencia externa y no inventar un `waMessageId`. Importar primero en staging y conciliar conteos antes de decidir si el histórico se carga. No copiar notas privadas sin aprobación de Ricardo. No implementar ni ejecutar este importador como parte del corte.
 
+> Nota posterior: el importador existe aparte del corte en `web/scripts/importar-historial-chatwoot.ts` y se
+> documenta en [importar-historial-chatwoot.md](importar-historial-chatwoot.md). Usa `wa_message_id` con prefijo
+> `chatwoot-import-<id>` (el ID de Chatwoot queda dentro del valor) y salta lo que ya esté en el canal por
+> `source_id`. No se ejecuta durante el corte.
+
 ### Auditoría de mensajes y permisos
 
 - El endpoint genérico de plantillas es `POST /api/v1/accounts/1/conversations/{id}/messages/template`; valida `APPROVED` en la WABA y usa `enviar_mensaje`.

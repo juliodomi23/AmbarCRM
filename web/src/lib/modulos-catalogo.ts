@@ -33,7 +33,7 @@ export const MODULOS = [
   {
     clave: "contenido", area: "Marketing y crecimiento", nombre: "Contenido y copys",
     descripcion: "Planea publicaciones, redacta copys, revisa cambios y agenda la semana.",
-    acceso: { puestosPorDefecto: ["Administrador", "Mercadotecnia", "Dirección comercial"] },
+    acceso: { puestosPorDefecto: ["Administrador", "Mercadotecnia", "Dirección comercial", "Revisor de contenido"] },
     icono: "M4 5h16v14H4zM8 9h8M8 13h8M8 17h5M17 3v4",
     ruta: "/contenido",
   },
@@ -341,10 +341,10 @@ export const MODULOS = [
     clave: "auditoria",
     area: "Operación interna",
     nombre: "Auditoría",
-    descripcion: "Evaluación mensual por área con semáforo de cumplimiento y seguimiento por colaborador.",
+    descripcion: "Auditorías fiscales a clientes: alcance, estado y seguimiento por periodo.",
     acceso: ACCESO_TODOS,
     icono: "M4 4h16v16H4zM8 9l2 2 4-4M8 15h8",
-    ruta: "/auditoria",
+    ruta: "/auditoria/fiscal",
   },
 ] as const;
 

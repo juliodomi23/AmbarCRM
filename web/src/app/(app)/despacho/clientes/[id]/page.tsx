@@ -58,7 +58,7 @@ export default async function DespachoClientePage({ params, searchParams }: { pa
   if (!cliente) notFound();
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">
-      <DespachoNavegacion actual="clientes" titulo="Ficha del cliente" descripcion="Datos fiscales, procesos asignados y actividades recientes." esGestion={esGestion} puedeVerTodo={puedeVerTodo} />
+      <DespachoNavegacion actual="clientes" titulo="Ficha del cliente" descripcion="Datos fiscales, procesos asignados y actividades recientes." esGestion={esGestion} puedeVerTodo={puedeVerTodo} puedeConfirmar={puedeConfirmarActividadDespacho({ id: sesion?.user?.id, puesto: sesion?.user?.puesto, rol: sesion?.user?.rol }, moduloDespacho?.config)} />
       <DespachoClienteDetalle inicial={serializar(cliente)} procesos={serializar(procesos)} usuarios={serializar(usuarios)} esGestion={esGestion} />
       <section className="space-y-3">
         <div><h2 className="text-lg font-semibold text-foreground">Actividades del cliente · Kanban</h2><p className="text-sm text-muted-foreground">Las completadas pendientes de confirmación no suman al avance.</p></div>
@@ -68,6 +68,7 @@ export default async function DespachoClientePage({ params, searchParams }: { pa
           usuarios={serializar(usuarios)}
           esGestion={esGestion}
           puedeConfirmar={puedeConfirmarActividadDespacho({ id: sesion?.user?.id, puesto: sesion?.user?.puesto, rol: sesion?.user?.rol }, moduloDespacho?.config)}
+          usuarioId={sesion?.user?.id ?? null}
           modo="tablero"
           clienteIdInicial={String(cliente.id)}
           soloCliente

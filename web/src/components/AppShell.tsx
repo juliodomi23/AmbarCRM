@@ -12,6 +12,7 @@ import { PushSetup } from "@/components/PushSetup";
 import { IdentidadOffline, limpiarCajaLocal } from "@/components/caja/IdentidadOffline";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CommandPalette } from "@/components/CommandPalette";
+import { NotificacionesCampana } from "@/components/NotificacionesCampana";
 import type { BrandConfig } from "@/lib/brand";
 
 type NavItem = {
@@ -437,6 +438,7 @@ export function AppShell({
               ⌘K
             </kbd>
           </button>
+          <NotificacionesCampana />
           <Link
             href="/embudos?nueva=1"
             className={[

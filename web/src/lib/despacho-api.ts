@@ -27,3 +27,19 @@ export function mesValido(valor: unknown): string | null {
   const textoValor = texto(valor);
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(textoValor) ? textoValor : null;
 }
+
+const CLAVES_APELACION = [
+  "apelacionComentario",
+  "apelacionEstado",
+  "apelacionRespuesta",
+  "apelacionCreadaAt",
+  "apelacionResueltaAt",
+  "apelacionResueltaPorId",
+] as const;
+
+/** Quita de la respuesta los datos de apelación que el usuario no debe ver. */
+export function sinDatosApelacion<T extends object>(actividad: T): T {
+  const copia = { ...actividad } as Record<string, unknown>;
+  for (const clave of CLAVES_APELACION) delete copia[clave];
+  return copia as T;
+}

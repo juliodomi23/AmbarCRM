@@ -43,20 +43,24 @@ export const PATCH = conModulo("despacho", {}, async (sesion, req: NextRequest, 
         const dato = raw as Record<string, unknown>;
         const nombreActividad = texto(dato.nombre).slice(0, 160);
         const diaLimite = Number(dato.diaLimite ?? 1);
+        const peso = Number(dato.peso ?? 1);
         if (!nombreActividad || !Number.isSafeInteger(diaLimite) || diaLimite < 1 || diaLimite > 31) {
           return { error: "Revisa el nombre y el día límite de cada actividad", status: 400 } as const;
+        }
+        if (!Number.isSafeInteger(peso) || peso < 1 || peso > 100) {
+          return { error: "El peso de cada actividad debe ser un entero entre 1 y 100", status: 400 } as const;
         }
         const actividadId = dato.id ? aBigInt(String(dato.id)) : null;
         if (dato.id && !actividadId) return { error: "Actividad inválida", status: 400 } as const;
         if (actividadId) {
           const actualizada = await tx.despachoProcesoActividad.updateMany({
             where: { id: actividadId, procesoId: id },
-            data: { nombre: nombreActividad, diaLimite, orden: indice, activo: dato.activo !== false },
+            data: { nombre: nombreActividad, diaLimite, peso, orden: indice, activo: dato.activo !== false },
           });
           if (!actualizada.count) return { error: "La actividad no pertenece al proceso", status: 400 } as const;
           vistos.push(actividadId);
         } else {
-          const creada = await tx.despachoProcesoActividad.create({ data: { procesoId: id, nombre: nombreActividad, diaLimite, orden: indice } });
+          const creada = await tx.despachoProcesoActividad.create({ data: { procesoId: id, nombre: nombreActividad, diaLimite, peso, orden: indice } });
           vistos.push(creada.id);
         }
       }

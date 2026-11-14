@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 
 export default async function ContenidoTableroPage() {
   if (!(await moduloActivo("contenido"))) redirect("/");
-  const [{ piezas, usuarios, campanas, contactos }, sesion] = await Promise.all([datosContenido(), getSesion()]);
+  const sesion = await getSesion();
+  const { piezas, usuarios, campanas, contactos } = await datosContenido(sesion?.user);
   const pendientes = piezas.filter((pieza) => ["revision", "cambios"].includes(pieza.estado)).length;
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">

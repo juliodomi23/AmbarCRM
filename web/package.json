@@ -23,12 +23,14 @@
     "check:plantillas-botones": "tsx scripts/check-plantillas-botones.ts",
     "alta:serenica": "tsx scripts/alta-serenica.ts",
     "verificar:serenica": "tsx scripts/verificar-serenica.ts",
+    "importar:historial:chatwoot": "tsx scripts/importar-historial-chatwoot.ts",
     "check:calendario": "tsx scripts/check-calendario.ts",
     "test:calendario:e2e": "tsx prisma/scripts/test-calendario-e2e.ts",
     "test:despacho:e2e": "tsx prisma/scripts/test-despacho-e2e.ts",
     "test:contenido:e2e": "tsx prisma/scripts/test-contenido-e2e.ts",
     "test:auditoria:e2e": "tsx prisma/scripts/test-auditoria-e2e.ts",
     "seed:refmex-despacho": "node scripts/seed-refmex-despacho-cartera.mjs",
+    "seed:refmex-despacho-mes": "node scripts/seed-refmex-despacho-mes.mjs",
     "seed:admin": "node scripts/seed-admin.mjs"
   },
   "dependencies": {

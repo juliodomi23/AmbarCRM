@@ -183,7 +183,7 @@ export function ContenidoPanel({
           <option value="">Todos</option>
           {usuarios.map((usuario) => <option key={usuario.id} value={usuario.id}>{usuario.nombre}</option>)}
         </Selector>
-        <Boton onClick={() => setCreando(true)}>Nueva pieza</Boton>
+        {puesto !== "Revisor de contenido" && <Boton onClick={() => setCreando(true)}>Nueva pieza</Boton>}
         <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto" aria-label="Resumen del contenido">{resumenSemana.map((item) => <span key={item.etiqueta} className={`inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold ${item.tono === "success" ? "border-success/25 bg-success/10 text-success" : item.tono === "info" ? "border-info/25 bg-info/10 text-info" : "border-warning/25 bg-warning/10 text-warning"}`}><span className="tnum">{item.total}</span>{item.etiqueta}</span>)}</div>
       </div>
 

@@ -96,7 +96,12 @@ export type ActividadPuntuable = {
   estado: string;
   requiereConfirmacion?: boolean;
   confirmadaAt?: string | Date | null;
+  peso?: number | null;
 };
+
+function pesoDe(actividad: { peso?: number | null }) {
+  return actividad.peso && actividad.peso > 0 ? actividad.peso : 1;
+}
 
 /** Solo las completadas y confirmadas cuentan para el avance. */
 export function actividadCuentaComoCompletada(actividad: ActividadPuntuable) {
@@ -104,11 +109,13 @@ export function actividadCuentaComoCompletada(actividad: ActividadPuntuable) {
     (actividad.requiereConfirmacion === false || Boolean(actividad.confirmadaAt));
 }
 
-/** Porcentaje entero de avance; sin actividades no hay avance que mostrar (null). */
+/** Porcentaje entero de avance ponderado por peso; no todas las actividades valen lo mismo. */
 export function porcentajeAvance(actividades: ActividadPuntuable[]) {
   if (actividades.length === 0) return null;
-  const completadas = actividades.filter(actividadCuentaComoCompletada).length;
-  return Math.round((completadas / actividades.length) * 100);
+  const pesoTotal = actividades.reduce((suma, actividad) => suma + pesoDe(actividad), 0);
+  if (pesoTotal === 0) return null;
+  const pesoCompletado = actividades.filter(actividadCuentaComoCompletada).reduce((suma, actividad) => suma + pesoDe(actividad), 0);
+  return Math.round((pesoCompletado / pesoTotal) * 100);
 }
 
 export function estaAtrasada(
@@ -128,7 +135,7 @@ export type AvanceGrupo = {
   porcentaje: number | null;
 };
 
-export function agruparAvance<T extends { estado?: string; fechaLimite?: string | Date; confirmadaAt?: string | Date | null }>(actividades: T[], clave: (actividad: T) => string): AvanceGrupo[] {
+export function agruparAvance<T extends { estado?: string; fechaLimite?: string | Date; confirmadaAt?: string | Date | null; peso?: number | null }>(actividades: T[], clave: (actividad: T) => string): AvanceGrupo[] {
   const grupos = new Map<string, { total: number; completadas: number; atrasadas: number }>();
   for (const actividad of actividades) {
     const nombre = clave(actividad);
@@ -185,18 +192,39 @@ export function puedeGestionarDespacho(puesto: string | undefined, rol: string |
   return ["Administrador", "Director general", "Gerente general"].includes(String(puesto ?? "").trim());
 }
 
-function idsPermisoDespacho(config: unknown, clave: "usuariosAccesoTotal" | "usuariosConfirmadores") {
+export function idsPermisoDespacho(
+  config: unknown,
+  clave: "usuariosAccesoTotal" | "usuariosConfirmadores" | "usuariosVistaLimitada",
+) {
   if (!config || typeof config !== "object" || Array.isArray(config)) return [];
   const valor = (config as Record<string, unknown>)[clave];
   return Array.isArray(valor) ? valor.map(String) : [];
 }
 
+function estaEnLista(usuario: { id?: string | bigint | null }, config: unknown, clave: "usuariosAccesoTotal" | "usuariosVistaLimitada") {
+  return usuario.id != null && idsPermisoDespacho(config, clave).includes(String(usuario.id));
+}
+
+/**
+ * Detalle completo de actividades (propias y ajenas).
+ * `usuariosVistaLimitada` nunca ve el detalle ajeno, aunque sea dirección.
+ */
 export function puedeVerTodasActividadesDespacho(
   usuario: { id?: string | bigint | null; puesto?: string; rol?: string },
   config?: unknown,
 ) {
+  if (estaEnLista(usuario, config, "usuariosVistaLimitada")) return false;
   if (puedeGestionarDespacho(usuario.puesto, usuario.rol)) return true;
-  return usuario.id != null && idsPermisoDespacho(config, "usuariosAccesoTotal").includes(String(usuario.id));
+  return estaEnLista(usuario, config, "usuariosAccesoTotal");
+}
+
+/** Avance agregado de todo el equipo, sin exponer el detalle de actividades ajenas. */
+export function puedeVerAvanceEquipoDespacho(
+  usuario: { id?: string | bigint | null; puesto?: string; rol?: string },
+  config?: unknown,
+) {
+  if (puedeVerTodasActividadesDespacho(usuario, config)) return true;
+  return estaEnLista(usuario, config, "usuariosVistaLimitada");
 }
 
 export function puedeConfirmarActividadDespacho(
@@ -219,4 +247,34 @@ export function puedeTocarActividad(
 
 export function etiquetaPeriodicidad(periodicidad: string) {
   return ({ semanal: "Semanal", mensual: "Mensual", bimestral: "Bimestral", trimestral: "Trimestral", anual: "Anual" } as Record<string, string>)[periodicidad] ?? periodicidad;
+}
+
+export type ActividadApelable = {
+  responsableId?: string | bigint | null;
+  estado: string;
+  confirmadaAt?: string | Date | null;
+  calificacion?: number | null;
+  apelacionEstado?: string | null;
+};
+
+/** Solo el contador responsable puede apelar una calificación confirmada, una vez por calificación. */
+export function puedeApelarCalificacion(actividad: ActividadApelable, userId: string | bigint | null | undefined) {
+  return userId != null &&
+    actividad.responsableId != null &&
+    String(actividad.responsableId) === String(userId) &&
+    actividad.estado === "completada" &&
+    Boolean(actividad.confirmadaAt) &&
+    actividad.calificacion != null &&
+    !actividad.apelacionEstado;
+}
+
+/** La apelación solo la ven quien confirma actividades y el contador que la levantó, mientras esté vigente. */
+export function puedeVerApelacion(
+  actividad: { responsableId?: string | bigint | null; apelacionEstado?: string | null },
+  userId: string | bigint | null | undefined,
+  puedeConfirmar: boolean,
+) {
+  if (!actividad.apelacionEstado) return false;
+  if (puedeConfirmar) return true;
+  return userId != null && actividad.responsableId != null && String(actividad.responsableId) === String(userId);
 }

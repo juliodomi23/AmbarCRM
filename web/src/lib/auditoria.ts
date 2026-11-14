@@ -1,8 +1,6 @@
 export const AREAS_AUDITORIA = [
   { clave: "contabilidad", nombre: "Contabilidad", descripcion: "Cierre, conciliaciones y obligaciones fiscales." },
   { clave: "administracion", nombre: "Administración", descripcion: "Gestión interna, personal y procesos administrativos." },
-  { clave: "marketing", nombre: "Marketing", descripcion: "Contenido, campañas y calendario editorial." },
-  { clave: "adquisicion", nombre: "Adquisición", descripcion: "Compras, proveedores y abastecimiento." },
 ] as const;
 
 export type AreaAuditoria = (typeof AREAS_AUDITORIA)[number]["clave"];
@@ -53,6 +51,60 @@ export function esColorAuditoria(valor: unknown): valor is ColorAuditoria {
   return CLAVES_COLOR.includes(valor as ColorAuditoria);
 }
 
+export const ESTADOS_AUDITORIA_FISCAL = [
+  { clave: "planeacion", etiqueta: "Planeación", tono: "neutral" },
+  { clave: "en_proceso", etiqueta: "En proceso", tono: "warning" },
+  { clave: "con_observaciones", etiqueta: "Con observaciones", tono: "destructive" },
+  { clave: "concluida", etiqueta: "Concluida", tono: "success" },
+] as const;
+
+export type EstadoAuditoriaFiscal = (typeof ESTADOS_AUDITORIA_FISCAL)[number]["clave"];
+
+export function esEstadoAuditoriaFiscal(valor: unknown): valor is EstadoAuditoriaFiscal {
+  return ESTADOS_AUDITORIA_FISCAL.some((estado) => estado.clave === valor);
+}
+
+export function etiquetaEstadoAuditoriaFiscal(estado: string) {
+  return ESTADOS_AUDITORIA_FISCAL.find((item) => item.clave === estado)?.etiqueta ?? estado;
+}
+
+export function tonoEstadoAuditoriaFiscal(estado: string) {
+  return ESTADOS_AUDITORIA_FISCAL.find((item) => item.clave === estado)?.tono ?? "neutral";
+}
+
+export const ESTADOS_PROCEDIMIENTO_FISCAL = [
+  { clave: "pendiente", etiqueta: "Pendiente", tono: "neutral" },
+  { clave: "hecho", etiqueta: "Hecho", tono: "success" },
+  { clave: "con_observacion", etiqueta: "Con observación", tono: "destructive" },
+] as const;
+
+export type EstadoProcedimientoFiscal = (typeof ESTADOS_PROCEDIMIENTO_FISCAL)[number]["clave"];
+
+export function esEstadoProcedimientoFiscal(valor: unknown): valor is EstadoProcedimientoFiscal {
+  return ESTADOS_PROCEDIMIENTO_FISCAL.some((estado) => estado.clave === valor);
+}
+
+export function etiquetaEstadoProcedimientoFiscal(estado: string) {
+  return ESTADOS_PROCEDIMIENTO_FISCAL.find((item) => item.clave === estado)?.etiqueta ?? estado;
+}
+
+export function tonoEstadoProcedimientoFiscal(estado: string) {
+  return ESTADOS_PROCEDIMIENTO_FISCAL.find((item) => item.clave === estado)?.tono ?? "neutral";
+}
+
+/** El historial mezcla cambios de estado de la auditoría y de sus procedimientos; cada valor viene de un catálogo distinto. */
+export function etiquetaEstadoCambio(estado: string) {
+  return ESTADOS_AUDITORIA_FISCAL.find((item) => item.clave === estado)?.etiqueta
+    ?? ESTADOS_PROCEDIMIENTO_FISCAL.find((item) => item.clave === estado)?.etiqueta
+    ?? estado;
+}
+
+export function tonoEstadoCambio(estado: string) {
+  return ESTADOS_AUDITORIA_FISCAL.find((item) => item.clave === estado)?.tono
+    ?? ESTADOS_PROCEDIMIENTO_FISCAL.find((item) => item.clave === estado)?.tono
+    ?? "neutral";
+}
+
 export function nombreArea(area: string) {
   return AREAS_AUDITORIA.find((item) => item.clave === area)?.nombre ?? area;
 }
@@ -64,6 +116,12 @@ export function definicionColor(color: string) {
 export function puedeGestionarAuditoria(puesto: string | undefined, rol: string | undefined) {
   if (rol === "admin") return true;
   return ["Administrador", "Director general", "Gerente general"].includes(String(puesto ?? "").trim());
+}
+
+export function idsNotificadosObservacion(config: unknown) {
+  if (!config || typeof config !== "object" || Array.isArray(config)) return [];
+  const valor = (config as Record<string, unknown>).usuariosNotificadosObservacion;
+  return Array.isArray(valor) ? valor.map(String) : [];
 }
 
 export function normalizarPeriodo(valor: unknown): Date | null {

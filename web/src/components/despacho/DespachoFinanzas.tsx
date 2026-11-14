@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Boton, Campo, Selector } from "@/components/ui";
+import { conceptosDeTipo, esTipoFinanza } from "@/lib/finanzas-conceptos";
 
 type Opcion = { id: string; nombre: string; email?: string };
 type Movimiento = {
@@ -33,11 +34,6 @@ type Datos = { mes: string; movimientos: Movimiento[]; porCobrar: Pendiente[]; c
 
 function mesActual() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit" }).format(new Date());
-}
-
-function mesAnterior(mes: string) {
-  const [anio, numero] = mes.split("-").map(Number);
-  return new Date(Date.UTC(anio, numero - 2, 1)).toISOString().slice(0, 7);
 }
 
 function moneda(valor: number) {
@@ -127,8 +123,8 @@ export function DespachoFinanzas({ usuarios, clientes }: { usuarios: Opcion[]; c
       </div>
 
       {creando && <form onSubmit={guardarMovimiento} className="surface grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 sm:p-5">
-        <Selector label="Tipo" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}><option value="ingreso">Ingreso / cuenta por cobrar</option><option value="costo">Costo</option><option value="gasto">Gasto</option></Selector>
-        <Campo label="Concepto" required maxLength={200} value={form.concepto} onChange={(e) => setForm({ ...form, concepto: e.target.value })} />
+        <Selector label="Tipo" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value, concepto: "" })}><option value="ingreso">Ingreso / cuenta por cobrar</option><option value="costo">Costo</option><option value="gasto">Gasto</option></Selector>
+        <Selector label="Concepto" required value={form.concepto} onChange={(e) => setForm({ ...form, concepto: e.target.value })}><option value="">Selecciona…</option>{conceptosDeTipo(esTipoFinanza(form.tipo) ? form.tipo : "ingreso").map((concepto) => <option key={concepto} value={concepto}>{concepto}</option>)}</Selector>
         <Campo label="Monto (MXN)" type="number" required min="0.01" step="0.01" value={form.monto} onChange={(e) => setForm({ ...form, monto: e.target.value })} />
         <Campo label="Fecha" type="date" required value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} />
         {form.tipo === "ingreso" && <>
@@ -144,7 +140,7 @@ export function DespachoFinanzas({ usuarios, clientes }: { usuarios: Opcion[]; c
         <article className="surface p-4"><p className="text-sm text-muted-foreground">Cobrado este mes</p><strong className="mt-2 block text-2xl text-success tnum">{moneda(resumen.cobrado)}</strong></article>
         <article className="surface p-4"><p className="text-sm text-muted-foreground">Costos</p><strong className="mt-2 block text-2xl text-foreground tnum">{moneda(resumen.costos)}</strong></article>
         <article className="surface p-4"><p className="text-sm text-muted-foreground">Gastos</p><strong className="mt-2 block text-2xl text-foreground tnum">{moneda(resumen.gastos)}</strong></article>
-        <article className="surface p-4"><p className="text-sm text-muted-foreground">Saldo operativo</p><strong className="mt-2 block text-2xl text-foreground tnum">{moneda(resumen.cobrado - resumen.costos - resumen.gastos)}</strong></article>
+        <article className="surface p-4"><p className="text-sm text-muted-foreground">Utilidad bruta</p><strong className={`mt-2 block text-2xl tnum ${resumen.cobrado - resumen.costos - resumen.gastos < 0 ? "text-destructive" : "text-success"}`}>{moneda(resumen.cobrado - resumen.costos - resumen.gastos)}</strong></article>
       </div>
 
       <section className="surface space-y-3 p-4 sm:p-5">

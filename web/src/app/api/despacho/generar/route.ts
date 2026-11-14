@@ -46,6 +46,7 @@ export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest) =
               titulo: plantilla.nombre,
               periodo: aFecha(periodo),
               fechaLimite: aFecha(fechaLimiteDe(periodo, plantilla.diaLimite, periodicidad)),
+              peso: plantilla.peso,
               responsableId: asignacion.responsableId ?? cliente.responsableId,
             });
           }
