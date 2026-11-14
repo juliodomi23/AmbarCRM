@@ -68,6 +68,7 @@ export default async function DespachoClientePage({ params, searchParams }: { pa
           usuarios={serializar(usuarios)}
           esGestion={esGestion}
           puedeConfirmar={puedeConfirmarActividadDespacho({ id: sesion?.user?.id, puesto: sesion?.user?.puesto, rol: sesion?.user?.rol }, moduloDespacho?.config)}
+          usuarioId={sesion?.user?.id ?? null}
           modo="tablero"
           clienteIdInicial={String(cliente.id)}
           soloCliente

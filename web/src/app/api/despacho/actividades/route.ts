@@ -4,8 +4,8 @@ import { conModulo } from "@/lib/con-modulo";
 import { db } from "@/lib/db";
 import { serializar } from "@/lib/serialize";
 import { aBigInt } from "@/lib/ids";
-import { exigirGestion, fechaCivil, texto, aFecha, mesValido } from "@/lib/despacho-api";
-import { ESTADOS_DESPACHO, TIPOS_ACTIVIDAD, puedeVerTodasActividadesDespacho } from "@/lib/despacho";
+import { exigirGestion, fechaCivil, texto, aFecha, mesValido, sinDatosApelacion } from "@/lib/despacho-api";
+import { ESTADOS_DESPACHO, TIPOS_ACTIVIDAD, puedeConfirmarActividadDespacho, puedeVerApelacion, puedeVerTodasActividadesDespacho } from "@/lib/despacho";
 
 function rangoMes(mes: string) {
   const [anio, numero] = mes.split("-").map(Number);
@@ -24,9 +24,13 @@ export const GET = conModulo("despacho", {}, async (sesion, req: NextRequest) =>
   if (clienteId) where.clienteId = clienteId;
   if (responsableId) where.responsableId = responsableId;
   if (periodo && mesValido(periodo)) where.periodo = rangoMes(periodo);
+  if (params.get("apelacion") === "pendiente") where.apelacionEstado = "pendiente";
   const modulo = await db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } });
-  const puedeVerTodo = puedeVerTodasActividadesDespacho({ id: sesion.userId, puesto: sesion.puesto, rol: sesion.rol }, modulo?.config);
-  if (!puedeVerTodo) where.responsableId = sesion.userId;
+  const identidad = { id: sesion.userId, puesto: sesion.puesto, rol: sesion.rol };
+  const puedeVerTodo = puedeVerTodasActividadesDespacho(identidad, modulo?.config);
+  const puedeConfirmar = puedeConfirmarActividadDespacho(identidad, modulo?.config);
+  const soloApelaciones = params.get("apelacion") === "pendiente";
+  if (!puedeVerTodo && !(soloApelaciones && puedeConfirmar)) where.responsableId = sesion.userId;
   const actividades = await db.despachoActividad.findMany({
     where,
     include: {
@@ -36,7 +40,8 @@ export const GET = conModulo("despacho", {}, async (sesion, req: NextRequest) =>
     orderBy: [{ fechaLimite: "asc" }, { id: "asc" }],
     take: 500,
   });
-  return NextResponse.json(serializar({ actividades }));
+  const visibles = actividades.map((actividad) => puedeVerApelacion(actividad, sesion.userId, puedeConfirmar) ? actividad : sinDatosApelacion(actividad));
+  return NextResponse.json(serializar({ actividades: visibles }));
 });
 
 export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest) => {

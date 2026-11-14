@@ -2811,6 +2811,12 @@ model DespachoActividad {
   confirmadaPorId      BigInt?   @map("confirmada_por_id")
   calificacion         Int?
   calificacionNota     String?   @map("calificacion_nota")
+  apelacionComentario  String?   @map("apelacion_comentario")
+  apelacionEstado      String?   @map("apelacion_estado")
+  apelacionRespuesta   String?   @map("apelacion_respuesta")
+  apelacionCreadaAt    DateTime? @map("apelacion_creada_at") @db.Timestamptz(6)
+  apelacionResueltaAt  DateTime? @map("apelacion_resuelta_at") @db.Timestamptz(6)
+  apelacionResueltaPorId BigInt? @map("apelacion_resuelta_por_id")
   notas                String?
   version              Int       @default(1)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)

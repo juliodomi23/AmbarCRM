@@ -2827,6 +2827,13 @@ ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS requiere_confirmacion 
 ALTER TABLE despacho_actividades ALTER COLUMN requiere_confirmacion SET DEFAULT true;
 ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS confirmada_at TIMESTAMPTZ;
 ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS confirmada_por_id BIGINT;
+ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS apelacion_comentario TEXT;
+ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS apelacion_estado TEXT CHECK (apelacion_estado IN ('pendiente','resuelta'));
+ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS apelacion_respuesta TEXT;
+ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS apelacion_creada_at TIMESTAMPTZ;
+ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS apelacion_resuelta_at TIMESTAMPTZ;
+ALTER TABLE despacho_actividades ADD COLUMN IF NOT EXISTS apelacion_resuelta_por_id BIGINT;
+CREATE INDEX IF NOT EXISTS despacho_actividades_org_apelacion_idx ON despacho_actividades(org_id, apelacion_estado) WHERE apelacion_estado IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS despacho_actividades_org_cliente_plantilla_periodo_uq
   ON despacho_actividades(org_id, cliente_id, plantilla_actividad_id, periodo)
   WHERE plantilla_actividad_id IS NOT NULL;

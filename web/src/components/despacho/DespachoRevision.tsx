@@ -9,6 +9,8 @@ import { RechazarActividad } from "@/components/despacho/DespachoActividades";
 type Actividad = {
   id: string; titulo: string; periodo: string; fechaLimite: string; version: number; notas: string | null;
   confirmadaAt: string | null; peso: number; responsableId: string | null;
+  calificacion: number | null; calificacionNota: string | null;
+  apelacionComentario: string | null; apelacionEstado: string | null; apelacionRespuesta: string | null;
   cliente: { contacto: { nombre: string; empresa: string | null } };
 };
 type Opcion = { id: string; nombre: string };
@@ -104,8 +106,70 @@ function ContenidoTarjeta({ actividad, contador, onConfirmar, onRechazar }: {
   );
 }
 
-export function DespachoRevision({ iniciales, usuarios, clientes }: { iniciales: Actividad[]; usuarios: Opcion[]; clientes: Cliente[] }) {
+function ResolverApelacion({ actividad, onResolver }: {
+  actividad: Actividad;
+  onResolver: (calificacion: number, nota: string, respuesta: string) => Promise<void> | void;
+}) {
+  const [calificacion, setCalificacion] = useState(String(actividad.calificacion ?? ""));
+  const [nota, setNota] = useState(actividad.calificacionNota ?? "");
+  const [respuesta, setRespuesta] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const valor = Number(calificacion);
+  const valido = calificacion !== "" && Number.isInteger(valor) && valor >= 1 && valor <= actividad.peso;
+
+  return (
+    <div className="space-y-2 rounded-lg border border-warning/40 bg-warning/5 p-2.5">
+      <label className="block space-y-1">
+        <span className="text-xs font-medium text-muted-foreground">Nueva calificación (de 1 a {actividad.peso})</span>
+        <div className="flex items-center gap-1">
+          <input type="number" min={1} max={actividad.peso} value={calificacion} onChange={(e) => setCalificacion(e.target.value)} className="w-16 rounded-md border border-input bg-card px-2 py-1 text-sm" />
+          <span className="text-sm text-muted-foreground">/ {actividad.peso}</span>
+        </div>
+      </label>
+      <textarea className="w-full rounded-md border border-input bg-card px-2 py-1.5 text-xs" rows={2} placeholder="Nota de calidad (opcional)" value={nota} onChange={(e) => setNota(e.target.value)} />
+      <textarea className="w-full rounded-md border border-input bg-card px-2 py-1.5 text-xs" rows={2} placeholder="Respuesta al contador (opcional)" value={respuesta} onChange={(e) => setRespuesta(e.target.value)} />
+      <div className="flex gap-1.5">
+        <Boton className="min-h-8 flex-1 text-xs" disabled={!valido || enviando} onClick={async () => { setEnviando(true); await onResolver(valor, nota, respuesta); setEnviando(false); }}>
+          {enviando ? "Resolviendo…" : "Resolver apelación"}
+        </Boton>
+      </div>
+      {!valido && <p className="text-xs text-muted-foreground">Escribe una calificación entre 1 y {actividad.peso}.</p>}
+    </div>
+  );
+}
+
+function ApelacionTarjeta({ actividad, contador, onResolver }: {
+  actividad: Actividad; contador: string;
+  onResolver: (calificacion: number, nota: string, respuesta: string) => Promise<void> | void;
+}) {
+  return (
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium text-primary">{actividad.cliente.contacto.empresa ?? actividad.cliente.contacto.nombre}</p>
+          <h3 className="truncate text-base font-semibold text-foreground">{actividad.titulo}</h3>
+        </div>
+        <Badge tono="warning" className="shrink-0">Apelación</Badge>
+      </div>
+      <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2.5 text-xs text-muted-foreground">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary" title={contador} aria-label={`Contador: ${contador}`}>{iniciales(contador)}</span>
+          <span className="truncate">{contador}</span>
+        </span>
+        <span className="shrink-0">Calificación: {actividad.calificacion}/{actividad.peso}</span>
+      </div>
+      <p className="rounded-md border border-warning/30 bg-warning/10 px-2 py-1.5 text-xs text-foreground">
+        <span className="font-semibold">Motivo del contador: </span>{actividad.apelacionComentario}
+      </p>
+      {actividad.calificacionNota && <p className="text-xs text-muted-foreground">Nota original: {actividad.calificacionNota}</p>}
+      <ResolverApelacion actividad={actividad} onResolver={onResolver} />
+    </>
+  );
+}
+
+export function DespachoRevision({ iniciales, apelacionesIniciales = [], usuarios, clientes }: { iniciales: Actividad[]; apelacionesIniciales?: Actividad[]; usuarios: Opcion[]; clientes: Cliente[] }) {
   const [actividades, setActividades] = useState(pendientes(iniciales));
+  const [apelaciones, setApelaciones] = useState(apelacionesIniciales);
   const [error, setError] = useState("");
   const [responsableIdFiltro, setResponsableIdFiltro] = useState("");
   const [clienteIdFiltro, setClienteIdFiltro] = useState("");
@@ -114,6 +178,8 @@ export function DespachoRevision({ iniciales, usuarios, clientes }: { iniciales:
   const searchParams = useSearchParams();
   const idModal = searchParams.get("actividad");
   const actividadModal = idModal ? actividades.find((a) => a.id === idModal) ?? null : null;
+  const idApelacion = searchParams.get("apelacion");
+  const apelacionModal = idApelacion ? apelaciones.find((a) => a.id === idApelacion) ?? null : null;
   const cerrarModal = () => router.replace("/despacho/revision");
   const contador = (actividad: Actividad) => usuarios.find((u) => u.id === actividad.responsableId)?.nombre ?? "Sin asignar";
 
@@ -147,15 +213,34 @@ export function DespachoRevision({ iniciales, usuarios, clientes }: { iniciales:
     setActividades((lista) => lista.filter((item) => item.id !== actividad.id));
   }
 
+  const cargarApelaciones = useCallback(async () => {
+    const respuesta = await fetch("/api/despacho/actividades?apelacion=pendiente", { cache: "no-store" });
+    const datos = await respuesta.json().catch(() => ({}));
+    if (respuesta.ok) setApelaciones(datos.actividades ?? []);
+  }, []);
+
+  async function resolver(actividad: Actividad, calificacion: number, nota: string, respuesta: string) {
+    const solicitud = await fetch(`/api/despacho/actividades/${actividad.id}/resolver-apelacion`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ version: actividad.version, calificacion, calificacionNota: nota, respuesta }),
+    });
+    const datos = await solicitud.json().catch(() => ({}));
+    if (!solicitud.ok) { setError(datos.error ?? "No se pudo resolver la apelación"); void cargarApelaciones(); return; }
+    setApelaciones((lista) => lista.filter((item) => item.id !== actividad.id));
+  }
+
   useEffect(() => {
     void cargar();
-    const timer = window.setInterval(cargar, 30000);
+    void cargarApelaciones();
+    const timer = window.setInterval(() => { void cargar(); void cargarApelaciones(); }, 30000);
     window.addEventListener("focus", cargar);
+    window.addEventListener("focus", cargarApelaciones);
     return () => {
       window.clearInterval(timer);
       window.removeEventListener("focus", cargar);
+      window.removeEventListener("focus", cargarApelaciones);
     };
-  }, [cargar]);
+  }, [cargar, cargarApelaciones]);
 
   return (
     <section className="space-y-4">
@@ -177,6 +262,18 @@ export function DespachoRevision({ iniciales, usuarios, clientes }: { iniciales:
         )}
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
+      {apelaciones.length > 0 && (
+        <section className="space-y-3">
+          <div><h2 className="text-lg font-semibold text-foreground">Apelaciones por resolver</h2><p className="text-sm text-muted-foreground">El contador no está de acuerdo con la calificación. Ajusta la calificación y responde.</p></div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {apelaciones.map((actividad) => (
+              <article key={actividad.id} className="surface space-y-3 border-l-4 border-l-warning p-4">
+                <ApelacionTarjeta actividad={actividad} contador={contador(actividad)} onResolver={(calificacion, nota, respuesta) => resolver(actividad, calificacion, nota, respuesta)} />
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
       {actividades.length === 0 ? (
         <EmptyState titulo="Nada por revisar" descripcion="Las actividades completadas que esperan confirmación aparecerán aquí." />
       ) : (
@@ -192,6 +289,13 @@ export function DespachoRevision({ iniciales, usuarios, clientes }: { iniciales:
         {actividadModal && (
           <div className="space-y-3">
             <ContenidoTarjeta actividad={actividadModal} contador={contador(actividadModal)} onConfirmar={(calificacion, nota) => confirmar(actividadModal, calificacion, nota)} onRechazar={(motivo) => rechazar(actividadModal, motivo)} />
+          </div>
+        )}
+      </Modal>
+      <Modal abierto={Boolean(apelacionModal)} onClose={cerrarModal} titulo="Resolver apelación">
+        {apelacionModal && (
+          <div className="space-y-3">
+            <ApelacionTarjeta actividad={apelacionModal} contador={contador(apelacionModal)} onResolver={(calificacion, nota, respuesta) => resolver(apelacionModal, calificacion, nota, respuesta)} />
           </div>
         )}
       </Modal>

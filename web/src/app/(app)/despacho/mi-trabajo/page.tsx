@@ -31,7 +31,7 @@ export default async function DespachoMiTrabajoPage({ searchParams }: { searchPa
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">
       <DespachoNavegacion actual="mi-trabajo" titulo="Mi trabajo" descripcion="Tus actividades asignadas, con lo atrasado primero." esGestion={esGestion} puedeVerTodo={puedeVerTodo} puedeConfirmar={puedeConfirmar} />
-      <DespachoActividades iniciales={serializar(actividades)} clientes={serializar(clientes)} usuarios={serializar(usuarios)} esGestion={false} puedeConfirmar={puedeConfirmar} modo="mias" clienteIdInicial={clienteIdInicial} />
+      <DespachoActividades iniciales={serializar(actividades)} clientes={serializar(clientes)} usuarios={serializar(usuarios)} esGestion={false} puedeConfirmar={puedeConfirmar} usuarioId={sesion?.user?.id ?? null} modo="mias" clienteIdInicial={clienteIdInicial} />
     </div>
   );
 }

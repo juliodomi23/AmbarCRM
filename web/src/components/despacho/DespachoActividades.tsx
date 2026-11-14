@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import { Badge, Boton, Campo, Modal, Selector, tonoEstado } from "@/components/ui";
 import { EmptyState } from "@/components/EmptyState";
-import { ESTADOS_DESPACHO, actividadCuentaComoCompletada, estaAtrasada, transicionDespachoValida } from "@/lib/despacho";
+import { ESTADOS_DESPACHO, actividadCuentaComoCompletada, estaAtrasada, puedeApelarCalificacion, transicionDespachoValida } from "@/lib/despacho";
 
 type Cambio = { estadoAnterior: string | null; estadoNuevo: string; nota: string | null; creadoAt: string };
 
@@ -14,6 +14,7 @@ type Actividad = {
   responsableId: string | null; notas: string | null; version: number; requiereConfirmacion: boolean;
   confirmadaAt: string | null; confirmadaPorId: string | null; peso: number;
   calificacion: number | null; calificacionNota: string | null;
+  apelacionComentario?: string | null; apelacionEstado?: string | null; apelacionRespuesta?: string | null;
   cliente: { id: string; contacto: { nombre: string; empresa: string | null } };
   cambios?: Cambio[];
 };
@@ -129,10 +130,38 @@ export function RechazarActividad({ onRechazar }: { onRechazar: (motivo: string)
   );
 }
 
-function TarjetaVista({ actividad, puede, puedeConfirmar, responsable, siguientes, onCambiar, onConfirmar, onRechazar }: {
-  actividad: Actividad; puede: boolean; puedeConfirmar: boolean; responsable: string; siguientes: string[];
+export function ApelarCalificacion({ onApelar }: { onApelar: (comentario: string) => Promise<void> | void }) {
+  const [abierto, setAbierto] = useState(false);
+  const [comentario, setComentario] = useState("");
+  const [enviando, setEnviando] = useState(false);
+
+  if (!abierto) {
+    return <Boton variante="ghost" className="min-h-9 w-full text-xs" onPointerDown={(e) => e.stopPropagation()} onClick={() => setAbierto(true)}>Apelar calificación</Boton>;
+  }
+
+  return (
+    <div className="space-y-2 rounded-lg border border-warning/40 bg-warning/5 p-2.5" onPointerDown={(e) => e.stopPropagation()}>
+      <p className="text-xs font-medium text-muted-foreground">¿Por qué no estás de acuerdo con la calificación?</p>
+      <textarea className="w-full rounded-md border border-input bg-card px-2 py-1.5 text-xs" rows={3} maxLength={1000} placeholder="Explica tu motivo para que revisión pueda ajustarla" value={comentario} onChange={(e) => setComentario(e.target.value)} />
+      <div className="flex gap-1.5">
+        <Boton
+          className="min-h-8 flex-1 text-xs"
+          disabled={!comentario.trim() || enviando}
+          onClick={async () => { setEnviando(true); await onApelar(comentario.trim()); setEnviando(false); setAbierto(false); }}
+        >
+          {enviando ? "Enviando…" : "Enviar apelación"}
+        </Boton>
+        <Boton variante="ghost" className="min-h-8 px-3 text-xs" onClick={() => { setAbierto(false); setComentario(""); }}>Cancelar</Boton>
+      </div>
+      {!comentario.trim() && <p className="text-xs text-muted-foreground">Escribe el motivo para poder apelar.</p>}
+    </div>
+  );
+}
+
+function TarjetaVista({ actividad, puede, puedeConfirmar, puedeApelar, responsable, siguientes, onCambiar, onConfirmar, onRechazar, onApelar }: {
+  actividad: Actividad; puede: boolean; puedeConfirmar: boolean; puedeApelar: boolean; responsable: string; siguientes: string[];
   onCambiar: (siguiente: string) => void; onConfirmar: (calificacion: number, nota: string) => Promise<void> | void;
-  onRechazar: (motivo: string) => Promise<void> | void;
+  onRechazar: (motivo: string) => Promise<void> | void; onApelar: (comentario: string) => Promise<void> | void;
 }) {
   const atrasada = estaAtrasada(actividad);
   const pendienteConfirmacion = esperaConfirmacion(actividad);
@@ -176,6 +205,17 @@ function TarjetaVista({ actividad, puede, puedeConfirmar, responsable, siguiente
           </span>
         </div>
       )}
+      {actividad.apelacionEstado === "pendiente" && (
+        <p className="rounded-md border border-warning/30 bg-warning/10 px-2 py-1.5 text-xs text-foreground" title={actividad.apelacionComentario ?? undefined}>
+          <span className="font-semibold">Apelación en revisión: </span>{actividad.apelacionComentario}
+        </p>
+      )}
+      {actividad.apelacionEstado === "resuelta" && (
+        <p className="rounded-md border border-input bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground">
+          <span className="font-semibold text-foreground">Apelación resuelta</span>{actividad.apelacionRespuesta ? `: ${actividad.apelacionRespuesta}` : "."}
+        </p>
+      )}
+      {puedeApelar && <ApelarCalificacion onApelar={onApelar} />}
       {puede && siguientes.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {siguientes.map((siguiente) => (
@@ -189,15 +229,15 @@ function TarjetaVista({ actividad, puede, puedeConfirmar, responsable, siguiente
   );
 }
 
-function TarjetaArrastrable({ actividad, puede, puedeConfirmar, responsable, siguientes, onCambiar, onConfirmar, onRechazar }: {
-  actividad: Actividad; puede: boolean; puedeConfirmar: boolean; responsable: string; siguientes: string[];
+function TarjetaArrastrable({ actividad, puede, puedeConfirmar, puedeApelar, responsable, siguientes, onCambiar, onConfirmar, onRechazar, onApelar }: {
+  actividad: Actividad; puede: boolean; puedeConfirmar: boolean; puedeApelar: boolean; responsable: string; siguientes: string[];
   onCambiar: (siguiente: string) => void; onConfirmar: (calificacion: number, nota: string) => Promise<void> | void;
-  onRechazar: (motivo: string) => Promise<void> | void;
+  onRechazar: (motivo: string) => Promise<void> | void; onApelar: (comentario: string) => Promise<void> | void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: actividad.id, disabled: !puede });
   return (
     <div ref={setNodeRef} {...attributes} {...listeners} style={{ opacity: isDragging ? 0.4 : 1 }} className={puede ? "cursor-grab touch-none active:cursor-grabbing" : undefined}>
-      <TarjetaVista actividad={actividad} puede={puede} puedeConfirmar={puedeConfirmar} responsable={responsable} siguientes={siguientes} onCambiar={onCambiar} onConfirmar={onConfirmar} onRechazar={onRechazar} />
+      <TarjetaVista actividad={actividad} puede={puede} puedeConfirmar={puedeConfirmar} puedeApelar={puedeApelar} responsable={responsable} siguientes={siguientes} onCambiar={onCambiar} onConfirmar={onConfirmar} onRechazar={onRechazar} onApelar={onApelar} />
     </div>
   );
 }
@@ -213,13 +253,14 @@ function ColumnaKanban({ columna, conteo, children }: { columna: { estado: strin
 }
 
 export function DespachoActividades({
-  iniciales, clientes, usuarios, esGestion, puedeConfirmar = false, modo, clienteIdInicial = "", soloCliente = false, periodoInicial, responsableIdInicial = "",
+  iniciales, clientes, usuarios, esGestion, puedeConfirmar = false, usuarioId = null, modo, clienteIdInicial = "", soloCliente = false, periodoInicial, responsableIdInicial = "",
 }: {
   iniciales: Actividad[];
   clientes: Cliente[];
   usuarios: Opcion[];
   esGestion: boolean;
   puedeConfirmar?: boolean;
+  usuarioId?: string | null;
   modo: "tablero" | "mias";
   clienteIdInicial?: string;
   soloCliente?: boolean;
@@ -311,6 +352,17 @@ export function DespachoActividades({
     const datos = await respuesta.json().catch(() => ({}));
     if (!respuesta.ok) { setError(datos.error ?? "No se pudo rechazar la actividad"); if (respuesta.status === 409) void cargar(); return; }
     setActividades((lista) => lista.map((item) => item.id === actividad.id ? datos.actividad : item));
+  }
+
+  async function apelar(actividad: Actividad, comentario: string) {
+    const respuesta = await fetch(`/api/despacho/actividades/${actividad.id}/apelar`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ version: actividad.version, comentario }),
+    });
+    const datos = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) { setError(datos.error ?? "No se pudo enviar la apelación"); if (respuesta.status === 409) void cargar(); return; }
+    setActividades((lista) => lista.map((item) => item.id === actividad.id ? datos.actividad : item));
+    setActividadDeepLink((actual) => actual && actual.id === actividad.id ? datos.actividad : actual);
   }
 
   function onDragStart(evento: DragStartEvent) {
@@ -407,7 +459,7 @@ export function DespachoActividades({
                     const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor));
                     const responsable = usuarios.find((usuario) => usuario.id === actividad.responsableId)?.nombre ?? "Sin asignar";
                     return (
-                      <TarjetaArrastrable key={actividad.id} actividad={actividad} puede={puede} puedeConfirmar={puedeConfirmar} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} onConfirmar={(calificacion, nota) => confirmar(actividad, calificacion, nota)} onRechazar={(motivo) => rechazar(actividad, motivo)} />
+                      <TarjetaArrastrable key={actividad.id} actividad={actividad} puede={puede} puedeConfirmar={puedeConfirmar} puedeApelar={puedeApelarCalificacion(actividad, usuarioId)} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} onConfirmar={(calificacion, nota) => confirmar(actividad, calificacion, nota)} onRechazar={(motivo) => rechazar(actividad, motivo)} onApelar={(comentario) => apelar(actividad, comentario)} />
                     );
                   })}
                   {delEstado.length === 0 && <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">Sin actividades</p>}
@@ -415,9 +467,9 @@ export function DespachoActividades({
               );
             })}
           </div>
-          <DragOverlay>{arrastrando ? <div className="w-64"><TarjetaVista actividad={arrastrando} puede={false} puedeConfirmar={false} responsable={usuarios.find((usuario) => usuario.id === arrastrando!.responsableId)?.nombre ?? "Sin asignar"} siguientes={[]} onCambiar={() => {}} onConfirmar={() => {}} onRechazar={() => {}} /></div> : null}</DragOverlay>
+          <DragOverlay>{arrastrando ? <div className="w-64"><TarjetaVista actividad={arrastrando} puede={false} puedeConfirmar={false} puedeApelar={false} responsable={usuarios.find((usuario) => usuario.id === arrastrando!.responsableId)?.nombre ?? "Sin asignar"} siguientes={[]} onCambiar={() => {}} onConfirmar={() => {}} onRechazar={() => {}} onApelar={() => {}} /></div> : null}</DragOverlay>
         </DndContext>
-        <div className="space-y-2 md:hidden">{COLUMNAS.map((columna) => { const delEstado = actividadesDelPeriodo.filter((actividad) => vaEnColumna(actividad, columna.estado)); return <details key={`movil-${columna.estado}`} className="surface group"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{columna.titulo}<span className="text-sm text-muted-foreground">{delEstado.length}</span></summary><div className="space-y-3 p-3 pt-0">{delEstado.length ? delEstado.map((actividad) => { const responsable = usuarios.find((usuario) => usuario.id === actividad.responsableId)?.nombre ?? "Sin asignar"; const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor)); return <TarjetaVista key={actividad.id} actividad={actividad} puede={esGestion || modo === "mias"} puedeConfirmar={puedeConfirmar} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} onConfirmar={(calificacion, nota) => confirmar(actividad, calificacion, nota)} onRechazar={(motivo) => rechazar(actividad, motivo)} />; }) : <p className="pb-3 text-center text-xs text-muted-foreground">Sin actividades</p>}</div></details>; })}</div>
+        <div className="space-y-2 md:hidden">{COLUMNAS.map((columna) => { const delEstado = actividadesDelPeriodo.filter((actividad) => vaEnColumna(actividad, columna.estado)); return <details key={`movil-${columna.estado}`} className="surface group"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{columna.titulo}<span className="text-sm text-muted-foreground">{delEstado.length}</span></summary><div className="space-y-3 p-3 pt-0">{delEstado.length ? delEstado.map((actividad) => { const responsable = usuarios.find((usuario) => usuario.id === actividad.responsableId)?.nombre ?? "Sin asignar"; const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor)); return <TarjetaVista key={actividad.id} actividad={actividad} puede={esGestion || modo === "mias"} puedeConfirmar={puedeConfirmar} puedeApelar={puedeApelarCalificacion(actividad, usuarioId)} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} onConfirmar={(calificacion, nota) => confirmar(actividad, calificacion, nota)} onRechazar={(motivo) => rechazar(actividad, motivo)} onApelar={(comentario) => apelar(actividad, comentario)} />; }) : <p className="pb-3 text-center text-xs text-muted-foreground">Sin actividades</p>}</div></details>; })}</div>
         </>
       )}
       <Modal abierto={Boolean(actividadDeepLink)} onClose={cerrarDeepLink} titulo="Actividad">
@@ -426,11 +478,13 @@ export function DespachoActividades({
             actividad={actividadDeepLink}
             puede={esGestion || modo === "mias"}
             puedeConfirmar={puedeConfirmar}
+            puedeApelar={puedeApelarCalificacion(actividadDeepLink, usuarioId)}
             responsable={usuarios.find((usuario) => usuario.id === actividadDeepLink.responsableId)?.nombre ?? "Sin asignar"}
             siguientes={ESTADOS_DESPACHO.filter((valor) => valor !== actividadDeepLink.estado && transicionDespachoValida(actividadDeepLink.estado, valor))}
             onCambiar={(siguiente) => void cambiar(actividadDeepLink, siguiente)}
             onConfirmar={(calificacion, nota) => confirmar(actividadDeepLink, calificacion, nota)}
             onRechazar={(motivo) => rechazar(actividadDeepLink, motivo)}
+            onApelar={(comentario) => apelar(actividadDeepLink, comentario)}
           />
         )}
       </Modal>

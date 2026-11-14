@@ -47,7 +47,7 @@ export default async function DespachoTableroPage({ searchParams }: { searchPara
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">
       <DespachoNavegacion actual="tablero" titulo="Tablero de actividades" descripcion="Todo lo que el despacho tiene que entregar, por estado y fecha límite." esGestion={esGestion} puedeVerTodo={puedeVerTodo} puedeConfirmar={puedeConfirmar} />
-      <DespachoActividades iniciales={serializar(actividades)} clientes={serializar(clientes)} usuarios={serializar(usuarios)} esGestion={esGestion} puedeConfirmar={puedeConfirmar} modo="tablero" periodoInicial={periodo} responsableIdInicial={responsableSolicitado ? String(responsableSolicitado) : ""} />
+      <DespachoActividades iniciales={serializar(actividades)} clientes={serializar(clientes)} usuarios={serializar(usuarios)} esGestion={esGestion} puedeConfirmar={puedeConfirmar} usuarioId={sesion?.user?.id ?? null} modo="tablero" periodoInicial={periodo} responsableIdInicial={responsableSolicitado ? String(responsableSolicitado) : ""} />
     </div>
   );
 }

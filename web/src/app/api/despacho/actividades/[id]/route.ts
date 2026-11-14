@@ -5,8 +5,8 @@ import { db } from "@/lib/db";
 import { serializar } from "@/lib/serialize";
 import { transaccionTenant } from "@/lib/retail-db";
 import { aBigInt } from "@/lib/ids";
-import { exigirGestion, fechaCivil, texto, aFecha } from "@/lib/despacho-api";
-import { ESTADOS_DESPACHO, idsPermisoDespacho, puedeGestionarDespacho, puedeVerTodasActividadesDespacho, transicionDespachoValida } from "@/lib/despacho";
+import { exigirGestion, fechaCivil, texto, aFecha, sinDatosApelacion } from "@/lib/despacho-api";
+import { ESTADOS_DESPACHO, idsPermisoDespacho, puedeConfirmarActividadDespacho, puedeGestionarDespacho, puedeVerApelacion, puedeVerTodasActividadesDespacho, transicionDespachoValida } from "@/lib/despacho";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -21,10 +21,12 @@ export const GET = conModulo("despacho", {}, async (sesion, _req: NextRequest, p
     },
   });
   const modulo = await db.moduloOrg.findFirst({ where: { clave: "despacho", activo: true }, select: { config: true } });
-  if (actividad && !puedeVerTodasActividadesDespacho({ id: sesion.userId, puesto: sesion.puesto, rol: sesion.rol }, modulo?.config) && String(actividad.responsableId ?? "") !== String(sesion.userId ?? "")) {
+  const identidad = { id: sesion.userId, puesto: sesion.puesto, rol: sesion.rol };
+  if (actividad && !puedeVerTodasActividadesDespacho(identidad, modulo?.config) && String(actividad.responsableId ?? "") !== String(sesion.userId ?? "")) {
     return NextResponse.json({ error: "Actividad no encontrada" }, { status: 404 });
   }
-  return actividad ? NextResponse.json(serializar({ actividad })) : NextResponse.json({ error: "Actividad no encontrada" }, { status: 404 });
+  const visible = actividad && (puedeVerApelacion(actividad, sesion.userId, puedeConfirmarActividadDespacho(identidad, modulo?.config)) ? actividad : sinDatosApelacion(actividad));
+  return visible ? NextResponse.json(serializar({ actividad: visible })) : NextResponse.json({ error: "Actividad no encontrada" }, { status: 404 });
 });
 
 export const PATCH = conModulo("despacho", {}, async (sesion, req: NextRequest, props: Props) => {
