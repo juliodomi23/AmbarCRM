@@ -2780,6 +2780,7 @@ CREATE TABLE IF NOT EXISTS despacho_proceso_actividades (
   CONSTRAINT despacho_plantillas_proceso_org_fk FOREIGN KEY (proceso_id, org_id) REFERENCES despacho_procesos(id, org_id) ON DELETE CASCADE,
   CONSTRAINT despacho_plantillas_id_org_uq UNIQUE (id, org_id)
 );
+ALTER TABLE despacho_proceso_actividades ADD COLUMN IF NOT EXISTS peso INTEGER NOT NULL DEFAULT 1;
 CREATE INDEX IF NOT EXISTS despacho_plantillas_org_proceso_idx ON despacho_proceso_actividades(org_id, proceso_id, orden);
 
 CREATE TABLE IF NOT EXISTS despacho_cliente_procesos (
