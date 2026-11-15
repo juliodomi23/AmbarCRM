@@ -26,7 +26,7 @@ async function manejarPOST(req: NextRequest) {
   const token = await leerTokenSesion(req);
   if (!token || token.revocado || token.id !== String(s.userId) || token.orgId !== String(s.orgId)) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
 
-  const usuario = await dbfinding({ where: { id: s.userId } });
+  const usuario = await db.usuario.findUnique({ where: { id: s.userId } });
   if (!usuario) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
 
   const forzado = !usuario.passwordCambiadaAt;
@@ -42,7 +42,7 @@ async function manejarPOST(req: NextRequest) {
 
   const passwordHash = await bcrypt.hash(nueva, 10);
   const passwordCambiadaAt = new Date();
-  const resultado = await dbfinding({ where: { id: s.userId, passwordHash: usuario.passwordHash }, data: { passwordHash, passwordCambiadaAt } });
+  const resultado = await db.usuario.updateMany({ where: { id: s.userId, passwordHash: usuario.passwordHash }, data: { passwordHash, passwordCambiadaAt } });
   if (!resultado.count) return NextResponse.json({ error: "La contraseña cambió durante la solicitud. Inténtalo de nuevo." }, { status: 409 });
   const respuesta = NextResponse.json({ ok: true });
   token.passwordCambiadaAt = passwordCambiadaAt.getTime();
