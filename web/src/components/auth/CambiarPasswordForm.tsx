@@ -18,6 +18,7 @@ export function CambiarPasswordForm({ nombre }: { nombre: string }) {
     const res = await fetch("/api/cuenta/password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ nueva }),
     });
     const datos = await res.json().catch(() => ({}));
