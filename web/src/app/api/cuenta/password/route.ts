@@ -8,38 +8,41 @@ import { leerTokenSesion, renovarSesionPassword } from "@/lib/password-sesion";
 
 export const dynamic = "force-dynamic";
 
-/** Cambia la contraseña de quien tiene la sesión. Body: { actual, nueva } */
+/** Cambia la contraseña de quien tiene la sesión. Body: { actual?, nueva }.
+ *  En flujo forzado (primer acceso, passwordCambiadaAt = null) no se pide la actual. */
 async function manejarPOST(req: NextRequest) {
   const s = await requireSesion();
   if ("error" in s) return s.error;
   if (!s.userId) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
 
-  if (!permitido(`cuenta-password:${s.orgId}:${s.userId}`, 5, 15 * 60_000)) {
-    return NextResponse.json({ error: "demasiados intentos, espera unos minutos" }, { status: 429 });
-  }
-
   const body = await req.json().catch(() => null);
   const actual = typeof body?.actual === "string" ? body.actual : "";
   const nueva = typeof body?.nueva === "string" ? body.nueva : "";
-  if (!actual || !nueva) return NextResponse.json({ error: "faltan campos (actual, nueva)" }, { status: 400 });
+  if (!nueva) return NextResponse.json({ error: "faltan campos (nueva)" }, { status: 400 });
   if (nueva.length < 8) {
     return NextResponse.json({ error: "la contraseña debe tener al menos 8 caracteres" }, { status: 400 });
-  }
-  if (nueva === actual) {
-    return NextResponse.json({ error: "la contraseña nueva debe ser distinta a la actual" }, { status: 400 });
   }
 
   const token = await leerTokenSesion(req);
   if (!token || token.revocado || token.id !== String(s.userId) || token.orgId !== String(s.orgId)) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
 
-  const usuario = await db.usuario.findUnique({ where: { id: s.userId } });
-  if (!usuario || !(await bcrypt.compare(actual, usuario.passwordHash))) {
-    return NextResponse.json({ error: "la contraseña actual no es correcta" }, { status: 400 });
+  const usuario = await dbfinding({ where: { id: s.userId } });
+  if (!usuario) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
+
+  const forzado = !usuario.passwordCambiadaAt;
+  if (!forzado) {
+    if (!actual) return NextResponse.json({ error: "faltan campos (actual, nueva)" }, { status: 400 });
+    if (nueva === actual) return NextResponse.json({ error: "la contraseña nueva debe ser distinta a la actual" }, { status: 400 });
+    if (!(await bcrypt.compare(actual, usuario.passwordHash))) return NextResponse.json({ error: "la contraseña actual no es correcta" }, { status: 400 });
+  }
+
+  if (!permitido(`cuenta-password:${s.orgId}:${s.userId}`, 5, 15 * 60_000)) {
+    return NextResponse.json({ error: "demasiados intentos, espera unos minutos" }, { status: 429 });
   }
 
   const passwordHash = await bcrypt.hash(nueva, 10);
   const passwordCambiadaAt = new Date();
-  const resultado = await db.usuario.updateMany({ where: { id: s.userId, passwordHash: usuario.passwordHash }, data: { passwordHash, passwordCambiadaAt } });
+  const resultado = await dbfinding({ where: { id: s.userId, passwordHash: usuario.passwordHash }, data: { passwordHash, passwordCambiadaAt } });
   if (!resultado.count) return NextResponse.json({ error: "La contraseña cambió durante la solicitud. Inténtalo de nuevo." }, { status: 409 });
   const respuesta = NextResponse.json({ ok: true });
   token.passwordCambiadaAt = passwordCambiadaAt.getTime();

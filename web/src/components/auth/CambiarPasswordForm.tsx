@@ -4,7 +4,6 @@ import { useState } from "react";
 import { pantallaInicial } from "@/lib/pantalla-inicial";
 
 export function CambiarPasswordForm({ nombre }: { nombre: string }) {
-  const [actual, setActual] = useState("");
   const [nueva, setNueva] = useState("");
   const [repetida, setRepetida] = useState("");
   const [error, setError] = useState("");
@@ -19,7 +18,7 @@ export function CambiarPasswordForm({ nombre }: { nombre: string }) {
     const res = await fetch("/api/cuenta/password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ actual, nueva }),
+      body: JSON.stringify({ nueva }),
     });
     const datos = await res.json().catch(() => ({}));
     setCargando(false);
@@ -33,19 +32,6 @@ export function CambiarPasswordForm({ nombre }: { nombre: string }) {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-primary">Cambia tu contraseña</h1>
           <p className="text-sm text-muted-foreground">Hola{ nombre ? `, ${nombre}` : ""}. Es tu primer acceso: crea una contraseña nueva para continuar.</p>
-        </div>
-
-        <div className="space-y-1">
-          <label htmlFor="actual" className="text-sm font-medium text-muted-foreground">Contraseña temporal</label>
-          <input
-            id="actual"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={actual}
-            onChange={(e) => setActual(e.target.value)}
-            className="w-full rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 outline-none focus:ring-2 focus:ring-primary/40"
-          />
         </div>
 
         <div className="space-y-1">
