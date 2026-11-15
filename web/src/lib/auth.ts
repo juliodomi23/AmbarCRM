@@ -72,6 +72,9 @@ export const authOptions: NextAuthOptions = {
         (session as { user?: typeof session.user }).user = undefined;
         return session;
       }
+        session.user.id = token.sub ?? token.id;
+        session.user.name = token.name;
+        session.user.email = token.email;
         session.user.rol = token.rol;
         session.user.orgId = token.orgId;
         session.user.puesto = token.puesto;
