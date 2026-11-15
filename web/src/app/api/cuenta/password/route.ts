@@ -4,12 +4,12 @@ import { db } from "@/lib/db";
 import { requireSesion } from "@/lib/session";
 import { permitido } from "@/lib/rate-limit";
 import { conErrores } from "@/lib/errores-api";
-import { leerTokenSesion, renovarSesionPassword } from "@/lib/password-sesion";
 
 export const dynamic = "force-dynamic";
 
 /** Cambia la contraseña de quien tiene la sesión. Body: { actual?, nueva }.
- *  En flujo forzado (primer acceso, passwordCambiadaAt = null) no se pide la actual. */
+ *  En flujo forzado (primer acceso, passwordCambiadaAt = null) no se pide la actual.
+ *  Tras cambiar la contraseña el cliente fuerza un re-login (cookies frescas). */
 async function manejarPOST(req: NextRequest) {
   const s = await requireSesion();
   if ("error" in s) return s.error;
@@ -22,9 +22,6 @@ async function manejarPOST(req: NextRequest) {
   if (nueva.length < 8) {
     return NextResponse.json({ error: "la contraseña debe tener al menos 8 caracteres" }, { status: 400 });
   }
-
-  const token = await leerTokenSesion(req);
-  if (!token || token.revocado || token.id !== String(s.userId) || token.orgId !== String(s.orgId)) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
 
   const usuario = await db.usuario.findUnique({ where: { id: s.userId } });
   if (!usuario) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
@@ -44,10 +41,7 @@ async function manejarPOST(req: NextRequest) {
   const passwordCambiadaAt = new Date();
   const resultado = await db.usuario.updateMany({ where: { id: s.userId, passwordHash: usuario.passwordHash }, data: { passwordHash, passwordCambiadaAt } });
   if (!resultado.count) return NextResponse.json({ error: "La contraseña cambió durante la solicitud. Inténtalo de nuevo." }, { status: 409 });
-  const respuesta = NextResponse.json({ ok: true });
-  token.passwordCambiadaAt = passwordCambiadaAt.getTime();
-  await renovarSesionPassword(token, respuesta, passwordCambiadaAt, req);
-  return respuesta;
+  return NextResponse.json({ ok: true });
 }
 
 export const POST = conErrores(manejarPOST);

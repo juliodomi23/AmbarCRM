@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { pantallaInicial } from "@/lib/pantalla-inicial";
 
 export function CambiarPasswordForm({ nombre }: { nombre: string }) {
   const [nueva, setNueva] = useState("");
@@ -24,7 +23,7 @@ export function CambiarPasswordForm({ nombre }: { nombre: string }) {
     const datos = await res.json().catch(() => ({}));
     setCargando(false);
     if (!res.ok) return setError(datos.error ?? "No se pudo cambiar la contraseña");
-    window.location.assign(await pantallaInicial());
+    window.location.assign("/login");
   }
 
   return (
