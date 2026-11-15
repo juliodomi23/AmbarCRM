@@ -20,7 +20,7 @@ const config: Config = {
         info: { DEFAULT: hsl("--info"), foreground: hsl("--info-foreground") },
         destructive: { DEFAULT: hsl("--destructive"), foreground: hsl("--destructive-foreground") }
       },
-      fontFamily: { sans: ["var(--font-inter)", "sans-serif"], display: ["var(--font-jakarta)", "sans-serif"] },
+      fontFamily: { sans: ["var(--font-inter)", "sans-serif"], display: ["var(--font-inter)", "sans-serif"] },
       borderRadius: { lg: "var(--radius)", xl: "calc(var(--radius) + .25rem)", "2xl": "calc(var(--radius) + .65rem)" },
       boxShadow: { soft: "var(--shadow-soft)", lift: "var(--shadow-lift)", pop: "var(--shadow-pop)", glow: "var(--shadow-glow)" },
       backgroundImage: { "brand-gradient": "linear-gradient(135deg, hsl(var(--brand-from)), hsl(var(--brand-to)))" }

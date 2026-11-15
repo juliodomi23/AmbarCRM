@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter } from "next/font/google";
 import Script from "next/script";
 import { getServerSession } from "next-auth";
 import "./globals.css";
@@ -11,7 +11,6 @@ import { DEFAULT_BRAND, normalizarMarca, variablesMarca } from "@/lib/brand";
 
 // Empaquetada en el build (self-hosted): no depende de Google Fonts en runtime.
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-inter" });
-const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["500", "600", "700", "800"], variable: "--font-jakarta" });
 
 export const metadata: Metadata = {
   title: "AmbarCRM",
@@ -33,7 +32,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {`(function(){try{var t=localStorage.getItem('ambar-theme');var d=t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d)}catch(e){}})()`}
         </Script>
       </head>
-      <body className={`${inter.variable} ${jakarta.variable}`}>
+      <body className={inter.variable}>
         <Providers>{children}</Providers>
       </body>
     </html>
