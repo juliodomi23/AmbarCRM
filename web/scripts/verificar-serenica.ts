@@ -5,7 +5,7 @@ createRequire(import.meta.url)("@next/env").loadEnvConfig(process.cwd());
 const { db, dbRaw, runWithOrg } = await import("../src/lib/db");
 
 const NOMBRE_ORG = "Serénica Health Center";
-const SLUG_ORG = "serenica-health-center";
+const SLUG_ORG = "serenica";
 const NOMBRE_BOT = "Bot Serénica · Agenda dental";
 const MODULOS = ["pacientes", "citas", "reservas_en_linea"];
 const PERMISOS = ["leer_perfil", "enviar_mensaje", "notas_internas", "handoff", "gestionar_contactos", "crear_tarea", "agendar_cita"];

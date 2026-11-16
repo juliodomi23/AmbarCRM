@@ -11,7 +11,7 @@ const { generarToken, nuevoSecretoFirma } = await import("../src/lib/services/bo
 const { validarWebhookUrl } = await import("../src/lib/webhook-url");
 
 const NOMBRE_ORG = "Serénica Health Center";
-const SLUG_ORG = "serenica-health-center";
+const SLUG_ORG = "serenica";
 const NOMBRE_BOT = "Bot Serénica · Agenda dental";
 const PERMISOS_BOT = ["leer_perfil", "enviar_mensaje", "notas_internas", "handoff", "gestionar_contactos", "crear_tarea", "agendar_cita"];
 const ETIQUETAS = ["bot_off", "escalado_humano", "citado", "recordatorio_enviado", "cita_confirmada", "comprobante_transferencia"];

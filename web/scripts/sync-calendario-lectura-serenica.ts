@@ -14,7 +14,7 @@ const { telefonoContacto } = await import("../src/lib/reservas/telefono");
  * ponytail: marcador en texto en vez de una tabla de mapeo propia — son 2 calendarios fijos, no
  * hace falta más estructura. Si algún día son más, mover a una tabla.
  */
-const ORG_SLUG = "serenica-health-center";
+const ORG_SLUG = "serenica";
 const VENTANA_ATRAS_DIAS = 7;
 const VENTANA_ADELANTE_DIAS = 120;
 

@@ -150,7 +150,7 @@ function parsearOpciones(argv: string[]): Opciones {
     confirmoProduccion: false,
     forzarInbox: false,
     permitirHttp: false,
-    orgSlug: process.env.CHATWOOT_ORG_SLUG?.trim() || "serenica-health-center",
+    orgSlug: process.env.CHATWOOT_ORG_SLUG?.trim() || "serenica",
     canalId: bigintDeEnv("CHATWOOT_CANAL_ID"),
     inboxId: enteroDeEnv("CHATWOOT_INBOX_ID"),
     limiteConversaciones: null,
