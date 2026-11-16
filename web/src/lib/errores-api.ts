@@ -21,6 +21,9 @@ export function respuestaDeError(error: unknown): Response {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
     return Response.json({ error: "registro inexistente" }, { status: 404 });
   }
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+    return Response.json({ error: "no se puede eliminar: tiene registros relacionados (es cliente, paciente u otra ficha)" }, { status: 409 });
+  }
   throw error;
 }
 

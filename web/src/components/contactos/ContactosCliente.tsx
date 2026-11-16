@@ -179,7 +179,12 @@ export function ContactosCliente({
     });
     if (!ok) return;
     const res = await fetch(`/api/contactos/${c.id}`, { method: "DELETE" });
-    if (res.ok) router.refresh();
+    if (res.ok) {
+      router.refresh();
+      return;
+    }
+    const d = await res.json().catch(() => ({}));
+    toast(d.error ?? "No se pudo eliminar", "error");
   }
 
   async function crearFicha(contacto: Contacto) {

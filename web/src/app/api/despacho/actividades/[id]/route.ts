@@ -7,6 +7,7 @@ import { transaccionTenant } from "@/lib/retail-db";
 import { aBigInt } from "@/lib/ids";
 import { exigirGestionDespacho, fechaCivil, texto, aFecha, sinDatosApelacion } from "@/lib/despacho-api";
 import { ESTADOS_DESPACHO, idsPermisoDespacho, puedeConfirmarActividadDespacho, puedeGestionarDespacho, puedeVerApelacion, puedeVerTodasActividadesDespacho, transicionDespachoValida } from "@/lib/despacho";
+import { guardarMediaBase64 } from "@/lib/storage";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -71,6 +72,15 @@ export const PATCH = conModulo("despacho", {}, async (sesion, req: NextRequest, 
       data.titulo = titulo;
     }
     if (body.notas !== undefined) data.notas = texto(body.notas).slice(0, 2000) || null;
+    if (body.evidenciaBase64) {
+      const mime = texto(body.evidenciaMime);
+      if (!/^image\/(jpeg|png|webp|gif)$/.test(mime)) return { error: "Formato de evidencia no soportado", status: 400 } as const;
+      data.evidenciaUrl = await guardarMediaBase64(String(body.evidenciaBase64), mime);
+    } else if (body.evidenciaUrl !== undefined) {
+      const url = texto(body.evidenciaUrl);
+      if (url && !/^https?:\/\//.test(url)) return { error: "La liga debe empezar con http:// o https://", status: 400 } as const;
+      data.evidenciaUrl = url.slice(0, 2000) || null;
+    }
     if (body.peso !== undefined) {
       const peso = Number(body.peso);
       if (!Number.isSafeInteger(peso) || peso < 1) return { error: "El valor (peso) debe ser un entero mayor a 0", status: 400 } as const;

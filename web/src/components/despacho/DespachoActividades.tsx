@@ -15,6 +15,7 @@ type Actividad = {
   confirmadaAt: string | null; confirmadaPorId: string | null; peso: number;
   calificacion: number | null; calificacionNota: string | null;
   apelacionComentario?: string | null; apelacionEstado?: string | null; apelacionRespuesta?: string | null;
+  evidenciaUrl?: string | null;
   cliente: { id: string; contacto: { nombre: string; empresa: string | null } };
   cambios?: Cambio[];
 };
@@ -158,10 +159,74 @@ export function ApelarCalificacion({ onApelar }: { onApelar: (comentario: string
   );
 }
 
-function TarjetaVista({ actividad, puede, puedeConfirmar, puedeApelar, responsable, siguientes, onCambiar, onConfirmar, onRechazar, onApelar }: {
+function EvidenciaModal({ actividad, onClose, onGuardar }: {
+  actividad: Actividad | null; onClose: () => void; onGuardar: (actividad: Actividad, datos: { evidenciaBase64?: string; evidenciaMime?: string; evidenciaUrl?: string }) => Promise<void> | void;
+}) {
+  const [liga, setLiga] = useState("");
+  const [archivo, setArchivo] = useState<File | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => { setLiga(""); setArchivo(null); setError(""); }, [actividad]);
+
+  async function guardar() {
+    if (!actividad) return;
+    if (!archivo && !liga.trim()) { setError("Sube una captura o pega una liga."); return; }
+    setGuardando(true);
+    setError("");
+    try {
+      if (archivo) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const lector = new FileReader();
+          lector.onload = () => resolve(String(lector.result));
+          lector.onerror = reject;
+          lector.readAsDataURL(archivo);
+        });
+        await onGuardar(actividad, { evidenciaBase64: base64, evidenciaMime: archivo.type });
+      } else {
+        await onGuardar(actividad, { evidenciaUrl: liga.trim() });
+      }
+      onClose();
+    } catch {
+      setError("No se pudo guardar la evidencia");
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Modal abierto={Boolean(actividad)} onClose={onClose} titulo="Evidencia de la actividad">
+      {actividad && (
+        <div className="space-y-3">
+          {actividad.evidenciaUrl && (
+            <p className="text-xs text-muted-foreground">
+              Evidencia actual: <a href={actividad.evidenciaUrl} target="_blank" rel="noreferrer" className="text-primary underline">verla</a>
+            </p>
+          )}
+          <div className="space-y-1">
+            <span className="block text-sm font-medium text-muted-foreground">Captura (imagen)</span>
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(e) => setArchivo(e.target.files?.[0] ?? null)} className="block w-full text-sm" />
+          </div>
+          <div className="space-y-1">
+            <span className="block text-sm font-medium text-muted-foreground">O liga a algo</span>
+            <input type="url" placeholder="https://…" value={liga} onChange={(e) => setLiga(e.target.value)} disabled={Boolean(archivo)} className="w-full rounded-md border border-input bg-card px-2 py-1.5 text-sm disabled:opacity-50" />
+          </div>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <div className="flex gap-1.5">
+            <Boton className="flex-1" disabled={guardando} onClick={guardar}>{guardando ? "Guardando…" : "Guardar evidencia"}</Boton>
+            <Boton variante="ghost" onClick={onClose}>Cancelar</Boton>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function TarjetaVista({ actividad, puede, puedeConfirmar, puedeApelar, responsable, siguientes, onCambiar, onConfirmar, onRechazar, onApelar, onEvidencia }: {
   actividad: Actividad; puede: boolean; puedeConfirmar: boolean; puedeApelar: boolean; responsable: string; siguientes: string[];
   onCambiar: (siguiente: string) => void; onConfirmar: (calificacion: number, nota: string) => Promise<void> | void;
   onRechazar: (motivo: string) => Promise<void> | void; onApelar: (comentario: string) => Promise<void> | void;
+  onEvidencia: () => void;
 }) {
   const atrasada = estaAtrasada(actividad);
   const pendienteConfirmacion = esperaConfirmacion(actividad);
@@ -216,6 +281,11 @@ function TarjetaVista({ actividad, puede, puedeConfirmar, puedeApelar, responsab
         </p>
       )}
       {puedeApelar && <ApelarCalificacion onApelar={onApelar} />}
+      <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
+        <button type="button" onPointerDown={(e) => e.stopPropagation()} onClick={onEvidencia} className="text-[11px] font-medium text-muted-foreground underline-offset-2 hover:text-primary hover:underline">
+          {actividad.evidenciaUrl ? "Ver evidencia" : "Subir evidencia"}
+        </button>
+      </div>
       {puede && siguientes.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {siguientes.map((siguiente) => (
@@ -229,15 +299,16 @@ function TarjetaVista({ actividad, puede, puedeConfirmar, puedeApelar, responsab
   );
 }
 
-function TarjetaArrastrable({ actividad, puede, puedeConfirmar, puedeApelar, responsable, siguientes, onCambiar, onConfirmar, onRechazar, onApelar }: {
+function TarjetaArrastrable({ actividad, puede, puedeConfirmar, puedeApelar, responsable, siguientes, onCambiar, onConfirmar, onRechazar, onApelar, onEvidencia }: {
   actividad: Actividad; puede: boolean; puedeConfirmar: boolean; puedeApelar: boolean; responsable: string; siguientes: string[];
   onCambiar: (siguiente: string) => void; onConfirmar: (calificacion: number, nota: string) => Promise<void> | void;
   onRechazar: (motivo: string) => Promise<void> | void; onApelar: (comentario: string) => Promise<void> | void;
+  onEvidencia: () => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: actividad.id, disabled: !puede });
   return (
     <div ref={setNodeRef} {...attributes} {...listeners} style={{ opacity: isDragging ? 0.4 : 1 }} className={puede ? "cursor-grab touch-none active:cursor-grabbing" : undefined}>
-      <TarjetaVista actividad={actividad} puede={puede} puedeConfirmar={puedeConfirmar} puedeApelar={puedeApelar} responsable={responsable} siguientes={siguientes} onCambiar={onCambiar} onConfirmar={onConfirmar} onRechazar={onRechazar} onApelar={onApelar} />
+      <TarjetaVista actividad={actividad} puede={puede} puedeConfirmar={puedeConfirmar} puedeApelar={puedeApelar} responsable={responsable} siguientes={siguientes} onCambiar={onCambiar} onConfirmar={onConfirmar} onRechazar={onRechazar} onApelar={onApelar} onEvidencia={onEvidencia} />
     </div>
   );
 }
@@ -278,6 +349,7 @@ export function DespachoActividades({
   const [form, setForm] = useState({ titulo: "", clienteId: clienteIdInicial, periodo: "", fechaLimite: "", tipo: "extraordinaria", responsableId: "" });
   const [arrastrando, setArrastrando] = useState<Actividad | null>(null);
   const [actividadDeepLink, setActividadDeepLink] = useState<Actividad | null>(null);
+  const [actividadEvidencia, setActividadEvidencia] = useState<Actividad | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const actividadesDelPeriodo = actividades.filter((actividad) => new Date(actividad.periodo).toISOString().slice(0, 7) === periodo);
   const router = useRouter();
@@ -363,6 +435,17 @@ export function DespachoActividades({
     if (!respuesta.ok) { setError(datos.error ?? "No se pudo enviar la apelación"); if (respuesta.status === 409) void cargar(); return; }
     setActividades((lista) => lista.map((item) => item.id === actividad.id ? datos.actividad : item));
     setActividadDeepLink((actual) => actual && actual.id === actividad.id ? datos.actividad : actual);
+  }
+
+  async function guardarEvidencia(actividad: Actividad, datos: { evidenciaBase64?: string; evidenciaMime?: string; evidenciaUrl?: string }) {
+    const respuesta = await fetch(`/api/despacho/actividades/${actividad.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ version: actividad.version, ...datos }),
+    });
+    const resultado = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) { setError(resultado.error ?? "No se pudo guardar la evidencia"); if (respuesta.status === 409) void cargar(); throw new Error(resultado.error); }
+    setActividades((lista) => lista.map((item) => item.id === actividad.id ? resultado.actividad : item));
+    setActividadDeepLink((actual) => actual && actual.id === actividad.id ? resultado.actividad : actual);
   }
 
   function onDragStart(evento: DragStartEvent) {
@@ -459,7 +542,7 @@ export function DespachoActividades({
                     const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor));
                     const responsable = usuarios.find((usuario) => usuario.id === actividad.responsableId)?.nombre ?? "Sin asignar";
                     return (
-                      <TarjetaArrastrable key={actividad.id} actividad={actividad} puede={puede} puedeConfirmar={puedeConfirmar} puedeApelar={puedeApelarCalificacion(actividad, usuarioId)} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} onConfirmar={(calificacion, nota) => confirmar(actividad, calificacion, nota)} onRechazar={(motivo) => rechazar(actividad, motivo)} onApelar={(comentario) => apelar(actividad, comentario)} />
+                      <TarjetaArrastrable key={actividad.id} actividad={actividad} puede={puede} puedeConfirmar={puedeConfirmar} puedeApelar={puedeApelarCalificacion(actividad, usuarioId)} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} onConfirmar={(calificacion, nota) => confirmar(actividad, calificacion, nota)} onRechazar={(motivo) => rechazar(actividad, motivo)} onApelar={(comentario) => apelar(actividad, comentario)} onEvidencia={() => setActividadEvidencia(actividad)} />
                     );
                   })}
                   {delEstado.length === 0 && <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">Sin actividades</p>}
@@ -467,9 +550,9 @@ export function DespachoActividades({
               );
             })}
           </div>
-          <DragOverlay>{arrastrando ? <div className="w-64"><TarjetaVista actividad={arrastrando} puede={false} puedeConfirmar={false} puedeApelar={false} responsable={usuarios.find((usuario) => usuario.id === arrastrando!.responsableId)?.nombre ?? "Sin asignar"} siguientes={[]} onCambiar={() => {}} onConfirmar={() => {}} onRechazar={() => {}} onApelar={() => {}} /></div> : null}</DragOverlay>
+          <DragOverlay>{arrastrando ? <div className="w-64"><TarjetaVista actividad={arrastrando} puede={false} puedeConfirmar={false} puedeApelar={false} responsable={usuarios.find((usuario) => usuario.id === arrastrando!.responsableId)?.nombre ?? "Sin asignar"} siguientes={[]} onCambiar={() => {}} onConfirmar={() => {}} onRechazar={() => {}} onApelar={() => {}} onEvidencia={() => {}} /></div> : null}</DragOverlay>
         </DndContext>
-        <div className="space-y-2 md:hidden">{COLUMNAS.map((columna) => { const delEstado = actividadesDelPeriodo.filter((actividad) => vaEnColumna(actividad, columna.estado)); return <details key={`movil-${columna.estado}`} className="surface group"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{columna.titulo}<span className="text-sm text-muted-foreground">{delEstado.length}</span></summary><div className="space-y-3 p-3 pt-0">{delEstado.length ? delEstado.map((actividad) => { const responsable = usuarios.find((usuario) => usuario.id === actividad.responsableId)?.nombre ?? "Sin asignar"; const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor)); return <TarjetaVista key={actividad.id} actividad={actividad} puede={esGestion || modo === "mias"} puedeConfirmar={puedeConfirmar} puedeApelar={puedeApelarCalificacion(actividad, usuarioId)} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} onConfirmar={(calificacion, nota) => confirmar(actividad, calificacion, nota)} onRechazar={(motivo) => rechazar(actividad, motivo)} onApelar={(comentario) => apelar(actividad, comentario)} />; }) : <p className="pb-3 text-center text-xs text-muted-foreground">Sin actividades</p>}</div></details>; })}</div>
+        <div className="space-y-2 md:hidden">{COLUMNAS.map((columna) => { const delEstado = actividadesDelPeriodo.filter((actividad) => vaEnColumna(actividad, columna.estado)); return <details key={`movil-${columna.estado}`} className="surface group"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{columna.titulo}<span className="text-sm text-muted-foreground">{delEstado.length}</span></summary><div className="space-y-3 p-3 pt-0">{delEstado.length ? delEstado.map((actividad) => { const responsable = usuarios.find((usuario) => usuario.id === actividad.responsableId)?.nombre ?? "Sin asignar"; const siguientes = ESTADOS_DESPACHO.filter((valor) => valor !== actividad.estado && transicionDespachoValida(actividad.estado, valor)); return <TarjetaVista key={actividad.id} actividad={actividad} puede={esGestion || modo === "mias"} puedeConfirmar={puedeConfirmar} puedeApelar={puedeApelarCalificacion(actividad, usuarioId)} responsable={responsable} siguientes={siguientes} onCambiar={(siguiente) => void cambiar(actividad, siguiente)} onConfirmar={(calificacion, nota) => confirmar(actividad, calificacion, nota)} onRechazar={(motivo) => rechazar(actividad, motivo)} onApelar={(comentario) => apelar(actividad, comentario)} onEvidencia={() => setActividadEvidencia(actividad)} />; }) : <p className="pb-3 text-center text-xs text-muted-foreground">Sin actividades</p>}</div></details>; })}</div>
         </>
       )}
       <Modal abierto={Boolean(actividadDeepLink)} onClose={cerrarDeepLink} titulo="Actividad">
@@ -485,9 +568,11 @@ export function DespachoActividades({
             onConfirmar={(calificacion, nota) => confirmar(actividadDeepLink, calificacion, nota)}
             onRechazar={(motivo) => rechazar(actividadDeepLink, motivo)}
             onApelar={(comentario) => apelar(actividadDeepLink, comentario)}
+            onEvidencia={() => setActividadEvidencia(actividadDeepLink)}
           />
         )}
       </Modal>
+      <EvidenciaModal actividad={actividadEvidencia} onClose={() => setActividadEvidencia(null)} onGuardar={guardarEvidencia} />
     </section>
   );
 }

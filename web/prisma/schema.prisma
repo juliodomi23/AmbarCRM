@@ -2818,6 +2818,7 @@ model DespachoActividad {
   apelacionResueltaAt  DateTime? @map("apelacion_resuelta_at") @db.Timestamptz(6)
   apelacionResueltaPorId BigInt? @map("apelacion_resuelta_por_id")
   notas                String?
+  evidenciaUrl         String?   @map("evidencia_url")
   version              Int       @default(1)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
