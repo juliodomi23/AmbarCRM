@@ -89,8 +89,9 @@ export async function tokenCalendario(orgId: bigint, conexion: { id: bigint; acc
     const response = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: config.clientId, client_secret: config.clientSecret, refresh_token: descifrarCredencialPago(conexion.refreshTokenEncrypted), grant_type: "refresh_token" }) });
     const tokens = await response.json().catch(() => ({})) as { access_token?: string; expires_in?: number };
     if (!response.ok || !tokens.access_token) throw new Error("Google rechazó la renovación de credenciales");
-    await transaccionTenant(orgId, (tx) => tx.calendarioConectado.update({ where: { id: conexion.id }, data: { accessTokenEncrypted: cifrarCredencialPago(tokens.access_token), tokenExpiraAt: new Date(Date.now() + (tokens.expires_in ?? 3600) * 1000), estado: "activa", ultimoError: null } }));
-    return tokens.access_token;
+    const accessToken = tokens.access_token;
+    await transaccionTenant(orgId, (tx) => tx.calendarioConectado.update({ where: { id: conexion.id }, data: { accessTokenEncrypted: cifrarCredencialPago(accessToken), tokenExpiraAt: new Date(Date.now() + (tokens.expires_in ?? 3600) * 1000), estado: "activa", ultimoError: null } }));
+    return accessToken;
   } catch (error) {
     await transaccionTenant(orgId, (tx) => tx.calendarioConectado.update({ where: { id: conexion.id }, data: { estado: "requiere_reconectar", ultimoError: "No fue posible renovar la conexión con Google" } }));
     throw error;
