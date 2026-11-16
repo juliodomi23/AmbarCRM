@@ -229,6 +229,19 @@ export function puedeVerTodasActividadesDespacho(
   return estaEnLista(usuario, config, "usuariosAccesoTotal");
 }
 
+/**
+ * Acceso a Finanzas del despacho. Distinto de `puedeGestionarDespacho`: un
+ * `usuariosAccesoTotal` también entra aunque esté en `usuariosVistaLimitada`
+ * para actividades (son permisos independientes).
+ */
+export function puedeVerFinanzasDespacho(
+  usuario: { id?: string | bigint | null; puesto?: string; rol?: string },
+  config?: unknown,
+) {
+  if (puedeGestionarDespacho(usuario.puesto, usuario.rol)) return true;
+  return estaEnLista(usuario, config, "usuariosAccesoTotal");
+}
+
 /** Igual a `puedeVerTodasActividadesDespacho`; un `usuariosVistaLimitada` no ve avance ajeno, ni siquiera agregado. */
 export function puedeVerAvanceEquipoDespacho(
   usuario: { id?: string | bigint | null; puesto?: string; rol?: string },
