@@ -82,7 +82,7 @@ export default async function ConfiguracionPage({ searchParams }: { searchParams
       usuarios={serializar(usuariosConAcceso)}
       puestosSugeridos={puestosSugeridos}
       canales={serializar(canales)}
-      metaRevision={(process.env.META_CANALES_REVISION_ORGS ?? "").split(",").map((id) => id.trim()).includes(String(session.user.orgId))}
+      metaRevision
       plantillas={serializar(plantillas)}
       ajustes={serializar(ajustes)}
       esExi={String(session.user.orgId) === "12"}
