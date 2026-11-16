@@ -98,7 +98,7 @@ El administrador debe activarlos por cliente en Configuración → Bots.
 | `agendar_cita` | `GET …/appointments`, `GET …/appointments/availability`, `POST` y `PATCH …/appointments` |
 | `cotizar` | `GET` y `POST …/quotes`, `POST …/quotes/{quoteId}/send` |
 | `ver_productos` | `GET …/products` |
-| `gestionar_contactos` | `GET` y `POST …/contacts` |
+| `gestionar_contactos` | `GET` y `POST …/contacts` · `GET` y `POST …/accounts/1/contacts` y `…/accounts/1/contacts/{contactId}/conversations` |
 | `consultar_taller` | `GET …/taller/ordenes` |
 | `cambiar_estado` | `PATCH …/{id}/status` |
 | `asignar` | `POST …/{id}/assignments` |
@@ -395,9 +395,70 @@ Los `campos` enviados se fusionan con los actuales: los omitidos permanecen, `nu
 una clave no definida y activa responde 400 con `claves`. Responde `{ "contacto": { id, nombre, telefono,
 email, empresa, creado, campos } }` y audita solo los valores modificados.
 
+### Contactos de la cuenta — permiso `gestionar_contactos`
+
+Rutas de cuenta (no cuelgan de una conversación), pensadas para los flujos de recordatorios y avisos que antes
+usaban `contacts/search` y `contacts/:id/conversations` de Chatwoot. Devuelven `payload` y `meta` para que el
+flujo de n8n conserve la forma de lectura. Los contactos son de **toda la empresa**; solo las conversaciones se
+filtran por el canal del bot.
+
+#### `GET …/accounts/1/contacts?phone=` y `?q=`
+
+- `phone`: normaliza con `telefonoContacto` (solo dígitos; un mexicano de 10 dígitos o con `52`/`521` se
+  compara por sus últimos 10) y devuelve como máximo un contacto:
+  `200 { "meta": { "count": 1 }, "payload": [ {…contacto} ] }`, o `count: 0` / `payload: []` si no existe.
+  `400` si no tiene de 10 a 15 dígitos.
+- `q`: si el texto es solo dígitos y signos de teléfono (`+ - ( ) . espacios`) se resuelve como `phone`; si no,
+  busca por nombre, email, empresa y teléfono sin distinguir mayúsculas (mínimo 2 caracteres, hasta 20,
+  ordenados por nombre). También responde `{ "meta": { "count" }, "payload": [...] }`.
+- `phone` y `q` juntos responden `400`; sin ninguno, `400`.
+- Contacto devuelto: `{ id, nombre, telefono, email, empresa, creado }` más los alias `name`, `phone_number`
+  e `identifier` (el teléfono), para que las expresiones de n8n escritas para Chatwoot sigan leyendo lo mismo.
+
+#### `POST …/accounts/1/contacts`
+
+Body: `{ "nombre": "Ana Pérez", "telefono": "+52 55 1234 5678", "correo": "ana@example.com" }`.
+También se aceptan `name`, `phone_number` y `email` (y `inbox_id` se ignora). `201 { "contacto": {…},
+"repetida": false }`; si el teléfono ya existe, `200 { "contacto": {…}, "repetida": true }` sin crear otro.
+Además se incluye `payload: { contact: {…} }` —el envoltorio de `POST /contacts` de Chatwoot— para que los
+flujos de n8n no tengan que cambiar la ruta de lectura. El contacto nace con fuente `whatsapp`. La
+deduplicación es de empresa (últimos 10 dígitos) aunque el bot esté atado a un canal; dos peticiones
+simultáneas crean uno solo (índice único empresa+teléfono).
+
+#### `GET …/accounts/1/contacts/{contactId}/conversations`
+
+Lista las conversaciones del contacto con el mismo elemento que devuelve `GET /conversations`
+(`id`, `status`, `bot_activo`, `labels`, `meta.sender`, `last_message`, …). Orden: la más reciente primero,
+máximo 100. `?status=open|resolved|all` (por defecto `all`). Responde `{ "meta": { "count" }, "payload": [...] }`.
+Un bot atado a un canal solo ve las de su canal; si el contacto no tiene ninguna, `payload: []`.
+`404` si el contacto no es de la empresa. Para paginación y filtros completos sigue existiendo
+`GET /conversations?contact_id=`.
+
+#### `POST …/accounts/1/contacts/{contactId}/conversations`
+
+Crea la conversación del contacto en un canal si no hay una activa. Si ya existe una `abierta` o `pendiente`
+para ese canal la devuelve; si está `cerrada`, la reabre (el CRM mantiene una sola conversación por
+contacto+canal). **Reabrir no enciende el bot.** Responde `201` al crear y `200` al reutilizar:
+
+```json
+{ "conversacion": { "id": 12, "status": "open", "bot_activo": true, "labels": [], "…": "…" },
+  "creada": true, "reabierta": false }
+```
+
+Body opcional: `{ "canal_id": 1 }` (también `canalId` o `inbox_id`). Canal elegido, en este orden: el del body
+→ el del bot → el del contacto (Messenger/Instagram) → el de una conversación previa del contacto → el único
+canal activo de la empresa. Sin candidato responde
+`422 { "error": "no se puede determinar el canal", "motivo": "canal_no_determinado", "canales": [...] }`.
+El `message` de `POST /conversations` de Chatwoot no se envía aquí: responde
+`400 { "motivo": "mensaje_inicial_no_soportado" }`; el primer mensaje va aparte por `POST …/{id}/messages`
+(permiso `enviar_mensaje`). `404` contacto o canal inexistente · `403` si el canal no es el del bot atado ·
+`400` `contactId`/`canal_id` inválidos. Deja nota interna y bitácora (`conversacion_creada` o
+`conversacion_reabierta`).
+
 ## Bitácora (ampliada)
 `cita_agendada`, `cita_reprogramada`, `cotizacion_creada`, `cotizacion_enviada`, `oportunidad_editada`,
-`contacto_creado`, `contacto_editado`, `estado_cambiado`, `asignada` y `permiso_denegado` (con el permiso y la ruta). Las consultas (`availability`, `GET quotes`,
+`contacto_creado`, `contacto_editado`, `conversacion_creada`, `conversacion_reabierta`, `estado_cambiado`,
+`asignada` y `permiso_denegado` (con el permiso y la ruta). Las consultas (`availability`, `GET quotes`,
 `GET appointments`, `products`, `GET contacts`) no se registran.
 `auditoria_bot` es de solo agregar: el rol de la app (`crm_app`) puede leer e insertar, no editar ni borrar.
 
@@ -498,6 +559,12 @@ curl -s -H "$H" "$CRM/api/v1/accounts/1/conversations/$C/products?q=lampara&limi
 curl -s -X PATCH -H "$H" -H 'Content-Type: application/json' -d '{"valor":2500.5,"responsableId":7,"embudo":"Postventa","etapa":"Seguimiento"}' $CRM/api/v1/accounts/1/conversations/$C/opportunity
 curl -s -H "$H" "$CRM/api/v1/accounts/1/conversations/$C/contacts?phone=5512345678"
 curl -s -H "$H" -H 'Content-Type: application/json' -d '{"nombre":"Ana Pérez","telefono":"+52 55 1234 5678","correo":"ana@example.com"}' $CRM/api/v1/accounts/1/conversations/$C/contacts
+# contactos y conversaciones a nivel de cuenta (recordatorios y avisos)
+curl -s -H "$H" "$CRM/api/v1/accounts/1/contacts?phone=5512345678"
+curl -s -H "$H" "$CRM/api/v1/accounts/1/contacts?q=Ana"
+curl -s -H "$H" -H 'Content-Type: application/json' -d '{"nombre":"Ana Pérez","telefono":"+52 55 1234 5678"}' $CRM/api/v1/accounts/1/contacts
+curl -s -H "$H" "$CRM/api/v1/accounts/1/contacts/3/conversations?status=open"
+curl -s -H "$H" -H 'Content-Type: application/json' -d '{"canal_id":1}' $CRM/api/v1/accounts/1/contacts/3/conversations
 # un bot sin el permiso recibe 403 {"motivo":"permiso_faltante","permiso":"ver_productos"}
 # cotizaciones
 curl -s -H "$H" -H 'Content-Type: application/json' -d '{"partidas":[{"productoId":12,"cantidad":2}],"vigenciaDias":15}' $CRM/api/v1/accounts/1/conversations/$C/quotes
