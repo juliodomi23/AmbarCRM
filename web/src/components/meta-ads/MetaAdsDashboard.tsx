@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Badge, Boton, EncabezadoPagina } from "@/components/ui";
+import { KpiCard } from "@/components/DashboardVisuals";
 import { veredictoDeAnuncio, ctrPortafolio, type DatosVeredicto, type VeredictoAnuncio } from "@/lib/meta-ads/veredicto";
 
 const VEREDICTO_TONO_MAP: Record<"cara" | "fatiga" | "estrella" | "revivir" | "normal", "destructive" | "warning" | "success" | "neutral"> = {
@@ -23,6 +24,13 @@ type InsightData = {
   impresiones: number;
 };
 
+type HorarioData = {
+  hora: number;
+  spend: number;
+  impresiones: number;
+  resultados: number;
+};
+
 type CuentaPublicitaria = {
   id: string;
   nombre: string;
@@ -39,16 +47,85 @@ type ConexionData = {
 
 type RespuestaDashboard = { connection: ConexionData; insights: InsightData[] };
 
-type Tab = "resumen" | "anuncios" | "configuracion";
+type Tab = "resumen" | "anuncios" | "horarios" | "configuracion";
+
+type Periodo = "7d" | "30d" | "3m";
+
+const PERIODOS: Periodo[] = ["7d", "30d", "3m"];
+
+const DIAS_PERIODO: Record<Periodo, number> = {
+  "7d": 7,
+  "30d": 30,
+  "3m": 89,
+};
+
+const ETIQUETA_PERIODO: Record<Periodo, string> = {
+  "7d": "7 días",
+  "30d": "30 días",
+  "3m": "3 meses",
+};
 
 function dinero(valor: number) {
   return valor.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 2 });
 }
 
-function sumaPorFecha(insights: InsightData[]) {
+function sumaPorFecha(insights: InsightData[]): Array<[string, number]> {
   const mapa = new Map<string, number>();
   for (const insight of insights) mapa.set(insight.fecha, (mapa.get(insight.fecha) ?? 0) + insight.spend);
   return [...mapa.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+}
+
+function serieDiariaImpresiones(insights: InsightData[]): Array<[string, number]> {
+  const mapa = new Map<string, number>();
+  for (const insight of insights) mapa.set(insight.fecha, (mapa.get(insight.fecha) ?? 0) + insight.impresiones);
+  return [...mapa.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+}
+
+function serieDiariaCtr(insights: InsightData[]): Array<[string, number]> {
+  const acumulado = new Map<string, { suma: number; cuenta: number }>();
+  for (const insight of insights) {
+    const actual = acumulado.get(insight.fecha) ?? { suma: 0, cuenta: 0 };
+    actual.suma += insight.ctr;
+    actual.cuenta += 1;
+    acumulado.set(insight.fecha, actual);
+  }
+  return [...acumulado.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([fecha, { suma, cuenta }]) => [fecha, suma / Math.max(1, cuenta)]);
+}
+
+function serieDiariaCpa(insights: InsightData[]): Array<[string, number]> {
+  const acumulado = new Map<string, { suma: number; cuenta: number }>();
+  for (const insight of insights) {
+    if (insight.cpa <= 0) continue;
+    const actual = acumulado.get(insight.fecha) ?? { suma: 0, cuenta: 0 };
+    actual.suma += insight.cpa;
+    actual.cuenta += 1;
+    acumulado.set(insight.fecha, actual);
+  }
+  return [...acumulado.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([fecha, { suma, cuenta }]) => [fecha, suma / Math.max(1, cuenta)]);
+}
+
+function ultimosPuntos(serie: Array<[string, number]>, n = 14): number[] {
+  return serie.slice(-n).map(([, valor]) => valor);
+}
+
+function agruparGasto(insights: InsightData[], periodo: Periodo): Array<[string, number]> {
+  if (periodo !== "3m") return sumaPorFecha(insights);
+  const fechas = [...new Set(insights.map((i) => i.fecha))].sort();
+  if (fechas.length === 0) return [];
+  const primera = new Date(`${fechas[0]}T00:00:00Z`);
+  const mapa = new Map<number, number>();
+  for (const insight of insights) {
+    const fecha = new Date(`${insight.fecha}T00:00:00Z`);
+    const indice = Math.floor((fecha.getTime() - primera.getTime()) / (7 * 86400000));
+    mapa.set(indice, (mapa.get(indice) ?? 0) + insight.spend);
+  }
+  return [...mapa.entries()].sort((a, b) => a[0] - b[0]).map(([indice, valor]) => [`Semana ${indice + 1}`, valor]);
+}
+
+function etiquetaHora(hora: number) {
+  const h12 = hora % 12 === 0 ? 12 : hora % 12;
+  const sufijo = hora < 12 ? "a.m." : "p.m.";
+  return `${h12} ${sufijo}`;
 }
 
 export function MetaAdsDashboard() {
@@ -69,6 +146,10 @@ export function MetaAdsDashboard() {
   const [tendencia, setTendencia] = useState<Array<{ id: string; pageName: string; adText: string }>>([]);
   const [desconectando, setDesconectando] = useState(false);
   const [errorDesconectar, setErrorDesconectar] = useState("");
+  const [periodo, setPeriodo] = useState<Periodo>("3m");
+  const [horarios, setHorarios] = useState<HorarioData[]>([]);
+  const [cargandoHorarios, setCargandoHorarios] = useState(false);
+  const [errorHorarios, setErrorHorarios] = useState("");
 
   async function elegirCuenta(adAccountId: string) {
     setSeleccionando(true);
@@ -146,6 +227,20 @@ export function MetaAdsDashboard() {
 
   useEffect(() => {
     const control = new AbortController();
+    setCargandoHorarios(true);
+    fetch("/api/meta-ads/horarios", { signal: control.signal, cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("No se pudieron cargar los horarios.");
+        return (await res.json()) as { horarios?: HorarioData[] };
+      })
+      .then((resultado) => { if (!control.signal.aborted) { setHorarios(resultado.horarios ?? []); setErrorHorarios(""); } })
+      .catch((e: unknown) => { if (!control.signal.aborted) setErrorHorarios(e instanceof Error ? e.message : "No se pudieron cargar los horarios."); })
+      .finally(() => { if (!control.signal.aborted) setCargandoHorarios(false); });
+    return () => control.abort();
+  }, []);
+
+  useEffect(() => {
+    const control = new AbortController();
     fetch("/api/meta-ads/cuenta", { signal: control.signal, cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) {
@@ -172,7 +267,8 @@ export function MetaAdsDashboard() {
   const necesitaSeleccion = adAccountId === "<temp>";
 
   const ahora = new Date();
-  const inicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - 89);
+  const diasPeriodo = DIAS_PERIODO[periodo];
+  const inicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - (diasPeriodo - 1));
   inicio.setHours(0, 0, 0, 0);
   const fin = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
   fin.setHours(23, 59, 59, 999);
@@ -223,8 +319,19 @@ export function MetaAdsDashboard() {
   })).sort((a, b) => b.ctr - a.ctr);
   const mejor = ranking[0] ?? null;
   const peor = ranking[ranking.length - 1] ?? null;
-  const gastoPorDia = sumaPorFecha(delRango);
+  const gastoPorDia = agruparGasto(delRango, periodo);
   const maxDia = Math.max(0.01, ...gastoPorDia.map(([, valor]) => valor));
+  const puntosGasto = ultimosPuntos(sumaPorFecha(delRango));
+  const puntosImpresiones = ultimosPuntos(serieDiariaImpresiones(delRango));
+  const puntosCtr = ultimosPuntos(serieDiariaCtr(delRango));
+  const puntosCpa = ultimosPuntos(serieDiariaCpa(delRango));
+  const etiquetaPeriodo = ETIQUETA_PERIODO[periodo];
+
+  const horasConResultados = horarios
+    .filter((h) => h.resultados > 0)
+    .map((h) => ({ ...h, costo: h.spend / h.resultados }));
+  const mejoresHoras = [...horasConResultados].sort((a, b) => a.costo - b.costo).slice(0, 4);
+  const maxGastoHora = Math.max(0.01, ...horarios.map((h) => h.spend));
 
   const cuentaActual = cuentas.find((c) => c.id === adAccountId);
   const ultimaSync = conexion?.sincronizadoAt
@@ -249,13 +356,13 @@ export function MetaAdsDashboard() {
 
       {/* Tab navigation */}
       <div className="flex flex-wrap gap-2 border-b border-border/70 pb-3">
-        {(["resumen", "anuncios", "configuracion"] as Tab[]).map((t) => (
+        {(["resumen", "anuncios", "horarios", "configuracion"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${tab === t ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-muted/70"}`}
           >
-            {t === "resumen" ? "Resumen" : t === "anuncios" ? "Anuncios" : "Configuración"}
+            {t === "resumen" ? "Resumen" : t === "anuncios" ? "Anuncios" : t === "horarios" ? "Horarios" : "Configuración"}
           </button>
         ))}
       </div>
@@ -282,48 +389,86 @@ export function MetaAdsDashboard() {
       ) : !necesitaSeleccion ? (
         <>
           {tab === "resumen" && (
-            <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Resumen de los últimos 3 meses">
-              <div className="surface p-4 sm:p-5"><p className="text-sm text-muted-foreground">Gasto (últimos 3 meses)</p><p className="tnum mt-3 text-2xl font-bold text-foreground">{dinero(gastoRango)}</p></div>
-              <div className="surface p-4 sm:p-5"><p className="text-sm text-muted-foreground">Veces que se mostró tu anuncio (impresiones)</p><p className="tnum mt-3 text-2xl font-bold text-foreground">{impresionesRango.toLocaleString("es-MX")}</p></div>
-              <div className="surface p-4 sm:p-5"><p className="text-sm text-muted-foreground">Tasa de clic (CTR)</p><p className="tnum mt-3 text-2xl font-bold text-foreground">{ctrPromedio.toFixed(2)}%</p><p className="mt-1 text-xs text-muted-foreground">Porcentaje de personas que vieron tu anuncio y le dieron clic.</p></div>
-              <div className="surface p-4 sm:p-5"><p className="text-sm text-muted-foreground">Costo por resultado (CPA)</p><p className="tnum mt-3 text-2xl font-bold text-foreground">{conCpa.length ? dinero(cpaPromedio) : "—"}</p><p className="mt-1 text-xs text-muted-foreground">Costo promedio por cada resultado (mensajes, leads, compras).</p></div>
+            <section className="space-y-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-muted-foreground">Período:</span>
+                {PERIODOS.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPeriodo(p)}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${periodo === p ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-muted/70"}`}
+                  >
+                    {ETIQUETA_PERIODO[p]}
+                  </button>
+                ))}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label={`Resumen de los últimos ${etiquetaPeriodo}`}>
+                <KpiCard
+                  titulo="Gasto"
+                  valor={dinero(gastoRango)}
+                  detalle={`Últimos ${etiquetaPeriodo.toLowerCase()}`}
+                  rail="bg-primary"
+                  datos={puntosGasto}
+                />
+                <KpiCard
+                  titulo="Impresiones"
+                  valor={impresionesRango.toLocaleString("es-MX")}
+                  detalle="Veces que se mostró tu anuncio"
+                  rail="bg-success"
+                  datos={puntosImpresiones}
+                />
+                <KpiCard
+                  titulo="Tasa de clic (CTR)"
+                  valor={`${ctrPromedio.toFixed(2)}%`}
+                  detalle="Porcentaje de personas que vieron tu anuncio y le dieron clic."
+                  rail="bg-warning"
+                  datos={puntosCtr}
+                />
+                <KpiCard
+                  titulo="Costo por resultado (CPA)"
+                  valor={conCpa.length ? dinero(cpaPromedio) : "—"}
+                  detalle="Costo promedio por cada resultado (mensajes, leads, compras)."
+                  rail="bg-destructive"
+                  datos={puntosCpa}
+                />
+              </div>
             </section>
           )}
           {tab === "resumen" && (
             <section className="grid gap-4 lg:grid-cols-2">
               <div className="surface space-y-3 p-4 sm:p-5">
-                <h2 className="text-base font-semibold text-foreground">Mejor anuncio (mayor tasa de clic)</h2>
+                <h2 className="text-base font-semibold text-foreground">Mejor anuncio (mayor tasa de clic) - últimos {etiquetaPeriodo.toLowerCase()}</h2>
                 {mejor ? (
                   <div className="space-y-1 text-sm">
                     <Badge tono={VEREDICTO_TONO_MAP[mejor.veredicto.tipo]} className="mb-1">{mejor.veredicto.texto}</Badge>
                     <p className="font-semibold text-foreground">{mejor.nombre}</p>
                     <p className="text-muted-foreground">Tasa de clic: <span className="tnum font-medium text-foreground">{mejor.ctr.toFixed(2)}%</span></p>
-                    <p className="text-muted-foreground">Gasto (3 meses): <span className="tnum font-medium text-foreground">{dinero(mejor.gasto)}</span></p>
+                    <p className="text-muted-foreground">Gasto (últimos {etiquetaPeriodo}): <span className="tnum font-medium text-foreground">{dinero(mejor.gasto)}</span></p>
                     <p className="text-muted-foreground">Veces que se mostró: <span className="tnum font-medium text-foreground">{mejor.impresiones.toLocaleString("es-MX")}</span></p>
                   </div>
-                ) : <p className="text-sm text-muted-foreground">Todavía no hay datos de anuncios en los últimos 3 meses.</p>}
+                ) : <p className="text-sm text-muted-foreground">Todavía no hay datos de anuncios en los últimos {etiquetaPeriodo.toLowerCase()}.</p>}
               </div>
               <div className="surface space-y-3 p-4 sm:p-5">
-                <h2 className="text-base font-semibold text-foreground">Peor anuncio (menor tasa de clic)</h2>
+                <h2 className="text-base font-semibold text-foreground">Peor anuncio (menor tasa de clic) - últimos {etiquetaPeriodo.toLowerCase()}</h2>
                 {peor ? (
                   <div className="space-y-1 text-sm">
                     <Badge tono={VEREDICTO_TONO_MAP[peor.veredicto.tipo]} className="mb-1">{peor.veredicto.texto}</Badge>
                     <p className="font-semibold text-foreground">{peor.nombre}</p>
                     <p className="text-muted-foreground">Tasa de clic: <span className="tnum font-medium text-foreground">{peor.ctr.toFixed(2)}%</span></p>
-                    <p className="text-muted-foreground">Gasto (3 meses): <span className="tnum font-medium text-foreground">{dinero(peor.gasto)}</span></p>
+                    <p className="text-muted-foreground">Gasto (últimos {etiquetaPeriodo}): <span className="tnum font-medium text-foreground">{dinero(peor.gasto)}</span></p>
                     <p className="text-muted-foreground">Veces que se mostró: <span className="tnum font-medium text-foreground">{peor.impresiones.toLocaleString("es-MX")}</span></p>
                   </div>
-                ) : <p className="text-sm text-muted-foreground">Todavía no hay datos de anuncios en los últimos 3 meses.</p>}
+                ) : <p className="text-sm text-muted-foreground">Todavía no hay datos de anuncios en los últimos {etiquetaPeriodo.toLowerCase()}.</p>}
               </div>
             </section>
           )}
           {tab === "resumen" && (
-            <section className="surface space-y-4 p-4 sm:p-5" aria-label="Gasto diario">
-              <h2 className="text-base font-semibold text-foreground">Gasto diario</h2>
+            <section className="surface space-y-4 p-4 sm:p-5" aria-label="Gasto por días y semanas">
+              <h2 className="text-base font-semibold text-foreground">{periodo === "3m" ? "Gasto semanal" : "Gasto diario"}</h2>
               {gastoPorDia.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Aún no hay gasto registrado.</p>
               ) : (
-                <div className="flex h-40 items-end gap-1.5" role="img" aria-label="Gráfica de gasto diario">
+                <div className="flex h-40 items-end gap-1.5" role="img" aria-label={periodo === "3m" ? "Gráfica de gasto semanal" : "Gráfica de gasto diario"}>
                   {gastoPorDia.map(([fecha, valor]) => (
                     <div key={fecha} className="group relative flex h-full min-w-0 flex-1 flex-col justify-end">
                       <div className="rounded-t bg-primary/80 transition group-hover:bg-primary" style={{ height: `${Math.max(3, (valor / maxDia) * 100)}%` }} />
@@ -332,7 +477,7 @@ export function MetaAdsDashboard() {
                   ))}
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">{gastoPorDia.length} {gastoPorDia.length === 1 ? "día" : "días"} con datos</p>
+              <p className="text-xs text-muted-foreground">{gastoPorDia.length} {gastoPorDia.length === 1 ? (periodo === "3m" ? "semana" : "día") : periodo === "3m" ? "semanas" : "días"} con datos</p>
             </section>
           )}
           {tab === "anuncios" && (
@@ -350,7 +495,7 @@ export function MetaAdsDashboard() {
               </div>
               {subTab === "mios" && (
                 <>
-                  <h2 className="text-base font-semibold text-foreground">Anuncios (últimos 3 meses)</h2>
+                  <h2 className="text-base font-semibold text-foreground">Anuncios (últimos {etiquetaPeriodo.toLowerCase()})</h2>
                   <div className="flex flex-wrap items-center gap-2 mb-3">
                     <input
                       type="text"
@@ -364,7 +509,7 @@ export function MetaAdsDashboard() {
                     </span>
                   </div>
                   {anunciosFiltrados.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Todavía no hay datos de anuncios en los últimos 3 meses.</p>
+                    <p className="text-sm text-muted-foreground">Todavía no hay datos de anuncios en los últimos {etiquetaPeriodo.toLowerCase()}.</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[640px] text-sm">
@@ -429,6 +574,44 @@ export function MetaAdsDashboard() {
                   )}
                 </>
               )}
+            </section>
+          )}
+          {tab === "horarios" && (
+            <section className="surface space-y-4 p-4 sm:p-5" aria-label="Rendimiento por hora">
+              <h2 className="text-base font-semibold text-foreground">Mejores horas para anunciar</h2>
+              {cargandoHorarios && (
+                <p className="text-sm text-muted-foreground">Cargando horarios...</p>
+              )}
+              {errorHorarios && (
+                <p role="alert" className="text-sm text-destructive">{errorHorarios}</p>
+              )}
+              {horarios.length === 0 && !cargandoHorarios && (
+                <p className="text-sm text-muted-foreground">Aún no hay datos de horarios.</p>
+              )}
+              {horarios.length > 0 && mejoresHoras.length > 0 && (
+                <p className="text-sm text-foreground">
+                  Tus anuncios consiguen resultados más baratos cerca de las {mejoresHoras.map(h => etiquetaHora(h.hora)).join(", ")}.
+                </p>
+              )}
+              <div className="space-y-2">
+                {horarios.map((h) => {
+                  const destacado = mejoresHoras.some(m => m.hora === h.hora);
+                  return (
+                    <div key={h.hora} className="flex items-center gap-3 text-sm">
+                      <span className="w-16 shrink-0 text-muted-foreground">{etiquetaHora(h.hora)}</span>
+                      <div className="relative h-4 flex-1 overflow-hidden rounded bg-muted">
+                        <div
+                          className={`h-full ${destacado ? "bg-success" : "bg-primary/60"}`}
+                          style={{ width: `${(h.spend / maxGastoHora) * 100}%` }}
+                        />
+                      </div>
+                      <span className="w-24 shrink-0 text-right tnum text-muted-foreground">{dinero(h.spend)}</span>
+                      <span className="w-20 shrink-0 text-right tnum text-muted-foreground">{h.resultados} res.</span>
+                      {destacado && <Badge tono="success">Mejor costo</Badge>}
+                    </div>
+                  );
+                })}
+              </div>
             </section>
           )}
           {tab === "configuracion" && (

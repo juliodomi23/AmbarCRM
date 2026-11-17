@@ -25,6 +25,8 @@ export async function obtenerConexionPorOrg(orgId: bigint): Promise<ConexionMeta
  * Llama a GET /act_<id>/insights con fields=spend,ctr,cpm,actions&level=ad
  * para los últimos ~3 meses (time_increment=1) y hace upsert diario.
  * Meta paginatea los resultados; el loop sigue paging.next hasta agotar todas las páginas.
+ * Además, hace una segunda llamada con breakdowns=hourly_stats_aggregated_by_advertiser_time_zone
+ * para obtener gasto/resultados por hora del día (0-23).
  */
 export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string): Promise<{ creados: number; actualizados: number }> {
   const conexion = await obtenerConexionPorOrg(orgId);
@@ -38,12 +40,13 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
   const hasta = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
   hasta.setHours(23, 59, 59, 999);
 
-  const url = new URL(`https://graph.facebook.com/v26.0/act_${adAccountId}/insights`);
-  url.searchParams.set("fields", "ad_id,ad_name,impressions,spend,ctr,cpm,actions,cost_per_action_type");
-  url.searchParams.set("level", "ad");
-  url.searchParams.set("time_increment", "1");
-  url.searchParams.set("time_range", JSON.stringify({ since: desde.toISOString().slice(0, 10), until: hasta.toISOString().slice(0, 10) }));
-  url.searchParams.set("limit", "100");
+  // ---------- 1. Insights diarios por anuncio (level=ad, time_increment=1) ----------
+  const urlDaily = new URL(`https://graph.facebook.com/v26.0/act_${adAccountId}/insights`);
+  urlDaily.searchParams.set("fields", "ad_id,ad_name,impressions,spend,ctr,cpm,actions,cost_per_action_type");
+  urlDaily.searchParams.set("level", "ad");
+  urlDaily.searchParams.set("time_increment", "1");
+  urlDaily.searchParams.set("time_range", JSON.stringify({ since: desde.toISOString().slice(0, 10), until: hasta.toISOString().slice(0, 10) }));
+  urlDaily.searchParams.set("limit", "100");
 
   type FilaInsight = {
     ad_id?: string;
@@ -57,11 +60,8 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
     actions?: Array<{ action_type?: string; value?: string }>;
   };
 
-  // Meta pagina los resultados (~25-100 filas por página). Seguimos paging.next
-  // hasta agotar todas las páginas antes de hacer los upserts; si no, el
-  // dashboard se queda con solo la primera página.
   const filas: FilaInsight[] = [];
-  let siguiente: string | null = url.toString();
+  let siguiente: string | null = urlDaily.toString();
   let paginas = 0;
 
   while (siguiente) {
@@ -79,12 +79,45 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
     siguiente = data.paging?.next ?? null;
   }
 
+  // ---------- 2. Desglose horario (breakdowns=hourly_stats_aggregated_by_advertiser_time_zone) ----------
+  // Incompatible con level=ad + time_increment=1 en la misma llamada => fetch separado.
+  const urlHourly = new URL(`https://graph.facebook.com/v26.0/act_${adAccountId}/insights`);
+  urlHourly.searchParams.set("fields", "spend,impressions,actions");
+  urlHourly.searchParams.set("breakdowns", "hourly_stats_aggregated_by_advertiser_time_zone");
+  urlHourly.searchParams.set("time_range", JSON.stringify({ since: desde.toISOString().slice(0, 10), until: hasta.toISOString().slice(0, 10) }));
+  urlHourly.searchParams.set("limit", "100");
+
+  type FilaHora = {
+    hourly_stats_aggregated_by_advertiser_time_zone?: string; // "0", "1", ... "23"
+    spend?: string;
+    impressions?: string;
+    actions?: Array<{ action_type?: string; value?: string }>;
+  };
+
+  const filasHora: FilaHora[] = [];
+  let siguienteHora: string | null = urlHourly.toString();
+  let paginasHora = 0;
+
+  while (siguienteHora) {
+    paginasHora++;
+    if (paginasHora > 50) throw new Error("Meta devolvió demasiadas páginas de insights horarios; se detuvo por seguridad");
+    const response = await fetch(siguienteHora, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) throw new Error(`Meta respondió ${response.status} al consultar insights horarios`);
+    const data = await response.json() as {
+      data?: FilaHora[];
+      paging?: { next?: string };
+      error?: { message?: string };
+    };
+    if (data.error) throw new Error(data.error.message || "Meta devolvió un error al consultar insights horarios");
+    if (Array.isArray(data.data)) filasHora.push(...data.data);
+    siguienteHora = data.paging?.next ?? null;
+  }
+
+  // ---------- 3. Upsert diario + reemplazo horario ----------
   let creados = 0; let actualizados = 0;
 
-  // 89 días x varios anuncios activos son cientos de filas: un findFirst + create/update
-  // por fila (2 queries secuenciales) revienta el timeout por default de la transacción
-  // interactiva de Prisma (5s). upsert() es 1 query por fila, y le damos margen igual.
   await transaccionTenant(orgId, async (tx) => {
+    // 3a. Upsert insights diarios
     for (const fila of filas) {
       const adId = fila.ad_id ?? "";
       const nombreAnuncio = fila.ad_name ?? "";
@@ -98,7 +131,6 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
       const impresiones = fila.impressions ? Number(fila.impressions) : 0;
       const ctr = fila.ctr ? Number(fila.ctr) : 0;
 
-      // CPA: costo por acción (purchase, lead, etc.). Si no hay acciones, 0.
       let cpa = 0;
       const acciones = fila.cost_per_action_type ?? [];
       const accionValida = acciones.find((a) => a.action_type === "purchase" || a.action_type === "lead");
@@ -114,6 +146,49 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
         create: { orgId, adId, nombreAnuncio, fecha, spend, ctr, cpa, impresiones },
       });
       creados++;
+    }
+
+    // 3b. Reemplazar snapshots horarios (24 filas por org)
+    // Primero borra existentes para esta org
+    await tx.$executeRaw`DELETE FROM meta_ads_horarios WHERE org_id = ${orgId}`;
+
+    // Agregar por hora (0-23)
+    const horaMap = new Map<number, { spend: number; impresiones: number; resultados: number }>();
+    for (let h = 0; h <= 23; h++) horaMap.set(h, { spend: 0, impresiones: 0, resultados: 0 });
+
+    for (const f of filasHora) {
+      const horaStr = f.hourly_stats_aggregated_by_advertiser_time_zone;
+      if (horaStr === undefined || horaStr === null) continue;
+      const hora = parseInt(horaStr, 10);
+      if (isNaN(hora) || hora < 0 || hora > 23) continue;
+
+      const spend = f.spend ? Number(f.spend) : 0;
+      const impresiones = f.impressions ? Number(f.impressions) : 0;
+      let resultados = 0;
+      const actions = f.actions ?? [];
+      for (const a of actions) {
+        if (a.action_type === "purchase" || a.action_type === "lead") {
+          resultados += Number(a.value ?? 0);
+        }
+      }
+      // Si no hay purchase/lead pero hay actions totales, usa total
+      if (resultados === 0 && actions.length > 0) {
+        resultados = actions.reduce((s, a) => s + Number(a.value ?? 0), 0);
+      }
+
+      const existing = horaMap.get(hora) ?? { spend: 0, impresiones: 0, resultados: 0 };
+      existing.spend += spend;
+      existing.impresiones += impresiones;
+      existing.resultados += resultados;
+      horaMap.set(hora, existing);
+    }
+
+    // Insertar 24 filas con SQL directo (no depende del tipo generado de Prisma)
+    for (const [hora, datos] of horaMap.entries()) {
+      await tx.$executeRaw`
+        INSERT INTO meta_ads_horarios (org_id, hora, spend, impresiones, resultados, created_at, updated_at)
+        VALUES (${orgId}, ${hora}, ${datos.spend}, ${datos.impresiones}, ${datos.resultados}, now(), now())
+      `;
     }
 
     await tx.metaAdsConexion.update({ where: { id: conexion.id }, data: { sincronizadoAt: new Date(), sincronizandoAt: null } });
@@ -143,6 +218,25 @@ export async function listarInsightsRango(orgId: bigint, adId: string, desde: st
       ctr: Number(fila.ctr),
       cpa: Number(fila.cpa),
       impresiones: fila.impresiones,
+    }));
+  });
+}
+
+/** Obtiene snapshots horarios (0-23) para una organización. */
+export async function listarHorariosOrg(orgId: bigint): Promise<Array<{ hora: number; spend: number; impresiones: number; resultados: number }>> {
+  const conexion = await obtenerConexionPorOrg(orgId);
+  if (!conexion) return [];
+  return transaccionTenant(orgId, async (tx) => {
+    const raw = await tx.$queryRaw<
+      Array<{ hora: number; spend: string; impresiones: number; resultados: number }>
+    >`
+      SELECT hora, spend, impresiones, resultados FROM meta_ads_horarios WHERE org_id = ${orgId} ORDER BY hora ASC
+    `;
+    return raw.map((f) => ({
+      hora: f.hora,
+      spend: Number(f.spend),
+      impresiones: f.impresiones,
+      resultados: f.resultados,
     }));
   });
 }
