@@ -42,6 +42,7 @@ export function MetaAdsDashboard() {
   const [cargandoCuentas, setCargandoCuentas] = useState(true);
   const [seleccionando, setSeleccionando] = useState(false);
   const [errorSeleccion, setErrorSeleccion] = useState("");
+  const [errorCuentas, setErrorCuentas] = useState("");
 
   async function elegirCuenta(adAccountId: string) {
     setSeleccionando(true);
@@ -81,9 +82,25 @@ export function MetaAdsDashboard() {
     const control = new AbortController();
     fetch("/api/meta-ads/cuenta", { signal: control.signal, cache: "no-store" })
       .then(async (res) => {
-        if (!res.ok) return;
+        if (!res.ok) {
+          try {
+            const body = await res.json();
+            if (body.error) {
+              setErrorCuentas(body.error || "Error al obtener las cuentas publicitarias");
+            } else {
+              setErrorCuentas("No se pudo obtener la lista de cuentas publicitarias");
+            }
+            return;
+          } catch {
+            setErrorCuentas("Error al obtener la lista de cuentas publicitarias");
+            return;
+          }
+        }
         const resultado = await res.json() as { cuentas?: CuentaPublicitaria[] };
-        if (!control.signal.aborted && Array.isArray(resultado.cuentas)) setCuentas(resultado.cuentas);
+        if (!control.signal.aborted && Array.isArray(resultado.cuentas)) {
+          setCuentas(resultado.cuentas);
+          setErrorCuentas("");
+        }
       })
       .catch(() => { /* fallback a conexión existente */ })
       .finally(() => { if (!control.signal.aborted) setCargandoCuentas(false); });
@@ -252,6 +269,8 @@ export function MetaAdsDashboard() {
           ) : null}
           {cargandoCuentas ? (
             <p className="text-sm text-muted-foreground">Cargando cuentas…</p>
+          ) : errorCuentas ? (
+            <p role="alert" className="text-sm text-destructive">{errorCuentas}</p>
           ) : cuentas.length === 0 ? (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">No se encontraron cuentas publicitarias en tu cuenta de Meta.</p>

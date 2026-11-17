@@ -136,7 +136,6 @@ export async function revocarTokenMetaAds(accessTokenEncrypted: string) {
  */
 export async function tokenMetaAds(orgId: bigint, conexion: { id: bigint; adAccountId: string; accessTokenEncrypted: string; refreshTokenEncrypted: string | null; tokenExpiraAt: Date | null }) {
   if (!conexion.tokenExpiraAt || conexion.tokenExpiraAt.getTime() > Date.now() + 60_000) return descifrarCredencialPago(conexion.accessTokenEncrypted);
-  if (!conexion.refreshTokenEncrypted) throw new Error("La conexión de Meta requiere autorización nuevamente");
   try {
     const currentToken = descifrarCredencialPago(conexion.accessTokenEncrypted);
     const { access_token, expires_in } = await intercambiarPorTokenLargoVida(currentToken);
