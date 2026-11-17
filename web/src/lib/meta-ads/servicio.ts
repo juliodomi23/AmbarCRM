@@ -89,7 +89,7 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
         if (totalActions > 0) cpa = spend / totalActions;
       }
 
-      const existente = await tx.metaAdsInsight.findFirst({ where: { orgId, adId, fecha: fechaStr } });
+      const existente = await tx.metaAdsInsight.findFirst({ where: { orgId, adId, fecha } });
       if (existente) {
         await tx.metaAdsInsight.update({
           where: { id: existente.id },
@@ -97,7 +97,7 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
         });
         actualizados++;
       } else {
-        await tx.metaAdsInsight.create({ data: { orgId, adId, nombreAnuncio, fecha: fechaStr, spend, ctr, cpa, impresiones } });
+        await tx.metaAdsInsight.create({ data: { orgId, adId, nombreAnuncio, fecha, spend, ctr, cpa, impresiones } });
         creados++;
       }
     }
