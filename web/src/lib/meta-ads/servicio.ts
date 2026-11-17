@@ -23,16 +23,17 @@ export async function obtenerConexionPorOrg(orgId: bigint): Promise<ConexionMeta
 /**
  * Ejecuta la sincronización de insights de Meta Ads para una conexión.
  * Llama a GET /act_<id>/insights con fields=spend,ctr,cpm,actions&level=ad
- * para los últimos 30 días (time_increment=1) y hace upsert diario.
+ * para los últimos ~3 meses (time_increment=1) y hace upsert diario.
+ * Meta paginatea los resultados; el loop sigue paging.next hasta agotar todas las páginas.
  */
 export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string): Promise<{ creados: number; actualizados: number }> {
   const conexion = await obtenerConexionPorOrg(orgId);
   if (!conexion) throw new Error("No hay conexión de Meta Ads activa para esta organización");
   const token = await tokenMetaAds(orgId, conexion);
 
-  // Fecha de corte: últimos 30 días desde hoy (incluyendo hoy).
+  // Fecha de corte: últimos 3 meses (~89 días) desde hoy (incluyendo hoy).
   const hoy = new Date();
-  const desde = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 29);
+  const desde = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 89);
   desde.setHours(0, 0, 0, 0);
   const hasta = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
   hasta.setHours(23, 59, 59, 999);
@@ -42,26 +43,41 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
   url.searchParams.set("level", "ad");
   url.searchParams.set("time_increment", "1");
   url.searchParams.set("time_range", JSON.stringify({ since: desde.toISOString().slice(0, 10), until: hasta.toISOString().slice(0, 10) }));
+  url.searchParams.set("limit", "100");
 
-  const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (!response.ok) throw new Error(`Meta respondió ${response.status} al consultar insights`);
-  const data = await response.json() as {
-    data?: Array<{
-      ad_id?: string;
-      ad_name?: string;
-      date_start?: string;
-      date_stop?: string;
-      spend?: string;
-      impressions?: string;
-      ctr?: string;
-      cost_per_action_type?: Array<{ action_type?: string; value?: string }>;
-      actions?: Array<{ action_type?: string; value?: string }>;
-    }>;
-    error?: { message?: string };
+  type FilaInsight = {
+    ad_id?: string;
+    ad_name?: string;
+    date_start?: string;
+    date_stop?: string;
+    spend?: string;
+    impressions?: string;
+    ctr?: string;
+    cost_per_action_type?: Array<{ action_type?: string; value?: string }>;
+    actions?: Array<{ action_type?: string; value?: string }>;
   };
 
-  if (data.error) throw new Error(data.error.message || "Meta devolvió un error al consultar insights");
-  const filas = data.data ?? [];
+  // Meta pagina los resultados (~25-100 filas por página). Seguimos paging.next
+  // hasta agotar todas las páginas antes de hacer los upserts; si no, el
+  // dashboard se queda con solo la primera página.
+  const filas: FilaInsight[] = [];
+  let siguiente: string | null = url.toString();
+  let paginas = 0;
+
+  while (siguiente) {
+    paginas++;
+    if (paginas > 50) throw new Error("Meta devolvió demasiadas páginas de insights; se detuvo por seguridad");
+    const response = await fetch(siguiente, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) throw new Error(`Meta respondió ${response.status} al consultar insights`);
+    const data = await response.json() as {
+      data?: FilaInsight[];
+      paging?: { next?: string };
+      error?: { message?: string };
+    };
+    if (data.error) throw new Error(data.error.message || "Meta devolvió un error al consultar insights");
+    if (Array.isArray(data.data)) filas.push(...data.data);
+    siguiente = data.paging?.next ?? null;
+  }
 
   let creados = 0; let actualizados = 0;
 
