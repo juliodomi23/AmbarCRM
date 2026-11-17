@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { conModulo } from "@/lib/con-modulo";
-import { obtenerConexionPorOrg } from "@/lib/meta-ads/servicio";
+import { obtenerConexionPorOrg, desconectarMetaAds } from "@/lib/meta-ads/servicio";
 import { tokenMetaAds, guardarConexionMetaAds, listarCuentasPublicitarias } from "@/lib/meta-ads/oauth";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +41,16 @@ export const POST = conModulo("meta_ads", { admin: true }, async (sesion, req: R
     }
     const token = await tokenMetaAds(orgId, conexion);
     await guardarConexionMetaAds(orgId, sesion.userId!, body.adAccountId, token, null, new Date(Date.now() + 5184000 * 1000));
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Error desconocido" }, { status: 500 });
+  }
+});
+
+export const DELETE = conModulo("meta_ads", { admin: true }, async (sesion) => {
+  const orgId = sesion.orgId!;
+  try {
+    await desconectarMetaAds(orgId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Error desconocido" }, { status: 500 });
