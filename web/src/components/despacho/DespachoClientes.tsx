@@ -35,7 +35,7 @@ export function DespachoClientes({
   const [orden, setOrden] = useState("atrasadas");
   const [creando, setCreando] = useState(false);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({ contactoId: "", rfc: "", responsableId: "" });
+  const [form, setForm] = useState({ nombre: "", telefono: "", rfc: "", responsableId: "" });
 
   const visibles = useMemo(() => {
     const texto = busqueda.trim().toLocaleLowerCase("es-MX");
@@ -61,7 +61,7 @@ export function DespachoClientes({
     if (!respuesta.ok) { setError(datos.error ?? "No se pudo crear el cliente"); return; }
     setClientes((lista) => [{ ...datos.cliente, procesos: datos.cliente.procesos ?? [], _count: { actividades: 0 }, actividades: [] }, ...lista]);
     setCreando(false);
-    setForm({ contactoId: "", rfc: "", responsableId: "" });
+    setForm({ nombre: "", telefono: "", rfc: "", responsableId: "" });
   }
 
   return (
@@ -79,10 +79,8 @@ export function DespachoClientes({
 
       {creando && esGestion && (
         <form onSubmit={crear} className="surface grid gap-3 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
-          <Selector label="Contacto" required value={form.contactoId} onChange={(e) => setForm({ ...form, contactoId: e.target.value })}>
-            <option value="">Selecciona…</option>
-            {contactos.map((contacto) => <option key={contacto.id} value={contacto.id}>{contacto.nombre}</option>)}
-          </Selector>
+          <Campo label="Nombre" required value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
+          <Campo label="Teléfono" required type="tel" value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} />
           <Campo label="RFC" value={form.rfc} onChange={(e) => setForm({ ...form, rfc: e.target.value })} maxLength={13} />
           <Selector label="Responsable" value={form.responsableId} onChange={(e) => setForm({ ...form, responsableId: e.target.value })}>
             <option value="">Sin asignar</option>

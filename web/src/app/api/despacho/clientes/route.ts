@@ -32,8 +32,15 @@ export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest) =
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return NextResponse.json({ error: "Datos del cliente inválidos" }, { status: 400 });
   }
-  const contactoId = await referenciaPropia("contacto", body.contactoId);
-  if (!contactoId) return NextResponse.json({ error: "Selecciona un contacto de esta organización" }, { status: 400 });
+  let contactoId = await referenciaPropia("contacto", body.contactoId);
+  if (contactoId === false) return NextResponse.json({ error: "El contacto seleccionado no existe" }, { status: 400 });
+  if (!contactoId) {
+    const nombre = texto(body.nombre);
+    const telefono = texto(body.telefono);
+    if (!nombre || !telefono) return NextResponse.json({ error: "Escribe nombre y teléfono del cliente, o elige un contacto existente" }, { status: 400 });
+    const contacto = await db.contacto.create({ data: { nombre: nombre.slice(0, 160), telefono: telefono.slice(0, 40), fuente: "manual" } });
+    contactoId = contacto.id;
+  }
   const responsableId = await referenciaPropia("usuario", body.responsableId);
   if (responsableId === false) return NextResponse.json({ error: "Responsable no encontrado" }, { status: 400 });
   const rfc = texto(body.rfc).toUpperCase().slice(0, 13) || null;

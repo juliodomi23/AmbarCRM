@@ -1,6 +1,7 @@
 // Prisma devuelve BigInt y Decimal, que no son serializables por defecto a los
 // componentes cliente. Esto los convierte a string/number de forma recursiva.
 export function serializar<T>(valor: T): any {
+  if (valor === undefined) return undefined;
   return JSON.parse(
     JSON.stringify(valor, (_k, v) => {
       if (typeof v === "bigint") return v.toString();
