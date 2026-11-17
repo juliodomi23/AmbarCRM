@@ -38,7 +38,7 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
   hasta.setHours(23, 59, 59, 999);
 
   const url = new URL(`https://graph.facebook.com/v26.0/act_${adAccountId}/insights`);
-  url.searchParams.set("fields", "spend,ctr,cpm,actions,cost_per_action_type");
+  url.searchParams.set("fields", "ad_id,ad_name,impressions,spend,ctr,cpm,actions,cost_per_action_type");
   url.searchParams.set("level", "ad");
   url.searchParams.set("time_increment", "1");
   url.searchParams.set("time_range", JSON.stringify({ since: desde.toISOString().slice(0, 10), until: hasta.toISOString().slice(0, 10) }));
