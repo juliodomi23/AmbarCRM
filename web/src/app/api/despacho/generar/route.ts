@@ -5,7 +5,7 @@ import { conModulo } from "@/lib/con-modulo";
 import { transaccionTenant } from "@/lib/retail-db";
 import { aBigInt } from "@/lib/ids";
 import { exigirGestionDespacho, mesValido, texto, aFecha } from "@/lib/despacho-api";
-import { fechaLimiteDe, periodosDelMes, type Periodicidad } from "@/lib/despacho";
+import { fechaLimiteDe, periodosDelMes, mesDePeriodo, type Periodicidad } from "@/lib/despacho";
 
 export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest) => {
   const bloqueo = await exigirGestionDespacho(sesion);
@@ -35,6 +35,8 @@ export const POST = conModulo("despacho", {}, async (sesion, req: NextRequest) =
       for (const asignacion of cliente.procesos) {
         if (!asignacion.proceso.activo) continue;
         const periodicidad = asignacion.proceso.periodicidad as Periodicidad;
+        const meses = asignacion.meses ?? [];
+        if (meses.length && !meses.includes(mesDePeriodo(mes))) continue;
         const periodos = periodosDelMes(mes, periodicidad);
         for (const plantilla of asignacion.proceso.actividades) {
           for (const periodo of periodos) {

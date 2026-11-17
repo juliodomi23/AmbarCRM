@@ -81,6 +81,11 @@ export function periodosDelMes(mes: string, periodicidad: Periodicidad) {
   return periodos;
 }
 
+/** Mes civil (1-12) de un periodo YYYY-MM o YYYY-MM-DD; sirve para filtrar por `meses` del cliente. */
+export function mesDePeriodo(periodo: string) {
+  return partesTexto(periodo).m;
+}
+
 /** Día límite dentro del periodo; en semanal el límite es el día de la semana (1 = lunes). */
 export function fechaLimiteDe(periodo: string, diaLimite: number, periodicidad: Periodicidad = "mensual") {
   const { y, m } = partesTexto(periodo);

@@ -65,10 +65,16 @@ export const PATCH = conModulo("despacho", {}, async (sesion, req: NextRequest, 
         if (responsableId && !(await tx.usuario.findFirst({ where: { id: responsableId, activo: true }, select: { id: true } }))) {
           return { error: "Responsable del proceso no encontrado", status: 400 } as const;
         }
+        const crudoMeses = (raw as Record<string, unknown>).meses;
+        const meses = Array.isArray(crudoMeses) ? crudoMeses.map((valor) => Number(valor)) : [];
+        if (meses.some((mes) => !Number.isSafeInteger(mes) || mes < 1 || mes > 12)) {
+          return { error: "Los meses del proceso deben ser números entre 1 y 12", status: 400 } as const;
+        }
+        const mesesUnicos = [...new Set(meses)].sort((a, b) => a - b);
         await tx.despachoClienteProceso.upsert({
           where: { orgId_clienteId_procesoId: { orgId: sesion.orgId!, clienteId: id, procesoId } },
-          update: { responsableId, activo: (raw as Record<string, unknown>).activo !== false },
-          create: { clienteId: id, procesoId, responsableId, activo: (raw as Record<string, unknown>).activo !== false },
+          update: { responsableId, activo: (raw as Record<string, unknown>).activo !== false, meses: mesesUnicos },
+          create: { clienteId: id, procesoId, responsableId, activo: (raw as Record<string, unknown>).activo !== false, meses: mesesUnicos },
         });
       }
     }

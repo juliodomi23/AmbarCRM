@@ -2779,6 +2779,7 @@ model DespachoClienteProceso {
   procesoId     BigInt   @map("proceso_id")
   responsableId BigInt?  @map("responsable_id")
   activo        Boolean  @default(true)
+  meses         Int[]    @default([])
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   cliente     DespachoCliente     @relation(fields: [clienteId, orgId], references: [id, orgId], onDelete: Cascade)

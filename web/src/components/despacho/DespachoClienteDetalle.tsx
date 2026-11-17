@@ -6,12 +6,14 @@ import { Badge, Boton, Campo, Selector, tonoEstado } from "@/components/ui";
 import { EmptyState } from "@/components/EmptyState";
 import { etiquetaPeriodicidad } from "@/lib/despacho";
 
+const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
 type Opcion = { id: string; nombre: string };
 type ProcesoCatalogo = { id: string; nombre: string; periodicidad: string; activo: boolean; actividades: { id: string; nombre: string }[] };
 type Cliente = {
   id: string; rfc: string | null; notas: string | null; activo: boolean; version: number; responsableId: string | null;
   contacto: { id: string; nombre: string; telefono: string | null; email: string | null; empresa: string | null };
-  procesos: { id: string; procesoId: string; responsableId: string | null; activo: boolean; proceso: { id: string; nombre: string; periodicidad: string } }[];
+  procesos: { id: string; procesoId: string; responsableId: string | null; activo: boolean; meses: number[]; proceso: { id: string; nombre: string; periodicidad: string } }[];
   actividades: { id: string; titulo: string; estado: string; fechaLimite: string; periodo: string; requiereConfirmacion: boolean; confirmadaAt: string | null }[];
 };
 
@@ -25,20 +27,28 @@ export function DespachoClienteDetalle({
 }) {
   const [cliente, setCliente] = useState(inicial);
   const [form, setForm] = useState({ rfc: inicial.rfc ?? "", notas: inicial.notas ?? "", responsableId: inicial.responsableId ?? "", activo: inicial.activo });
-  const [asignados, setAsignados] = useState(() => new Map(inicial.procesos.map((item) => [item.procesoId, item.responsableId ?? ""])));
+  const [asignados, setAsignados] = useState(() => new Map(inicial.procesos.map((item) => [item.procesoId, { responsableId: item.responsableId ?? "", meses: item.meses ?? [] }])));
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
 
   function alternar(procesoId: string) {
     setAsignados((actual) => {
       const copia = new Map(actual);
-      if (copia.has(procesoId)) copia.delete(procesoId); else copia.set(procesoId, "");
+      if (copia.has(procesoId)) copia.delete(procesoId); else copia.set(procesoId, { responsableId: "", meses: [] });
       return copia;
     });
   }
 
   function cambiarResponsable(procesoId: string, responsableId: string) {
-    setAsignados((actual) => new Map(actual).set(procesoId, responsableId));
+    setAsignados((actual) => new Map(actual).set(procesoId, { ...(actual.get(procesoId) ?? { responsableId: "", meses: [] }), responsableId }));
+  }
+
+  function alternarMes(procesoId: string, mes: number) {
+    setAsignados((actual) => {
+      const actualItem = actual.get(procesoId) ?? { responsableId: "", meses: [] };
+      const meses = actualItem.meses.includes(mes) ? actualItem.meses.filter((m) => m !== mes) : [...actualItem.meses, mes];
+      return new Map(actual).set(procesoId, { ...actualItem, meses });
+    });
   }
 
   async function guardar(evento: React.FormEvent) {
@@ -53,14 +63,14 @@ export function DespachoClienteDetalle({
         notas: form.notas,
         responsableId: form.responsableId || null,
         activo: form.activo,
-        procesos: [...asignados.entries()].map(([procesoId, responsableId]) => ({ procesoId, responsableId: responsableId || null })),
+        procesos: [...asignados.entries()].map(([procesoId, item]) => ({ procesoId, responsableId: item.responsableId || null, meses: item.meses })),
       }),
     });
     const datos = await respuesta.json().catch(() => ({}));
     if (!respuesta.ok) { setError(datos.error ?? "No se pudo guardar"); setGuardando(false); return; }
     setCliente(datos.cliente);
     setForm({ rfc: datos.cliente.rfc ?? "", notas: datos.cliente.notas ?? "", responsableId: datos.cliente.responsableId ?? "", activo: datos.cliente.activo });
-    setAsignados(new Map(datos.cliente.procesos.map((item: Cliente["procesos"][number]) => [item.procesoId, item.responsableId ?? ""])));
+    setAsignados(new Map(datos.cliente.procesos.map((item: Cliente["procesos"][number]) => [item.procesoId, { responsableId: item.responsableId ?? "", meses: item.meses ?? [] }])));
     setGuardando(false);
   }
 
@@ -110,12 +120,28 @@ export function DespachoClienteDetalle({
                     <span className="text-xs font-normal text-muted-foreground">({etiquetaPeriodicidad(proceso.periodicidad)})</span>
                   </label>
                   {activo && (
-                    <div className="mt-2 pl-6">
-                      <Selector label="Responsable del proceso" value={asignados.get(proceso.id) ?? ""} onChange={(e) => cambiarResponsable(proceso.id, e.target.value)} disabled={!esGestion}>
+                    <div className="mt-2 space-y-2 pl-6">
+                      <Selector label="Responsable del proceso" value={asignados.get(proceso.id)?.responsableId ?? ""} onChange={(e) => cambiarResponsable(proceso.id, e.target.value)} disabled={!esGestion}>
                         <option value="">Usar responsable del cliente</option>
                         {usuarios.map((usuario) => <option key={usuario.id} value={usuario.id}>{usuario.nombre}</option>)}
                       </Selector>
-                      <p className="mt-1 text-xs text-muted-foreground">{proceso.actividades.length} actividad(es) en la plantilla</p>
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">Meses en que aplica</span>
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          {MESES.map((nombreMes, indice) => {
+                            const mes = indice + 1;
+                            const marcado = (asignados.get(proceso.id)?.meses ?? []).includes(mes);
+                            return (
+                              <label key={mes} className="flex items-center gap-1 text-xs text-foreground">
+                                <input type="checkbox" checked={marcado} onChange={() => alternarMes(proceso.id, mes)} disabled={!esGestion} />
+                                {nombreMes}
+                              </label>
+                            );
+                          })}
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">Sin meses marcados = aplica todos los meses según la periodicidad del proceso.</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{proceso.actividades.length} actividad(es) en la plantilla</p>
                     </div>
                   )}
                 </div>
