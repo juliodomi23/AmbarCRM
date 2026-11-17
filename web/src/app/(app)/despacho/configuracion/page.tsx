@@ -14,7 +14,7 @@ export default async function DespachoConfiguracionPage() {
   const sesion = await getSesion();
   const [procesos, usuarios, modulo] = await Promise.all([
     db.despachoProceso.findMany({
-      include: { actividades: { orderBy: [{ orden: "asc" }, { id: "asc" }] }, _count: { select: { clientes: true } } },
+      include: { actividades: { where: { activo: true }, orderBy: [{ orden: "asc" }, { id: "asc" }] }, _count: { select: { clientes: true } } },
       orderBy: [{ activo: "desc" }, { nombre: "asc" }],
     }),
     db.usuario.findMany({ where: { activo: true }, select: { id: true, nombre: true, email: true }, orderBy: { nombre: "asc" } }),

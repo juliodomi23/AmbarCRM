@@ -73,7 +73,7 @@ export const PATCH = conModulo("despacho", {}, async (sesion, req: NextRequest, 
     return {
       proceso: await tx.despachoProceso.findUnique({
         where: { id },
-        include: { actividades: { orderBy: [{ orden: "asc" }, { id: "asc" }] } },
+        include: { actividades: { where: { activo: true }, orderBy: [{ orden: "asc" }, { id: "asc" }] } },
       }),
     } as const;
   });

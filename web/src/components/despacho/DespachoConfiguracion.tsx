@@ -154,7 +154,7 @@ export function DespachoConfiguracion({ iniciales, usuarios, permisosIniciales, 
                   <div key={indice} className="flex flex-wrap items-end gap-2">
                     <Campo label="Actividad" value={actividad.nombre} onChange={(e) => setNuevo({ ...nuevo, actividades: nuevo.actividades.map((item, i) => i === indice ? { ...item, nombre: e.target.value } : item) })} />
                     <Campo label="Día límite" type="number" min={1} max={31} value={actividad.diaLimite} onChange={(e) => setNuevo({ ...nuevo, actividades: nuevo.actividades.map((item, i) => i === indice ? { ...item, diaLimite: Number(e.target.value) } : item) })} />
-                    <Campo label="Peso" type="number" min={1} max={100} value={actividad.peso ?? 1} onChange={(e) => setNuevo({ ...nuevo, actividades: nuevo.actividades.map((item, i) => i === indice ? { ...item, peso: Number(e.target.value) } : item) })} />
+                    <Campo label="Valor" type="number" min={1} max={100} value={actividad.peso ?? 1} onChange={(e) => setNuevo({ ...nuevo, actividades: nuevo.actividades.map((item, i) => i === indice ? { ...item, peso: Number(e.target.value) } : item) })} />
                     <Boton type="button" variante="ghost" onClick={() => setNuevo({ ...nuevo, actividades: nuevo.actividades.filter((_, i) => i !== indice) })}>Quitar</Boton>
                   </div>
                 ))}
@@ -192,12 +192,12 @@ export function DespachoConfiguracion({ iniciales, usuarios, permisosIniciales, 
                   <div key={actividad.id ?? indice} className="flex flex-wrap items-end gap-2">
                     <Campo label="Actividad" value={actividad.nombre} onChange={(e) => actualizarActividad(proceso.id, indice, { nombre: e.target.value })} disabled={!esGestion} />
                     <Campo label="Día límite" type="number" min={1} max={31} value={actividad.diaLimite} onChange={(e) => actualizarActividad(proceso.id, indice, { diaLimite: Number(e.target.value) })} disabled={!esGestion} />
-                    <Campo label="Peso" type="number" min={1} max={100} value={actividad.peso ?? 1} onChange={(e) => actualizarActividad(proceso.id, indice, { peso: Number(e.target.value) })} disabled={!esGestion} />
+                    <Campo label="Valor" type="number" min={1} max={100} value={actividad.peso ?? 1} onChange={(e) => actualizarActividad(proceso.id, indice, { peso: Number(e.target.value) })} disabled={!esGestion} />
                     {esGestion && <Boton variante="ghost" onClick={() => actualizar(proceso.id, { actividades: proceso.actividades.filter((_, i) => i !== indice) })}>Quitar</Boton>}
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">El peso define cuánto vale cada actividad en el % de avance; una actividad con peso 3 pesa el triple que una con peso 1.</p>
+              <p className="text-xs text-muted-foreground">El valor define cuánto vale cada actividad en el % de avance; una actividad con valor 3 pesa el triple que una con valor 1.</p>
               {esGestion && (
                 <div className="flex flex-wrap gap-2">
                   <Boton variante="ghost" onClick={() => actualizar(proceso.id, { actividades: [...proceso.actividades, { ...VACIA }] })}>Agregar actividad</Boton>
