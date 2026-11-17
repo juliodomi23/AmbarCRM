@@ -344,6 +344,8 @@ model Org {
   eventosFactura   EventoFactura[]
   calendariosConectados CalendarioConectado[]
   eventosCalendario EventoCalendario[]
+  metaAdsConexiones MetaAdsConexion[]
+  metaAdsInsights   MetaAdsInsight[]
 
   @@map("orgs")
 }
@@ -1156,6 +1158,53 @@ model EventoCalendario {
   @@index([orgId, citaId])
   @@index([orgId, estado, updatedAt])
   @@map("eventos_calendario")
+}
+
+/// Conexion de una organizacion con su cuenta publicitaria de Meta (Fase 2, ads_read).
+/// Una organizacion tiene como maximo una conexion. El token se guarda cifrado
+/// (mismo esquema que calendarios_conectados / credenciales_pago).
+model MetaAdsConexion {
+  id                     BigInt   @id @default(autoincrement())
+  orgId                  BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  adAccountId            String   @map("ad_account_id") // id de la cuenta publicitaria SIN prefijo "act_" (el servicio lo antepone al consultar insights)
+  accessTokenEncrypted   String   @map("access_token_encrypted")
+  refreshTokenEncrypted  String?  @map("refresh_token_encrypted")
+  tokenExpiraAt          DateTime? @map("token_expira_at") @db.Timestamptz(6)
+  estado                 String   @default("activa") // activa | requiere_reconectar | revocada
+  ultimoError            String?  @map("ultimo_error")
+  sincronizadoAt         DateTime? @map("sincronizado_at") @db.Timestamptz(6)
+  sincronizandoAt        DateTime? @map("sincronizando_at") @db.Timestamptz(6)
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  org   Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId])
+  @@unique([id, orgId])
+  @@index([orgId, estado])
+  @@map("meta_ads_conexiones")
+}
+
+/// Snapshot diario de rendimiento de un anuncio (Fase 2). Una fila por
+/// organizacion + anuncio + fecha. No acumulativo: fecha = dia del snapshot.
+model MetaAdsInsight {
+  id             BigInt   @id @default(autoincrement())
+  orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  adId           String   @map("ad_id")
+  nombreAnuncio  String   @map("nombre_anuncio")
+  fecha          DateTime @db.Date
+  spend          Decimal  @default(0) @db.Decimal(12, 2)
+  ctr            Decimal  @default(0) @db.Decimal(8, 4) // porcentaje (9.87)
+  cpa            Decimal  @default(0) @db.Decimal(12, 2) // costo por accion/resultado
+  impresiones    Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  org   Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, adId, fecha])
+  @@index([orgId, fecha])
+  @@map("meta_ads_insights")
 }
 
 model Doctor {
