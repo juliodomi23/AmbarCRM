@@ -81,6 +81,9 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
 
   let creados = 0; let actualizados = 0;
 
+  // 89 días x varios anuncios activos son cientos de filas: un findFirst + create/update
+  // por fila (2 queries secuenciales) revienta el timeout por default de la transacción
+  // interactiva de Prisma (5s). upsert() es 1 query por fila, y le damos margen igual.
   await transaccionTenant(orgId, async (tx) => {
     for (const fila of filas) {
       const adId = fila.ad_id ?? "";
@@ -105,21 +108,16 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
         if (totalActions > 0) cpa = spend / totalActions;
       }
 
-      const existente = await tx.metaAdsInsight.findFirst({ where: { orgId, adId, fecha } });
-      if (existente) {
-        await tx.metaAdsInsight.update({
-          where: { id: existente.id },
-          data: { nombreAnuncio, spend, ctr, cpa, impresiones, updatedAt: new Date() },
-        });
-        actualizados++;
-      } else {
-        await tx.metaAdsInsight.create({ data: { orgId, adId, nombreAnuncio, fecha, spend, ctr, cpa, impresiones } });
-        creados++;
-      }
+      await tx.metaAdsInsight.upsert({
+        where: { orgId_adId_fecha: { orgId, adId, fecha } },
+        update: { nombreAnuncio, spend, ctr, cpa, impresiones, updatedAt: new Date() },
+        create: { orgId, adId, nombreAnuncio, fecha, spend, ctr, cpa, impresiones },
+      });
+      creados++;
     }
 
     await tx.metaAdsConexion.update({ where: { id: conexion.id }, data: { sincronizadoAt: new Date(), sincronizandoAt: null } });
-  });
+  }, { timeout: 120_000, maxWait: 10_000 });
 
   return { creados, actualizados };
 }
