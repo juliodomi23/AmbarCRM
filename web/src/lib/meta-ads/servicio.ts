@@ -670,16 +670,53 @@ export async function obtenerCreativoAnuncio(orgId: bigint, adId: string): Promi
     if (!conexion) return null;
     const token = await tokenMetaAds(orgId, conexion);
     const url = new URL(`https://graph.facebook.com/v26.0/${encodeURIComponent(adId)}`);
-    url.searchParams.set("fields", "creative{thumbnail_url,image_url,video_id,body,title}");
+    url.searchParams.set("fields", "creative{thumbnail_url,image_url,video_id,body,title,image_hash,object_story_spec{link_data{child_attachments{image_hash}}}}");
     const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!response.ok) return null;
     const data = await response.json() as {
-      creative?: { thumbnail_url?: string; image_url?: string; video_id?: string; body?: string; title?: string };
+      creative?: { 
+        thumbnail_url?: string; 
+        image_url?: string; 
+        video_id?: string; 
+        body?: string; 
+        title?: string; 
+        image_hash?: string;
+        object_story_spec?: { 
+          link_data?: { 
+            child_attachments?: { 
+              image_hash?: string; 
+            }[] 
+          } 
+        } 
+      };
     };
     if (!data.creative) return null;
     const c = data.creative;
+
+    // Busca image_hash: primero en carrusel (child_attachments), luego a nivel creativo
+    const carruselHash = c.object_story_spec?.link_data?.child_attachments?.[0]?.image_hash;
+    const hashDirecto = c.image_hash;
+    const imageHash = carruselHash ?? hashDirecto;
+
+    // Si hay image_hash, resuélvelo contra adimages (URL real de alta resolución)
+    let resolvedImageUrl: string | null = null;
+    if (imageHash) {
+      try {
+        const adImagesUrl = new URL(`https://graph.facebook.com/v26.0/act_${encodeURIComponent(conexion.adAccountId)}/adimages`);
+        adImagesUrl.searchParams.set("hashes", JSON.stringify([imageHash]));
+        adImagesUrl.searchParams.set("fields", "hash,url");
+        const imgRes = await fetch(adImagesUrl, { headers: { Authorization: `Bearer ${token}` } });
+        if (imgRes.ok) {
+          const imgData = await imgRes.json() as { data?: { hash: string; url: string }[] };
+          resolvedImageUrl = imgData?.data?.[0]?.url ?? null;
+        }
+      } catch {
+        // Si falla la resolución, seguimos con lo que tengamos
+      }
+    }
+
     const creativo: CreativoAnuncio = {
-      imageUrl: c.image_url ?? null,
+      imageUrl: c.image_url ?? resolvedImageUrl ?? c.thumbnail_url ?? null,
       thumbnailUrl: c.thumbnail_url ?? null,
       videoId: c.video_id ?? null,
       body: c.body ?? null,
