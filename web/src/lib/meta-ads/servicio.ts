@@ -896,30 +896,16 @@ export async function obtenerCreativoAnuncio(orgId: bigint, clienteId: bigint, a
       }
     }
 
-    // Para anuncios de video, el thumbnail_url que regresa el creativo es chiquito.
-    // Se pide el edge /thumbnails del video y se usa el de mayor resolución.
-    let resolvedVideoThumbnail: string | null = null;
-    if (c.video_id) {
-      try {
-        const thumbsUrl = new URL(`https://graph.facebook.com/v26.0/${encodeURIComponent(c.video_id)}/thumbnails`);
-        thumbsUrl.searchParams.set("fields", "uri,height,width");
-        const thumbsRes = await fetch(thumbsUrl, { headers: { Authorization: `Bearer ${token}` } });
-        if (thumbsRes.ok) {
-          const thumbsData = await thumbsRes.json() as { data?: { uri: string; height: number; width: number }[] };
-          const candidates = thumbsData?.data ?? [];
-          if (candidates.length > 0) {
-            resolvedVideoThumbnail = candidates.reduce((best, current) =>
-              (current.height * current.width) > (best.height * best.width) ? current : best,
-            ).uri ?? null;
-          }
-        }
-      } catch {
-        // Si falla la resolución de thumbnails, seguimos sin romper nada
-      }
-    }
+    // El edge /{video_id}/thumbnails requiere un permiso de video que esta app
+    // no tiene (solo ads_read/ads_management): Meta siempre responde
+    // "(#10) Application does not have permission for this action". thumbnail_width/
+    // thumbnail_height tampoco cambian nada: el thumbnail_url del creativo siempre
+    // viene fijo en 64x64 para anuncios de video. No hay forma de pedir uno más
+    // grande con los permisos actuales; el frontend compensa mostrándolo sin
+    // estirarlo (ver MetaAdsDashboard.tsx).
 
     const creativo: CreativoAnuncio = {
-      imageUrl: resolvedImageUrl ?? resolvedVideoThumbnail ?? c.image_url ?? c.thumbnail_url ?? null,
+      imageUrl: resolvedImageUrl ?? c.image_url ?? c.thumbnail_url ?? null,
       thumbnailUrl: c.thumbnail_url ?? null,
       videoId: c.video_id ?? null,
       body: c.body ?? null,

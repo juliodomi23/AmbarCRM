@@ -1493,12 +1493,33 @@ async function buscarTendencia() {
                 </p>
                 <div>
                   {detalle?.creativo && (detalle.creativo.imageUrl || detalle.creativo.thumbnailUrl) ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={detalle.creativo.imageUrl || detalle.creativo.thumbnailUrl || undefined}
-                      alt="Vista previa del anuncio"
-                      className="max-h-48 w-full rounded-lg border border-border object-cover"
-                    />
+                    detalle.creativo.videoId ? (
+                      // Anuncios de video: Meta solo da un thumbnail de 64x64 (sin permiso
+                      // para pedir uno más grande). Estirarlo con object-cover se ve pixeleado;
+                      // en vez de eso se usa de fondo borroso y se muestra completo sin recortar.
+                      <div className="relative max-h-48 w-full overflow-hidden rounded-lg border border-border">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={detalle.creativo.imageUrl || detalle.creativo.thumbnailUrl || undefined}
+                          alt=""
+                          aria-hidden="true"
+                          className="absolute inset-0 h-full w-full scale-110 object-cover blur-xl brightness-75"
+                        />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={detalle.creativo.imageUrl || detalle.creativo.thumbnailUrl || undefined}
+                          alt="Vista previa del anuncio (video)"
+                          className="relative mx-auto block max-h-48 w-auto object-contain"
+                        />
+                      </div>
+                    ) : (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={detalle.creativo.imageUrl || detalle.creativo.thumbnailUrl || undefined}
+                        alt="Vista previa del anuncio"
+                        className="max-h-48 w-full rounded-lg border border-border object-cover"
+                      />
+                    )
                   ) : detalle?.creativo ? (
                     <p className="text-xs text-muted-foreground">Vista previa no disponible</p>
                   ) : detalleCargando ? (
