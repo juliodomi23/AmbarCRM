@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Badge, Boton, EncabezadoPagina } from "@/components/ui";
 import { KpiCard } from "@/components/DashboardVisuals";
-import { veredictoDeAnuncio, ctrPortafolio, type DatosVeredicto, type VeredictoAnuncio } from "@/lib/meta-ads/veredicto";
+import { veredictoDeAnuncio, ctrPortafolio, reglasDeOrganizacion, REGLAS_VEREDICTO, type VeredictoAnuncio } from "@/lib/meta-ads/veredicto";
 import { ACCIONES_RESULTADO, ACCION_RESULTADO_POR_DEFECTO } from "@/lib/meta-ads/resultados";
 
 const VEREDICTO_TONO_MAP: Record<"cara" | "fatiga" | "estrella" | "revivir" | "normal", "destructive" | "warning" | "success" | "neutral"> = {
@@ -55,6 +55,8 @@ type ConexionData = {
   sincronizadoAt?: string | null;
   ultimoError?: string | null;
   accionResultado?: string | null;
+  cpaMaximo?: number | null;
+  cpaObjetivo?: number | null;
 } | null;
 
 type RespuestaDashboard = { connection: ConexionData; insights: InsightData[] };
@@ -259,6 +261,11 @@ export function MetaAdsDashboard() {
   const [guardandoAccion, setGuardandoAccion] = useState(false);
   const [errorAccion, setErrorAccion] = useState("");
   const [mensajeAccion, setMensajeAccion] = useState("");
+  const [cpaMaximoInput, setCpaMaximoInput] = useState(String(REGLAS_VEREDICTO.maxCostPerResult));
+  const [cpaObjetivoInput, setCpaObjetivoInput] = useState(String(REGLAS_VEREDICTO.targetCostPerResult));
+  const [guardandoUmbrales, setGuardandoUmbrales] = useState(false);
+  const [errorUmbrales, setErrorUmbrales] = useState("");
+  const [mensajeUmbrales, setMensajeUmbrales] = useState("");
 
   async function elegirCuenta(adAccountId: string) {
     setSeleccionando(true);
@@ -343,6 +350,40 @@ export function MetaAdsDashboard() {
     }
   }
 
+  async function guardarUmbrales() {
+    const cpaMaximo = Number(cpaMaximoInput);
+    const cpaObjetivo = Number(cpaObjetivoInput);
+    if (!Number.isFinite(cpaMaximo) || !Number.isFinite(cpaObjetivo) || cpaMaximo <= 0 || cpaObjetivo <= 0) {
+      setErrorUmbrales("Los dos montos deben ser números mayores a cero.");
+      setMensajeUmbrales("");
+      return;
+    }
+    if (cpaObjetivo >= cpaMaximo) {
+      setErrorUmbrales("El monto barato debe ser menor que el monto caro.");
+      setMensajeUmbrales("");
+      return;
+    }
+    setGuardandoUmbrales(true);
+    setErrorUmbrales("");
+    setMensajeUmbrales("");
+    try {
+      const res = await fetch("/api/meta-ads", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ umbrales: { cpaMaximo, cpaObjetivo } }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudieron guardar los montos");
+      setMensajeUmbrales("Guardado. Los veredictos ya se recalculan con estos montos.");
+      // Es cálculo local: basta releer la configuración, sin volver a llamar a Meta.
+      setRefresco((valor) => valor + 1);
+    } catch (e) {
+      setErrorUmbrales(e instanceof Error ? e.message : "Error al guardar los montos");
+    } finally {
+      setGuardandoUmbrales(false);
+    }
+  }
+
   async function buscarTendencia() {
     setTendenciaCargando(true);
     setTendenciaError("");
@@ -382,6 +423,13 @@ export function MetaAdsDashboard() {
     const valor = datos?.connection?.accionResultado;
     if (valor) setAccionResultado(valor);
   }, [datos?.connection?.accionResultado]);
+
+  useEffect(() => {
+    const maximo = datos?.connection?.cpaMaximo;
+    const objetivo = datos?.connection?.cpaObjetivo;
+    if (typeof maximo === "number" && maximo > 0) setCpaMaximoInput(String(maximo));
+    if (typeof objetivo === "number" && objetivo > 0) setCpaObjetivoInput(String(objetivo));
+  }, [datos?.connection?.cpaMaximo, datos?.connection?.cpaObjetivo]);
 
   useEffect(() => {
     const control = new AbortController();
@@ -496,6 +544,9 @@ export function MetaAdsDashboard() {
     resultados: a.cpa > 0 ? a.gasto / a.cpa : 0,
   })));
 
+  // Umbrales que configuró la organización; si no hay, se usan los defaults del módulo.
+  const reglasVeredicto = reglasDeOrganizacion(conexion?.cpaMaximo, conexion?.cpaObjetivo);
+
   // Agrupa por ad y calcula veredicto
   const ranking = [...porAnuncioValues].map((a) => ({
     ...a,
@@ -508,7 +559,7 @@ export function MetaAdsDashboard() {
       cpa: a.cpa,
       activo: true,
       resultados: a.cpa > 0 ? a.gasto / a.cpa : 0,
-    }),
+    }, reglasVeredicto),
   })).sort((a, b) => b.ctr - a.ctr);
   const mejor = ranking[0] ?? null;
   const peor = ranking[ranking.length - 1] ?? null;
@@ -598,8 +649,8 @@ export function MetaAdsDashboard() {
         </div>
       ) : !necesitaSeleccion ? (
         <>
-          {tab === "resumen" && (
-            <section className="space-y-5">
+          {(tab === "resumen" || tab === "anuncios") && (
+            <section className="space-y-3" aria-label="Período de los datos">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-muted-foreground">Período:</span>
                 {PERIODOS.map((p) => (
@@ -642,6 +693,10 @@ export function MetaAdsDashboard() {
                   </div>
                 </div>
               )}
+            </section>
+          )}
+          {tab === "resumen" && (
+            <section className="space-y-5">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label={`Resumen de ${etiquetaPeriodo}`}>
                 <KpiCard
                   titulo="Gasto"
@@ -723,12 +778,12 @@ export function MetaAdsDashboard() {
                 <p className="text-sm text-muted-foreground">Aún no hay gasto registrado.</p>
               ) : (
                 <div className="overflow-x-auto pb-1">
-                  <div className="flex items-end gap-1.5" role="img" aria-label={periodo === "3m" ? "Gráfica de gasto semanal" : "Gráfica de gasto diario"}>
+                  <div className="flex w-max min-w-full items-end justify-center gap-1.5" role="img" aria-label={periodo === "3m" ? "Gráfica de gasto semanal" : "Gráfica de gasto diario"}>
                     {gastoPorDia.map((barra) => (
-                      <div key={barra.clave} className={`group flex ${periodo === "3m" ? "min-w-[88px]" : "min-w-[34px]"} flex-1 flex-col items-center`} title={barra.detalle}>
+                      <div key={barra.clave} className={`group flex shrink-0 flex-col items-center ${periodo === "3m" ? "w-[92px]" : "w-9"}`} title={barra.detalle}>
                         <div className="relative flex h-40 w-full items-end justify-center">
                           <span className="pointer-events-none absolute top-0 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium text-background group-hover:block">{dinero(barra.valor)}</span>
-                          <div className="w-full max-w-[42px] rounded-t bg-primary/80 transition group-hover:bg-primary" style={{ height: `${Math.max(3, (barra.valor / maxDia) * 100)}%` }} />
+                          <div className="w-8 rounded-t bg-primary/80 transition group-hover:bg-primary" style={{ height: `${Math.max(3, (barra.valor / maxDia) * 100)}%` }} />
                         </div>
                         <span className="mt-1 whitespace-nowrap text-center text-[10px] leading-tight text-muted-foreground">{barra.etiqueta}</span>
                       </div>
@@ -970,6 +1025,50 @@ export function MetaAdsDashboard() {
                 <p className="text-xs text-muted-foreground">Se usa para calcular el costo por resultado. Si eliges una, solo contaremos esa; se aplica en la próxima sincronización.</p>
                 {mensajeAccion ? <p className="text-sm text-success">{mensajeAccion}</p> : null}
                 {errorAccion ? <p role="alert" className="text-sm text-destructive">{errorAccion}</p> : null}
+              </div>
+              <div className="space-y-2 text-sm">
+                <p className="font-semibold text-foreground">¿Cuándo un anuncio es bueno o malo?</p>
+                <p className="text-xs text-muted-foreground">
+                  Montos en pesos por cada resultado. Solo cambian cómo se clasifican tus anuncios aquí; no modifican nada en Meta.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label htmlFor="cpa-maximo" className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                    ¿Cuánto es demasiado caro por resultado?
+                    <input
+                      id="cpa-maximo"
+                      type="number"
+                      inputMode="decimal"
+                      min="1"
+                      step="1"
+                      value={cpaMaximoInput}
+                      disabled={guardandoUmbrales}
+                      onChange={(e) => setCpaMaximoInput(e.target.value)}
+                      className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    />
+                  </label>
+                  <label htmlFor="cpa-objetivo" className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                    ¿Cuánto sería un resultado barato?
+                    <input
+                      id="cpa-objetivo"
+                      type="number"
+                      inputMode="decimal"
+                      min="1"
+                      step="1"
+                      value={cpaObjetivoInput}
+                      disabled={guardandoUmbrales}
+                      onChange={(e) => setCpaObjetivoInput(e.target.value)}
+                      className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    />
+                  </label>
+                </div>
+                <Boton variante="primary" className="min-h-10" disabled={guardandoUmbrales} onClick={guardarUmbrales}>
+                  {guardandoUmbrales ? "Guardando…" : "Guardar montos"}
+                </Boton>
+                {mensajeUmbrales ? <p className="text-sm text-success">{mensajeUmbrales}</p> : null}
+                {errorUmbrales ? <p role="alert" className="text-sm text-destructive">{errorUmbrales}</p> : null}
+                <p className="text-xs text-muted-foreground">
+                  Valores por defecto: $60 demasiado caro y $30 como resultado barato. Se aplican al instante, sin volver a sincronizar con Meta.
+                </p>
               </div>
               {conexion?.ultimoError ? (
                 <div className="space-y-1 text-sm">

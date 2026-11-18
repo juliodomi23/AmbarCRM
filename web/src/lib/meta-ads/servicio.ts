@@ -10,7 +10,18 @@ type ConexionMeta = {
   refreshTokenEncrypted: string | null;
   tokenExpiraAt: Date | null;
   accionResultado: AccionResultado | null;
+  /** Umbral de "caro" en MXN por resultado. NULL = default del módulo. */
+  cpaMaximo: number | null;
+  /** Umbral de "resultado barato" en MXN. NULL = default del módulo. */
+  cpaObjetivo: number | null;
 };
+
+/** Convierte un valor crudo de Postgres a número positivo, o NULL si no sirve. */
+function numeroPositivo(valor: string | null | undefined): number | null {
+  if (valor === null || valor === undefined || valor === "") return null;
+  const numero = Number(valor);
+  return Number.isFinite(numero) && numero > 0 ? numero : null;
+}
 
 export async function obtenerConexionPorOrg(orgId: bigint): Promise<ConexionMeta | null> {
   return transaccionTenant(orgId, async (tx) => {
@@ -19,9 +30,16 @@ export async function obtenerConexionPorOrg(orgId: bigint): Promise<ConexionMeta
     });
     if (!conexion) return null;
     // Se lee con to_jsonb para que una BD todavía sin la migración no rompa la consulta:
-    // si la columna no existe, simplemente devuelve NULL y se usa el orden canónico.
-    const [config] = await tx.$queryRaw<Array<{ accion_resultado: string | null }>>`
-      SELECT to_jsonb(c)->>'accion_resultado' AS accion_resultado
+    // si la columna no existe, simplemente devuelve NULL y se usa el valor por defecto.
+    const [config] = await tx.$queryRaw<Array<{
+      accion_resultado: string | null;
+      cpa_maximo: string | null;
+      cpa_objetivo: string | null;
+    }>>`
+      SELECT
+        to_jsonb(c)->>'accion_resultado' AS accion_resultado,
+        to_jsonb(c)->>'cpa_maximo' AS cpa_maximo,
+        to_jsonb(c)->>'cpa_objetivo' AS cpa_objetivo
       FROM meta_ads_conexiones c
       WHERE c.id = ${conexion.id}
     `;
@@ -33,6 +51,8 @@ export async function obtenerConexionPorOrg(orgId: bigint): Promise<ConexionMeta
       refreshTokenEncrypted: conexion.refreshTokenEncrypted ?? null,
       tokenExpiraAt: conexion.tokenExpiraAt ?? null,
       accionResultado,
+      cpaMaximo: numeroPositivo(config?.cpa_maximo),
+      cpaObjetivo: numeroPositivo(config?.cpa_objetivo),
     };
   });
 }
@@ -84,9 +104,12 @@ function valorResultadoCanonico(
  * para los últimos ~3 meses (time_increment=1) y hace upsert diario.
  * Meta paginatea los resultados; el loop sigue paging.next hasta agotar todas las páginas.
  *
- * Además hace dos llamadas de desglose:
+ * Además hace una llamada extra de desglose:
  * - breakdowns=hourly_stats_aggregated_by_advertiser_time_zone (gasto/resultados por hora).
- * - breakdowns=day_of_week (gasto/resultados por día de la semana).
+ *
+ * El desglose por día de la semana NO se pide a Meta (day_of_week no es un
+ * breakdown válido en esta versión de la API): se deriva de las filas diarias,
+ * que ya traen fecha por anuncio.
  */
 export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string): Promise<{ creados: number; actualizados: number }> {
   const conexion = await obtenerConexionPorOrg(orgId);
@@ -176,45 +199,17 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
     siguienteHora = data.paging?.next ?? null;
   }
 
-  // ---------- 3. Desglose por día de la semana (breakdowns=day_of_week) ----------
-  const urlDia = new URL(`https://graph.facebook.com/v26.0/act_${adAccountId}/insights`);
-  urlDia.searchParams.set("fields", "spend,impressions,actions");
-  urlDia.searchParams.set("breakdowns", "day_of_week");
-  urlDia.searchParams.set("time_range", rango);
-  urlDia.searchParams.set("limit", "100");
-
-  type FilaDia = {
-    day_of_week?: string; // "0" (domingo) ... "6" (sábado)
-    spend?: string;
-    impressions?: string;
-    actions?: Array<{ action_type?: string; value?: string }>;
-  };
-
-  const filasDia: FilaDia[] = [];
-  let siguienteDia: string | null = urlDia.toString();
-  let paginasDia = 0;
-
-  while (siguienteDia) {
-    paginasDia++;
-    if (paginasDia > 50) throw new Error("Meta devolvió demasiadas páginas de insights por día; se detuvo por seguridad");
-    const response = await fetch(siguienteDia, { headers: { Authorization: `Bearer ${token}` } });
-    if (!response.ok) throw new Error(`Meta respondió ${response.status} al consultar insights por día de la semana`);
-    const data = await response.json() as {
-      data?: FilaDia[];
-      paging?: { next?: string };
-      error?: { message?: string };
-    };
-    if (data.error) throw new Error(data.error.message || "Meta devolvió un error al consultar insights por día de la semana");
-    if (Array.isArray(data.data)) filasDia.push(...data.data);
-    siguienteDia = data.paging?.next ?? null;
-  }
-
-  // ---------- 4. Upsert diario + reemplazo de desgloses ----------
+  // ---------- 3. Upsert diario + reemplazo de desgloses ----------
   let creados = 0; let actualizados = 0;
 
   await transaccionTenant(orgId, async (tx) => {
-    // 4a. Upsert insights diarios (SQL directo para no depender del cliente generado
-    // cuando las columnas reach/cpm son nuevas).
+    // 3a. Upsert insights diarios (SQL directo para no depender del cliente generado
+    // cuando las columnas reach/cpm son nuevas). De paso se acumula el día de la semana.
+    const diaMap = new Map<number, { spend: number; impresiones: number; resultados: number }>();
+    for (let d = 0; d <= 6; d++) diaMap.set(d, { spend: 0, impresiones: 0, resultados: 0 });
+    // Evita contar dos veces si Meta repitiera la misma fila anuncio+fecha.
+    const diasVistos = new Set<string>();
+
     for (const fila of filas) {
       const adId = fila.ad_id ?? "";
       const nombreAnuncio = fila.ad_name ?? "";
@@ -229,14 +224,25 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
       const reach = fila.reach ? Number(fila.reach) : 0;
       const ctr = fila.ctr ? Number(fila.ctr) : 0;
       const cpm = fila.cpm ? Number(fila.cpm) : (impresiones > 0 ? (spend / impresiones) * 1000 : 0);
+      // Una sola métrica canónica por fila: si no hay resultados, es 0 (nunca se suman).
+      const resultadosDia = valorResultadoCanonico(fila.actions, conexion.accionResultado);
 
       let cpa = 0;
       const costoCanonico = valorResultadoCanonico(fila.cost_per_action_type, conexion.accionResultado);
       if (costoCanonico > 0) cpa = costoCanonico;
-      else if (spend > 0) {
-        // Mismo criterio que los desgloses: una sola métrica canónica por fila.
-        const resultadosDia = valorResultadoCanonico(fila.actions, conexion.accionResultado);
-        if (resultadosDia > 0) cpa = spend / resultadosDia;
+      else if (spend > 0 && resultadosDia > 0) cpa = spend / resultadosDia;
+
+      // Día de la semana derivado de la fecha del anuncio (0 = domingo ... 6 = sábado).
+      // Se usa mediodía UTC para que el día no se corra por zona horaria.
+      const dia = new Date(`${fechaStr}T12:00:00Z`).getUTCDay();
+      const claveDia = `${adId}|${fechaStr}`;
+      if (!isNaN(dia) && dia >= 0 && dia <= 6 && !diasVistos.has(claveDia)) {
+        diasVistos.add(claveDia);
+        const acumuladoDia = diaMap.get(dia) ?? { spend: 0, impresiones: 0, resultados: 0 };
+        acumuladoDia.spend += spend;
+        acumuladoDia.impresiones += impresiones;
+        acumuladoDia.resultados += Math.round(resultadosDia);
+        diaMap.set(dia, acumuladoDia);
       }
 
       await tx.$executeRaw`
@@ -257,7 +263,7 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
       creados++;
     }
 
-    // 4b. Reemplazar snapshots horarios (24 filas por org)
+    // 3b. Reemplazar snapshots horarios (24 filas por org)
     await tx.$executeRaw`DELETE FROM meta_ads_horarios WHERE org_id = ${orgId}`;
 
     const horaMap = new Map<number, { spend: number; impresiones: number; resultados: number }>();
@@ -288,28 +294,9 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
       `;
     }
 
-    // 4c. Reemplazar snapshots por día de la semana (7 filas por org)
+    // 3c. Reemplazar snapshots por día de la semana (7 filas por org).
+    // diaMap ya se llenó con las filas diarias; si Meta no trajo datos, quedan 7 filas en cero.
     await tx.$executeRaw`DELETE FROM meta_ads_dias_semana WHERE org_id = ${orgId}`;
-
-    const diaMap = new Map<number, { spend: number; impresiones: number; resultados: number }>();
-    for (let d = 0; d <= 6; d++) diaMap.set(d, { spend: 0, impresiones: 0, resultados: 0 });
-
-    for (const f of filasDia) {
-      const diaStr = f.day_of_week;
-      if (diaStr === undefined || diaStr === null) continue;
-      const dia = parseInt(diaStr, 10);
-      if (isNaN(dia) || dia < 0 || dia > 6) continue;
-
-      const spend = f.spend ? Number(f.spend) : 0;
-      const impresiones = f.impressions ? Number(f.impressions) : 0;
-      const resultados = Math.round(valorResultadoCanonico(f.actions, conexion.accionResultado));
-
-      const existing = diaMap.get(dia) ?? { spend: 0, impresiones: 0, resultados: 0 };
-      existing.spend += spend;
-      existing.impresiones += impresiones;
-      existing.resultados += resultados;
-      diaMap.set(dia, existing);
-    }
 
     for (const [dia, datos] of diaMap.entries()) {
       await tx.$executeRaw`
@@ -470,6 +457,25 @@ export async function guardarAccionResultado(orgId: bigint, accion: AccionResult
     await tx.$executeRaw`
       UPDATE meta_ads_conexiones
       SET accion_resultado = ${accion}, updated_at = now()
+      WHERE org_id = ${orgId}
+    `;
+  });
+}
+
+/**
+ * Guarda los umbrales con los que se clasifican los anuncios (MXN por resultado):
+ * `cpaMaximo` = a partir de aquí es "caro"; `cpaObjetivo` = aquí sería "barato".
+ */
+export async function guardarUmbralesVeredicto(
+  orgId: bigint,
+  umbrales: { cpaMaximo: number; cpaObjetivo: number },
+): Promise<void> {
+  await transaccionTenant(orgId, async (tx) => {
+    await tx.$executeRaw`
+      UPDATE meta_ads_conexiones
+      SET cpa_maximo = ${umbrales.cpaMaximo},
+          cpa_objetivo = ${umbrales.cpaObjetivo},
+          updated_at = now()
       WHERE org_id = ${orgId}
     `;
   });

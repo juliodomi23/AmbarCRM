@@ -3205,6 +3205,11 @@ ALTER TABLE meta_ads_insights ADD COLUMN IF NOT EXISTS cpm DECIMAL(12, 2) NOT NU
 -- NULL = orden canónico por defecto (conversación > compra > lead).
 ALTER TABLE meta_ads_conexiones ADD COLUMN IF NOT EXISTS accion_resultado TEXT;
 
+-- Meta Ads: umbrales de veredicto por organización (MXN por resultado).
+-- NULL = se usan los valores por defecto del módulo (60 = caro, 30 = barato).
+ALTER TABLE meta_ads_conexiones ADD COLUMN IF NOT EXISTS cpa_maximo DECIMAL(12, 2);
+ALTER TABLE meta_ads_conexiones ADD COLUMN IF NOT EXISTS cpa_objetivo DECIMAL(12, 2);
+
 -- Meta Ads: snapshot agregado por día de la semana (0 = domingo ... 6 = sábado).
 -- Se reemplaza completo en cada sync, igual que meta_ads_horarios.
 CREATE TABLE IF NOT EXISTS meta_ads_dias_semana (

@@ -1175,6 +1175,10 @@ model MetaAdsConexion {
   estado                 String   @default("activa") // activa | requiere_reconectar | revocada
   /// Métrica que la organización considera "resultado". NULL = orden canónico por defecto.
   accionResultado        String?  @map("accion_resultado")
+  /// A partir de este costo por resultado (MXN) un anuncio se marca "Caro". NULL = default.
+  cpaMaximo              Decimal? @map("cpa_maximo") @db.Decimal(12, 2)
+  /// Costo por resultado (MXN) que la organización considera barato. NULL = default.
+  cpaObjetivo            Decimal? @map("cpa_objetivo") @db.Decimal(12, 2)
   ultimoError            String?  @map("ultimo_error")
   sincronizadoAt         DateTime? @map("sincronizado_at") @db.Timestamptz(6)
   sincronizandoAt        DateTime? @map("sincronizando_at") @db.Timestamptz(6)

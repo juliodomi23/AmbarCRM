@@ -24,6 +24,8 @@ export const GET = conModulo("meta_ads", {}, async (sesion) => {
       sincronizadoAt: connection.sincronizadoAt?.toISOString?.() ?? null,
       ultimoError: connection.ultimoError,
       accionResultado: config?.accionResultado ?? null,
+      cpaMaximo: config?.cpaMaximo ?? null,
+      cpaObjetivo: config?.cpaObjetivo ?? null,
     },
     insights,
   });

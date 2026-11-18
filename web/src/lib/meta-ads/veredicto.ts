@@ -7,18 +7,46 @@
  * Nada de esto ejecuta acciones en Meta: solo clasifica para mostrar al dueño.
  */
 
-export const REGLAS_VEREDICTO = {
-  /** Costo por resultado por encima de esto se considera "caro". */
-  maxCostPerResult: 60,
+export type ReglasVeredicto = {
+  /** Costo por resultado por encima de esto se considera "caro" (configurable por org). */
+  maxCostPerResult: number;
   /** Gasto mínimo en el rango corto para opinar si sale caro o no. */
-  minSpendToJudge: 150,
-  /** Meta de costo por resultado (para detectar "estrella"). */
-  targetCostPerResult: 30,
+  minSpendToJudge: number;
+  /** Meta de costo por resultado (configurable por org, para detectar "estrella"). */
+  targetCostPerResult: number;
   /** Caída de CTR respecto al portafolio que se considera fatiga. */
-  ctrDropPct: 30,
+  ctrDropPct: number;
   /** Resultados mínimos en el rango largo para sugerir revivir un pausado. */
+  minResultsToRevive: number;
+};
+
+export const REGLAS_VEREDICTO: ReglasVeredicto = {
+  maxCostPerResult: 60,
+  minSpendToJudge: 150,
+  targetCostPerResult: 30,
+  ctrDropPct: 30,
   minResultsToRevive: 10,
-} as const;
+};
+
+/**
+ * Combina los umbrales que el dueño configuró (MXN por resultado) con los
+ * valores por defecto del módulo. Los detalles técnicos (gasto mínimo, caída
+ * de CTR, resultados para revivir) se quedan siempre en su default.
+ *
+ * Sirve igual en cliente y servidor: no toca base de datos.
+ */
+export function reglasDeOrganizacion(
+  cpaMaximo: number | null | undefined,
+  cpaObjetivo: number | null | undefined,
+): ReglasVeredicto {
+  const maximo = typeof cpaMaximo === "number" && Number.isFinite(cpaMaximo) && cpaMaximo > 0 ? cpaMaximo : null;
+  const objetivo = typeof cpaObjetivo === "number" && Number.isFinite(cpaObjetivo) && cpaObjetivo > 0 ? cpaObjetivo : null;
+  return {
+    ...REGLAS_VEREDICTO,
+    ...(maximo !== null ? { maxCostPerResult: maximo } : {}),
+    ...(objetivo !== null ? { targetCostPerResult: objetivo } : {}),
+  };
+}
 
 export type TipoVeredicto = "cara" | "fatiga" | "estrella" | "revivir" | "normal";
 

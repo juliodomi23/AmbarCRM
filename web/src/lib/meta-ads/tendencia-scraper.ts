@@ -61,6 +61,9 @@ async function ejecutarScraping(query: string): Promise<AnuncioTendencia[]> {
     url.searchParams.set("active_status", "active");
     url.searchParams.set("ad_type", "all");
     url.searchParams.set("country", "MX");
+    // Solo Facebook. Verificado contra Ad Library: el parámetro sí aplica el
+    // filtro (la página muestra el chip "Plataforma: Facebook" y cambia el total).
+    url.searchParams.set("publisher_platforms[0]", "facebook");
     url.searchParams.set("q", query);
 
     await page.goto(url.toString(), { waitUntil: "domcontentloaded" });
