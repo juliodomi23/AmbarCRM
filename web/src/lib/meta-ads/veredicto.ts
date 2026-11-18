@@ -53,6 +53,8 @@ export type TipoVeredicto = "cara" | "fatiga" | "estrella" | "revivir" | "normal
 export type VeredictoAnuncio = {
   /** Texto plano, sin emojis, listo para mostrar en un Badge. */
   texto: string;
+  /** Explicación en lenguaje llano de por qué se clasificó así (para el modal). */
+  detalle: string;
   tipo: TipoVeredicto;
   /** Tono del Badge existente del sistema de UI. */
   tono: "destructive" | "warning" | "success" | "neutral";
@@ -69,6 +71,11 @@ export type DatosVeredicto = {
   fechaUltimoDato?: string;
 };
 
+/** Monto corto en pesos, sin decimales innecesarios ("$85", "$85.50"). */
+function pesos(valor: number): string {
+  return `$${valor.toLocaleString("es-MX", { maximumFractionDigits: 2 })}`;
+}
+
 /**
  * Clasifica un anuncio. Prioridad: cara > fatiga > estrella > revivir > normal.
  */
@@ -78,30 +85,55 @@ export function veredictoDeAnuncio(d: DatosVeredicto, reglas = REGLAS_VEREDICTO)
 
   // 1. Cara: gasta suficiente para juzgar y cada resultado sale caro.
   if (d.activo && d.gasto >= reglas.minSpendToJudge && costPerResult !== null && costPerResult > reglas.maxCostPerResult) {
-    return { texto: "Caro", tipo: "cara", tono: "destructive" };
+    return {
+      texto: "Caro",
+      detalle: `cada resultado te sale a ${pesos(costPerResult)}, por encima de tu tope de ${pesos(reglas.maxCostPerResult)}.`,
+      tipo: "cara",
+      tono: "destructive",
+    };
   }
 
   // 2. Fatiga: CTR por debajo del portafolio con suficiente alcance.
   //    (ctrPortafolio se pasa fuera; si no se conoce, se omite esta bandera.)
   if (d.activo && d.impresiones >= 1000 && (d.ctrPortafolio ?? 0) > 0 &&
       d.ctr < (d.ctrPortafolio ?? 0) * (1 - reglas.ctrDropPct / 100)) {
-    return { texto: "Anuncio cansado", tipo: "fatiga", tono: "warning" };
+    return {
+      texto: "Anuncio cansado",
+      detalle: `tu tasa de clic es ${d.ctr.toFixed(2)}% y el promedio de tu cuenta es ${(d.ctrPortafolio ?? 0).toFixed(2)}% con ${d.impresiones.toLocaleString("es-MX")} impresiones: está perdiendo interés.`,
+      tipo: "fatiga",
+      tono: "warning",
+    };
   }
 
   // 3. Estrella: muy barato vs. la meta.
   if (d.activo && costPerResult !== null && costPerResult > 0 &&
       costPerResult <= reglas.targetCostPerResult * 0.7) {
-    return { texto: "Funciona bien", tipo: "estrella", tono: "success" };
+    return {
+      texto: "Funciona bien",
+      detalle: `cada resultado te sale a ${pesos(costPerResult)} y tu meta es ${pesos(reglas.targetCostPerResult)}.`,
+      tipo: "estrella",
+      tono: "success",
+    };
   }
 
   // 4. Revivir: pausado pero rentable en el rango largo.
   //    (Se detecta cuando no hubo datos recientes pero sí resultados previos baratos.)
   if (!d.activo && d.resultados >= reglas.minResultsToRevive && costPerResult !== null &&
       costPerResult <= reglas.targetCostPerResult) {
-    return { texto: "Para volver a encender", tipo: "revivir", tono: "warning" };
+    return {
+      texto: "Para volver a encender",
+      detalle: `estuvo rentable (${pesos(costPerResult)} por resultado) y acumuló ${Math.round(d.resultados)} resultados.`,
+      tipo: "revivir",
+      tono: "warning",
+    };
   }
 
-  return { texto: "Va normal", tipo: "normal", tono: "neutral" };
+  return {
+    texto: "Va normal",
+    detalle: "sin señales de alerta con los datos de este período.",
+    tipo: "normal",
+    tono: "neutral",
+  };
 }
 
 /** CTR promedio del portafolio (anuncios con impresiones), para comparar fatiga. */

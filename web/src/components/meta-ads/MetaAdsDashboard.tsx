@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge, Boton, EncabezadoPagina } from "@/components/ui";
+import { Badge, Boton, EncabezadoPagina, Modal } from "@/components/ui";
 import { KpiCard } from "@/components/DashboardVisuals";
 import { veredictoDeAnuncio, ctrPortafolio, reglasDeOrganizacion, REGLAS_VEREDICTO, type VeredictoAnuncio } from "@/lib/meta-ads/veredicto";
 import { ACCIONES_RESULTADO, ACCION_RESULTADO_POR_DEFECTO } from "@/lib/meta-ads/resultados";
@@ -27,6 +27,29 @@ type InsightData = {
   cpm: number;
   /** Estado real del anuncio en Meta (ACTIVE/PAUSED) al último sync. */
   estadoAnuncio?: "ACTIVE" | "PAUSED" | null;
+};
+
+type DetalleResponse = {
+  adId: string;
+  desde: string;
+  hasta: string;
+  insights: Array<InsightData & { resultados: number }>;
+  totales: { gasto: number; impresiones: number; alcance: number; resultados: number; ctr: number; cpa: number; cpm: number };
+  creativo: { imageUrl: string | null; thumbnailUrl: string | null; videoId: string | null; body: string | null; title: string | null } | null;
+  acciones: Array<{ id: string; accion: string; creadoAt: string; usuarioNombre: string | null }>;
+};
+
+/** Fila del ranking "Míos" con el estado real y el veredicto calculado. */
+type AnuncioRanking = {
+  nombre: string;
+  gasto: number;
+  ctr: number;
+  cpa: number;
+  impresiones: number;
+  adId: string;
+  estado: "ACTIVE" | "PAUSED" | null;
+  fechaEstado: string;
+  veredicto: VeredictoAnuncio;
 };
 
 type HorarioData = {
@@ -271,6 +294,11 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
   const [cambiandoEstadoAnuncio, setCambiandoEstadoAnuncio] = useState<string | null>(null);
   const [errorEstadoAnuncio, setErrorEstadoAnuncio] = useState("");
   const [avisoEstadoAnuncio, setAvisoEstadoAnuncio] = useState("");
+  const [anuncioDetalle, setAnuncioDetalle] = useState<AnuncioRanking | null>(null);
+  const [detalle, setDetalle] = useState<DetalleResponse | null>(null);
+  const [detalleCargando, setDetalleCargando] = useState(false);
+  const [detalleError, setDetalleError] = useState("");
+  const [detalleNonce, setDetalleNonce] = useState(0);
 
   async function elegirCuenta(adAccountId: string) {
     setSeleccionando(true);
@@ -417,6 +445,10 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
             ),
           }
         : prev);
+      // Mantén el modal en sincronía si el anuncio abierto es este.
+      setAnuncioDetalle((prev) => prev && prev.adId === adId ? { ...prev, estado: nuevoEstado } : prev);
+      // Pide el detalle de nuevo para que el historial muestre la acción recién hecha.
+      setDetalleNonce((n) => n + 1);
       setAvisoEstadoAnuncio(`Anuncio ${nuevoEstado === "PAUSED" ? "pausado" : "reanudado"} correctamente.`);
     } catch (e) {
       setErrorEstadoAnuncio(e instanceof Error ? e.message : `No se pudo ${verbo} el anuncio`);
@@ -620,6 +652,37 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
   const etiquetaPeriodo = periodo === "personalizado"
     ? (errorRango ? "personalizado" : `${fechaCorta(desdePersonalizado)} – ${fechaCorta(hastaPersonalizado)}`)
     : ETIQUETA_PERIODO[periodo];
+
+  // Detalle del anuncio abierto en el modal: serie diaria, creativo (al vuelo) y bitácora.
+  useEffect(() => {
+    if (!anuncioDetalle) {
+      setDetalle(null);
+      setDetalleError("");
+      setDetalleCargando(false);
+      return;
+    }
+    const control = new AbortController();
+    setDetalleCargando(true);
+    setDetalleError("");
+    fetch(`/api/meta-ads/anuncios/${encodeURIComponent(anuncioDetalle.adId)}?desde=${encodeURIComponent(inicioIso)}&hasta=${encodeURIComponent(finIso)}`, {
+      cache: "no-store",
+      signal: control.signal,
+    })
+      .then(async (res) => {
+        if (control.signal.aborted) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "No se pudo cargar el detalle del anuncio");
+        setDetalle(data as DetalleResponse);
+      })
+      .catch((e) => {
+        if (control.signal.aborted) return;
+        setDetalleError(e instanceof Error ? e.message : "Error al cargar el detalle del anuncio");
+      })
+      .finally(() => {
+        if (!control.signal.aborted) setDetalleCargando(false);
+      });
+    return () => control.abort();
+  }, [anuncioDetalle, inicioIso, finIso, detalleNonce]);
 
   const horasConResultados = horarios
     .filter((h) => h.resultados > 0)
@@ -908,7 +971,10 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
                         </thead>
                         <tbody className="divide-y divide-border/60">
                           {anunciosFiltrados.map((a) => (
-                            <tr key={a.adId}>
+                            <tr key={a.adId}
+                              onClick={() => setAnuncioDetalle(a)}
+                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setAnuncioDetalle(a); } }}
+                              className="cursor-pointer hover:bg-muted/40 transition bg-muted/0 hover:bg-muted/200 hover:bg-[#fafafa] focus-within:bg-muted/200 outline-none">
                               <td className="py-2 pr-3">
                                 <Badge tono={VEREDICTO_TONO_MAP[a.veredicto.tipo]}>{a.veredicto.texto}</Badge>
                               </td>
@@ -924,7 +990,7 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
                                       variante={a.estado === "ACTIVE" ? "ghost" : "primary"}
                                       className="min-h-9 px-3 py-1.5 text-xs"
                                       disabled={cambiandoEstadoAnuncio === a.adId}
-                                      onClick={() => { if (a.estado) void cambiarEstadoAnuncio(a.adId, a.estado); }}
+                                      onClick={(e) => { e.stopPropagation(); if (a.estado) void cambiarEstadoAnuncio(a.adId, a.estado); }}
                                     >
                                       {cambiandoEstadoAnuncio === a.adId
                                         ? "Guardando…"
@@ -1162,6 +1228,135 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
               </p>
             </section>
           )}
+          {anuncioDetalle ? (
+            <Modal abierto onClose={() => setAnuncioDetalle(null)} titulo={anuncioDetalle.nombre || `Anuncio ${anuncioDetalle.adId}`} ancho="xl">
+              <div className="space-y-4 max-h-[90vh] overflow-y-auto">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tono={anuncioDetalle.estado === "ACTIVE" ? "success" : anuncioDetalle.estado === "PAUSED" ? "warning" : "neutral"} punto>
+                    {anuncioDetalle.estado === "ACTIVE" ? "Activo" : anuncioDetalle.estado === "PAUSED" ? "Pausado" : "Sin estado"}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">ID {anuncioDetalle.adId}</span>
+                </div>
+                <p className="text-sm">
+                  <Badge tono={VEREDICTO_TONO_MAP[anuncioDetalle.veredicto.tipo]}>{anuncioDetalle.veredicto.texto}</Badge>
+                  <span className="ml-2 text-muted-foreground">{anuncioDetalle.veredicto.detalle}</span>
+                </p>
+                <div>
+                  {detalle?.creativo && (detalle.creativo.imageUrl || detalle.creativo.thumbnailUrl) ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={detalle.creativo.imageUrl || detalle.creativo.thumbnailUrl || undefined}
+                      alt="Vista previa del anuncio"
+                      className="max-h-48 w-full rounded-lg border border-border object-cover"
+                    />
+                  ) : detalle?.creativo ? (
+                    <p className="text-xs text-muted-foreground">Vista previa no disponible</p>
+                  ) : detalleCargando ? (
+                    <p className="text-xs text-muted-foreground">Cargando creativo…</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Vista previa no disponible</p>
+                  )}
+                </div>
+                {detalle?.creativo?.body ? <p className="text-sm">{detalle.creativo.body}</p> : null}
+                {detalle?.creativo?.title ? <p className="text-xs font-medium text-foreground">{detalle.creativo.title}</p> : null}
+                {detalleError ? <p role="alert" className="text-sm text-destructive">{detalleError}</p> : null}
+                {detalleCargando ? (
+                  <p className="text-sm text-muted-foreground">Cargando detalle del anuncio…</p>
+                ) : detalle ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      <div>
+                        <span className="text-xs text-muted-foreground">Gasto</span>
+                        <span className="text-sm font-medium">{dinero(detalle.totales.gasto)}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Impresiones</span>
+                        <span className="text-sm font-medium">{detalle.totales.impresiones.toLocaleString("es-MX")}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Alcance</span>
+                        <span className="text-sm font-medium">{detalle.totales.alcance.toLocaleString("es-MX")}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">CTR</span>
+                        <span className="text-sm font-medium">{`${detalle.totales.ctr.toFixed(2)}%`}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">CPA</span>
+                        <span className="text-sm font-medium">{detalle.totales.cpa > 0 ? dinero(detalle.totales.cpa) : "—"}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">CPM</span>
+                        <span className="text-sm font-medium">{detalle.totales.cpm > 0 ? dinero(detalle.totales.cpm) : "—"}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="mb-2 text-xs font-medium text-muted-foreground">Día por día ({etiquetaPeriodo})</p>
+                      {detalle.insights.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Sin datos en este período.</p>
+                      ) : (
+                        <>
+                          <div className="flex w-max min-w-full items-end justify-center gap-1" role="img" aria-label="Gasto y resultados por día">
+                            {detalle.insights.map((d) => {
+                              const maxGasto = Math.max(0.01, ...detalle.insights.map((x) => x.spend));
+                              const maxResultados = Math.max(0.01, ...detalle.insights.map((x) => x.resultados));
+                              return (
+                                <div key={d.fecha} className="flex w-9 flex-col items-center gap-0.5" title={`${d.fecha} · gasto ${dinero(d.spend)} · resultados ${d.resultados.toFixed(0)}`}>
+                                  <div className="flex h-32 w-full items-end justify-center gap-1">
+                                    <div className="w-3 rounded-t bg-primary/80" style={{ height: `${Math.max(4, (d.spend / maxGasto) * 100)}%` }} />
+                                    <div className="w-3 rounded-t bg-success/70" style={{ height: `${Math.max(4, (d.resultados / maxResultados) * 100)}%` }} />
+                                  </div>
+                                  <span className="text-[10px] text-muted-foreground">{d.fecha.slice(5)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="mt-1.5 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+                            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded bg-primary/80" /> Gasto</span>
+                            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded bg-success/70" /> Resultados</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div>
+                      <p className="mb-2 text-xs font-medium text-muted-foreground">Historial de acciones</p>
+                      {detalle.acciones.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Sin acciones registradas.</p>
+                      ) : (
+                        <ul className="space-y-1">
+                          {detalle.acciones.map((a) => {
+                            const fecha = new Date(a.creadoAt);
+                            return (
+                              <li key={a.id} className="text-sm">
+                                {a.usuarioNombre ?? "Alguien"} {a.accion === "pausar" ? "pausó" : "reanudó"} este anuncio el{" "}
+                                {fecha.toLocaleString("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true })}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  </>
+                ) : null}
+                <div className="flex justify-end gap-2 border-t border-border/70 pt-3">
+                  <Boton variante="ghost" onClick={() => setAnuncioDetalle(null)}>Cerrar</Boton>
+                  {esAdmin && anuncioDetalle.estado ? (
+                    <Boton
+                      variante={anuncioDetalle.estado === "ACTIVE" ? "ghost" : "primary"}
+                      disabled={cambiandoEstadoAnuncio === anuncioDetalle.adId}
+                      onClick={() => { if (anuncioDetalle.estado) void cambiarEstadoAnuncio(anuncioDetalle.adId, anuncioDetalle.estado); }}
+                    >
+                      {cambiandoEstadoAnuncio === anuncioDetalle.adId
+                        ? "Guardando…"
+                        : anuncioDetalle.estado === "ACTIVE" ? "Pausar" : "Reanudar"}
+                    </Boton>
+                  ) : null}
+                </div>
+                {errorEstadoAnuncio ? <p role="alert" className="text-sm text-destructive">{errorEstadoAnuncio}</p> : null}
+                {avisoEstadoAnuncio ? <p className="text-sm text-success">{avisoEstadoAnuncio}</p> : null}
+              </div>
+            </Modal>
+          ) : null}
         </>
       ) : (
         <div className="surface space-y-4 p-4 sm:p-5">

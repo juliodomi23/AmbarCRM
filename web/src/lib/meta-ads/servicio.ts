@@ -444,6 +444,7 @@ export async function listarInsightsRango(orgId: bigint, adId: string, desde: st
       impresiones: number;
       reach: number | null;
       cpm: string | null;
+      estado_anuncio: string | null;
     }>>`
       SELECT
         ad_id,
@@ -454,7 +455,8 @@ export async function listarInsightsRango(orgId: bigint, adId: string, desde: st
         cpa,
         impresiones,
         COALESCE((to_jsonb(i)->>'reach')::int, 0) AS reach,
-        COALESCE((to_jsonb(i)->>'cpm')::numeric, 0) AS cpm
+        COALESCE((to_jsonb(i)->>'cpm')::numeric, 0) AS cpm,
+        to_jsonb(i)->>'estado_anuncio' AS estado_anuncio
       FROM meta_ads_insights i
       WHERE org_id = ${orgId}
         AND ad_id = ${adId}
@@ -472,6 +474,7 @@ export async function listarInsightsRango(orgId: bigint, adId: string, desde: st
       impresiones: fila.impresiones,
       reach: fila.reach ?? 0,
       cpm: Number(fila.cpm ?? 0),
+      estadoAnuncio: fila.estado_anuncio === "ACTIVE" || fila.estado_anuncio === "PAUSED" ? fila.estado_anuncio : null,
     }));
   });
 }
@@ -641,5 +644,93 @@ export async function registrarAccionAnuncio(
     // La acción ya se ejecutó en Meta; si falta la migración, se registra en el log
     // del servidor pero no se le reporta un error falso al usuario.
     console.error("Meta Ads: no se pudo registrar la acción en meta_ads_acciones", error);
+  }
+}
+
+/** Creativo del anuncio, traído al vuelo para el modal (no se guarda en BD). */
+export type CreativoAnuncio = {
+  imageUrl: string | null;
+  thumbnailUrl: string | null;
+  videoId: string | null;
+  body: string | null;
+  title: string | null;
+};
+
+/**
+ * Trae la vista previa del anuncio desde Meta al momento de abrir el modal.
+ *
+ * Se pide `creative{...}` (imagen, miniatura, id de video, texto y título)
+ * en vez del edge `/previews`, que devuelve un <iframe> para embeber.
+ * Si Meta no puede (anuncio borrado, sin permiso), devuelve null: el modal
+ * muestra el resto de la info con un aviso, nunca rompe.
+ */
+export async function obtenerCreativoAnuncio(orgId: bigint, adId: string): Promise<CreativoAnuncio | null> {
+  try {
+    const conexion = await obtenerConexionPorOrg(orgId);
+    if (!conexion) return null;
+    const token = await tokenMetaAds(orgId, conexion);
+    const url = new URL(`https://graph.facebook.com/v26.0/${encodeURIComponent(adId)}`);
+    url.searchParams.set("fields", "creative{thumbnail_url,image_url,video_id,body,title}");
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) return null;
+    const data = await response.json() as {
+      creative?: { thumbnail_url?: string; image_url?: string; video_id?: string; body?: string; title?: string };
+    };
+    if (!data.creative) return null;
+    const c = data.creative;
+    const creativo: CreativoAnuncio = {
+      imageUrl: c.image_url ?? null,
+      thumbnailUrl: c.thumbnail_url ?? null,
+      videoId: c.video_id ?? null,
+      body: c.body ?? null,
+      title: c.title ?? null,
+    };
+    return creativo.imageUrl || creativo.thumbnailUrl || creativo.body || creativo.title ? creativo : null;
+  } catch (error) {
+    // El creativo es opcional: el modal siempre funciona sin él.
+    console.error("Meta Ads: no se pudo traer el creativo del anuncio", error);
+    return null;
+  }
+}
+
+/** Acción de un usuario sobre un anuncio, con el nombre de quien la hizo. */
+export type AccionAnuncioHistorial = {
+  id: string;
+  accion: AccionAnuncio;
+  creadoAt: string;
+  usuarioNombre: string | null;
+};
+
+/** Historial de pausas/reanudados de un anuncio (más reciente primero). */
+export async function listarAccionesAnuncio(orgId: bigint, adId: string): Promise<AccionAnuncioHistorial[]> {
+  try {
+    return await transaccionTenant(orgId, async (tx) => {
+      const filas = await tx.$queryRaw<Array<{
+        id: bigint;
+        accion: string;
+        creado_at: Date;
+        usuario_nombre: string | null;
+      }>>`
+        SELECT a.id,
+               a.accion::text AS accion,
+               a.creado_at,
+               u.nombre AS usuario_nombre
+        FROM meta_ads_acciones a
+        LEFT JOIN usuarios u ON u.id = a.usuario_id AND u.org_id = a.org_id
+        WHERE a.org_id = ${orgId} AND a.ad_id = ${adId}
+        ORDER BY a.creado_at DESC
+        LIMIT 20
+      `;
+      return filas.map((f) => ({
+        id: f.id.toString(),
+        accion: f.accion === "reanudar" ? "reanudar" : "pausar",
+        creadoAt: new Date(f.creado_at).toISOString(),
+        usuarioNombre: f.usuario_nombre,
+      }));
+    });
+  } catch (error) {
+    // Si falta la tabla (migración no aplicada), el modal igual abre sin historial.
+    console.error("Meta Ads: no se pudo leer el historial de acciones", error);
+    return [];
   }
 }
