@@ -52,7 +52,8 @@ export function urlAutorizacionMetaAds(state: string) {
   url.searchParams.set("client_id", config.clientId);
   url.searchParams.set("redirect_uri", config.redirectUri);
   url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", "ads_read");
+  // ads_read = leer resultados; ads_management = pausar/reanudar anuncios reales.
+  url.searchParams.set("scope", "ads_read,ads_management");
   url.searchParams.set("auth_type", "rerequest");
   url.searchParams.set("state", state);
   return url;

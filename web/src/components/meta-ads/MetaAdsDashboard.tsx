@@ -25,6 +25,8 @@ type InsightData = {
   impresiones: number;
   reach: number;
   cpm: number;
+  /** Estado real del anuncio en Meta (ACTIVE/PAUSED) al último sync. */
+  estadoAnuncio?: "ACTIVE" | "PAUSED" | null;
 };
 
 type HorarioData = {
@@ -225,7 +227,7 @@ function pasaFiltroVeredicto(tipo: VeredictoAnuncio["tipo"], filtro: FiltroVered
   return tipo === "cara" || tipo === "fatiga";
 }
 
-export function MetaAdsDashboard() {
+export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
   const [datos, setDatos] = useState<RespuestaDashboard | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
@@ -266,6 +268,9 @@ export function MetaAdsDashboard() {
   const [guardandoUmbrales, setGuardandoUmbrales] = useState(false);
   const [errorUmbrales, setErrorUmbrales] = useState("");
   const [mensajeUmbrales, setMensajeUmbrales] = useState("");
+  const [cambiandoEstadoAnuncio, setCambiandoEstadoAnuncio] = useState<string | null>(null);
+  const [errorEstadoAnuncio, setErrorEstadoAnuncio] = useState("");
+  const [avisoEstadoAnuncio, setAvisoEstadoAnuncio] = useState("");
 
   async function elegirCuenta(adAccountId: string) {
     setSeleccionando(true);
@@ -381,6 +386,42 @@ export function MetaAdsDashboard() {
       setErrorUmbrales(e instanceof Error ? e.message : "Error al guardar los montos");
     } finally {
       setGuardandoUmbrales(false);
+    }
+  }
+
+  /**
+   * Pausa o reanuda un anuncio real. El confirm es obligatorio porque el cambio
+   * se aplica en la cuenta de Meta, no solo en este panel.
+   */
+  async function cambiarEstadoAnuncio(adId: string, estadoActual: "ACTIVE" | "PAUSED") {
+    if (!confirm("¿Seguro que quieres pausar/reanudar este anuncio? Esto afecta la cuenta real de Meta.")) return;
+    const nuevoEstado = estadoActual === "ACTIVE" ? "PAUSED" : "ACTIVE";
+    const verbo = nuevoEstado === "PAUSED" ? "pausar" : "reanudar";
+    setCambiandoEstadoAnuncio(adId);
+    setErrorEstadoAnuncio("");
+    setAvisoEstadoAnuncio("");
+    try {
+      const res = await fetch(`/api/meta-ads/anuncios/${encodeURIComponent(adId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: nuevoEstado }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `No se pudo ${verbo} el anuncio`);
+      // Actualiza la pantalla al instante, sin esperar al próximo sync.
+      setDatos((prev) => prev
+        ? {
+            ...prev,
+            insights: prev.insights.map((i) =>
+              i.adId === adId ? { ...i, estadoAnuncio: nuevoEstado } : i,
+            ),
+          }
+        : prev);
+      setAvisoEstadoAnuncio(`Anuncio ${nuevoEstado === "PAUSED" ? "pausado" : "reanudado"} correctamente.`);
+    } catch (e) {
+      setErrorEstadoAnuncio(e instanceof Error ? e.message : `No se pudo ${verbo} el anuncio`);
+    } finally {
+      setCambiandoEstadoAnuncio(null);
     }
   }
 
@@ -525,13 +566,18 @@ export function MetaAdsDashboard() {
   const ctrPromedio = conCtr.length ? conCtr.reduce((total, i) => total + i.ctr, 0) / conCtr.length : 0;
   const cpmRango = impresionesRango > 0 ? (gastoRango / impresionesRango) * 1000 : 0;
 
-  const porAnuncio = new Map<string, { nombre: string; gasto: number; ctr: number; cpa: number; impresiones: number; adId: string }>();
+  const porAnuncio = new Map<string, { nombre: string; gasto: number; ctr: number; cpa: number; impresiones: number; adId: string; estado: "ACTIVE" | "PAUSED" | null; fechaEstado: string }>();
   for (const insight of delRango) {
-    const actual = porAnuncio.get(insight.adId) ?? { nombre: insight.nombreAnuncio, gasto: 0, ctr: 0, cpa: 0, impresiones: 0, adId: insight.adId };
+    const actual = porAnuncio.get(insight.adId) ?? { nombre: insight.nombreAnuncio, gasto: 0, ctr: 0, cpa: 0, impresiones: 0, adId: insight.adId, estado: null, fechaEstado: "" };
     actual.gasto += insight.spend;
     actual.impresiones += insight.impresiones;
     actual.ctr += insight.ctr;
     actual.cpa += insight.cpa;
+    // El estado es del anuncio: manda la fila más reciente que lo traiga.
+    if (insight.estadoAnuncio && insight.fecha >= actual.fechaEstado) {
+      actual.estado = insight.estadoAnuncio;
+      actual.fechaEstado = insight.fecha;
+    }
     porAnuncio.set(insight.adId, actual);
   }
   const porAnuncioValues = [...porAnuncio.values()];
@@ -642,7 +688,7 @@ export function MetaAdsDashboard() {
           <div className="max-w-md">
             <h2 className="text-lg font-semibold">Conecta tu cuenta publicitaria</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Autoriza el acceso de solo lectura a tu cuenta de anuncios de Meta para ver gasto, CTR, CPA y el ranking de tus anuncios aquí dentro.
+              Autoriza tu cuenta de anuncios de Meta para ver gasto, CTR, CPA y el ranking de tus anuncios, y para pausar o reanudar anuncios desde aquí.
             </p>
             <Boton className="mt-5 min-h-11" onClick={() => { window.location.href = "/api/meta-ads/oauth/iniciar"; }}>Conectar cuenta publicitaria</Boton>
           </div>
@@ -838,11 +884,17 @@ export function MetaAdsDashboard() {
                       {anunciosFiltrados.length} {anunciosFiltrados.length === 1 ? "registro" : "registros"}
                     </span>
                   </div>
+                  {errorEstadoAnuncio ? (
+                    <p role="alert" className="text-sm text-destructive">{errorEstadoAnuncio}</p>
+                  ) : null}
+                  {avisoEstadoAnuncio ? (
+                    <p className="text-sm text-success">{avisoEstadoAnuncio}</p>
+                  ) : null}
                   {anunciosFiltrados.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No hay anuncios que coincidan con el filtro en {etiquetaPeriodo}.</p>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full min-w-[640px] text-sm">
+                      <table className="w-full min-w-[720px] text-sm">
                         <thead>
                           <tr className="border-b border-border/70 text-left text-xs uppercase tracking-wide text-muted-foreground">
                             <th className="py-2 pr-3 font-medium">Veredicto</th>
@@ -850,7 +902,8 @@ export function MetaAdsDashboard() {
                             <th className="py-2 pr-3 text-right font-medium">Gasto</th>
                             <th className="py-2 pr-3 text-right font-medium">Tasa de clic (CTR)</th>
                             <th className="py-2 pr-3 text-right font-medium">Costo por resultado (CPA)</th>
-                            <th className="py-2 text-right font-medium">Veces que se mostró (impresiones)</th>
+                            <th className="py-2 pr-3 text-right font-medium">Veces que se mostró (impresiones)</th>
+                            <th className="py-2 text-right font-medium">{esAdmin ? "Acción" : "Estado"}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/60">
@@ -863,7 +916,29 @@ export function MetaAdsDashboard() {
                               <td className="tnum py-2 pr-3 text-right">{dinero(a.gasto)}</td>
                               <td className="tnum py-2 pr-3 text-right">{a.ctr.toFixed(2)}%</td>
                               <td className="tnum py-2 pr-3 text-right">{a.cpa > 0 ? dinero(a.cpa) : "—"}</td>
-                              <td className="tnum py-2 text-right">{a.impresiones.toLocaleString("es-MX")}</td>
+                              <td className="tnum py-2 pr-3 text-right">{a.impresiones.toLocaleString("es-MX")}</td>
+                              <td className="py-2 text-right">
+                                {a.estado ? (
+                                  esAdmin ? (
+                                    <Boton
+                                      variante={a.estado === "ACTIVE" ? "ghost" : "primary"}
+                                      className="min-h-9 px-3 py-1.5 text-xs"
+                                      disabled={cambiandoEstadoAnuncio === a.adId}
+                                      onClick={() => { if (a.estado) void cambiarEstadoAnuncio(a.adId, a.estado); }}
+                                    >
+                                      {cambiandoEstadoAnuncio === a.adId
+                                        ? "Guardando…"
+                                        : a.estado === "ACTIVE" ? "Pausar" : "Reanudar"}
+                                    </Boton>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                      {a.estado === "ACTIVE" ? "Activo" : "Pausado"}
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="text-xs text-muted-foreground" title="Sincroniza con Meta para conocer el estado de este anuncio.">—</span>
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody>

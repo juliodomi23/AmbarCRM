@@ -1,7 +1,7 @@
 import { transaccionTenant } from "@/lib/retail-db";
 import { tokenMetaAds, revocarTokenMetaAds } from "./oauth";
 import { ACCIONES_RESULTADO, esAccionResultado, type AccionResultado } from "./resultados";
-import type { DiaSemanaInsight, InsightDia } from "./tipos";
+import type { DiaSemanaInsight, EstadoAnuncio, InsightDia } from "./tipos";
 
 type ConexionMeta = {
   id: bigint;
@@ -21,6 +21,22 @@ function numeroPositivo(valor: string | null | undefined): number | null {
   if (valor === null || valor === undefined || valor === "") return null;
   const numero = Number(valor);
   return Number.isFinite(numero) && numero > 0 ? numero : null;
+}
+
+/** Error de permisos de Meta (la conexión se autorizó sin `ads_management`). */
+export class ErrorPermisoMetaAds extends Error {
+  constructor() {
+    super("Tu cuenta no tiene permiso para pausar/reanudar — reconéctala para darle acceso.");
+    this.name = "ErrorPermisoMetaAds";
+  }
+}
+
+/** Se queda solo con los dos estados que el panel puede alternar. */
+function normalizarEstadoAnuncio(status?: string, effectiveStatus?: string): EstadoAnuncio | null {
+  const estado = (status || effectiveStatus || "").toUpperCase();
+  if (estado === "ACTIVE") return "ACTIVE";
+  if (estado === "PAUSED" || estado === "ADSET_PAUSED" || estado === "CAMPAIGN_PAUSED") return "PAUSED";
+  return null;
 }
 
 export async function obtenerConexionPorOrg(orgId: bigint): Promise<ConexionMeta | null> {
@@ -99,12 +115,51 @@ function valorResultadoCanonico(
 }
 
 /**
+ * Estado actual (ACTIVE/PAUSED) de cada anuncio de la cuenta.
+ *
+ * El edge `/insights` solo devuelve métricas: no acepta `status` ni
+ * `effective_status` como campos. Por eso el estado se consulta aparte al edge
+ * `/ads`, que es el dato real que decide si el botón dice Pausar o Reanudar.
+ */
+async function obtenerEstadosAnuncios(adAccountId: string, token: string): Promise<Map<string, EstadoAnuncio>> {
+  const estados = new Map<string, EstadoAnuncio>();
+  const url = new URL(`https://graph.facebook.com/v26.0/act_${adAccountId}/ads`);
+  url.searchParams.set("fields", "id,status,effective_status");
+  url.searchParams.set("limit", "100");
+
+  let siguiente: string | null = url.toString();
+  let paginas = 0;
+
+  while (siguiente) {
+    paginas++;
+    if (paginas > 50) throw new Error("Meta devolvió demasiadas páginas de anuncios; se detuvo por seguridad");
+    const response = await fetch(siguiente, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) throw new Error(`Meta respondió ${response.status} al consultar el estado de los anuncios`);
+    const data = await response.json() as {
+      data?: Array<{ id?: string; status?: string; effective_status?: string }>;
+      paging?: { next?: string };
+      error?: { message?: string };
+    };
+    if (data.error) throw new Error(data.error.message || "Meta devolvió un error al consultar el estado de los anuncios");
+    for (const anuncio of data.data ?? []) {
+      if (!anuncio.id) continue;
+      const estado = normalizarEstadoAnuncio(anuncio.status, anuncio.effective_status);
+      if (estado) estados.set(anuncio.id, estado);
+    }
+    siguiente = data.paging?.next ?? null;
+  }
+
+  return estados;
+}
+
+/**
  * Ejecuta la sincronización de insights de Meta Ads para una conexión.
  * Llama a GET /act_<id>/insights con fields=spend,ctr,cpm,reach,actions&level=ad
  * para los últimos ~3 meses (time_increment=1) y hace upsert diario.
  * Meta paginatea los resultados; el loop sigue paging.next hasta agotar todas las páginas.
  *
- * Además hace una llamada extra de desglose:
+ * Además hace dos llamadas extra:
+ * - GET /act_<id>/ads (estado ACTIVE/PAUSED de cada anuncio, para Pausar/Reanudar).
  * - breakdowns=hourly_stats_aggregated_by_advertiser_time_zone (gasto/resultados por hora).
  *
  * El desglose por día de la semana NO se pide a Meta (day_of_week no es un
@@ -115,6 +170,10 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
   const conexion = await obtenerConexionPorOrg(orgId);
   if (!conexion) throw new Error("No hay conexión de Meta Ads activa para esta organización");
   const token = await tokenMetaAds(orgId, conexion);
+
+  // Estado real de los anuncios. Si la cuenta no lo permite, el sync sigue:
+  // el estado solo afecta al botón Pausar/Reanudar, no a los resultados.
+  const estadosAnuncios = await obtenerEstadosAnuncios(adAccountId, token).catch(() => new Map<string, EstadoAnuncio>());
 
   // Fecha de corte: últimos 3 meses (~89 días) desde hoy (incluyendo hoy).
   const hoy = new Date();
@@ -247,9 +306,9 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
 
       await tx.$executeRaw`
         INSERT INTO meta_ads_insights
-          (org_id, ad_id, nombre_anuncio, fecha, spend, ctr, cpa, impresiones, reach, cpm, created_at, updated_at)
+          (org_id, ad_id, nombre_anuncio, fecha, spend, ctr, cpa, impresiones, reach, cpm, estado_anuncio, created_at, updated_at)
         VALUES
-          (${orgId}, ${adId}, ${nombreAnuncio}, ${fechaStr}::date, ${spend}, ${ctr}, ${cpa}, ${impresiones}, ${reach}, ${cpm}, now(), now())
+          (${orgId}, ${adId}, ${nombreAnuncio}, ${fechaStr}::date, ${spend}, ${ctr}, ${cpa}, ${impresiones}, ${reach}, ${cpm}, ${estadosAnuncios.get(adId) ?? null}, now(), now())
         ON CONFLICT (org_id, ad_id, fecha) DO UPDATE SET
           nombre_anuncio = EXCLUDED.nombre_anuncio,
           spend = EXCLUDED.spend,
@@ -258,9 +317,20 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
           impresiones = EXCLUDED.impresiones,
           reach = EXCLUDED.reach,
           cpm = EXCLUDED.cpm,
+          estado_anuncio = COALESCE(EXCLUDED.estado_anuncio, meta_ads_insights.estado_anuncio),
           updated_at = now()
       `;
       creados++;
+    }
+
+    // 3a-bis. El estado es del anuncio, no del día: se replica a todas sus filas
+    // para que el dashboard lo lea aunque el anuncio lleve días sin entregar.
+    for (const [adId, estado] of estadosAnuncios) {
+      await tx.$executeRaw`
+        UPDATE meta_ads_insights
+        SET estado_anuncio = ${estado}
+        WHERE org_id = ${orgId} AND ad_id = ${adId}
+      `;
     }
 
     // 3b. Reemplazar snapshots horarios (24 filas por org)
@@ -325,6 +395,7 @@ export async function listarInsightsOrg(orgId: bigint): Promise<Array<InsightDia
       impresiones: number;
       reach: number | null;
       cpm: string | null;
+      estado_anuncio: string | null;
     }>>`
       SELECT
         id,
@@ -336,7 +407,8 @@ export async function listarInsightsOrg(orgId: bigint): Promise<Array<InsightDia
         cpa,
         impresiones,
         COALESCE((to_jsonb(i)->>'reach')::int, 0) AS reach,
-        COALESCE((to_jsonb(i)->>'cpm')::numeric, 0) AS cpm
+        COALESCE((to_jsonb(i)->>'cpm')::numeric, 0) AS cpm,
+        to_jsonb(i)->>'estado_anuncio' AS estado_anuncio
       FROM meta_ads_insights i
       WHERE org_id = ${orgId}
       ORDER BY fecha DESC, id DESC
@@ -352,6 +424,7 @@ export async function listarInsightsOrg(orgId: bigint): Promise<Array<InsightDia
       impresiones: fila.impresiones,
       reach: fila.reach ?? 0,
       cpm: Number(fila.cpm ?? 0),
+      estadoAnuncio: fila.estado_anuncio === "ACTIVE" || fila.estado_anuncio === "PAUSED" ? fila.estado_anuncio : null,
     }));
   });
 }
@@ -489,4 +562,84 @@ export async function desconectarMetaAds(orgId: bigint): Promise<void> {
     try { await revocarTokenMetaAds(conexion.accessTokenEncrypted); } catch { /* local debe completarse aunque Meta falle */ }
     await tx.metaAdsConexion.update({ where: { id: conexion.id }, data: { estado: "revocada", accessTokenEncrypted: "", refreshTokenEncrypted: null } });
   });
+}
+
+/** Acción que un usuario puede ejecutar sobre un anuncio existente. */
+export type AccionAnuncio = "pausar" | "reanudar";
+
+function esErrorDePermisoMetaAds(statusHttp: number, error?: { code?: number; type?: string; message?: string }): boolean {
+  if (statusHttp === 403) return true;
+  if (!error) return false;
+  // 10 / 200 / 294 = permisos insuficientes; 190 = token inválido o expirado.
+  if ([10, 200, 294, 190].includes(error.code ?? -1)) return true;
+  if (error.type === "OAuthException") return true;
+  return /permission|permiso|ads_management/i.test(error.message ?? "");
+}
+
+/**
+ * Pausa o reanuda un anuncio REAL en Meta (POST /<adId> con status).
+ * No crea anuncios ni toca presupuestos: solo cambia ACTIVE <-> PAUSED.
+ *
+ * Si Meta rechaza por permisos (conexión autorizada antes de pedir
+ * `ads_management`), lanza ErrorPermisoMetaAds con el mensaje para reconectar.
+ * Al terminar, el nuevo estado se refleja de inmediato en la BD local.
+ */
+export async function cambiarEstadoAnuncioMeta(orgId: bigint, adId: string, estado: EstadoAnuncio): Promise<void> {
+  const conexion = await obtenerConexionPorOrg(orgId);
+  if (!conexion) throw new Error("No hay conexión de Meta Ads activa para esta organización");
+  const token = await tokenMetaAds(orgId, conexion);
+
+  const response = await fetch(`https://graph.facebook.com/v26.0/${encodeURIComponent(adId)}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ status: estado }),
+  });
+
+  const data = await response.json().catch(() => ({})) as {
+    success?: boolean;
+    error?: { message?: string; type?: string; code?: number; error_subcode?: number };
+  };
+
+  if (!response.ok || data.error) {
+    if (esErrorDePermisoMetaAds(response.status, data.error)) throw new ErrorPermisoMetaAds();
+    throw new Error(data.error?.message || `Meta respondió ${response.status} al cambiar el anuncio`);
+  }
+
+  // Refleja el estado sin esperar al próximo sync. Si la BD todavía no tiene
+  // estado_anuncio, el anuncio ya cambió en Meta: no se rompe la respuesta.
+  try {
+    await transaccionTenant(orgId, async (tx) => {
+      await tx.$executeRaw`
+        UPDATE meta_ads_insights
+        SET estado_anuncio = ${estado}, updated_at = now()
+        WHERE org_id = ${orgId} AND ad_id = ${adId}
+      `;
+    });
+  } catch (error) {
+    console.error("Meta Ads: no se pudo guardar estado_anuncio", error);
+  }
+}
+
+/** Bitácora de pausas/reanudados hechas por usuarios reales (solo se agrega). */
+export async function registrarAccionAnuncio(
+  orgId: bigint,
+  adId: string,
+  usuarioId: bigint | null,
+  accion: AccionAnuncio,
+): Promise<void> {
+  try {
+    await transaccionTenant(orgId, async (tx) => {
+      await tx.$executeRaw`
+        INSERT INTO meta_ads_acciones (org_id, ad_id, usuario_id, accion, creado_at)
+        VALUES (${orgId}, ${adId}, ${usuarioId}, ${accion}, now())
+      `;
+    });
+  } catch (error) {
+    // La acción ya se ejecutó en Meta; si falta la migración, se registra en el log
+    // del servidor pero no se le reporta un error falso al usuario.
+    console.error("Meta Ads: no se pudo registrar la acción en meta_ads_acciones", error);
+  }
 }

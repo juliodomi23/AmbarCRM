@@ -9,5 +9,5 @@ export default async function MetaAdsPage() {
   const sesion = await getSesion();
   if (!sesion?.user?.orgId) redirect("/login");
   if (!(await moduloActivo("meta_ads"))) redirect("/");
-  return <MetaAdsDashboard />;
+  return <MetaAdsDashboard esAdmin={sesion.user.rol === "admin"} />;
 }

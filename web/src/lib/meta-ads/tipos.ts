@@ -5,6 +5,9 @@ export type EstadoConexionMeta =
   | "requiere_reconectar"
   | "revocada";
 
+/** Estado con el que se puede operar un anuncio desde el panel. */
+export type EstadoAnuncio = "ACTIVE" | "PAUSED";
+
 export type MetaAdsConexionDto = {
   id: string;
   adAccountId: string;
@@ -27,6 +30,8 @@ export type InsightDia = {
   reach: number;
   /** Costo por 1,000 impresiones. */
   cpm: number;
+  /** Estado del anuncio en Meta en el último sync (sirve para Pausar/Reanudar). */
+  estadoAnuncio?: EstadoAnuncio | null;
 };
 
 export type DiaSemanaInsight = {
