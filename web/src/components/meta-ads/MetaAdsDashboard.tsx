@@ -313,6 +313,9 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
   const [errorClientes, setErrorClientes] = useState("");
   const [clienteActivoId, setClienteActivoId] = useState<string | null>(null);
   const [clientes, setClientes] = useState<ClienteMetaAds[]>([]);
+  const [modalDesconectar, setModalDesconectar] = useState(false);
+  const [modalNuevoCliente, setModalNuevoCliente] = useState(false);
+  const [nombreNuevoCliente, setNombreNuevoCliente] = useState("");
 
   async function elegirCuenta(adAccountId: string) {
     setSeleccionando(true);
@@ -336,7 +339,6 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
   }
 
   async function desconectar() {
-    if (!confirm("¿Seguro que quieres desconectar tu cuenta publicitaria? Esta acción apaga la conexión y no se puede revertir sin volver a autorizar desde cero.")) return;
     setDesconectando(true);
     setErrorDesconectar("");
     try {
@@ -471,28 +473,32 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
     }
   }
 
-  async function crearCliente() {
-  const nombre = window.prompt("Nombre del cliente");
-  if (!nombre || !nombre.trim()) return;
-  setCargandoClientes(true);
-  setErrorClientes("");
-  try {
-    const res = await fetch("/api/meta-ads/clientes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre }),
-    });
-    if (!res.ok) {
+  async function crearCliente(nombre: string) {
+    const nombreTrim = nombre.trim();
+    if (!nombreTrim) return;
+    setCargandoClientes(true);
+    setErrorClientes("");
+    try {
+      const res = await fetch("/api/meta-ads/clientes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: nombreTrim }),
+      });
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || "No se pudo crear el cliente");
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo crear el cliente");
+      }
+      const nuevoId = data?.cliente?.id ?? data?.id;
+      setModalNuevoCliente(false);
+      setNombreNuevoCliente("");
+      setRefresco((v) => v + 1);
+      if (nuevoId != null) router.push(`/api/meta-ads/oauth/iniciar?clienteId=${nuevoId}`);
+    } catch (e) {
+      setErrorClientes(e instanceof Error ? e.message : "No se pudo crear el cliente");
+    } finally {
+      setCargandoClientes(false);
     }
-    setRefresco((v) => v + 1);
-  } catch (e) {
-    setErrorClientes(e instanceof Error ? e.message : "No se pudo crear el cliente");
-  } finally {
-    setCargandoClientes(false);
   }
-}
 
 async function buscarTendencia() {
     setTendenciaCargando(true);
@@ -1301,7 +1307,7 @@ async function buscarTendencia() {
               {errorDesconectar ? (
                 <p role="alert" className="text-sm text-destructive">{errorDesconectar}</p>
               ) : null}
-              <Boton variante="danger" className="mt-2 min-h-11" disabled={desconectando} onClick={desconectar}>
+              <Boton variante="danger" className="mt-2 min-h-11" disabled={desconectando} onClick={() => { setModalDesconectar(true); }}>
                 {desconectando ? "Desconectando…" : "Desconectar cuenta publicitaria"}
               </Boton>
               <p className="text-xs text-muted-foreground">
@@ -1314,7 +1320,7 @@ async function buscarTendencia() {
             <section className="surface space-y-4 p-4 sm:p-5" aria-label="Clientes de Meta Ads">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-base font-semibold text-foreground">Clientes</h2>
-                <Boton className="min-h-8 px-3 py-1.5 text-xs" variante="primary" disabled={cargandoClientes} onClick={() => void crearCliente()}>
+                <Boton className="min-h-8 px-3 py-1.5 text-xs" variante="primary" disabled={cargandoClientes} onClick={() => { setModalNuevoCliente(true); }}>
                   + Nuevo cliente
                 </Boton>
               </div>
@@ -1517,6 +1523,39 @@ async function buscarTendencia() {
           )}
         </div>
       )}
+      <Modal abierto={modalDesconectar} onClose={() => setModalDesconectar(false)} titulo="Desconectar cuenta publicitaria" ancho="md">
+        <p className="text-sm text-muted-foreground">
+          Esta acción apaga la conexión y no se puede revertir sin volver a autorizar desde cero.
+        </p>
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <Boton variante="ghost" onClick={() => setModalDesconectar(false)}>Cancelar</Boton>
+          <Boton variante="danger" disabled={desconectando} onClick={async () => { setModalDesconectar(false); await desconectar(); }}>
+            {desconectando ? "Desconectando…" : "Sí, desconectar"}
+          </Boton>
+        </div>
+      </Modal>
+      <Modal abierto={modalNuevoCliente} onClose={() => { setModalNuevoCliente(false); setNombreNuevoCliente(""); }} titulo="Nuevo cliente" ancho="md">
+        <label className="block space-y-1">
+          <span className="text-sm font-medium text-muted-foreground">Nombre del cliente</span>
+          <input
+            className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/70 focus:border-primary/60 focus:ring-2 focus:ring-primary/30"
+            type="text"
+            value={nombreNuevoCliente}
+            autoFocus
+            placeholder="Nombre del cliente"
+            disabled={cargandoClientes}
+            onChange={(e) => setNombreNuevoCliente(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && nombreNuevoCliente.trim() && !cargandoClientes) void crearCliente(nombreNuevoCliente); }}
+          />
+        </label>
+        {errorClientes ? <p role="alert" className="mt-2 text-sm text-destructive">{errorClientes}</p> : null}
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <Boton variante="ghost" onClick={() => { setModalNuevoCliente(false); setNombreNuevoCliente(""); }}>Cancelar</Boton>
+          <Boton variante="primary" disabled={!nombreNuevoCliente.trim() || cargandoClientes} onClick={async () => { await crearCliente(nombreNuevoCliente); }}>
+            {cargandoClientes ? "Creando…" : " Crear"}
+          </Boton>
+        </div>
+      </Modal>
     </div>
   );
 }
