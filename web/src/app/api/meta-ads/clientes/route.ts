@@ -39,7 +39,15 @@ export const GET = conModulo("meta_ads", {}, async (sesion) => {
         id: c.id.toString(),
         nombre: c.nombre,
         activo: c.activo,
-        conexion: c.conexiones[0] ?? null,
+        conexion: c.conexiones[0]
+          ? {
+              id: c.conexiones[0].id.toString(),
+              adAccountId: c.conexiones[0].adAccountId,
+              estado: c.conexiones[0].estado,
+              sincronizadoAt: c.conexiones[0].sincronizadoAt?.toISOString?.() ?? null,
+              ultimoError: c.conexiones[0].ultimoError,
+            }
+          : null,
       })),
     });
   } catch (error) {
