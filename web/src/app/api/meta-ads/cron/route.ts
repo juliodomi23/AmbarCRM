@@ -38,7 +38,10 @@ export async function POST(req: NextRequest) {
         await sincronizarInsightsOrg(org.id, cliente.id, conexion.adAccountId);
         sincronizados++;
       }
-    } catch { errores++; }
+    } catch (error) {
+      errores++;
+      console.error(`CRON meta-ads: error en org ${org.id}:`, error);
+    }
   }
 
   return NextResponse.json(
