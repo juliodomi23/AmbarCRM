@@ -446,7 +446,7 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
       const res = await fetch(`/api/meta-ads/anuncios/${encodeURIComponent(adId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ estado: nuevoEstado }),
+        body: JSON.stringify({ estado: nuevoEstado, clienteId: clienteActivoId }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `No se pudo ${verbo} el anuncio`);
@@ -471,7 +471,30 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
     }
   }
 
-  async function buscarTendencia() {
+  async function crearCliente() {
+  const nombre = window.prompt("Nombre del cliente");
+  if (!nombre || !nombre.trim()) return;
+  setCargandoClientes(true);
+  setErrorClientes("");
+  try {
+    const res = await fetch("/api/meta-ads/clientes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "No se pudo crear el cliente");
+    }
+    setRefresco((v) => v + 1);
+  } catch (e) {
+    setErrorClientes(e instanceof Error ? e.message : "No se pudo crear el cliente");
+  } finally {
+    setCargandoClientes(false);
+  }
+}
+
+async function buscarTendencia() {
     setTendenciaCargando(true);
     setTendenciaError("");
     setTendencia([]);
@@ -702,7 +725,7 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
     const control = new AbortController();
     setDetalleCargando(true);
     setDetalleError("");
-    fetch(`/api/meta-ads/anuncios/${encodeURIComponent(anuncioDetalle.adId)}?desde=${encodeURIComponent(inicioIso)}&hasta=${encodeURIComponent(finIso)}`, {
+    fetch(`/api/meta-ads/anuncios/${encodeURIComponent(anuncioDetalle.adId)}?desde=${encodeURIComponent(inicioIso)}&hasta=${encodeURIComponent(finIso)}&clienteId=${clienteActivoId ?? ""}`, {
       cache: "no-store",
       signal: control.signal,
     })
@@ -1291,7 +1314,7 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
             <section className="surface space-y-4 p-4 sm:p-5" aria-label="Clientes de Meta Ads">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-base font-semibold text-foreground">Clientes</h2>
-                <Boton className="min-h-8 px-3 py-1.5 text-xs" variante="primary" onClick={() => { router.push("/api/meta-ads/clientes?action=create"); }}>
+                <Boton className="min-h-8 px-3 py-1.5 text-xs" variante="primary" disabled={cargandoClientes} onClick={() => void crearCliente()}>
                   + Nuevo cliente
                 </Boton>
               </div>
