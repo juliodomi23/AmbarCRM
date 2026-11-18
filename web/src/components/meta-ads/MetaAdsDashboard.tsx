@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Badge, Boton, EncabezadoPagina, Modal } from "@/components/ui";
 import { KpiCard } from "@/components/DashboardVisuals";
@@ -86,7 +87,15 @@ type ConexionData = {
 
 type RespuestaDashboard = { connection: ConexionData; insights: InsightData[] };
 
+type ClienteMetaAds = {
+  id: string;
+  nombre: string;
+  activo: boolean;
+};
+
 type Tab = "resumen" | "anuncios" | "horarios" | "configuracion";
+
+const CLIENTES_TABLES = ["clientes"];
 
 type Periodo = "7d" | "30d" | "3m" | "personalizado";
 
@@ -251,6 +260,7 @@ function pasaFiltroVeredicto(tipo: VeredictoAnuncio["tipo"], filtro: FiltroVered
 }
 
 export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
+  const router = useRouter();
   const [datos, setDatos] = useState<RespuestaDashboard | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
@@ -299,6 +309,10 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
   const [detalleCargando, setDetalleCargando] = useState(false);
   const [detalleError, setDetalleError] = useState("");
   const [detalleNonce, setDetalleNonce] = useState(0);
+  const [cargandoClientes, setCargandoClientes] = useState(false);
+  const [errorClientes, setErrorClientes] = useState("");
+  const [clienteActivoId, setClienteActivoId] = useState<string | null>(null);
+  const [clientes, setClientes] = useState<ClienteMetaAds[]>([]);
 
   async function elegirCuenta(adAccountId: string) {
     setSeleccionando(true);
@@ -307,13 +321,13 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
       const res = await fetch("/api/meta-ads/cuenta", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adAccountId }),
+        body: JSON.stringify({ adAccountId, clienteId: clienteActivoId }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "No se pudo guardar la cuenta");
       }
-      window.location.href = "/meta-ads?conexion=conectado";
+      router.push("/meta-ads?conexion=conectado");
     } catch (e) {
       setErrorSeleccion(e instanceof Error ? e.message : "Error al elegir cuenta");
     } finally {
@@ -326,12 +340,12 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
     setDesconectando(true);
     setErrorDesconectar("");
     try {
-      const res = await fetch("/api/meta-ads/cuenta", { method: "DELETE" });
+      const res = await fetch(`/api/meta-ads/cuenta?clienteId=${clienteActivoId}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "No se pudo desconectar la cuenta");
       }
-      window.location.href = "/meta-ads?conexion=desconectado";
+      router.push("/meta-ads?conexion=desconectado");
     } catch (e) {
       setErrorDesconectar(e instanceof Error ? e.message : "Error al desconectar");
     } finally {
@@ -347,7 +361,7 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
       const res = await fetch("/api/meta-ads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ clienteId: clienteActivoId }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo sincronizar con Meta");
@@ -370,7 +384,7 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
       const res = await fetch("/api/meta-ads", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accionResultado: valor }),
+        body: JSON.stringify({ accionResultado: valor, clienteId: clienteActivoId }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo guardar la preferencia");
@@ -403,7 +417,7 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
       const res = await fetch("/api/meta-ads", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ umbrales: { cpaMaximo, cpaObjetivo } }),
+        body: JSON.stringify({ umbrales: { cpaMaximo, cpaObjetivo }, clienteId: clienteActivoId }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudieron guardar los montos");
@@ -481,7 +495,31 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
 
   useEffect(() => {
     const control = new AbortController();
-    fetch("/api/meta-ads/insights", { signal: control.signal, cache: "no-store" })
+    setCargandoClientes(true);
+    fetch("/api/meta-ads/clientes", { signal: control.signal, cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("No se pudieron cargar los clientes de Meta Ads.");
+        return (await res.json()) as { clientes: ClienteMetaAds[] };
+      })
+      .then((resultado) => {
+        if (control.signal.aborted) return;
+        setClientes(resultado.clientes ?? []);
+        setErrorClientes("");
+        // Si no hay cliente seleccionado o ya no existe, elige el primero activo.
+        setClienteActivoId((actual) => {
+          if (actual && (resultado.clientes ?? []).some((c) => c.id === actual)) return actual;
+          const primero = (resultado.clientes ?? []).find((c) => c.activo) ?? (resultado.clientes ?? [])[0];
+          return primero?.id ?? null;
+        });
+      })
+      .catch((e: unknown) => { if (!control.signal.aborted) setErrorClientes(e instanceof Error ? e.message : "No se pudieron cargar los clientes."); })
+      .finally(() => { if (!control.signal.aborted) setCargandoClientes(false); });
+    return () => control.abort();
+  }, [refresco]);
+
+  useEffect(() => {
+    const control = new AbortController();
+    fetch(`/api/meta-ads/insights?clienteId=${clienteActivoId ?? ""}`, { signal: control.signal, cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) throw new Error("No se pudieron cargar los resultados de Meta Ads.");
         return (await res.json()) as RespuestaDashboard;
@@ -490,7 +528,7 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
       .catch((e: unknown) => { if (!control.signal.aborted) setError(e instanceof Error ? e.message : "No se pudieron cargar los resultados."); })
       .finally(() => { if (!control.signal.aborted) setCargando(false); });
     return () => control.abort();
-  }, [refresco]);
+  }, [refresco, clienteActivoId]);
 
   useEffect(() => {
     const valor = datos?.connection?.accionResultado;
@@ -507,7 +545,7 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
   useEffect(() => {
     const control = new AbortController();
     setCargandoHorarios(true);
-    fetch("/api/meta-ads/horarios", { signal: control.signal, cache: "no-store" })
+    fetch(`/api/meta-ads/horarios?clienteId=${clienteActivoId ?? ""}`, { signal: control.signal, cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) throw new Error("No se pudieron cargar los horarios.");
         return (await res.json()) as { horarios?: HorarioData[] };
@@ -516,12 +554,12 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
       .catch((e: unknown) => { if (!control.signal.aborted) setErrorHorarios(e instanceof Error ? e.message : "No se pudieron cargar los horarios."); })
       .finally(() => { if (!control.signal.aborted) setCargandoHorarios(false); });
     return () => control.abort();
-  }, [refresco]);
+  }, [refresco, clienteActivoId]);
 
   useEffect(() => {
     const control = new AbortController();
     setCargandoDias(true);
-    fetch("/api/meta-ads/dias-semana", { signal: control.signal, cache: "no-store" })
+    fetch(`/api/meta-ads/dias-semana?clienteId=${clienteActivoId ?? ""}`, { signal: control.signal, cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) throw new Error("No se pudieron cargar los días de la semana.");
         return (await res.json()) as { dias?: DiaSemanaData[] };
@@ -530,11 +568,11 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
       .catch((e: unknown) => { if (!control.signal.aborted) setErrorDias(e instanceof Error ? e.message : "No se pudieron cargar los días de la semana."); })
       .finally(() => { if (!control.signal.aborted) setCargandoDias(false); });
     return () => control.abort();
-  }, [refresco]);
+  }, [refresco, clienteActivoId]);
 
   useEffect(() => {
     const control = new AbortController();
-    fetch("/api/meta-ads/cuenta", { signal: control.signal, cache: "no-store" })
+    fetch(`/api/meta-ads/cuenta?clienteId=${clienteActivoId ?? ""}`, { signal: control.signal, cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) {
           try { const body = await res.json();
@@ -552,7 +590,7 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
       .catch(() => { /* fallback a conexión existente */ })
       .finally(() => { if (!control.signal.aborted) setCargandoCuentas(false); });
     return () => control.abort();
-  }, []);
+  }, [refresco, clienteActivoId]);
 
   const conexion = datos?.connection ?? null;
   const insights = datos?.insights ?? [];
@@ -724,6 +762,26 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
         acciones={<Badge tono={conexion ? "primary" : "warning"} punto>{conexion ? "Cuenta conectada" : "Sin conectar"}</Badge>}
       />
 
+      {/* Client selector */}
+      <div className="flex flex-wrap gap-2 mb-3 border-b border-border/70 pb-3">
+        {clientes.length === 0 ? (
+          <div className="text-sm text-muted-foreground">No hay clientes configurados</div>
+        ) : (
+          <select
+            value={clienteActivoId ?? ""}
+            onChange={(e) => setClienteActivoId(e.target.value)}
+            className="rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            disabled={cargandoClientes}
+          >
+            <option value="">Selecciona cliente</option>
+            {clientes.map((c) => (
+              <option key={c.id} value={c.id} disabled={!c.activo}>
+                {c.nombre} {c.activo ? " (activo)" : " (inactivo)"}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
       {/* Tab navigation */}
       <div className="flex flex-wrap gap-2 border-b border-border/70 pb-3">
         {(["resumen", "anuncios", "horarios", "configuracion"] as Tab[]).map((t) => (
@@ -753,7 +811,7 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
             <p className="mt-2 text-sm text-muted-foreground">
               Autoriza tu cuenta de anuncios de Meta para ver gasto, CTR, CPA y el ranking de tus anuncios, y para pausar o reanudar anuncios desde aquí.
             </p>
-            <Boton className="mt-5 min-h-11" onClick={() => { window.location.href = "/api/meta-ads/oauth/iniciar"; }}>Conectar cuenta publicitaria</Boton>
+            <Boton className="mt-5 min-h-11" onClick={() => { router.push("/api/meta-ads/oauth/iniciar"); }}>Conectar cuenta publicitaria</Boton>
           </div>
         </div>
       ) : !necesitaSeleccion ? (
@@ -1228,6 +1286,38 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
               </p>
             </section>
           )}
+          {/* Clientes de Meta Ads */}
+          {tab === "configuracion" && (
+            <section className="surface space-y-4 p-4 sm:p-5" aria-label="Clientes de Meta Ads">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-base font-semibold text-foreground">Clientes</h2>
+                <Boton className="min-h-8 px-3 py-1.5 text-xs" variante="primary" onClick={() => { router.push("/api/meta-ads/clientes?action=create"); }}>
+                  + Nuevo cliente
+                </Boton>
+              </div>
+              {clientes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No hay clientes configurados para esta organización.</p>
+              ) : (
+                <div className="space-y-2">
+                  {clientes.map((c) => (
+                    <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/70 p-2 text-sm">
+                      <span>{c.nombre} {c.activo ? "" : "(inactivo)"}</span>
+                      <div className="flex gap-2">
+                        <Boton className="min-h-8 px-2 py-1 text-xs" variante="ghost" onClick={() => { router.push(`/api/meta-ads/oauth/iniciar?clienteId=${c.id}`); }}>
+                          Conectar
+                        </Boton>
+                        <Boton className="min-h-8 px-2 py-1 text-xs" variante="danger" onClick={() => {
+                          if (confirm(`¿Borrar cliente ${c.nombre}?`)) {
+                            fetch(`/api/meta-ads/clientes/${c.id}`, { method: "DELETE" }).then(() => setRefresco((v) => v + 1));
+                          }
+                        }}>Borrar</Boton>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
           {anuncioDetalle ? (
             <Modal abierto onClose={() => setAnuncioDetalle(null)} titulo={anuncioDetalle.nombre || `Anuncio ${anuncioDetalle.adId}`} ancho="xl">
               <div className="space-y-4 max-h-[90vh] overflow-y-auto">
@@ -1374,7 +1464,7 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
           ) : cuentas.length === 0 ? (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">No se encontraron cuentas publicitarias en tu cuenta de Meta.</p>
-              <Boton className="mt-5 min-h-11" onClick={() => { window.location.href = "/api/meta-ads/oauth/iniciar"; }}>Intentar conectar de nuevo</Boton>
+              <Boton className="mt-5 min-h-11" onClick={() => { router.push("/api/meta-ads/oauth/iniciar"); }}>Intentar conectar de nuevo</Boton>
             </div>
           ) : (
             <div className="overflow-x-auto">

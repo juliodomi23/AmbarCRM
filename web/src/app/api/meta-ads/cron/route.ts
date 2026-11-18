@@ -7,8 +7,8 @@ import { sincronizarInsightsOrg } from "@/lib/meta-ads/servicio";
 export const dynamic = "force-dynamic";
 
 /**
- * Cron de Meta Ads: recorre TODAS las organizaciones activas con conexión de Meta Ads
- * activa y sincroniza sus insights. Se autentica solo con la API key interna (x-api-key),
+ * Cron de Meta Ads: recorre TODOS los clientes de TODAS las organizaciones activas con conexión activa
+ * de Meta Ads y sincroniza sus insights. Se autentica solo con la API key interna (x-api-key),
  * igual que /api/cron/calendario; no depende de una sesión de NextAuth.
  */
 export async function POST(req: NextRequest) {
@@ -20,15 +20,24 @@ export async function POST(req: NextRequest) {
 
   for (const org of orgs) {
     try {
-      // RLS exige el tenant fijado (app.current_org); lo hacemos con transaccionTenant.
-      const conexion = await transaccionTenant(org.id, (tx) =>
-        tx.metaAdsConexion.findFirst({ where: { estado: "activa" }, select: { adAccountId: true } }),
+      // Listar clientes activos
+      const clientes = await transaccionTenant(org.id, (tx) =>
+        tx.metaAdsCliente.findMany({
+          where: { orgId: org.id, activo: true },
+          select: { id: true },
+        }),
       );
-      if (!conexion) { sinConexion++; continue; }
-      // Si la conexión sigue con el placeholder "<temp>" (el usuario aún debe elegir su cuenta), no sincronizar.
-      if (conexion.adAccountId === "<temp>") { sinConexion++; continue; }
-      await sincronizarInsightsOrg(org.id, conexion.adAccountId);
-      sincronizados++;
+      if (clientes.length === 0) continue;
+
+      for (const cliente of clientes) {
+        const conexion = await transaccionTenant(org.id, (tx) =>
+          tx.metaAdsConexion.findFirst({ where: { orgId: org.id, clienteId: cliente.id, estado: "activa" }, select: { adAccountId: true } }),
+        );
+        if (!conexion) { sinConexion++; continue; }
+        if (conexion.adAccountId === "<temp>") { sinConexion++; continue; }
+        await sincronizarInsightsOrg(org.id, cliente.id, conexion.adAccountId);
+        sincronizados++;
+      }
     } catch { errores++; }
   }
 

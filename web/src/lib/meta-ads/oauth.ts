@@ -6,7 +6,7 @@ import { transaccionTenant } from "@/lib/retail-db";
 export const COOKIE_OAUTH_META_ADS = "ambar_meta_ads_oauth";
 const DURACION_STATE_MS = 10 * 60_000;
 
-type State = { orgId: string; userId: string; nonce: string; exp: number };
+type State = { orgId: string; userId: string; clienteId: string; nonce: string; exp: number };
 
 function secretoFirma() {
   const secreto = process.env.META_APP_SECRET?.trim();
@@ -23,14 +23,14 @@ export function configuracionMetaAds() {
   return { clientId, clientSecret, redirectUri };
 }
 
-export function crearStateMetaAds(orgId: bigint, userId: bigint) {
-  const payload: State = { orgId: String(orgId), userId: String(userId), nonce: randomBytes(24).toString("base64url"), exp: Date.now() + DURACION_STATE_MS };
+export function crearStateMetaAds(orgId: bigint, userId: bigint, clienteId: bigint) {
+  const payload: State = { orgId: String(orgId), userId: String(userId), clienteId: String(clienteId), nonce: randomBytes(24).toString("base64url"), exp: Date.now() + DURACION_STATE_MS };
   const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const signature = createHmac("sha256", secretoFirma()).update(encoded).digest("base64url");
   return { state: `${encoded}.${signature}`, cookie: Buffer.from(JSON.stringify({ nonce: payload.nonce })).toString("base64url") };
 }
 
-export function validarStateMetaAds(state: string, nonce: string, orgId: bigint, userId: bigint, now = Date.now()) {
+export function validarStateMetaAds(state: string, nonce: string, orgId: bigint, userId: bigint, clienteId: bigint, now = Date.now()) {
   try {
     const [encoded, signature, extra] = state.split(".");
     if (!encoded || !signature || extra) return false;
@@ -38,12 +38,22 @@ export function validarStateMetaAds(state: string, nonce: string, orgId: bigint,
     const a = Buffer.from(signature); const b = Buffer.from(expected);
     if (a.length !== b.length || !timingSafeEqual(a, b)) return false;
     const payload = JSON.parse(Buffer.from(encoded, "base64url").toString()) as State;
-    return payload.nonce === nonce && payload.orgId === String(orgId) && payload.userId === String(userId) && payload.exp >= now;
+    return payload.nonce === nonce && payload.orgId === String(orgId) && payload.userId === String(userId) && payload.clienteId === String(clienteId) && payload.exp >= now;
   } catch { return false; }
 }
 
 export function leerNonceMetaAds(value: string) {
   try { const parsed = JSON.parse(Buffer.from(value, "base64url").toString()) as { nonce?: unknown }; return typeof parsed.nonce === "string" ? parsed.nonce : null; } catch { return null; }
+}
+
+/** Lee el clienteId con el que se empezó el flujo OAuth desde el state firmado. */
+export function leerClienteIdMetaAds(state: string): string | null {
+  try {
+    const [encoded, signature] = state.split(".");
+    if (!encoded || !signature) return null;
+    const payload = JSON.parse(Buffer.from(encoded, "base64url").toString()) as State;
+    return typeof payload?.clienteId === "string" ? payload.clienteId : null;
+  } catch { return null; }
 }
 
 export function urlAutorizacionMetaAds(state: string) {
@@ -99,11 +109,12 @@ export async function listarCuentasPublicitarias(token: string) {
   return (data.data ?? []).map((item) => ({ id: item.account_id, nombre: item.name, estado: item.account_status }));
 }
 
-export async function guardarConexionMetaAds(orgId: bigint, userId: bigint, adAccountId: string, accessToken: string, refreshToken: string | null, tokenExpiraAt: Date) {
+export async function guardarConexionMetaAds(orgId: bigint, userId: bigint, clienteId: bigint, adAccountId: string, accessToken: string, refreshToken: string | null, tokenExpiraAt: Date) {
   await transaccionTenant(orgId, async (tx) => {
     await tx.metaAdsConexion.upsert({
-      where: { orgId },
+      where: { orgId_clienteId: { orgId, clienteId } },
       create: {
+        clienteId,
         adAccountId,
         accessTokenEncrypted: cifrarCredencialPago(accessToken),
         refreshTokenEncrypted: refreshToken ? cifrarCredencialPago(refreshToken) : null,

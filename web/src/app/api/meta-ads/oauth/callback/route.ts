@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSesion } from "@/lib/session";
 import { requireModuloActivo } from "@/lib/modulos";
-import { COOKIE_OAUTH_META_ADS, leerNonceMetaAds, validarStateMetaAds, intercambiarCodigoMetaAds, guardarConexionMetaAds, listarCuentasPublicitarias } from "@/lib/meta-ads/oauth";
+import { COOKIE_OAUTH_META_ADS, leerNonceMetaAds, leerClienteIdMetaAds, validarStateMetaAds, intercambiarCodigoMetaAds, guardarConexionMetaAds, listarCuentasPublicitarias } from "@/lib/meta-ads/oauth";
 import { sincronizarInsightsOrg } from "@/lib/meta-ads/servicio";
 
 function destino(req: NextRequest, estado: string) {
@@ -24,9 +24,12 @@ export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code") ?? "";
   const error = req.nextUrl.searchParams.get("error");
   const nonce = leerNonceMetaAds(req.cookies.get(COOKIE_OAUTH_META_ADS)?.value ?? "");
+  // El clienteId real viene dentro del state firmado; no se acepta del query.
+  const clienteIdRaw = leerClienteIdMetaAds(state);
+  const clienteId = clienteIdRaw && /^\d+$/.test(clienteIdRaw) ? BigInt(clienteIdRaw) : null;
   let valid = false;
   try {
-    valid = Boolean(!error && code && nonce && sesion.orgId && sesion.userId && validarStateMetaAds(state, nonce!, sesion.orgId!, sesion.userId!));
+    valid = Boolean(!error && code && nonce && sesion.orgId && sesion.userId && clienteId && validarStateMetaAds(state, nonce!, sesion.orgId!, sesion.userId!, clienteId!));
   } catch { valid = false; }
   if (!valid) {
     const response = NextResponse.redirect(destino(req, "error"));
@@ -54,8 +57,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Guardamos la conexión (con placeholder si es necesario) para que GET /api/meta-ads/insights devuelva connection.
-    await guardarConexionMetaAds(sesion.orgId!, sesion.userId!, adAccountIdParaGuardar, tokens.access_token, null, new Date(Date.now() + tokens.expires_in * 1000));
-    await sincronizarInsightsOrg(sesion.orgId!, adAccountIdParaGuardar).catch(() => undefined);
+    await guardarConexionMetaAds(sesion.orgId!, sesion.userId!, clienteId!, adAccountIdParaGuardar, tokens.access_token, null, new Date(Date.now() + tokens.expires_in * 1000));
+    await sincronizarInsightsOrg(sesion.orgId!, clienteId!, adAccountIdParaGuardar).catch(() => undefined);
 
     const response = NextResponse.redirect(destino(req, redirectEstado));
     borrarCookie(response);

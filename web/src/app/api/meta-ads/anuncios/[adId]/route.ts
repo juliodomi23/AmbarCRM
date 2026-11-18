@@ -31,6 +31,10 @@ export const GET = conModulo("meta_ads", {}, async (sesion, req: NextRequest, pr
 
   const desde = req.nextUrl.searchParams.get("desde") ?? "";
   const hasta = req.nextUrl.searchParams.get("hasta") ?? "";
+  const clienteId = req.nextUrl.searchParams.get("clienteId") ?? "";
+  if (!/^\d+$/.test(clienteId)) {
+    return NextResponse.json({ error: "Falta clienteId" }, { status: 400 });
+  }
   if (!FECHA.test(desde) || !FECHA.test(hasta)) {
     return NextResponse.json({ error: "Faltan las fechas desde y hasta (YYYY-MM-DD)" }, { status: 400 });
   }
@@ -38,10 +42,11 @@ export const GET = conModulo("meta_ads", {}, async (sesion, req: NextRequest, pr
     return NextResponse.json({ error: "La fecha 'desde' no puede ser posterior a 'hasta'" }, { status: 400 });
   }
 
+  const clienteIdBigint = BigInt(clienteId);
   const [insumos, creativo, acciones] = await Promise.all([
-    listarInsightsRango(sesion.orgId, adId, desde, hasta),
-    obtenerCreativoAnuncio(sesion.orgId, adId),
-    listarAccionesAnuncio(sesion.orgId, adId),
+    listarInsightsRango(sesion.orgId, clienteIdBigint, adId, desde, hasta),
+    obtenerCreativoAnuncio(sesion.orgId, clienteIdBigint, adId),
+    listarAccionesAnuncio(sesion.orgId, clienteIdBigint, adId),
   ]);
 
   // Una sola métrica canónica por día (como en la tabla): si no hay resultados, es 0.
@@ -77,18 +82,22 @@ export const PATCH = conModulo("meta_ads", { admin: true }, async (sesion, req: 
     return NextResponse.json({ error: "Anuncio inválido" }, { status: 400 });
   }
 
-  const body = await req.json().catch(() => ({})) as { estado?: unknown };
+  const body = await req.json().catch(() => ({})) as { estado?: unknown; clienteId?: unknown };
   if (body.estado !== "ACTIVE" && body.estado !== "PAUSED") {
     return NextResponse.json({ error: "Estado inválido: usa ACTIVE o PAUSED" }, { status: 400 });
   }
   if (!sesion.orgId) {
     return NextResponse.json({ error: "Sesión sin organización" }, { status: 400 });
   }
+  if (!body.clienteId || typeof body.clienteId !== "string" || !/^\d+$/.test(body.clienteId)) {
+    return NextResponse.json({ error: "Falta clienteId" }, { status: 400 });
+  }
 
   const estado = body.estado;
+  const clienteIdBigint = BigInt(body.clienteId);
 
   try {
-    await cambiarEstadoAnuncioMeta(sesion.orgId, adId, estado);
+    await cambiarEstadoAnuncioMeta(sesion.orgId, clienteIdBigint, adId, estado);
   } catch (error) {
     if (error instanceof ErrorPermisoMetaAds) {
       return NextResponse.json({ error: error.message }, { status: 403 });
@@ -100,7 +109,7 @@ export const PATCH = conModulo("meta_ads", { admin: true }, async (sesion, req: 
   }
 
   // Bitácora: quién pausó/reanudó qué anuncio y cuándo.
-  await registrarAccionAnuncio(sesion.orgId, adId, sesion.userId, estado === "PAUSED" ? "pausar" : "reanudar");
+  await registrarAccionAnuncio(sesion.orgId, clienteIdBigint, adId, sesion.userId, estado === "PAUSED" ? "pausar" : "reanudar");
 
   return NextResponse.json(
     { ok: true, adId, estado },

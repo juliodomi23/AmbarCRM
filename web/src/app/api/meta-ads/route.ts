@@ -1,32 +1,66 @@
 import { NextResponse } from "next/server";
 import { conModulo } from "@/lib/con-modulo";
 import { db } from "@/lib/db";
+import { transaccionTenant } from "@/lib/retail-db";
 import { sincronizarInsightsOrg, obtenerConexionPorOrg, guardarAccionResultado, guardarUmbralesVeredicto } from "@/lib/meta-ads/servicio";
 import { esAccionResultado } from "@/lib/meta-ads/resultados";
 
-export const GET = conModulo("meta_ads", {}, async (sesion) => {
-  if (!sesion.userId) return NextResponse.json({ connection: null, insights: [] });
-  const connection = await db.metaAdsConexion.findFirst({
-    where: { orgId: sesion.orgId! },
-    select: { id: true, adAccountId: true, estado: true, ultimoError: true }
+export const dynamic = "force-dynamic";
+
+/** Resuelve el clienteId a usar dentro de una organización (por query o por body). */
+function resolverClienteId(
+  req: Request,
+  sesionOrgId: bigint,
+  defaultFn: (tx: Parameters<typeof transaccionTenant>[1]) => Promise<{ id: bigint }>,
+): Promise<{ clienteId?: bigint; error?: string }> {
+  return Promise.resolve({
+    clienteId: undefined,
+  }).then(async (r) => {
+    // No hay clienteId: se resuelve el primer cliente activo de la organización.
+    const conexion = await transaccionTenant(sesionOrgId, async (tx) => {
+      const filas = await tx.metaAdsCliente.findFirst({
+        where: { orgId: sesionOrgId, activo: true },
+        select: { id: true },
+        orderBy: { id: "asc" },
+      });
+      return filas;
+    });
+    if (!conexion) return { error: "Sin clientes para esta organización" };
+    return { clienteId: conexion.id };
   });
-  if (!connection) return NextResponse.json({ connection: null, insights: [] });
-  return NextResponse.json({ connection: { id: connection.id.toString(), adAccountId: connection.adAccountId, estado: connection.estado } });
+}
+
+export const GET = conModulo("meta_ads", {}, async (sesion, req: Request) => {
+  if (!sesion.userId) return NextResponse.json({ connection: null, insights: [] });
+  const orgId = sesion.orgId;
+  const clienteIdParam = new URL(req.url).searchParams.get("clienteId");
+  if (orgId && clienteIdParam) {
+    const clienteId = BigInt(clienteIdParam);
+    const connection = await db.metaAdsConexion.findFirst({
+      where: { orgId, clienteId, estado: "activa" },
+      select: { id: true, adAccountId: true, estado: true, ultimoError: true }
+    });
+    if (!connection) return NextResponse.json({ connection: null, insights: [] });
+    return NextResponse.json({ connection: { id: connection.id.toString(), adAccountId: connection.adAccountId, estado: connection.estado } });
+  }
+  return NextResponse.json({ connection: null, insights: [] });
 });
 
 export const POST = conModulo("meta_ads", { admin: true }, async (sesion, req: Request) => {
-  const body = await req.json().catch(() => ({})) as { usuarioCrmId?: string };
+  const body = await req.json().catch(() => ({})) as { usuarioCrmId?: string; clienteId?: string };
   // El cron/admin puede indicar otra organización; la UI solo manda la sesión actual.
   const orgId = body.usuarioCrmId && /^\d+$/.test(body.usuarioCrmId)
     ? BigInt(body.usuarioCrmId)
     : sesion.orgId;
   if (!orgId) return NextResponse.json({ error: "Sesión sin organización" }, { status: 400 });
+  const clienteId = body.clienteId && /^\d+$/.test(body.clienteId) ? BigInt(body.clienteId) : null;
+  if (!clienteId) return NextResponse.json({ error: "Falta clienteId" }, { status: 400 });
   try {
-    const conexion = await obtenerConexionPorOrg(orgId);
+    const conexion = await obtenerConexionPorOrg(orgId, clienteId);
     if (!conexion) {
-      return NextResponse.json({ error: "No hay conexión de Meta Ads activa para esta organización" }, { status: 404 });
+      return NextResponse.json({ error: "No hay conexión de Meta Ads activa para este cliente" }, { status: 404 });
     }
-    await sincronizarInsightsOrg(orgId, conexion.adAccountId);
+    await sincronizarInsightsOrg(orgId, clienteId, conexion.adAccountId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Error desconocido" }, { status: 500 });
@@ -37,12 +71,13 @@ export const POST = conModulo("meta_ads", { admin: true }, async (sesion, req: R
  * Guarda la configuración del módulo que vive en `meta_ads_conexiones`:
  * - `accionResultado`: qué cuenta como resultado.
  * - `umbrales`: costo por resultado caro/barato (MXN).
- * Ambos son cálculo local: no hace falta resincronizar con Meta.
+ * Ambos son cálculo local: no hacen falta sincronizar con Meta.
  */
 export const PATCH = conModulo("meta_ads", { admin: true }, async (sesion, req: Request) => {
   const body = await req.json().catch(() => ({})) as {
     accionResultado?: unknown;
     umbrales?: { cpaMaximo?: unknown; cpaObjetivo?: unknown };
+    clienteId?: string;
   };
   if (!sesion.orgId) return NextResponse.json({ error: "Sesión sin organización" }, { status: 400 });
 
@@ -71,10 +106,14 @@ export const PATCH = conModulo("meta_ads", { admin: true }, async (sesion, req: 
     }
   }
 
+  const clienteId = body.clienteId && /^\d+$/.test(body.clienteId) ? BigInt(body.clienteId) : null;
+  if (!clienteId) return NextResponse.json({ error: "Falta clienteId" }, { status: 400 });
+
   try {
-    if (tocaAccion && accion) await guardarAccionResultado(sesion.orgId, accion);
+    const orgId = sesion.orgId;
+    if (tocaAccion && accion) await guardarAccionResultado(orgId, clienteId, accion);
     if (tocaUmbrales) {
-      await guardarUmbralesVeredicto(sesion.orgId, {
+      await guardarUmbralesVeredicto(orgId, clienteId, {
         cpaMaximo: Number(body.umbrales?.cpaMaximo),
         cpaObjetivo: Number(body.umbrales?.cpaObjetivo),
       });

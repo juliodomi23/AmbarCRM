@@ -348,6 +348,8 @@ model Org {
   metaAdsInsights    MetaAdsInsight[]
   metaAdsHorarios    MetaAdsHorario[]
   metaAdsDiasSemana  MetaAdsDiaSemana[]
+  metaAdsAcciones    MetaAdsAccion[]
+  metaAdsClientes    MetaAdsCliente[]
 
   @@map("orgs")
 }
@@ -1163,11 +1165,12 @@ model EventoCalendario {
 }
 
 /// Conexion de una organizacion con su cuenta publicitaria de Meta (Fase 2, ads_read).
-/// Una organizacion tiene como maximo una conexion. El token se guarda cifrado
+/// Una organización tiene como máximo una conexión POR CLIENTE. El token se guarda cifrado
 /// (mismo esquema que calendarios_conectados / credenciales_pago).
 model MetaAdsConexion {
   id                     BigInt   @id @default(autoincrement())
   orgId                  BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  clienteId              BigInt   @map("cliente_id")
   adAccountId            String   @map("ad_account_id") // id de la cuenta publicitaria SIN prefijo "act_" (el servicio lo antepone al consultar insights)
   accessTokenEncrypted   String   @map("access_token_encrypted")
   refreshTokenEncrypted  String?  @map("refresh_token_encrypted")
@@ -1185,11 +1188,13 @@ model MetaAdsConexion {
   createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  org   Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  org    Org           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  cliente MetaAdsCliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
-  @@unique([orgId])
+  @@unique([orgId, clienteId])
   @@unique([id, orgId])
   @@index([orgId, estado])
+  @@index([orgId, clienteId])
   @@map("meta_ads_conexiones")
 }
 
@@ -1198,6 +1203,7 @@ model MetaAdsConexion {
 model MetaAdsInsight {
   id             BigInt   @id @default(autoincrement())
   orgId          BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  clienteId      BigInt   @map("cliente_id")
   adId           String   @map("ad_id")
   nombreAnuncio  String   @map("nombre_anuncio")
   fecha          DateTime @db.Date
@@ -1212,16 +1218,18 @@ model MetaAdsInsight {
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  org   Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  org     Org           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  cliente MetaAdsCliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
-  @@unique([orgId, adId, fecha])
-  @@index([orgId, fecha])
+  @@unique([orgId, clienteId, adId, fecha])
+  @@index([orgId, clienteId, fecha])
   @@map("meta_ads_insights")
 }
 
 model MetaAdsHorario {
   id          BigInt   @id @default(autoincrement())
   orgId       BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  clienteId   BigInt   @map("cliente_id")
   hora        Int
   spend       Decimal  @default(0) @db.Decimal(12, 2)
   impresiones Int      @default(0)
@@ -1229,20 +1237,42 @@ model MetaAdsHorario {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  org     Org           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  cliente MetaAdsCliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
-  @@unique([orgId, hora])
-  @@index([orgId, hora])
-  @@index([orgId])
+  @@unique([orgId, clienteId, hora])
+  @@index([orgId, clienteId, hora])
+  @@index([orgId, clienteId])
   @@map("meta_ads_horarios")
 
 }
 
-/// Snapshot agregado de gasto/resultados por día de la semana (0 = domingo ... 6 = sábado).
+/// Meta Ads: cliente (cuenta publicitaria de un cliente específico).
+// Cada cliente tiene una conexión a Meta Ads, y sus datos se guardan por cliente.
+model MetaAdsCliente {
+  id        BigInt   @id @default(autoincrement())
+  orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  nombre    String
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  org        Org           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  conexiones MetaAdsConexion[]
+  insights   MetaAdsInsight[]
+  horarios   MetaAdsHorario[]
+  diasSemana MetaAdsDiaSemana[]
+  acciones   MetaAdsAccion[]
+
+  @@unique([orgId, nombre])
+  @@index([orgId])
+  @@map("meta_ads_clientes")
+}
 /// Se reemplaza completo en cada sync, no lleva historial por fecha.
 model MetaAdsDiaSemana {
   id          BigInt   @id @default(autoincrement())
   orgId       BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  clienteId   BigInt   @map("cliente_id")
   dia         Int
   spend       Decimal  @default(0) @db.Decimal(12, 2)
   impresiones Int      @default(0)
@@ -1250,11 +1280,12 @@ model MetaAdsDiaSemana {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  org         Org        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  cliente    MetaAdsCliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
-  @@unique([orgId, dia])
-  @@index([orgId, dia])
-  @@index([orgId])
+  @@unique([orgId, clienteId, dia])
+  @@index([orgId, clienteId, dia])
+  @@index([orgId, clienteId])
   @@map("meta_ads_dias_semana")
 }
 
@@ -1263,13 +1294,17 @@ model MetaAdsDiaSemana {
 model MetaAdsAccion {
   id        BigInt   @id @default(autoincrement())
   orgId     BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  clienteId BigInt   @map("cliente_id")
   adId      String   @map("ad_id")
   usuarioId BigInt?  @map("usuario_id")
   accion    String   // pausar | reanudar
   creadoAt  DateTime @default(now()) @map("creado_at") @db.Timestamptz(6)
 
-  @@index([orgId, creadoAt])
-  @@index([orgId, adId])
+  org     Org           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  cliente MetaAdsCliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, clienteId, creadoAt])
+  @@index([orgId, clienteId, adId])
   @@map("meta_ads_acciones")
 }
 

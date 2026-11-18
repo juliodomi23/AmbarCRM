@@ -39,10 +39,10 @@ function normalizarEstadoAnuncio(status?: string, effectiveStatus?: string): Est
   return null;
 }
 
-export async function obtenerConexionPorOrg(orgId: bigint): Promise<ConexionMeta | null> {
+export async function obtenerConexionPorOrg(orgId: bigint, clienteId: bigint): Promise<ConexionMeta | null> {
   return transaccionTenant(orgId, async (tx) => {
     const conexion = await tx.metaAdsConexion.findFirst({
-      where: { orgId, estado: "activa" },
+      where: { orgId, clienteId, estado: "activa" },
     });
     if (!conexion) return null;
     // Se lee con to_jsonb para que una BD todavía sin la migración no rompa la consulta:
@@ -166,8 +166,8 @@ async function obtenerEstadosAnuncios(adAccountId: string, token: string): Promi
  * breakdown válido en esta versión de la API): se deriva de las filas diarias,
  * que ya traen fecha por anuncio.
  */
-export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string): Promise<{ creados: number; actualizados: number }> {
-  const conexion = await obtenerConexionPorOrg(orgId);
+export async function sincronizarInsightsOrg(orgId: bigint, clienteId: bigint, adAccountId: string): Promise<{ creados: number; actualizados: number }> {
+  const conexion = await obtenerConexionPorOrg(orgId, clienteId);
   if (!conexion) throw new Error("No hay conexión de Meta Ads activa para esta organización");
   const token = await tokenMetaAds(orgId, conexion);
 
@@ -306,10 +306,10 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
 
       await tx.$executeRaw`
         INSERT INTO meta_ads_insights
-          (org_id, ad_id, nombre_anuncio, fecha, spend, ctr, cpa, impresiones, reach, cpm, estado_anuncio, created_at, updated_at)
+          (org_id, cliente_id, ad_id, nombre_anuncio, fecha, spend, ctr, cpa, impresiones, reach, cpm, estado_anuncio, created_at, updated_at)
         VALUES
-          (${orgId}, ${adId}, ${nombreAnuncio}, ${fechaStr}::date, ${spend}, ${ctr}, ${cpa}, ${impresiones}, ${reach}, ${cpm}, ${estadosAnuncios.get(adId) ?? null}, now(), now())
-        ON CONFLICT (org_id, ad_id, fecha) DO UPDATE SET
+          (${orgId}, ${clienteId}, ${adId}, ${nombreAnuncio}, ${fechaStr}::date, ${spend}, ${ctr}, ${cpa}, ${impresiones}, ${reach}, ${cpm}, ${estadosAnuncios.get(adId) ?? null}, now(), now())
+        ON CONFLICT (org_id, cliente_id, ad_id, fecha) DO UPDATE SET
           nombre_anuncio = EXCLUDED.nombre_anuncio,
           spend = EXCLUDED.spend,
           ctr = EXCLUDED.ctr,
@@ -329,12 +329,12 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
       await tx.$executeRaw`
         UPDATE meta_ads_insights
         SET estado_anuncio = ${estado}
-        WHERE org_id = ${orgId} AND ad_id = ${adId}
+        WHERE org_id = ${orgId} AND cliente_id = ${clienteId} AND ad_id = ${adId}
       `;
     }
 
     // 3b. Reemplazar snapshots horarios (24 filas por org)
-    await tx.$executeRaw`DELETE FROM meta_ads_horarios WHERE org_id = ${orgId}`;
+    await tx.$executeRaw`DELETE FROM meta_ads_horarios WHERE org_id = ${orgId} AND cliente_id = ${clienteId}`;
 
     const horaMap = new Map<number, { spend: number; impresiones: number; resultados: number }>();
     for (let h = 0; h <= 23; h++) horaMap.set(h, { spend: 0, impresiones: 0, resultados: 0 });
@@ -359,30 +359,30 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
 
     for (const [hora, datos] of horaMap.entries()) {
       await tx.$executeRaw`
-        INSERT INTO meta_ads_horarios (org_id, hora, spend, impresiones, resultados, created_at, updated_at)
-        VALUES (${orgId}, ${hora}, ${datos.spend}, ${datos.impresiones}, ${datos.resultados}, now(), now())
+        INSERT INTO meta_ads_horarios (org_id, cliente_id, hora, spend, impresiones, resultados, created_at, updated_at)
+        VALUES (${orgId}, ${clienteId}, ${hora}, ${datos.spend}, ${datos.impresiones}, ${datos.resultados}, now(), now())
       `;
     }
 
     // 3c. Reemplazar snapshots por día de la semana (7 filas por org).
     // diaMap ya se llenó con las filas diarias; si Meta no trajo datos, quedan 7 filas en cero.
-    await tx.$executeRaw`DELETE FROM meta_ads_dias_semana WHERE org_id = ${orgId}`;
+    await tx.$executeRaw`DELETE FROM meta_ads_dias_semana WHERE org_id = ${orgId} AND cliente_id = ${clienteId}`;
 
     for (const [dia, datos] of diaMap.entries()) {
       await tx.$executeRaw`
-        INSERT INTO meta_ads_dias_semana (org_id, dia, spend, impresiones, resultados, created_at, updated_at)
-        VALUES (${orgId}, ${dia}, ${datos.spend}, ${datos.impresiones}, ${datos.resultados}, now(), now())
+        INSERT INTO meta_ads_dias_semana (org_id, cliente_id, dia, spend, impresiones, resultados, created_at, updated_at)
+        VALUES (${orgId}, ${clienteId}, ${dia}, ${datos.spend}, ${datos.impresiones}, ${datos.resultados}, now(), now())
       `;
     }
 
-    await tx.metaAdsConexion.update({ where: { id: conexion.id }, data: { sincronizadoAt: new Date(), sincronizandoAt: null } });
+    await tx.metaAdsConexion.update({ where: { id: conexion.id, orgId, clienteId }, data: { sincronizadoAt: new Date(), sincronizandoAt: null } });
   }, { timeout: 120_000, maxWait: 10_000 });
 
   return { creados, actualizados };
 }
 
 /** Obtiene todos los snapshots diarios de una organización (para el dashboard). */
-export async function listarInsightsOrg(orgId: bigint): Promise<Array<InsightDia & { id: string }>> {
+export async function listarInsightsOrg(orgId: bigint, clienteId: bigint): Promise<Array<InsightDia & { id: string }>> {
   return transaccionTenant(orgId, async (tx) => {
     const filas = await tx.$queryRaw<Array<{
       id: bigint;
@@ -410,7 +410,7 @@ export async function listarInsightsOrg(orgId: bigint): Promise<Array<InsightDia
         COALESCE((to_jsonb(i)->>'cpm')::numeric, 0) AS cpm,
         to_jsonb(i)->>'estado_anuncio' AS estado_anuncio
       FROM meta_ads_insights i
-      WHERE org_id = ${orgId}
+      WHERE org_id = ${orgId} AND cliente_id = ${clienteId}
       ORDER BY fecha DESC, id DESC
     `;
     return filas.map((fila) => ({
@@ -430,8 +430,8 @@ export async function listarInsightsOrg(orgId: bigint): Promise<Array<InsightDia
 }
 
 /** Obtiene snapshots diarios de una ad_account para un rango de fechas. */
-export async function listarInsightsRango(orgId: bigint, adId: string, desde: string, hasta: string): Promise<InsightDia[]> {
-  const conexion = await obtenerConexionPorOrg(orgId);
+export async function listarInsightsRango(orgId: bigint, clienteId: bigint, adId: string, desde: string, hasta: string): Promise<InsightDia[]> {
+  const conexion = await obtenerConexionPorOrg(orgId, clienteId);
   if (!conexion) return [];
   return transaccionTenant(orgId, async (tx) => {
     const filas = await tx.$queryRaw<Array<{
@@ -458,7 +458,7 @@ export async function listarInsightsRango(orgId: bigint, adId: string, desde: st
         COALESCE((to_jsonb(i)->>'cpm')::numeric, 0) AS cpm,
         to_jsonb(i)->>'estado_anuncio' AS estado_anuncio
       FROM meta_ads_insights i
-      WHERE org_id = ${orgId}
+      WHERE org_id = ${orgId} AND cliente_id = ${clienteId}
         AND ad_id = ${adId}
         AND fecha >= ${desde}::date
         AND fecha <= ${hasta}::date
@@ -480,15 +480,15 @@ export async function listarInsightsRango(orgId: bigint, adId: string, desde: st
 }
 
 /** Obtiene snapshots horarios (0-23) para una organización. */
-export async function listarHorariosOrg(orgId: bigint): Promise<Array<{ hora: number; spend: number; impresiones: number; resultados: number }>> {
-  const conexion = await obtenerConexionPorOrg(orgId);
+export async function listarHorariosOrg(orgId: bigint, clienteId: bigint): Promise<Array<{ hora: number; spend: number; impresiones: number; resultados: number }>> {
+  const conexion = await obtenerConexionPorOrg(orgId, clienteId);
   if (!conexion) return [];
   try {
     return await transaccionTenant(orgId, async (tx) => {
       const raw = await tx.$queryRaw<
         Array<{ hora: number; spend: string; impresiones: number; resultados: number }>
       >`
-        SELECT hora, spend, impresiones, resultados FROM meta_ads_horarios WHERE org_id = ${orgId} ORDER BY hora ASC
+        SELECT hora, spend, impresiones, resultados FROM meta_ads_horarios WHERE org_id = ${orgId} AND cliente_id = ${clienteId} ORDER BY hora ASC
       `;
       return raw.map((f) => ({
         hora: f.hora,
@@ -504,15 +504,15 @@ export async function listarHorariosOrg(orgId: bigint): Promise<Array<{ hora: nu
 }
 
 /** Obtiene snapshots por día de la semana (0 = domingo ... 6 = sábado). */
-export async function listarDiasSemanaOrg(orgId: bigint): Promise<DiaSemanaInsight[]> {
-  const conexion = await obtenerConexionPorOrg(orgId);
+export async function listarDiasSemanaOrg(orgId: bigint, clienteId: bigint): Promise<DiaSemanaInsight[]> {
+  const conexion = await obtenerConexionPorOrg(orgId, clienteId);
   if (!conexion) return [];
   try {
     return await transaccionTenant(orgId, async (tx) => {
       const raw = await tx.$queryRaw<
         Array<{ dia: number; spend: string; impresiones: number; resultados: number }>
       >`
-        SELECT dia, spend, impresiones, resultados FROM meta_ads_dias_semana WHERE org_id = ${orgId} ORDER BY dia ASC
+        SELECT dia, spend, impresiones, resultados FROM meta_ads_dias_semana WHERE org_id = ${orgId} AND cliente_id = ${clienteId} ORDER BY dia ASC
       `;
       return raw.map((f) => ({
         dia: f.dia,
@@ -528,12 +528,12 @@ export async function listarDiasSemanaOrg(orgId: bigint): Promise<DiaSemanaInsig
 }
 
 /** Guarda la métrica que la organización considera "resultado". */
-export async function guardarAccionResultado(orgId: bigint, accion: AccionResultado | null): Promise<void> {
+export async function guardarAccionResultado(orgId: bigint, clienteId: bigint, accion: AccionResultado | null): Promise<void> {
   await transaccionTenant(orgId, async (tx) => {
     await tx.$executeRaw`
       UPDATE meta_ads_conexiones
       SET accion_resultado = ${accion}, updated_at = now()
-      WHERE org_id = ${orgId}
+      WHERE org_id = ${orgId} AND cliente_id = ${clienteId}
     `;
   });
 }
@@ -544,6 +544,7 @@ export async function guardarAccionResultado(orgId: bigint, accion: AccionResult
  */
 export async function guardarUmbralesVeredicto(
   orgId: bigint,
+  clienteId: bigint,
   umbrales: { cpaMaximo: number; cpaObjetivo: number },
 ): Promise<void> {
   await transaccionTenant(orgId, async (tx) => {
@@ -552,18 +553,18 @@ export async function guardarUmbralesVeredicto(
       SET cpa_maximo = ${umbrales.cpaMaximo},
           cpa_objetivo = ${umbrales.cpaObjetivo},
           updated_at = now()
-      WHERE org_id = ${orgId}
+      WHERE org_id = ${orgId} AND cliente_id = ${clienteId}
     `;
   });
 }
 
 /** Revoca y desactiva la conexión de Meta Ads de una organización. */
-export async function desconectarMetaAds(orgId: bigint): Promise<void> {
+export async function desconectarMetaAds(orgId: bigint, clienteId: bigint): Promise<void> {
   await transaccionTenant(orgId, async (tx) => {
-    const conexion = await tx.metaAdsConexion.findFirst({ where: { orgId } });
+    const conexion = await tx.metaAdsConexion.findFirst({ where: { orgId, clienteId } });
     if (!conexion) return;
     try { await revocarTokenMetaAds(conexion.accessTokenEncrypted); } catch { /* local debe completarse aunque Meta falle */ }
-    await tx.metaAdsConexion.update({ where: { id: conexion.id }, data: { estado: "revocada", accessTokenEncrypted: "", refreshTokenEncrypted: null } });
+    await tx.metaAdsConexion.update({ where: { id: conexion.id, orgId, clienteId }, data: { estado: "revocada", accessTokenEncrypted: "", refreshTokenEncrypted: null } });
   });
 }
 
@@ -587,8 +588,8 @@ function esErrorDePermisoMetaAds(statusHttp: number, error?: { code?: number; ty
  * `ads_management`), lanza ErrorPermisoMetaAds con el mensaje para reconectar.
  * Al terminar, el nuevo estado se refleja de inmediato en la BD local.
  */
-export async function cambiarEstadoAnuncioMeta(orgId: bigint, adId: string, estado: EstadoAnuncio): Promise<void> {
-  const conexion = await obtenerConexionPorOrg(orgId);
+export async function cambiarEstadoAnuncioMeta(orgId: bigint, clienteId: bigint, adId: string, estado: EstadoAnuncio): Promise<void> {
+  const conexion = await obtenerConexionPorOrg(orgId, clienteId);
   if (!conexion) throw new Error("No hay conexión de Meta Ads activa para esta organización");
   const token = await tokenMetaAds(orgId, conexion);
 
@@ -618,7 +619,7 @@ export async function cambiarEstadoAnuncioMeta(orgId: bigint, adId: string, esta
       await tx.$executeRaw`
         UPDATE meta_ads_insights
         SET estado_anuncio = ${estado}, updated_at = now()
-        WHERE org_id = ${orgId} AND ad_id = ${adId}
+        WHERE org_id = ${orgId} AND cliente_id = ${clienteId} AND ad_id = ${adId}
       `;
     });
   } catch (error) {
@@ -629,6 +630,7 @@ export async function cambiarEstadoAnuncioMeta(orgId: bigint, adId: string, esta
 /** Bitácora de pausas/reanudados hechas por usuarios reales (solo se agrega). */
 export async function registrarAccionAnuncio(
   orgId: bigint,
+  clienteId: bigint,
   adId: string,
   usuarioId: bigint | null,
   accion: AccionAnuncio,
@@ -636,8 +638,8 @@ export async function registrarAccionAnuncio(
   try {
     await transaccionTenant(orgId, async (tx) => {
       await tx.$executeRaw`
-        INSERT INTO meta_ads_acciones (org_id, ad_id, usuario_id, accion, creado_at)
-        VALUES (${orgId}, ${adId}, ${usuarioId}, ${accion}, now())
+        INSERT INTO meta_ads_acciones (org_id, cliente_id, ad_id, usuario_id, accion, creado_at)
+        VALUES (${orgId}, ${clienteId}, ${adId}, ${usuarioId}, ${accion}, now())
       `;
     });
   } catch (error) {
@@ -664,9 +666,9 @@ export type CreativoAnuncio = {
  * Si Meta no puede (anuncio borrado, sin permiso), devuelve null: el modal
  * muestra el resto de la info con un aviso, nunca rompe.
  */
-export async function obtenerCreativoAnuncio(orgId: bigint, adId: string): Promise<CreativoAnuncio | null> {
+export async function obtenerCreativoAnuncio(orgId: bigint, clienteId: bigint, adId: string): Promise<CreativoAnuncio | null> {
   try {
-    const conexion = await obtenerConexionPorOrg(orgId);
+    const conexion = await obtenerConexionPorOrg(orgId, clienteId);
     if (!conexion) return null;
     const token = await tokenMetaAds(orgId, conexion);
     const url = new URL(`https://graph.facebook.com/v26.0/${encodeURIComponent(adId)}`);
@@ -739,7 +741,7 @@ export type AccionAnuncioHistorial = {
 };
 
 /** Historial de pausas/reanudados de un anuncio (más reciente primero). */
-export async function listarAccionesAnuncio(orgId: bigint, adId: string): Promise<AccionAnuncioHistorial[]> {
+export async function listarAccionesAnuncio(orgId: bigint, clienteId: bigint, adId: string): Promise<AccionAnuncioHistorial[]> {
   try {
     return await transaccionTenant(orgId, async (tx) => {
       const filas = await tx.$queryRaw<Array<{
@@ -754,7 +756,7 @@ export async function listarAccionesAnuncio(orgId: bigint, adId: string): Promis
                u.nombre AS usuario_nombre
         FROM meta_ads_acciones a
         LEFT JOIN usuarios u ON u.id = a.usuario_id AND u.org_id = a.org_id
-        WHERE a.org_id = ${orgId} AND a.ad_id = ${adId}
+        WHERE a.org_id = ${orgId} AND a.cliente_id = ${clienteId} AND a.ad_id = ${adId}
         ORDER BY a.creado_at DESC
         LIMIT 20
       `;
