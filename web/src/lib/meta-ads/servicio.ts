@@ -488,6 +488,78 @@ export async function obtenerInsightsHoy(orgId: bigint, clienteId: bigint, adAcc
   return insights;
 }
 
+/**
+ * Obtiene el desglose horario de Meta Ads para HOY, en tiempo real (solo lectura).
+ *
+ * Es el backing de la gráfica "Gasto por hora" del período "Hoy": consulta la API
+ * de Meta con `breakdowns=hourly_stats_aggregated_by_advertiser_time_zone` y
+ * `time_range` = solo hoy, sin escribir nada en BD. Si no hay conexión, retorna [].
+ */
+export async function obtenerHorariosHoy(orgId: bigint, clienteId: bigint, adAccountId: string): Promise<Array<{ hora: number; spend: number; impresiones: number }>> {
+  const conexion = await obtenerConexionPorOrg(orgId, clienteId);
+  if (!conexion) return [];
+
+  const token = await tokenMetaAds(orgId, conexion);
+
+  // Solo el día de hoy (zona horaria del servidor, igual que el sync).
+  const hoy = new Date();
+  const desde = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  desde.setHours(0, 0, 0, 0);
+  const hasta = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  hasta.setHours(23, 59, 59, 999);
+  const rango = JSON.stringify({ since: desde.toISOString().slice(0, 10), until: hasta.toISOString().slice(0, 10) });
+
+  const url = new URL(`https://graph.facebook.com/v26.0/act_${adAccountId}/insights`);
+  url.searchParams.set("fields", "spend,impressions");
+  url.searchParams.set("breakdowns", "hourly_stats_aggregated_by_advertiser_time_zone");
+  url.searchParams.set("time_range", rango);
+  url.searchParams.set("limit", "100");
+
+  type FilaHora = {
+    hourly_stats_aggregated_by_advertiser_time_zone?: string;
+    spend?: string;
+    impressions?: string;
+  };
+
+  const filasHora: FilaHora[] = [];
+  let siguiente: string | null = url.toString();
+  let paginas = 0;
+
+  while (siguiente) {
+    paginas++;
+    if (paginas > 50) throw new Error("Meta devolvió demasiadas páginas de insights horarios; se detuvo por seguridad");
+    const response = await fetch(siguiente, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) throw new Error(`Meta respondió ${response.status} al consultar insights horarios`);
+    const data = await response.json() as {
+      data?: FilaHora[];
+      paging?: { next?: string };
+      error?: { message?: string };
+    };
+    if (data.error) throw new Error(data.error.message || "Meta devolvió un error al consultar insights horarios");
+    if (Array.isArray(data.data)) filasHora.push(...data.data);
+    siguiente = data.paging?.next ?? null;
+  }
+
+  // Acumula por hora y rellena las 24 horas (0-23), igual que el sync.
+  const horaMap = new Map<number, { spend: number; impresiones: number }>();
+  for (let h = 0; h <= 23; h++) horaMap.set(h, { spend: 0, impresiones: 0 });
+
+  for (const f of filasHora) {
+    const horaStr = f.hourly_stats_aggregated_by_advertiser_time_zone;
+    if (horaStr === undefined || horaStr === null) continue;
+    const hora = parseInt(horaStr, 10);
+    if (isNaN(hora) || hora < 0 || hora > 23) continue;
+    const existing = horaMap.get(hora) ?? { spend: 0, impresiones: 0 };
+    existing.spend += f.spend ? Number(f.spend) : 0;
+    existing.impresiones += f.impressions ? Number(f.impressions) : 0;
+    horaMap.set(hora, existing);
+  }
+
+  return Array.from(horaMap.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([hora, datos]) => ({ hora, spend: datos.spend, impresiones: datos.impresiones }));
+}
+
 /** Obtiene todos los snapshots diarios de una organización (para el dashboard). */
 export async function listarInsightsOrg(orgId: bigint, clienteId: bigint): Promise<Array<InsightDia & { id: string }>> {
   return transaccionTenant(orgId, async (tx) => {
@@ -824,8 +896,30 @@ export async function obtenerCreativoAnuncio(orgId: bigint, clienteId: bigint, a
       }
     }
 
+    // Para anuncios de video, el thumbnail_url que regresa el creativo es chiquito.
+    // Se pide el edge /thumbnails del video y se usa el de mayor resolución.
+    let resolvedVideoThumbnail: string | null = null;
+    if (c.video_id) {
+      try {
+        const thumbsUrl = new URL(`https://graph.facebook.com/v26.0/${encodeURIComponent(c.video_id)}/thumbnails`);
+        thumbsUrl.searchParams.set("fields", "uri,height,width");
+        const thumbsRes = await fetch(thumbsUrl, { headers: { Authorization: `Bearer ${token}` } });
+        if (thumbsRes.ok) {
+          const thumbsData = await thumbsRes.json() as { data?: { uri: string; height: number; width: number }[] };
+          const candidates = thumbsData?.data ?? [];
+          if (candidates.length > 0) {
+            resolvedVideoThumbnail = candidates.reduce((best, current) =>
+              (current.height * current.width) > (best.height * best.width) ? current : best,
+            ).uri ?? null;
+          }
+        }
+      } catch {
+        // Si falla la resolución de thumbnails, seguimos sin romper nada
+      }
+    }
+
     const creativo: CreativoAnuncio = {
-      imageUrl: resolvedImageUrl ?? c.image_url ?? c.thumbnail_url ?? null,
+      imageUrl: resolvedImageUrl ?? resolvedVideoThumbnail ?? c.image_url ?? c.thumbnail_url ?? null,
       thumbnailUrl: c.thumbnail_url ?? null,
       videoId: c.video_id ?? null,
       body: c.body ?? null,

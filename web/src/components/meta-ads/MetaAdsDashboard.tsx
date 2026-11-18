@@ -262,12 +262,40 @@ function pasaFiltroVeredicto(tipo: VeredictoAnuncio["tipo"], filtro: FiltroVered
   return tipo === "cara" || tipo === "fatiga";
 }
 
+/** Barra simulada de progreso para el período "Hoy". Avanza cada ~200ms,
+ * acercándose al 92% (nunca más mientras activo sea true). Cuando activo pasa
+ * a false, salta inmediatamente a 100%.
+ */
+function BarraProgresoFalsa({ activo }: { activo: boolean }) {
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    if (!activo) {
+      setProgress(100);
+      return () => {};
+    }
+    const target = 92;
+    const intervalId = setInterval(() => {
+      setProgress((prev) => {
+        const siguiente = prev + (target - prev) * 0.15;
+        return siguiente >= target ? target : siguiente;
+      });
+    }, 200);
+    return () => clearInterval(intervalId);
+  }, [activo]);
+  return (
+    <div className="h-2 rounded-full bg-muted">
+      <div className={`rounded-full bg-primary h-full transition-all duration-150`} style={{ width: `${progress}%` }} />
+    </div>
+  );
+}
+
 export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
   const router = useRouter();
   const [datos, setDatos] = useState<RespuestaDashboard | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [datosHoy, setDatosHoy] = useState<InsightDia[]>([]);
+  const [datosHorariosHoy, setDatosHorariosHoy] = useState<Array<{ hora: number; spend: number; impresiones: number }>>([]);
   const [cargandoHoy, setCargandoHoy] = useState(false);
   const [errorHoy, setErrorHoy] = useState("");
   const [cuentas, setCuentas] = useState<CuentaPublicitaria[]>([]);
@@ -555,19 +583,41 @@ async function buscarTendencia() {
   // "Hoy" es en vivo: solo se consulta la API de Meta cuando el período es
   // "hoy" (al entrar a la pestaña o al cambiar de cliente/refrescar mientras
   // están en ella). No es un polling: se aborta en el cleanup.
+  // Se disparan JUNTAS las dos peticiones en vivo (insights + desglose por
+  // hora) con Promise.all, para que compartan el mismo ciclo de carga.
   useEffect(() => {
     if (periodo !== "hoy") return;
     const control = new AbortController();
     setCargandoHoy(true);
     setErrorHoy("");
-    fetch(`/api/meta-ads/hoy?clienteId=${clienteActivoId ?? ""}`, { signal: control.signal, cache: "no-store" })
-      .then(async (res) => {
-        if (!res.ok) throw new Error("No se pudo cargar el resumen de hoy.");
-        return (await res.json()) as { insights: InsightDia[] };
-      })
-      .then((r) => { if (!control.signal.aborted) setDatosHoy(r.insights ?? []); })
-      .catch((e: unknown) => { if (!control.signal.aborted) setErrorHoy(e instanceof Error ? e.message : "No se pudo cargar el resumen de hoy."); })
-      .finally(() => { if (!control.signal.aborted) setCargandoHoy(false); });
+    const cargarHoy = async () => {
+      try {
+        const [resInsights, resHorarios] = await Promise.all([
+          fetch(`/api/meta-ads/hoy?clienteId=${clienteActivoId ?? ""}`, { signal: control.signal, cache: "no-store" }),
+          fetch(`/api/meta-ads/horarios-hoy?clienteId=${clienteActivoId ?? ""}`, { signal: control.signal, cache: "no-store" }),
+        ]);
+        const [dataInsights, dataHorarios] = await Promise.all([
+          (async () => {
+            if (!resInsights.ok) throw new Error("No se pudo cargar el resumen de hoy.");
+            return (await resInsights.json()) as { insights: InsightDia[] };
+          })(),
+          (async () => {
+            if (!resHorarios.ok) throw new Error("No se pudo cargar el desglose por hora de hoy.");
+            return (await resHorarios.json()) as { horarios: Array<{ hora: number; spend: number; impresiones: number }> };
+          })(),
+        ]);
+        if (!control.signal.aborted) {
+          setDatosHoy(dataInsights.insights ?? []);
+          setDatosHorariosHoy(dataHorarios.horarios ?? []);
+          setErrorHoy("");
+        }
+      } catch (e) {
+        if (!control.signal.aborted) setErrorHoy(e instanceof Error ? e.message : "No se pudo cargar el resumen de hoy.");
+      } finally {
+        if (!control.signal.aborted) setCargandoHoy(false);
+      }
+    };
+    void cargarHoy();
     return () => control.abort();
   }, [periodo, clienteActivoId, refresco]);
 
@@ -744,6 +794,15 @@ async function buscarTendencia() {
   const peor = ranking[ranking.length - 1] ?? null;
   const gastoPorDia = agruparGasto(delRango, periodo);
   const maxDia = Math.max(0.01, ...gastoPorDia.map((barra) => barra.valor));
+  const barrasHorasHoy = periodo === "hoy"
+    ? datosHorariosHoy.map((h) => ({
+        clave: String(h.hora),
+        etiqueta: `${h.hora}h`,
+        detalle: `${h.hora}h`,
+        valor: h.spend,
+      }))
+    : [];
+  const maxHoraHoy = Math.max(0.01, ...barrasHorasHoy.map((b) => b.valor));
   const puntosGasto = ultimosPuntos(sumaPorFecha(delRango));
   const puntosImpresiones = ultimosPuntos(serieDiariaImpresiones(delRango));
   const puntosReach = ultimosPuntos(serieDiariaReach(delRango));
@@ -860,7 +919,14 @@ async function buscarTendencia() {
 
       {cargandoSeccion ? (
         <div className="grid min-h-48 place-items-center rounded-2xl border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
-          {periodo === "hoy" ? "Cargando el resumen de hoy desde Meta…" : "Cargando resultados de Meta Ads…"}
+          {periodo === "hoy" ? (
+            <div className="flex flex-col items-center gap-2">
+              <span>Cargando el resumen de hoy desde Meta…</span>
+              <BarraProgresoFalsa activo={periodo === "hoy"} />
+            </div>
+          ) : (
+            "Cargando resultados de Meta Ads…"
+          )}
         </div>
       ) : errorSeccion ? (
         <div role="alert" className="surface space-y-3 p-6">
@@ -1003,25 +1069,56 @@ async function buscarTendencia() {
           )}
           {tab === "resumen" && (
             <section className="surface space-y-4 p-4 sm:p-5" aria-label="Gasto por días y semanas">
-              <h2 className="text-base font-semibold text-foreground">{periodo === "3m" ? "Gasto semanal" : "Gasto diario"}</h2>
-              {gastoPorDia.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aún no hay gasto registrado.</p>
-              ) : (
-                <div className="overflow-x-auto pb-1">
-                  <div className="flex w-max min-w-full items-end justify-center gap-1.5" role="img" aria-label={periodo === "3m" ? "Gráfica de gasto semanal" : "Gráfica de gasto diario"}>
-                    {gastoPorDia.map((barra) => (
-                      <div key={barra.clave} className={`group flex shrink-0 flex-col items-center ${periodo === "3m" ? "w-[92px]" : "w-9"}`} title={barra.detalle}>
-                        <div className="relative flex h-40 w-full items-end justify-center">
-                          <span className="pointer-events-none absolute top-0 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium text-background group-hover:block">{dinero(barra.valor)}</span>
-                          <div className="w-8 rounded-t bg-primary/80 transition group-hover:bg-primary" style={{ height: `${Math.max(3, (barra.valor / maxDia) * 100)}%` }} />
-                        </div>
-                        <span className="mt-1 whitespace-nowrap text-center text-[10px] leading-tight text-muted-foreground">{barra.etiqueta}</span>
+              <h2 className="text-base font-semibold text-foreground">
+                {periodo === "hoy"
+                  ? "Gasto por hora (hoy)"
+                  : periodo === "3m"
+                    ? "Gasto semanal"
+                    : "Gasto diario"}
+              </h2>
+              {periodo === "hoy" ? (
+                barrasHorasHoy.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Aún no hay gasto registrado hoy.</p>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto pb-1">
+                      <div className="flex w-max min-w-full items-end justify-center gap-1.5" role="img" aria-label="Gráfica de gasto por hora">
+                        {barrasHorasHoy.map((barra) => (
+                          <div key={barra.clave} className="group flex shrink-0 flex-col items-center w-9" title={barra.detalle}>
+                            <div className="relative flex h-40 w-full items-end justify-center">
+                              <span className="pointer-events-none absolute top-0 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium text-background group-hover:block">{dinero(barra.valor)}</span>
+                              <div className="w-8 rounded-t bg-primary/80 transition group-hover:bg-primary" style={{ height: `${Math.max(3, (barra.valor / maxHoraHoy) * 100)}%` }} />
+                            </div>
+                            <span className="mt-1 whitespace-nowrap text-center text-[10px] leading-tight text-muted-foreground">{barra.etiqueta}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{barrasHorasHoy.length} horas con datos</p>
+                  </>
+                )
+              ) : (
+                gastoPorDia.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Aún no hay gasto registrado.</p>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto pb-1">
+                      <div className="flex w-max min-w-full items-end justify-center gap-1.5" role="img" aria-label={periodo === "3m" ? "Gráfica de gasto semanal" : "Gráfica de gasto diario"}>
+                        {gastoPorDia.map((barra) => (
+                          <div key={barra.clave} className={`group flex shrink-0 flex-col items-center ${periodo === "3m" ? "w-[92px]" : "w-9"}`} title={barra.detalle}>
+                            <div className="relative flex h-40 w-full items-end justify-center">
+                              <span className="pointer-events-none absolute top-0 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium text-background group-hover:block">{dinero(barra.valor)}</span>
+                              <div className="w-8 rounded-t bg-primary/80 transition group-hover:bg-primary" style={{ height: `${Math.max(3, (barra.valor / maxDia) * 100)}%` }} />
+                            </div>
+                            <span className="mt-1 whitespace-nowrap text-center text-[10px] leading-tight text-muted-foreground">{barra.etiqueta}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{gastoPorDia.length} {gastoPorDia.length === 1 ? (periodo === "3m" ? "semana" : "día") : periodo === "3m" ? "semanas" : "días"} con datos</p>
+                  </>
+                )
               )}
-              <p className="text-xs text-muted-foreground">{gastoPorDia.length} {gastoPorDia.length === 1 ? (periodo === "3m" ? "semana" : "día") : periodo === "3m" ? "semanas" : "días"} con datos</p>
             </section>
           )}
           {tab === "anuncios" && (
