@@ -21,6 +21,42 @@ export async function obtenerConexionPorOrg(orgId: bigint): Promise<ConexionMeta
 }
 
 /**
+ * Métricas de resultado canónicas, en orden de prioridad.
+ *
+ * Meta reporta el mismo evento con varios nombres a la vez (por ejemplo
+ * `onsite_conversion.messaging_conversation_started_7d` y
+ * `onsite_conversion.total_messaging_connection` traen casi el mismo valor;
+ * `lead`, `onsite_conversion.lead` y `onsite_conversion.lead_grouped` son el
+ * mismo lead repetido). Por eso NO se suman: se elige una sola por fila.
+ *
+ * Prioridad:
+ * 1. `onsite_conversion.messaging_conversation_started_7d`
+ * 2. `purchase` o `lead` (sin prefijo `onsite_conversion.`)
+ * 3. Ninguna => 0
+ */
+const ACCIONES_RESULTADO_CANONICAS = [
+  "onsite_conversion.messaging_conversation_started_7d",
+  "purchase",
+  "lead",
+] as const;
+
+/**
+ * Devuelve el valor de la única métrica canónica de resultado de esa fila.
+ * Nunca suma varias acciones: si no hay ninguna canónica, devuelve 0.
+ *
+ * Sirve tanto para `actions` (conteo de resultados) como para
+ * `cost_per_action_type` (costo por resultado).
+ */
+function valorResultadoCanonico(acciones?: Array<{ action_type?: string; value?: string }>): number {
+  if (!acciones || acciones.length === 0) return 0;
+  for (const tipo of ACCIONES_RESULTADO_CANONICAS) {
+    const accion = acciones.find((a) => a.action_type === tipo);
+    if (accion) return Number(accion.value ?? 0);
+  }
+  return 0;
+}
+
+/**
  * Ejecuta la sincronización de insights de Meta Ads para una conexión.
  * Llama a GET /act_<id>/insights con fields=spend,ctr,cpm,actions&level=ad
  * para los últimos ~3 meses (time_increment=1) y hace upsert diario.
@@ -132,12 +168,12 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
       const ctr = fila.ctr ? Number(fila.ctr) : 0;
 
       let cpa = 0;
-      const acciones = fila.cost_per_action_type ?? [];
-      const accionValida = acciones.find((a) => a.action_type === "purchase" || a.action_type === "lead");
-      if (accionValida && accionValida.value) cpa = Number(accionValida.value);
-      else if (spend > 0 && filas.length > 0) {
-        const totalActions = (fila.actions ?? []).reduce((s, a) => s + Number(a.value ?? 0), 0);
-        if (totalActions > 0) cpa = spend / totalActions;
+      const costoCanonico = valorResultadoCanonico(fila.cost_per_action_type);
+      if (costoCanonico > 0) cpa = costoCanonico;
+      else if (spend > 0) {
+        // Mismo criterio que el desglose horario: una sola métrica canónica por fila.
+        const resultadosDia = valorResultadoCanonico(fila.actions);
+        if (resultadosDia > 0) cpa = spend / resultadosDia;
       }
 
       await tx.metaAdsInsight.upsert({
@@ -164,17 +200,9 @@ export async function sincronizarInsightsOrg(orgId: bigint, adAccountId: string)
 
       const spend = f.spend ? Number(f.spend) : 0;
       const impresiones = f.impressions ? Number(f.impressions) : 0;
-      let resultados = 0;
-      const actions = f.actions ?? [];
-      for (const a of actions) {
-        if (a.action_type === "purchase" || a.action_type === "lead") {
-          resultados += Number(a.value ?? 0);
-        }
-      }
-      // Si no hay purchase/lead pero hay actions totales, usa total
-      if (resultados === 0 && actions.length > 0) {
-        resultados = actions.reduce((s, a) => s + Number(a.value ?? 0), 0);
-      }
+      // Solo se usa una métrica canónica por fila; no se suman nombres duplicados.
+      // Si no hay ninguna, la hora queda en 0.
+      const resultados = Math.round(valorResultadoCanonico(f.actions));
 
       const existing = horaMap.get(hora) ?? { spend: 0, impresiones: 0, resultados: 0 };
       existing.spend += spend;
