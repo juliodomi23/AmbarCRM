@@ -718,7 +718,7 @@ export async function obtenerCreativoAnuncio(orgId: bigint, clienteId: bigint, a
     }
 
     const creativo: CreativoAnuncio = {
-      imageUrl: c.image_url ?? resolvedImageUrl ?? c.thumbnail_url ?? null,
+      imageUrl: resolvedImageUrl ?? c.image_url ?? c.thumbnail_url ?? null,
       thumbnailUrl: c.thumbnail_url ?? null,
       videoId: c.video_id ?? null,
       body: c.body ?? null,
