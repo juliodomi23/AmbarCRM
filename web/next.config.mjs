@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: { proxyClientMaxBodySize: "12mb" },
+  // Playwright descarga Chromium aparte y usa requires dinámicos: no debe empaquetarse.
+  serverExternalPackages: ["playwright", "playwright-core"],
   logging: { incomingRequests: { ignore: [/^\/restablecer(?:\/|$)/] } },
   // Versiona los cachés del service worker de la caja: cada build invalida los chunks anteriores.
   env: { NEXT_PUBLIC_BUILD_ID: process.env.BUILD_ID || Date.now().toString(36) },

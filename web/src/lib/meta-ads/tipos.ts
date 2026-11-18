@@ -23,6 +23,18 @@ export type InsightDia = {
   ctr: number;
   cpa: number;
   impresiones: number;
+  /** Personas distintas alcanzadas (Meta `reach`). */
+  reach: number;
+  /** Costo por 1,000 impresiones. */
+  cpm: number;
+};
+
+export type DiaSemanaInsight = {
+  /** 0 = domingo ... 6 = sábado (mismo criterio que Meta). */
+  dia: number;
+  spend: number;
+  impresiones: number;
+  resultados: number;
 };
 
 export type RangoInsights = {

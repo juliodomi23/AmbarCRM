@@ -344,9 +344,10 @@ model Org {
   eventosFactura   EventoFactura[]
   calendariosConectados CalendarioConectado[]
   eventosCalendario EventoCalendario[]
-  metaAdsConexiones MetaAdsConexion[]
-  metaAdsInsights   MetaAdsInsight[]
-  metaAdsHorarios   MetaAdsHorario[]
+  metaAdsConexiones  MetaAdsConexion[]
+  metaAdsInsights    MetaAdsInsight[]
+  metaAdsHorarios    MetaAdsHorario[]
+  metaAdsDiasSemana  MetaAdsDiaSemana[]
 
   @@map("orgs")
 }
@@ -1172,6 +1173,8 @@ model MetaAdsConexion {
   refreshTokenEncrypted  String?  @map("refresh_token_encrypted")
   tokenExpiraAt          DateTime? @map("token_expira_at") @db.Timestamptz(6)
   estado                 String   @default("activa") // activa | requiere_reconectar | revocada
+  /// Métrica que la organización considera "resultado". NULL = orden canónico por defecto.
+  accionResultado        String?  @map("accion_resultado")
   ultimoError            String?  @map("ultimo_error")
   sincronizadoAt         DateTime? @map("sincronizado_at") @db.Timestamptz(6)
   sincronizandoAt        DateTime? @map("sincronizando_at") @db.Timestamptz(6)
@@ -1198,6 +1201,8 @@ model MetaAdsInsight {
   ctr            Decimal  @default(0) @db.Decimal(8, 4) // porcentaje (9.87)
   cpa            Decimal  @default(0) @db.Decimal(12, 2) // costo por accion/resultado
   impresiones    Int      @default(0)
+  reach          Int      @default(0) // personas distintas alcanzadas
+  cpm            Decimal  @default(0) @db.Decimal(12, 2) // costo por 1,000 impresiones
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -1225,6 +1230,26 @@ model MetaAdsHorario {
   @@index([orgId])
   @@map("meta_ads_horarios")
 
+}
+
+/// Snapshot agregado de gasto/resultados por día de la semana (0 = domingo ... 6 = sábado).
+/// Se reemplaza completo en cada sync, no lleva historial por fecha.
+model MetaAdsDiaSemana {
+  id          BigInt   @id @default(autoincrement())
+  orgId       BigInt   @default(dbgenerated("NULLIF(current_setting('app.current_org', true), '')::bigint")) @map("org_id")
+  dia         Int
+  spend       Decimal  @default(0) @db.Decimal(12, 2)
+  impresiones Int      @default(0)
+  resultados  Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, dia])
+  @@index([orgId, dia])
+  @@index([orgId])
+  @@map("meta_ads_dias_semana")
 }
 
 model Doctor {

@@ -13,7 +13,11 @@ ENV NEXT_PUBLIC_META_CONFIG_ID=$NEXT_PUBLIC_META_CONFIG_ID
 ENV NEXT_PUBLIC_META_GRAPH_VERSION=$NEXT_PUBLIC_META_GRAPH_VERSION
 
 COPY package*.json ./
-RUN npm install
+# No bajar navegadores en install: se instalan abajo con sus dependencias del sistema.
+RUN PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install
+
+# Chromium + libs que node:22-slim no incluye (lo necesita Tendencia).
+RUN npx playwright install --with-deps chromium && rm -rf /var/lib/apt/lists/*
 
 COPY . .
 RUN npx prisma generate && npm run build

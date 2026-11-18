@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Badge, Boton, EncabezadoPagina } from "@/components/ui";
 import { KpiCard } from "@/components/DashboardVisuals";
 import { veredictoDeAnuncio, ctrPortafolio, type DatosVeredicto, type VeredictoAnuncio } from "@/lib/meta-ads/veredicto";
+import { ACCIONES_RESULTADO, ACCION_RESULTADO_POR_DEFECTO } from "@/lib/meta-ads/resultados";
 
 const VEREDICTO_TONO_MAP: Record<"cara" | "fatiga" | "estrella" | "revivir" | "normal", "destructive" | "warning" | "success" | "neutral"> = {
   cara: "destructive",
@@ -22,10 +23,20 @@ type InsightData = {
   ctr: number;
   cpa: number;
   impresiones: number;
+  reach: number;
+  cpm: number;
 };
 
 type HorarioData = {
   hora: number;
+  spend: number;
+  impresiones: number;
+  resultados: number;
+};
+
+type DiaSemanaData = {
+  /** 0 = domingo ... 6 = sábado (mismo criterio que Meta). */
+  dia: number;
   spend: number;
   impresiones: number;
   resultados: number;
@@ -43,17 +54,20 @@ type ConexionData = {
   estado: string;
   sincronizadoAt?: string | null;
   ultimoError?: string | null;
+  accionResultado?: string | null;
 } | null;
 
 type RespuestaDashboard = { connection: ConexionData; insights: InsightData[] };
 
 type Tab = "resumen" | "anuncios" | "horarios" | "configuracion";
 
-type Periodo = "7d" | "30d" | "3m";
+type Periodo = "7d" | "30d" | "3m" | "personalizado";
 
-const PERIODOS: Periodo[] = ["7d", "30d", "3m"];
+type FiltroVeredicto = "todos" | "bien" | "normal" | "atencion";
 
-const DIAS_PERIODO: Record<Periodo, number> = {
+const PERIODOS: Periodo[] = ["7d", "30d", "3m", "personalizado"];
+
+const DIAS_PERIODO: Record<Exclude<Periodo, "personalizado">, number> = {
   "7d": 7,
   "30d": 30,
   "3m": 89,
@@ -63,10 +77,40 @@ const ETIQUETA_PERIODO: Record<Periodo, string> = {
   "7d": "7 días",
   "30d": "30 días",
   "3m": "3 meses",
+  personalizado: "Personalizado",
 };
+
+const FILTROS_VEREDICTO: Array<{ id: FiltroVeredicto; etiqueta: string }> = [
+  { id: "todos", etiqueta: "Todos" },
+  { id: "bien", etiqueta: "Funcionan bien" },
+  { id: "normal", etiqueta: "Van normal" },
+  { id: "atencion", etiqueta: "Necesitan atención" },
+];
+
+const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const NOMBRES_DIA = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const NOMBRES_DIA_MIN = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 
 function dinero(valor: number) {
   return valor.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 2 });
+}
+
+function isoLocal(fecha: Date) {
+  const anio = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  return `${anio}-${mes}-${dia}`;
+}
+
+function restarDias(iso: string, dias: number) {
+  const [anio, mes, dia] = iso.split("-").map(Number);
+  const fecha = new Date(anio, mes - 1, dia - dias, 12, 0, 0);
+  return isoLocal(fecha);
+}
+
+function fechaCorta(iso: string) {
+  const [, mes, dia] = iso.split("-").map(Number);
+  return `${dia} ${MESES_CORTOS[mes - 1]}`;
 }
 
 function sumaPorFecha(insights: InsightData[]): Array<[string, number]> {
@@ -78,6 +122,12 @@ function sumaPorFecha(insights: InsightData[]): Array<[string, number]> {
 function serieDiariaImpresiones(insights: InsightData[]): Array<[string, number]> {
   const mapa = new Map<string, number>();
   for (const insight of insights) mapa.set(insight.fecha, (mapa.get(insight.fecha) ?? 0) + insight.impresiones);
+  return [...mapa.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+}
+
+function serieDiariaReach(insights: InsightData[]): Array<[string, number]> {
+  const mapa = new Map<string, number>();
+  for (const insight of insights) mapa.set(insight.fecha, (mapa.get(insight.fecha) ?? 0) + insight.reach);
   return [...mapa.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
 }
 
@@ -104,28 +154,73 @@ function serieDiariaCpa(insights: InsightData[]): Array<[string, number]> {
   return [...acumulado.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([fecha, { suma, cuenta }]) => [fecha, suma / Math.max(1, cuenta)]);
 }
 
+function serieDiariaCpm(insights: InsightData[]): Array<[string, number]> {
+  const acumulado = new Map<string, { spend: number; impresiones: number }>();
+  for (const insight of insights) {
+    const actual = acumulado.get(insight.fecha) ?? { spend: 0, impresiones: 0 };
+    actual.spend += insight.spend;
+    actual.impresiones += insight.impresiones;
+    acumulado.set(insight.fecha, actual);
+  }
+  return [...acumulado.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([fecha, { spend, impresiones }]) => [fecha, impresiones > 0 ? (spend / impresiones) * 1000 : 0]);
+}
+
 function ultimosPuntos(serie: Array<[string, number]>, n = 14): number[] {
   return serie.slice(-n).map(([, valor]) => valor);
 }
 
-function agruparGasto(insights: InsightData[], periodo: Periodo): Array<[string, number]> {
-  if (periodo !== "3m") return sumaPorFecha(insights);
+type BarraGasto = { clave: string; etiqueta: string; valor: number; detalle: string };
+
+function agruparGasto(insights: InsightData[], periodo: Periodo): BarraGasto[] {
+  if (periodo !== "3m") {
+    return sumaPorFecha(insights).map(([fecha, valor]) => ({
+      clave: fecha,
+      etiqueta: fechaCorta(fecha),
+      valor,
+      detalle: fecha,
+    }));
+  }
+
   const fechas = [...new Set(insights.map((i) => i.fecha))].sort();
   if (fechas.length === 0) return [];
   const primera = new Date(`${fechas[0]}T00:00:00Z`);
-  const mapa = new Map<number, number>();
+  const mapa = new Map<number, { valor: number; inicio: string }>();
+
   for (const insight of insights) {
     const fecha = new Date(`${insight.fecha}T00:00:00Z`);
     const indice = Math.floor((fecha.getTime() - primera.getTime()) / (7 * 86400000));
-    mapa.set(indice, (mapa.get(indice) ?? 0) + insight.spend);
+    const actual = mapa.get(indice) ?? { valor: 0, inicio: insight.fecha };
+    actual.valor += insight.spend;
+    if (insight.fecha < actual.inicio) actual.inicio = insight.fecha;
+    mapa.set(indice, actual);
   }
-  return [...mapa.entries()].sort((a, b) => a[0] - b[0]).map(([indice, valor]) => [`Semana ${indice + 1}`, valor]);
+
+  return [...mapa.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([, { valor, inicio }]) => {
+      const fin = restarDias(inicio, -6);
+      return {
+        clave: inicio,
+        etiqueta: `${fechaCorta(inicio)} – ${fechaCorta(fin)}`,
+        valor,
+        detalle: `Semana del ${inicio} al ${fin}`,
+      };
+    });
 }
 
 function etiquetaHora(hora: number) {
   const h12 = hora % 12 === 0 ? 12 : hora % 12;
   const sufijo = hora < 12 ? "a.m." : "p.m.";
   return `${h12} ${sufijo}`;
+}
+
+function pasaFiltroVeredicto(tipo: VeredictoAnuncio["tipo"], filtro: FiltroVeredicto) {
+  if (filtro === "todos") return true;
+  if (filtro === "bien") return tipo === "estrella";
+  if (filtro === "normal") return tipo === "normal";
+  return tipo === "cara" || tipo === "fatiga";
 }
 
 export function MetaAdsDashboard() {
@@ -140,6 +235,7 @@ export function MetaAdsDashboard() {
   const [tab, setTab] = useState<Tab>("resumen");
   const [subTab, setSubTab] = useState<"mios" | "tendencia">("mios");
   const [buscar, setBuscar] = useState("");
+  const [veredictoFiltro, setVeredictoFiltro] = useState<FiltroVeredicto>("todos");
   const [tendenciaQuery, setTendenciaQuery] = useState("");
   const [tendenciaCargando, setTendenciaCargando] = useState(false);
   const [tendenciaError, setTendenciaError] = useState("");
@@ -147,9 +243,22 @@ export function MetaAdsDashboard() {
   const [desconectando, setDesconectando] = useState(false);
   const [errorDesconectar, setErrorDesconectar] = useState("");
   const [periodo, setPeriodo] = useState<Periodo>("3m");
+  const [desdePersonalizado, setDesdePersonalizado] = useState(() => restarDias(isoLocal(new Date()), 6));
+  const [hastaPersonalizado, setHastaPersonalizado] = useState(() => isoLocal(new Date()));
   const [horarios, setHorarios] = useState<HorarioData[]>([]);
   const [cargandoHorarios, setCargandoHorarios] = useState(false);
   const [errorHorarios, setErrorHorarios] = useState("");
+  const [diasSemana, setDiasSemana] = useState<DiaSemanaData[]>([]);
+  const [cargandoDias, setCargandoDias] = useState(false);
+  const [errorDias, setErrorDias] = useState("");
+  const [refresco, setRefresco] = useState(0);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [errorSync, setErrorSync] = useState("");
+  const [mensajeSync, setMensajeSync] = useState("");
+  const [accionResultado, setAccionResultado] = useState<string>(ACCION_RESULTADO_POR_DEFECTO);
+  const [guardandoAccion, setGuardandoAccion] = useState(false);
+  const [errorAccion, setErrorAccion] = useState("");
+  const [mensajeAccion, setMensajeAccion] = useState("");
 
   async function elegirCuenta(adAccountId: string) {
     setSeleccionando(true);
@@ -190,12 +299,56 @@ export function MetaAdsDashboard() {
     }
   }
 
+  async function sincronizarAhora() {
+    setSincronizando(true);
+    setErrorSync("");
+    setMensajeSync("");
+    try {
+      const res = await fetch("/api/meta-ads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo sincronizar con Meta");
+      setMensajeSync("Sincronización completada. Actualizando datos…");
+      setRefresco((valor) => valor + 1);
+    } catch (e) {
+      setErrorSync(e instanceof Error ? e.message : "Error al sincronizar");
+    } finally {
+      setSincronizando(false);
+    }
+  }
+
+  async function cambiarAccionResultado(valor: string) {
+    const anterior = accionResultado;
+    setAccionResultado(valor);
+    setGuardandoAccion(true);
+    setErrorAccion("");
+    setMensajeAccion("");
+    try {
+      const res = await fetch("/api/meta-ads", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accionResultado: valor }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo guardar la preferencia");
+      setMensajeAccion("Guardado. Se aplicará en la próxima sincronización.");
+    } catch (e) {
+      setAccionResultado(anterior);
+      setErrorAccion(e instanceof Error ? e.message : "Error al guardar la preferencia");
+    } finally {
+      setGuardandoAccion(false);
+    }
+  }
+
   async function buscarTendencia() {
     setTendenciaCargando(true);
     setTendenciaError("");
     setTendencia([]);
     try {
-      // Llama al endpoint /api/meta-ads/tendencia?q= que usa token de app, no ads_read del cliente
+      // El endpoint abre Meta Ad Library con Playwright en el servidor.
       const res = await fetch(`/api/meta-ads/tendencia?q=${encodeURIComponent(tendenciaQuery)}`, {
         cache: "no-store",
       });
@@ -223,7 +376,12 @@ export function MetaAdsDashboard() {
       .catch((e: unknown) => { if (!control.signal.aborted) setError(e instanceof Error ? e.message : "No se pudieron cargar los resultados."); })
       .finally(() => { if (!control.signal.aborted) setCargando(false); });
     return () => control.abort();
-  }, []);
+  }, [refresco]);
+
+  useEffect(() => {
+    const valor = datos?.connection?.accionResultado;
+    if (valor) setAccionResultado(valor);
+  }, [datos?.connection?.accionResultado]);
 
   useEffect(() => {
     const control = new AbortController();
@@ -237,7 +395,21 @@ export function MetaAdsDashboard() {
       .catch((e: unknown) => { if (!control.signal.aborted) setErrorHorarios(e instanceof Error ? e.message : "No se pudieron cargar los horarios."); })
       .finally(() => { if (!control.signal.aborted) setCargandoHorarios(false); });
     return () => control.abort();
-  }, []);
+  }, [refresco]);
+
+  useEffect(() => {
+    const control = new AbortController();
+    setCargandoDias(true);
+    fetch("/api/meta-ads/dias-semana", { signal: control.signal, cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("No se pudieron cargar los días de la semana.");
+        return (await res.json()) as { dias?: DiaSemanaData[] };
+      })
+      .then((resultado) => { if (!control.signal.aborted) { setDiasSemana(resultado.dias ?? []); setErrorDias(""); } })
+      .catch((e: unknown) => { if (!control.signal.aborted) setErrorDias(e instanceof Error ? e.message : "No se pudieron cargar los días de la semana."); })
+      .finally(() => { if (!control.signal.aborted) setCargandoDias(false); });
+    return () => control.abort();
+  }, [refresco]);
 
   useEffect(() => {
     const control = new AbortController();
@@ -267,22 +439,43 @@ export function MetaAdsDashboard() {
   const necesitaSeleccion = adAccountId === "<temp>";
 
   const ahora = new Date();
-  const diasPeriodo = DIAS_PERIODO[periodo];
-  const inicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - (diasPeriodo - 1));
-  inicio.setHours(0, 0, 0, 0);
-  const fin = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-  fin.setHours(23, 59, 59, 999);
-  const delRango = insights.filter((i) => {
-    const fecha = new Date(`${i.fecha}T00:00:00Z`);
-    return fecha >= inicio && fecha <= fin;
-  });
+  const hoyIso = isoLocal(ahora);
+
+  const errorRango = (() => {
+    if (periodo !== "personalizado") return "";
+    if (!desdePersonalizado || !hastaPersonalizado) return "Elige la fecha de inicio y la de fin.";
+    if (desdePersonalizado > hastaPersonalizado) return "La fecha 'Desde' no puede ser posterior a 'Hasta'.";
+    const desde = new Date(`${desdePersonalizado}T12:00:00`);
+    const hasta = new Date(`${hastaPersonalizado}T12:00:00`);
+    const dias = Math.round((hasta.getTime() - desde.getTime()) / 86400000) + 1;
+    if (dias > 90) return "Solo se sincronizan los últimos 3 meses (~90 días). Elige un rango más corto.";
+    return "";
+  })();
+
+  const avisoRango = (() => {
+    if (periodo !== "personalizado" || errorRango) return "";
+    const limite = restarDias(hoyIso, 89);
+    if (desdePersonalizado < limite) return "Solo hay datos de los últimos 3 meses; las fechas anteriores se verán vacías.";
+    return "";
+  })();
+
+  const inicioIso = periodo === "personalizado"
+    ? (errorRango ? hoyIso : desdePersonalizado)
+    : restarDias(hoyIso, DIAS_PERIODO[periodo] - 1);
+  const finIso = periodo === "personalizado" ? (errorRango ? hoyIso : hastaPersonalizado) : hoyIso;
+
+  const delRango = periodo === "personalizado" && errorRango
+    ? []
+    : insights.filter((i) => i.fecha >= inicioIso && i.fecha <= finIso);
 
   const gastoRango = delRango.reduce((total, i) => total + i.spend, 0);
   const impresionesRango = delRango.reduce((total, i) => total + i.impresiones, 0);
+  const reachRango = delRango.reduce((total, i) => total + i.reach, 0);
   const conCpa = delRango.filter((i) => i.cpa > 0);
   const cpaPromedio = conCpa.length ? conCpa.reduce((total, i) => total + i.cpa, 0) / conCpa.length : 0;
   const conCtr = delRango.filter((i) => i.impresiones > 0);
   const ctrPromedio = conCtr.length ? conCtr.reduce((total, i) => total + i.ctr, 0) / conCtr.length : 0;
+  const cpmRango = impresionesRango > 0 ? (gastoRango / impresionesRango) * 1000 : 0;
 
   const porAnuncio = new Map<string, { nombre: string; gasto: number; ctr: number; cpa: number; impresiones: number; adId: string }>();
   for (const insight of delRango) {
@@ -320,12 +513,16 @@ export function MetaAdsDashboard() {
   const mejor = ranking[0] ?? null;
   const peor = ranking[ranking.length - 1] ?? null;
   const gastoPorDia = agruparGasto(delRango, periodo);
-  const maxDia = Math.max(0.01, ...gastoPorDia.map(([, valor]) => valor));
+  const maxDia = Math.max(0.01, ...gastoPorDia.map((barra) => barra.valor));
   const puntosGasto = ultimosPuntos(sumaPorFecha(delRango));
   const puntosImpresiones = ultimosPuntos(serieDiariaImpresiones(delRango));
+  const puntosReach = ultimosPuntos(serieDiariaReach(delRango));
   const puntosCtr = ultimosPuntos(serieDiariaCtr(delRango));
   const puntosCpa = ultimosPuntos(serieDiariaCpa(delRango));
-  const etiquetaPeriodo = ETIQUETA_PERIODO[periodo];
+  const puntosCpm = ultimosPuntos(serieDiariaCpm(delRango));
+  const etiquetaPeriodo = periodo === "personalizado"
+    ? (errorRango ? "personalizado" : `${fechaCorta(desdePersonalizado)} – ${fechaCorta(hastaPersonalizado)}`)
+    : ETIQUETA_PERIODO[periodo];
 
   const horasConResultados = horarios
     .filter((h) => h.resultados > 0)
@@ -333,17 +530,30 @@ export function MetaAdsDashboard() {
   const mejoresHoras = [...horasConResultados].sort((a, b) => a.costo - b.costo).slice(0, 4);
   const maxGastoHora = Math.max(0.01, ...horarios.map((h) => h.spend));
 
+  const diasConResultados = diasSemana
+    .filter((d) => d.resultados > 0)
+    .map((d) => ({ ...d, costo: d.spend / d.resultados }));
+  const mejoresDias = [...diasConResultados].sort((a, b) => a.costo - b.costo).slice(0, 2);
+  const maxGastoDia = Math.max(0.01, ...diasSemana.map((d) => d.spend));
+
+  let textoMejoresDias = "Aún no hay suficientes resultados por día para recomendarte uno.";
+  if (mejoresDias.length === 1) {
+    textoMejoresDias = `Tu mejor día es el ${NOMBRES_DIA_MIN[mejoresDias[0].dia]}.`;
+  } else if (mejoresDias.length >= 2) {
+    textoMejoresDias = `Los ${NOMBRES_DIA_MIN[mejoresDias[0].dia]} y ${NOMBRES_DIA_MIN[mejoresDias[1].dia]} te funcionan mejor: consigues resultados más baratos.`;
+  }
+
   const cuentaActual = cuentas.find((c) => c.id === adAccountId);
   const ultimaSync = conexion?.sincronizadoAt
     ? new Date(conexion.sincronizadoAt).toLocaleString("es-MX", { dateStyle: "long", timeStyle: "short" })
     : "Aún no se ha sincronizado";
 
-  const anunciosFiltrados = buscar.trim()
-    ? ranking.filter((a) =>
-        a.nombre.toLowerCase().includes(buscar.toLowerCase()) ||
-        a.adId.toLowerCase().includes(buscar.toLowerCase()),
-      )
-    : ranking;
+  const anunciosFiltrados = ranking.filter((a) => {
+    if (!pasaFiltroVeredicto(a.veredicto.tipo, veredictoFiltro)) return false;
+    if (!buscar.trim()) return true;
+    const termino = buscar.toLowerCase();
+    return a.nombre.toLowerCase().includes(termino) || a.adId.toLowerCase().includes(termino);
+  });
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 lg:p-8">
@@ -402,11 +612,41 @@ export function MetaAdsDashboard() {
                   </button>
                 ))}
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label={`Resumen de los últimos ${etiquetaPeriodo}`}>
+              {periodo === "personalizado" && (
+                <div className="rounded-xl border border-border bg-muted/30 p-3">
+                  <div className="flex flex-wrap items-end gap-3">
+                    <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                      Desde
+                      <input
+                        type="date"
+                        value={desdePersonalizado}
+                        max={hastaPersonalizado || hoyIso}
+                        onChange={(e) => setDesdePersonalizado(e.target.value)}
+                        className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                      Hasta
+                      <input
+                        type="date"
+                        value={hastaPersonalizado}
+                        min={desdePersonalizado}
+                        max={hoyIso}
+                        onChange={(e) => setHastaPersonalizado(e.target.value)}
+                        className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      />
+                    </label>
+                    <p className={`text-xs ${errorRango ? "font-medium text-destructive" : "text-muted-foreground"}`}>
+                      {errorRango || avisoRango || "Máximo ~90 días: es todo lo que se sincroniza desde Meta."}
+                    </p>
+                  </div>
+                </div>
+              )}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label={`Resumen de ${etiquetaPeriodo}`}>
                 <KpiCard
                   titulo="Gasto"
                   valor={dinero(gastoRango)}
-                  detalle={`Últimos ${etiquetaPeriodo.toLowerCase()}`}
+                  detalle={`Período: ${etiquetaPeriodo}`}
                   rail="bg-primary"
                   datos={puntosGasto}
                 />
@@ -416,6 +656,13 @@ export function MetaAdsDashboard() {
                   detalle="Veces que se mostró tu anuncio"
                   rail="bg-success"
                   datos={puntosImpresiones}
+                />
+                <KpiCard
+                  titulo="Alcance real"
+                  valor={reachRango.toLocaleString("es-MX")}
+                  detalle="Personas distintas alcanzadas (aprox.)"
+                  rail="bg-success"
+                  datos={puntosReach}
                 />
                 <KpiCard
                   titulo="Tasa de clic (CTR)"
@@ -431,34 +678,41 @@ export function MetaAdsDashboard() {
                   rail="bg-destructive"
                   datos={puntosCpa}
                 />
+                <KpiCard
+                  titulo="CPM"
+                  valor={cpmRango > 0 ? dinero(cpmRango) : "—"}
+                  detalle="Lo que cuesta llegar a 1,000 personas."
+                  rail="bg-primary"
+                  datos={puntosCpm}
+                />
               </div>
             </section>
           )}
           {tab === "resumen" && (
             <section className="grid gap-4 lg:grid-cols-2">
               <div className="surface space-y-3 p-4 sm:p-5">
-                <h2 className="text-base font-semibold text-foreground">Mejor anuncio (mayor tasa de clic) - últimos {etiquetaPeriodo.toLowerCase()}</h2>
+                <h2 className="text-base font-semibold text-foreground">Mejor anuncio (mayor tasa de clic) - {etiquetaPeriodo}</h2>
                 {mejor ? (
                   <div className="space-y-1 text-sm">
                     <Badge tono={VEREDICTO_TONO_MAP[mejor.veredicto.tipo]} className="mb-1">{mejor.veredicto.texto}</Badge>
                     <p className="font-semibold text-foreground">{mejor.nombre}</p>
                     <p className="text-muted-foreground">Tasa de clic: <span className="tnum font-medium text-foreground">{mejor.ctr.toFixed(2)}%</span></p>
-                    <p className="text-muted-foreground">Gasto (últimos {etiquetaPeriodo}): <span className="tnum font-medium text-foreground">{dinero(mejor.gasto)}</span></p>
+                    <p className="text-muted-foreground">Gasto ({etiquetaPeriodo}): <span className="tnum font-medium text-foreground">{dinero(mejor.gasto)}</span></p>
                     <p className="text-muted-foreground">Veces que se mostró: <span className="tnum font-medium text-foreground">{mejor.impresiones.toLocaleString("es-MX")}</span></p>
                   </div>
-                ) : <p className="text-sm text-muted-foreground">Todavía no hay datos de anuncios en los últimos {etiquetaPeriodo.toLowerCase()}.</p>}
+                ) : <p className="text-sm text-muted-foreground">Todavía no hay datos de anuncios en {etiquetaPeriodo}.</p>}
               </div>
               <div className="surface space-y-3 p-4 sm:p-5">
-                <h2 className="text-base font-semibold text-foreground">Peor anuncio (menor tasa de clic) - últimos {etiquetaPeriodo.toLowerCase()}</h2>
+                <h2 className="text-base font-semibold text-foreground">Peor anuncio (menor tasa de clic) - {etiquetaPeriodo}</h2>
                 {peor ? (
                   <div className="space-y-1 text-sm">
                     <Badge tono={VEREDICTO_TONO_MAP[peor.veredicto.tipo]} className="mb-1">{peor.veredicto.texto}</Badge>
                     <p className="font-semibold text-foreground">{peor.nombre}</p>
                     <p className="text-muted-foreground">Tasa de clic: <span className="tnum font-medium text-foreground">{peor.ctr.toFixed(2)}%</span></p>
-                    <p className="text-muted-foreground">Gasto (últimos {etiquetaPeriodo}): <span className="tnum font-medium text-foreground">{dinero(peor.gasto)}</span></p>
+                    <p className="text-muted-foreground">Gasto ({etiquetaPeriodo}): <span className="tnum font-medium text-foreground">{dinero(peor.gasto)}</span></p>
                     <p className="text-muted-foreground">Veces que se mostró: <span className="tnum font-medium text-foreground">{peor.impresiones.toLocaleString("es-MX")}</span></p>
                   </div>
-                ) : <p className="text-sm text-muted-foreground">Todavía no hay datos de anuncios en los últimos {etiquetaPeriodo.toLowerCase()}.</p>}
+                ) : <p className="text-sm text-muted-foreground">Todavía no hay datos de anuncios en {etiquetaPeriodo}.</p>}
               </div>
             </section>
           )}
@@ -468,13 +722,18 @@ export function MetaAdsDashboard() {
               {gastoPorDia.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Aún no hay gasto registrado.</p>
               ) : (
-                <div className="flex h-40 items-end gap-1.5" role="img" aria-label={periodo === "3m" ? "Gráfica de gasto semanal" : "Gráfica de gasto diario"}>
-                  {gastoPorDia.map(([fecha, valor]) => (
-                    <div key={fecha} className="group relative flex h-full min-w-0 flex-1 flex-col justify-end">
-                      <div className="rounded-t bg-primary/80 transition group-hover:bg-primary" style={{ height: `${Math.max(3, (valor / maxDia) * 100)}%` }} />
-                      <span className="pointer-events-none absolute -top-6 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium text-background group-hover:block">{dinero(valor)}</span>
-                    </div>
-                  ))}
+                <div className="overflow-x-auto pb-1">
+                  <div className="flex items-end gap-1.5" role="img" aria-label={periodo === "3m" ? "Gráfica de gasto semanal" : "Gráfica de gasto diario"}>
+                    {gastoPorDia.map((barra) => (
+                      <div key={barra.clave} className={`group flex ${periodo === "3m" ? "min-w-[88px]" : "min-w-[34px]"} flex-1 flex-col items-center`} title={barra.detalle}>
+                        <div className="relative flex h-40 w-full items-end justify-center">
+                          <span className="pointer-events-none absolute top-0 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium text-background group-hover:block">{dinero(barra.valor)}</span>
+                          <div className="w-full max-w-[42px] rounded-t bg-primary/80 transition group-hover:bg-primary" style={{ height: `${Math.max(3, (barra.valor / maxDia) * 100)}%` }} />
+                        </div>
+                        <span className="mt-1 whitespace-nowrap text-center text-[10px] leading-tight text-muted-foreground">{barra.etiqueta}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               <p className="text-xs text-muted-foreground">{gastoPorDia.length} {gastoPorDia.length === 1 ? (periodo === "3m" ? "semana" : "día") : periodo === "3m" ? "semanas" : "días"} con datos</p>
@@ -495,7 +754,23 @@ export function MetaAdsDashboard() {
               </div>
               {subTab === "mios" && (
                 <>
-                  <h2 className="text-base font-semibold text-foreground">Anuncios (últimos {etiquetaPeriodo.toLowerCase()})</h2>
+                  <h2 className="text-base font-semibold text-foreground">Anuncios ({etiquetaPeriodo})</h2>
+                  <div className="flex flex-wrap gap-2" aria-label="Filtrar por veredicto">
+                    {FILTROS_VEREDICTO.map((filtro) => {
+                      const activo = veredictoFiltro === filtro.id;
+                      const cantidad = ranking.filter((a) => pasaFiltroVeredicto(a.veredicto.tipo, filtro.id)).length;
+                      return (
+                        <button
+                          key={filtro.id}
+                          onClick={() => setVeredictoFiltro(filtro.id)}
+                          className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${activo ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-muted/70"}`}
+                        >
+                          {filtro.etiqueta}
+                          <span className={`ml-1.5 tnum text-xs ${activo ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{cantidad}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                   <div className="flex flex-wrap items-center gap-2 mb-3">
                     <input
                       type="text"
@@ -509,7 +784,7 @@ export function MetaAdsDashboard() {
                     </span>
                   </div>
                   {anunciosFiltrados.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Todavía no hay datos de anuncios en los últimos {etiquetaPeriodo.toLowerCase()}.</p>
+                    <p className="text-sm text-muted-foreground">No hay anuncios que coincidan con el filtro en {etiquetaPeriodo}.</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[640px] text-sm">
@@ -524,7 +799,7 @@ export function MetaAdsDashboard() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/60">
-                          {[...anunciosFiltrados].map((a) => (
+                          {anunciosFiltrados.map((a) => (
                             <tr key={a.adId}>
                               <td className="py-2 pr-3">
                                 <Badge tono={VEREDICTO_TONO_MAP[a.veredicto.tipo]}>{a.veredicto.texto}</Badge>
@@ -577,42 +852,79 @@ export function MetaAdsDashboard() {
             </section>
           )}
           {tab === "horarios" && (
-            <section className="surface space-y-4 p-4 sm:p-5" aria-label="Rendimiento por hora">
-              <h2 className="text-base font-semibold text-foreground">Mejores horas para anunciar</h2>
-              {cargandoHorarios && (
-                <p className="text-sm text-muted-foreground">Cargando horarios...</p>
-              )}
-              {errorHorarios && (
-                <p role="alert" className="text-sm text-destructive">{errorHorarios}</p>
-              )}
-              {horarios.length === 0 && !cargandoHorarios && (
-                <p className="text-sm text-muted-foreground">Aún no hay datos de horarios.</p>
-              )}
-              {horarios.length > 0 && mejoresHoras.length > 0 && (
-                <p className="text-sm text-foreground">
-                  Tus anuncios consiguen resultados más baratos cerca de las {mejoresHoras.map(h => etiquetaHora(h.hora)).join(", ")}.
-                </p>
-              )}
-              <div className="space-y-2">
-                {horarios.map((h) => {
-                  const destacado = mejoresHoras.some(m => m.hora === h.hora);
-                  return (
-                    <div key={h.hora} className="flex items-center gap-3 text-sm">
-                      <span className="w-16 shrink-0 text-muted-foreground">{etiquetaHora(h.hora)}</span>
-                      <div className="relative h-4 flex-1 overflow-hidden rounded bg-muted">
-                        <div
-                          className={`h-full ${destacado ? "bg-success" : "bg-primary/60"}`}
-                          style={{ width: `${(h.spend / maxGastoHora) * 100}%` }}
-                        />
+            <div className="space-y-4">
+              <section className="surface space-y-4 p-4 sm:p-5" aria-label="Rendimiento por hora">
+                <h2 className="text-base font-semibold text-foreground">Mejores horas para anunciar</h2>
+                {cargandoHorarios && (
+                  <p className="text-sm text-muted-foreground">Cargando horarios...</p>
+                )}
+                {errorHorarios && (
+                  <p role="alert" className="text-sm text-destructive">{errorHorarios}</p>
+                )}
+                {horarios.length === 0 && !cargandoHorarios && (
+                  <p className="text-sm text-muted-foreground">Aún no hay datos de horarios.</p>
+                )}
+                {horarios.length > 0 && mejoresHoras.length > 0 && (
+                  <p className="text-sm text-foreground">
+                    Tus anuncios consiguen resultados más baratos cerca de las {mejoresHoras.map(h => etiquetaHora(h.hora)).join(", ")}.
+                  </p>
+                )}
+                <div className="space-y-2">
+                  {horarios.map((h) => {
+                    const destacado = mejoresHoras.some(m => m.hora === h.hora);
+                    return (
+                      <div key={h.hora} className="flex items-center gap-3 text-sm">
+                        <span className="w-16 shrink-0 text-muted-foreground">{etiquetaHora(h.hora)}</span>
+                        <div className="relative h-4 flex-1 overflow-hidden rounded bg-muted">
+                          <div
+                            className={`h-full ${destacado ? "bg-success" : "bg-primary/60"}`}
+                            style={{ width: `${(h.spend / maxGastoHora) * 100}%` }}
+                          />
+                        </div>
+                        <span className="w-24 shrink-0 text-right tnum text-muted-foreground">{dinero(h.spend)}</span>
+                        <span className="w-20 shrink-0 text-right tnum text-muted-foreground">{h.resultados} res.</span>
+                        {destacado && <Badge tono="success">Mejor costo</Badge>}
                       </div>
-                      <span className="w-24 shrink-0 text-right tnum text-muted-foreground">{dinero(h.spend)}</span>
-                      <span className="w-20 shrink-0 text-right tnum text-muted-foreground">{h.resultados} res.</span>
-                      {destacado && <Badge tono="success">Mejor costo</Badge>}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="surface space-y-4 p-4 sm:p-5" aria-label="Rendimiento por día de la semana">
+                <h2 className="text-base font-semibold text-foreground">Mejores días para anunciar</h2>
+                {cargandoDias && (
+                  <p className="text-sm text-muted-foreground">Cargando días...</p>
+                )}
+                {errorDias && (
+                  <p role="alert" className="text-sm text-destructive">{errorDias}</p>
+                )}
+                {diasSemana.length === 0 && !cargandoDias && (
+                  <p className="text-sm text-muted-foreground">Aún no hay datos por día de la semana.</p>
+                )}
+                {diasSemana.length > 0 && (
+                  <p className="text-sm text-foreground">{textoMejoresDias}</p>
+                )}
+                <div className="space-y-2">
+                  {diasSemana.map((d) => {
+                    const destacado = mejoresDias.some(m => m.dia === d.dia);
+                    return (
+                      <div key={d.dia} className="flex items-center gap-3 text-sm">
+                        <span className="w-20 shrink-0 text-muted-foreground">{NOMBRES_DIA[d.dia] ?? `Día ${d.dia}`}</span>
+                        <div className="relative h-4 flex-1 overflow-hidden rounded bg-muted">
+                          <div
+                            className={`h-full ${destacado ? "bg-success" : "bg-primary/60"}`}
+                            style={{ width: `${(d.spend / maxGastoDia) * 100}%` }}
+                          />
+                        </div>
+                        <span className="w-24 shrink-0 text-right tnum text-muted-foreground">{dinero(d.spend)}</span>
+                        <span className="w-20 shrink-0 text-right tnum text-muted-foreground">{d.resultados} res.</span>
+                        {destacado && <Badge tono="success">Mejor costo</Badge>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
           )}
           {tab === "configuracion" && (
             <section className="surface space-y-4 p-4 sm:p-5" aria-label="Configuración de la cuenta">
@@ -633,6 +945,32 @@ export function MetaAdsDashboard() {
                 <p className="font-semibold text-foreground">Último sync</p>
                 <p className="text-muted-foreground">{ultimaSync}</p>
               </div>
+              <div className="space-y-2 text-sm">
+                <p className="font-semibold text-foreground">Sincronización</p>
+                <Boton variante="primary" className="min-h-10" disabled={sincronizando} onClick={sincronizarAhora}>
+                  {sincronizando ? "Sincronizando…" : "Sincronizar ahora"}
+                </Boton>
+                {mensajeSync ? <p className="text-sm text-success">{mensajeSync}</p> : null}
+                {errorSync ? <p role="alert" className="text-sm text-destructive">{errorSync}</p> : null}
+                <p className="text-xs text-muted-foreground">Trae los últimos datos desde Meta sin esperar a la sincronización automática.</p>
+              </div>
+              <div className="space-y-2 text-sm">
+                <label htmlFor="accion-resultado" className="font-semibold text-foreground">¿Qué cuenta como resultado para ti?</label>
+                <select
+                  id="accion-resultado"
+                  value={accionResultado}
+                  disabled={guardandoAccion}
+                  onChange={(e) => void cambiarAccionResultado(e.target.value)}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                >
+                  {ACCIONES_RESULTADO.map((opcion) => (
+                    <option key={opcion.valor} value={opcion.valor}>{opcion.etiqueta}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">Se usa para calcular el costo por resultado. Si eliges una, solo contaremos esa; se aplica en la próxima sincronización.</p>
+                {mensajeAccion ? <p className="text-sm text-success">{mensajeAccion}</p> : null}
+                {errorAccion ? <p role="alert" className="text-sm text-destructive">{errorAccion}</p> : null}
+              </div>
               {conexion?.ultimoError ? (
                 <div className="space-y-1 text-sm">
                   <p className="font-semibold text-destructive">Último error</p>
@@ -642,7 +980,7 @@ export function MetaAdsDashboard() {
               {errorDesconectar ? (
                 <p role="alert" className="text-sm text-destructive">{errorDesconectar}</p>
               ) : null}
-               <Boton variante="danger" className="mt-2 min-h-11" disabled={desconectando} onClick={desconectar}>
+              <Boton variante="danger" className="mt-2 min-h-11" disabled={desconectando} onClick={desconectar}>
                 {desconectando ? "Desconectando…" : "Desconectar cuenta publicitaria"}
               </Boton>
               <p className="text-xs text-muted-foreground">
