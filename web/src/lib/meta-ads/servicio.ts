@@ -381,6 +381,113 @@ export async function sincronizarInsightsOrg(orgId: bigint, clienteId: bigint, a
   return { creados, actualizados };
 }
 
+/**
+ * Obtiene los insights de Meta Ads para HOY, en tiempo real (solo lectura).
+ *
+ * Es el backing del selector de período "Hoy" del dashboard: consulta la API de
+ * Meta directamente (igual que el paso 1 de `sincronizarInsightsOrg`, mismo
+ * `fields`, mismo `level=ad`, mismo `time_increment=1` y paginación) pero con
+ * `time_range` = solo el día de hoy. NO escribe nada en `meta_ads_insights` ni
+ * en ningún snapshot: es puramente de lectura y devuelve los insights canónicos
+ * calculados sobre la respuesta de Meta.
+ */
+export async function obtenerInsightsHoy(orgId: bigint, clienteId: bigint, adAccountId: string): Promise<InsightDia[]> {
+  const conexion = await obtenerConexionPorOrg(orgId, clienteId);
+  if (!conexion) return [];
+
+  const token = await tokenMetaAds(orgId, conexion);
+
+  // Estado real de los anuncios (para Pausar/Reanudar); si no hay permiso, se ignora.
+  const estadosAnuncios = await obtenerEstadosAnuncios(adAccountId, token).catch(() => new Map<string, EstadoAnuncio>());
+
+  // Solo el día de hoy (zona horaria del servidor, igual que el sync).
+  const hoy = new Date();
+  const desde = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  desde.setHours(0, 0, 0, 0);
+  const hasta = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  hasta.setHours(23, 59, 59, 999);
+  const rango = JSON.stringify({ since: desde.toISOString().slice(0, 10), until: hasta.toISOString().slice(0, 10) });
+
+  const urlDaily = new URL(`https://graph.facebook.com/v26.0/act_${adAccountId}/insights`);
+  urlDaily.searchParams.set("fields", "ad_id,ad_name,impressions,spend,ctr,cpm,reach,actions,cost_per_action_type");
+  urlDaily.searchParams.set("level", "ad");
+  urlDaily.searchParams.set("time_increment", "1");
+  urlDaily.searchParams.set("time_range", rango);
+  urlDaily.searchParams.set("limit", "100");
+
+  type FilaInsight = {
+    ad_id?: string;
+    ad_name?: string;
+    date_start?: string;
+    date_stop?: string;
+    spend?: string;
+    impressions?: string;
+    reach?: string;
+    ctr?: string;
+    cpm?: string;
+    cost_per_action_type?: Array<{ action_type?: string; value?: string }>;
+    actions?: Array<{ action_type?: string; value?: string }>;
+  };
+
+  const filas: FilaInsight[] = [];
+  let siguiente: string | null = urlDaily.toString();
+  let paginas = 0;
+
+  while (siguiente) {
+    paginas++;
+    if (paginas > 50) throw new Error("Meta devolvió demasiadas páginas de insights; se detuvo por seguridad");
+    const response = await fetch(siguiente, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) throw new Error(`Meta respondió ${response.status} al consultar insights`);
+    const data = await response.json() as {
+      data?: FilaInsight[];
+      paging?: { next?: string };
+      error?: { message?: string };
+    };
+    if (data.error) throw new Error(data.error.message || "Meta devolvió un error al consultar insights");
+    if (Array.isArray(data.data)) filas.push(...data.data);
+    siguiente = data.paging?.next ?? null;
+  }
+
+  const insights: InsightDia[] = [];
+  for (const fila of filas) {
+    const adId = fila.ad_id ?? "";
+    const nombreAnuncio = fila.ad_name ?? "";
+    const fechaStr = fila.date_start ?? "";
+    if (!adId || !fechaStr) continue;
+
+    const fecha = new Date(`${fechaStr}T00:00:00Z`);
+    if (isNaN(fecha.getTime())) continue;
+
+    const spend = fila.spend ? Number(fila.spend) : 0;
+    const impresiones = fila.impressions ? Number(fila.impressions) : 0;
+    const reach = fila.reach ? Number(fila.reach) : 0;
+    const ctr = fila.ctr ? Number(fila.ctr) : 0;
+    const cpm = fila.cpm ? Number(fila.cpm) : (impresiones > 0 ? (spend / impresiones) * 1000 : 0);
+    // Una sola métrica canónica por fila: si no hay resultados, es 0 (nunca se suman).
+    const resultadosDia = valorResultadoCanonico(fila.actions, conexion.accionResultado);
+
+    let cpa = 0;
+    const costoCanonico = valorResultadoCanonico(fila.cost_per_action_type, conexion.accionResultado);
+    if (costoCanonico > 0) cpa = costoCanonico;
+    else if (spend > 0 && resultadosDia > 0) cpa = spend / resultadosDia;
+
+    insights.push({
+      adId,
+      nombreAnuncio,
+      fecha: String(fechaStr).slice(0, 10),
+      spend,
+      ctr,
+      cpa,
+      impresiones,
+      reach,
+      cpm,
+      estadoAnuncio: estadosAnuncios.get(adId) ?? null,
+    });
+  }
+
+  return insights;
+}
+
 /** Obtiene todos los snapshots diarios de una organización (para el dashboard). */
 export async function listarInsightsOrg(orgId: bigint, clienteId: bigint): Promise<Array<InsightDia & { id: string }>> {
   return transaccionTenant(orgId, async (tx) => {

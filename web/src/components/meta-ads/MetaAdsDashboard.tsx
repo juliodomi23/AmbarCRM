@@ -6,6 +6,7 @@ import { Badge, Boton, EncabezadoPagina, Modal } from "@/components/ui";
 import { KpiCard } from "@/components/DashboardVisuals";
 import { veredictoDeAnuncio, ctrPortafolio, reglasDeOrganizacion, REGLAS_VEREDICTO, type VeredictoAnuncio } from "@/lib/meta-ads/veredicto";
 import { ACCIONES_RESULTADO, ACCION_RESULTADO_POR_DEFECTO } from "@/lib/meta-ads/resultados";
+import type { InsightDia } from "@/lib/meta-ads/tipos";
 
 const VEREDICTO_TONO_MAP: Record<"cara" | "fatiga" | "estrella" | "revivir" | "normal", "destructive" | "warning" | "success" | "neutral"> = {
   cara: "destructive",
@@ -97,19 +98,21 @@ type Tab = "resumen" | "anuncios" | "horarios" | "configuracion";
 
 const CLIENTES_TABLES = ["clientes"];
 
-type Periodo = "7d" | "30d" | "3m" | "personalizado";
+type Periodo = "hoy" | "7d" | "30d" | "3m" | "personalizado";
 
 type FiltroVeredicto = "todos" | "bien" | "normal" | "atencion";
 
-const PERIODOS: Periodo[] = ["7d", "30d", "3m", "personalizado"];
+const PERIODOS: Periodo[] = ["hoy", "7d", "30d", "3m", "personalizado"];
 
 const DIAS_PERIODO: Record<Exclude<Periodo, "personalizado">, number> = {
+  "hoy": 1,
   "7d": 7,
   "30d": 30,
   "3m": 89,
 };
 
 const ETIQUETA_PERIODO: Record<Periodo, string> = {
+  "hoy": "Hoy",
   "7d": "7 días",
   "30d": "30 días",
   "3m": "3 meses",
@@ -264,6 +267,9 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
   const [datos, setDatos] = useState<RespuestaDashboard | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
+  const [datosHoy, setDatosHoy] = useState<InsightDia[]>([]);
+  const [cargandoHoy, setCargandoHoy] = useState(false);
+  const [errorHoy, setErrorHoy] = useState("");
   const [cuentas, setCuentas] = useState<CuentaPublicitaria[]>([]);
   const [cargandoCuentas, setCargandoCuentas] = useState(true);
   const [seleccionando, setSeleccionando] = useState(false);
@@ -546,6 +552,25 @@ async function buscarTendencia() {
     return () => control.abort();
   }, [refresco]);
 
+  // "Hoy" es en vivo: solo se consulta la API de Meta cuando el período es
+  // "hoy" (al entrar a la pestaña o al cambiar de cliente/refrescar mientras
+  // están en ella). No es un polling: se aborta en el cleanup.
+  useEffect(() => {
+    if (periodo !== "hoy") return;
+    const control = new AbortController();
+    setCargandoHoy(true);
+    setErrorHoy("");
+    fetch(`/api/meta-ads/hoy?clienteId=${clienteActivoId ?? ""}`, { signal: control.signal, cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("No se pudo cargar el resumen de hoy.");
+        return (await res.json()) as { insights: InsightDia[] };
+      })
+      .then((r) => { if (!control.signal.aborted) setDatosHoy(r.insights ?? []); })
+      .catch((e: unknown) => { if (!control.signal.aborted) setErrorHoy(e instanceof Error ? e.message : "No se pudo cargar el resumen de hoy."); })
+      .finally(() => { if (!control.signal.aborted) setCargandoHoy(false); });
+    return () => control.abort();
+  }, [periodo, clienteActivoId, refresco]);
+
   useEffect(() => {
     const control = new AbortController();
     fetch(`/api/meta-ads/insights?clienteId=${clienteActivoId ?? ""}`, { signal: control.signal, cache: "no-store" })
@@ -626,6 +651,11 @@ async function buscarTendencia() {
   const adAccountId = conexion?.adAccountId ?? "";
   const necesitaSeleccion = adAccountId === "<temp>";
 
+  // Estado de carga/error de la sección: "hoy" usa la consulta en vivo,
+  // los demás usan el fetch general. Nunca se mezclan los datos.
+  const cargandoSeccion = periodo === "hoy" ? cargandoHoy : cargando;
+  const errorSeccion = periodo === "hoy" ? errorHoy : error;
+
   const ahora = new Date();
   const hoyIso = isoLocal(ahora);
 
@@ -654,7 +684,11 @@ async function buscarTendencia() {
 
   const delRango = periodo === "personalizado" && errorRango
     ? []
-    : insights.filter((i) => i.fecha >= inicioIso && i.fecha <= finIso);
+    : periodo === "hoy"
+      // "hoy" viene en vivo de Meta (sin id de BD): se usa una clave estable
+      // anuncio+fecha para que el resto del cálculo (que usa InsightData) funcione igual.
+      ? datosHoy.map((d) => ({ ...d, id: `${d.adId}|${d.fecha}` }))
+      : insights.filter((i) => i.fecha >= inicioIso && i.fecha <= finIso);
 
   const gastoRango = delRango.reduce((total, i) => total + i.spend, 0);
   const impresionesRango = delRango.reduce((total, i) => total + i.impresiones, 0);
@@ -824,14 +858,14 @@ async function buscarTendencia() {
         ))}
       </div>
 
-      {cargando ? (
+      {cargandoSeccion ? (
         <div className="grid min-h-48 place-items-center rounded-2xl border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
-          Cargando resultados de Meta Ads…
+          {periodo === "hoy" ? "Cargando el resumen de hoy desde Meta…" : "Cargando resultados de Meta Ads…"}
         </div>
-      ) : error ? (
+      ) : errorSeccion ? (
         <div role="alert" className="surface space-y-3 p-6">
           <h2 className="font-semibold">No pudimos cargar los resultados</h2>
-          <p className="text-sm text-muted-foreground">{error}</p>
+          <p className="text-sm text-muted-foreground">{errorSeccion}</p>
         </div>
       ) : !conexion ? (
         <div className="grid min-h-64 place-items-center rounded-2xl border border-dashed border-border bg-card p-6 text-center">
