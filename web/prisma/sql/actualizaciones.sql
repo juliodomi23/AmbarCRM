@@ -3133,7 +3133,18 @@ CREATE TABLE IF NOT EXISTS meta_ads_conexiones (
   updated_at              TIMESTAMPTZ(6) NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS meta_ads_conexiones_org_uq ON meta_ads_conexiones(org_id);
+-- Superado por meta_ads_conexiones_org_cliente_uq (ver bloque multi-cliente más abajo):
+-- con varios clientes por org, org_id deja de ser único. Solo se crea en una instalación
+-- nueva que todavía no tiene la columna cliente_id (evita reventar el replay del script).
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'meta_ads_conexiones' AND column_name = 'cliente_id'
+  ) THEN
+    CREATE UNIQUE INDEX IF NOT EXISTS meta_ads_conexiones_org_uq ON meta_ads_conexiones(org_id);
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS meta_ads_conexiones_org_estado_idx ON meta_ads_conexiones(org_id, estado);
 
 -- ---------- meta_ads_insights ----------
