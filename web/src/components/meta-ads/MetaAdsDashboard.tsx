@@ -811,7 +811,7 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
             <p className="mt-2 text-sm text-muted-foreground">
               Autoriza tu cuenta de anuncios de Meta para ver gasto, CTR, CPA y el ranking de tus anuncios, y para pausar o reanudar anuncios desde aquí.
             </p>
-            <Boton className="mt-5 min-h-11" onClick={() => { router.push("/api/meta-ads/oauth/iniciar"); }}>Conectar cuenta publicitaria</Boton>
+            <Boton className="mt-5 min-h-11" onClick={() => { router.push(`/api/meta-ads/oauth/iniciar?clienteId=${clienteActivoId ?? ""}`); }}>Conectar cuenta publicitaria</Boton>
           </div>
         </div>
       ) : !necesitaSeleccion ? (
@@ -1464,7 +1464,7 @@ export function MetaAdsDashboard({ esAdmin = false }: { esAdmin?: boolean }) {
           ) : cuentas.length === 0 ? (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">No se encontraron cuentas publicitarias en tu cuenta de Meta.</p>
-              <Boton className="mt-5 min-h-11" onClick={() => { router.push("/api/meta-ads/oauth/iniciar"); }}>Intentar conectar de nuevo</Boton>
+              <Boton className="mt-5 min-h-11" onClick={() => { router.push(`/api/meta-ads/oauth/iniciar?clienteId=${clienteActivoId ?? ""}`); }}>Intentar conectar de nuevo</Boton>
             </div>
           ) : (
             <div className="overflow-x-auto">
