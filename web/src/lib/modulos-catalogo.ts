@@ -51,6 +51,13 @@ export const MODULOS = [
     icono: "M3 3h18v7H3zM3 14h18v7H3zM7 6h.01M7 17h.01", ruta: "/servidores",
   },
   {
+    clave: "creador_ig", area: "Marketing y crecimiento", nombre: "Creador IG",
+    descripcion: "Mira el contenido y las métricas básicas de las cuentas de Instagram conectadas, sin salir del CRM.",
+    acceso: { puestosPorDefecto: ["Administrador", "Mercadotecnia", "Dirección comercial"] },
+    icono: "M4 4h16v16H4zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM17 7h.01",
+    ruta: "/creador-ig",
+  },
+  {
     clave: "contratos", area: "Ámbar Rojo", nombre: "Servicios contratados",
     descripcion: "Servicios por cliente, mensualidades y fechas de inicio.",
     acceso: { puestosPorDefecto: ["Administrador"] },
