@@ -3162,7 +3162,17 @@ CREATE TABLE IF NOT EXISTS meta_ads_insights (
   updated_at     TIMESTAMPTZ(6) NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS meta_ads_insights_org_ad_fecha_uq ON meta_ads_insights(org_id, ad_id, fecha);
+-- Superado por meta_ads_insights_org_cliente_ad_fecha_uq (ver bloque multi-cliente más
+-- abajo). Solo se crea en una instalación nueva que todavía no tiene la columna cliente_id.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'meta_ads_insights' AND column_name = 'cliente_id'
+  ) THEN
+    CREATE UNIQUE INDEX IF NOT EXISTS meta_ads_insights_org_ad_fecha_uq ON meta_ads_insights(org_id, ad_id, fecha);
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS meta_ads_insights_org_fecha_idx ON meta_ads_insights(org_id, fecha);
 
 -- ---------- RLS + permisos ----------
@@ -3192,7 +3202,18 @@ CREATE TABLE IF NOT EXISTS meta_ads_horarios (
   updated_at     TIMESTAMPTZ(6) NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS meta_ads_horarios_org_hora_uq ON meta_ads_horarios(org_id, hora);
+-- Superado por meta_ads_horarios_org_cliente_hora_uq (ver bloque multi-cliente más abajo):
+-- con varios clientes por org, (org_id, hora) deja de ser único. Solo se crea en una
+-- instalación nueva que todavía no tiene la columna cliente_id.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'meta_ads_horarios' AND column_name = 'cliente_id'
+  ) THEN
+    CREATE UNIQUE INDEX IF NOT EXISTS meta_ads_horarios_org_hora_uq ON meta_ads_horarios(org_id, hora);
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS meta_ads_horarios_org_idx ON meta_ads_horarios(org_id);
 
 DO $$
@@ -3234,7 +3255,18 @@ CREATE TABLE IF NOT EXISTS meta_ads_dias_semana (
   updated_at     TIMESTAMPTZ(6) NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS meta_ads_dias_semana_org_dia_uq ON meta_ads_dias_semana(org_id, dia);
+-- Superado por meta_ads_dias_semana_org_cliente_dia_uq (ver bloque multi-cliente más
+-- abajo): con varios clientes por org, (org_id, dia) deja de ser único. Solo se crea
+-- en una instalación nueva que todavía no tiene la columna cliente_id.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'meta_ads_dias_semana' AND column_name = 'cliente_id'
+  ) THEN
+    CREATE UNIQUE INDEX IF NOT EXISTS meta_ads_dias_semana_org_dia_uq ON meta_ads_dias_semana(org_id, dia);
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS meta_ads_dias_semana_org_idx ON meta_ads_dias_semana(org_id);
 
 DO $$
